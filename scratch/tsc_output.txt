@@ -1,0 +1,213 @@
+src/components/admin/AdminCategoriesView.tsx(81,41): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/admin/AdminCategoriesView.tsx(170,17): error TS2345: Argument of type '{ is_active: boolean; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminCategoriesView.tsx(194,19): error TS2345: Argument of type '{ name: any; slug: any; icon: any; description: any; display_order: number; is_active: boolean; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminCategoriesView.tsx(215,13): error TS2322: Type '{ name: any; slug: any; icon: any; description: any; display_order: number; is_active: boolean; }' is not assignable to type 'never'.
+src/components/admin/AdminCategoriesView.tsx(229,50): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/admin/AdminDashboardView.tsx(154,14): error TS2304: Cannot find name 'toast'.
+src/components/admin/AdminDashboardView.tsx(165,5): error TS2304: Cannot find name 'toast'.
+src/components/admin/AdminDeliveriesView.tsx(78,9): error TS2322: Type '{ driver_name: string; vehicle_identifier: string; route_area: string; time_slot: string; status: string; }' is not assignable to type 'never'.
+src/components/admin/AdminDeliveriesView.tsx(104,17): error TS2345: Argument of type '{ status: string; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminInventoryView.tsx(80,17): error TS2345: Argument of type '{ current_stock: number; reorder_threshold: number; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminInventoryView.tsx(93,19): error TS2345: Argument of type '{ stock: number; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminManagersView.tsx(86,19): error TS2345: Argument of type '{ role: string; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminNotificationsPopover.tsx(36,51): error TS2345: Argument of type '{ is_read: boolean; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminOrdersView.tsx(92,17): error TS2345: Argument of type '{ status: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminOrdersView.tsx(102,9): error TS2322: Type '{ order_id: any; status: string; actor_id: string | null; created_by: string | null; notes: string; }' is not assignable to type 'never'.
+src/components/admin/AdminOrdersView.tsx(124,25): error TS2345: Argument of type '{ stock: any; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminOrdersView.tsx(124,40): error TS2339: Property 'stock' does not exist on type 'never'.
+src/components/admin/AdminOrdersView.tsx(134,11): error TS2322: Type '{ user_id: any; title: string; message: string; is_read: false; }' is not assignable to type 'never'.
+src/components/admin/AdminProductsView.tsx(189,11): error TS2322: Type '{ name: any; slug: any; brand: any; category_id: any; category_slug: any; subcategory: any; price: number; stock: number; image_url: any; description: any; is_featured: boolean; is_offer: boolean; }' is not assignable to type 'never'.
+src/components/admin/AdminProductsView.tsx(210,19): error TS2345: Argument of type '{ name: any; brand: any; category_id: any; category_slug: any; price: number; stock: number; image_url: any; description: any; is_featured: boolean; is_offer: boolean; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/admin/AdminProductsView.tsx(535,25): error TS2322: Type '"xs"' is not assignable to type '"icon" | "default" | "sm" | "lg" | null | undefined'.
+src/components/admin/AdminStationsView.tsx(86,11): error TS2322: Type '{ name: any; address: any; town: any; postcode: any; phone: any; hours: any; autogas_available: boolean; }' is not assignable to type 'never'.
+src/components/admin/AdminStationsView.tsx(101,19): error TS2345: Argument of type '{ name: any; address: any; town: any; postcode: any; phone: any; hours: any; autogas_available: boolean; }' is not assignable to parameter of type 'never'.
+src/components/customer/CustomerAddressesView.tsx(67,9): error TS2322: Type '{ user_id: string; label: string; name: string; street: string; city: string; postcode: string; is_default: boolean; }' is not assignable to type 'never'.
+src/components/customer/CustomerAddressesView.tsx(112,56): error TS2345: Argument of type '{ is_default: boolean; }' is not assignable to parameter of type 'never'.
+src/components/customer/CustomerAddressesView.tsx(113,56): error TS2345: Argument of type '{ is_default: boolean; }' is not assignable to parameter of type 'never'.
+src/components/customer/CustomerNotificationsView.tsx(42,60): error TS2345: Argument of type '{ is_read: boolean; }' is not assignable to parameter of type 'never'.
+src/components/customer/CustomerOrdersView.tsx(97,33): error TS2339: Property 'order_items' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(111,54): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(116,11): error TS2698: Spread types may only be created from object types.
+src/components/customer/CustomerOrdersView.tsx(117,27): error TS2339: Property 'order_items' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(194,34): error TS2339: Property 'stock' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(195,30): error TS2339: Property 'slug' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(195,74): error TS2339: Property 'stock' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(196,65): error TS2339: Property 'stock' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(225,91): error TS2345: Argument of type '{ target_order_id: any; reason_text: string; }' is not assignable to parameter of type 'undefined'.
+src/components/customer/CustomerOrdersView.tsx(230,40): error TS2339: Property 'success' does not exist on type 'never'.
+src/components/customer/CustomerOrdersView.tsx(231,53): error TS2339: Property 'error' does not exist on type 'never'.
+src/components/customer/CustomerProfileView.tsx(35,27): error TS2339: Property 'full_name' does not exist on type 'never'.
+src/components/customer/CustomerProfileView.tsx(36,28): error TS2339: Property 'phone' does not exist on type 'never'.
+src/components/customer/CustomerProfileView.tsx(56,17): error TS2345: Argument of type '{ full_name: string; phone: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/customer/CustomerSupportView.tsx(62,9): error TS2322: Type '{ ticket_number: string; customer_id: string; customer_email: string; customer_name: string; subject: string; description: string; status: string; priority: string; }' is not assignable to type 'never'.
+src/components/customer/CustomerSupportView.tsx(102,10): error TS2304: Cannot find name 'Dialog'.
+src/components/customer/CustomerSupportView.tsx(103,12): error TS2304: Cannot find name 'DialogTrigger'.
+src/components/customer/CustomerSupportView.tsx(107,13): error TS2304: Cannot find name 'DialogTrigger'.
+src/components/customer/CustomerSupportView.tsx(108,12): error TS2304: Cannot find name 'DialogContent'.
+src/components/customer/CustomerSupportView.tsx(109,14): error TS2304: Cannot find name 'DialogHeader'.
+src/components/customer/CustomerSupportView.tsx(110,16): error TS2304: Cannot find name 'DialogTitle'.
+src/components/customer/CustomerSupportView.tsx(110,82): error TS2304: Cannot find name 'DialogTitle'.
+src/components/customer/CustomerSupportView.tsx(111,15): error TS2304: Cannot find name 'DialogHeader'.
+src/components/customer/CustomerSupportView.tsx(144,13): error TS2304: Cannot find name 'DialogContent'.
+src/components/customer/CustomerSupportView.tsx(145,11): error TS2304: Cannot find name 'Dialog'.
+src/components/manager/ManagerDashboardView.tsx(100,17): error TS2345: Argument of type '{ status: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerDeliveriesView.tsx(54,17): error TS2345: Argument of type '{ status: string; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerEnquiriesView.tsx(64,9): error TS2322: Type '{ ticket_id: any; sender_id: string; sender_role: string; text: string; }' is not assignable to type 'never'.
+src/components/manager/ManagerEnquiriesView.tsx(77,17): error TS2345: Argument of type '{ status: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerInventoryView.tsx(56,17): error TS2345: Argument of type '{ current_stock: any; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerInventoryView.tsx(64,19): error TS2345: Argument of type '{ stock: any; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerNotificationsPopover.tsx(36,51): error TS2345: Argument of type '{ is_read: boolean; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerNotificationsView.tsx(71,17): error TS2345: Argument of type '{ is_read: boolean; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerNotificationsView.tsx(90,17): error TS2345: Argument of type '{ is_read: boolean; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerOrdersView.tsx(81,17): error TS2345: Argument of type '{ status: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerOrdersView.tsx(91,9): error TS2322: Type '{ order_id: any; status: string; actor_id: string | null; created_by: string | null; notes: string; }' is not assignable to type 'never'.
+src/components/manager/ManagerOrdersView.tsx(113,25): error TS2345: Argument of type '{ stock: any; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerOrdersView.tsx(113,40): error TS2339: Property 'stock' does not exist on type 'never'.
+src/components/manager/ManagerOrdersView.tsx(123,11): error TS2322: Type '{ user_id: any; title: string; message: string; is_read: false; }' is not assignable to type 'never'.
+src/components/manager/ManagerProfileView.tsx(74,31): error TS2339: Property 'full_name' does not exist on type 'never'.
+src/components/manager/ManagerProfileView.tsx(75,28): error TS2339: Property 'phone' does not exist on type 'never'.
+src/components/manager/ManagerProfileView.tsx(100,17): error TS2345: Argument of type '{ full_name: string; phone: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/components/manager/ManagerSettingsView.tsx(93,33): error TS2339: Property 'full_name' does not exist on type 'never'.
+src/components/manager/ManagerSettingsView.tsx(94,30): error TS2339: Property 'phone' does not exist on type 'never'.
+src/components/manager/ManagerSettingsView.tsx(118,17): error TS2345: Argument of type '{ full_name: string; phone: string; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/lib/store.tsx(66,26): error TS2339: Property 'full_name' does not exist on type 'never'.
+src/lib/store.tsx(68,27): error TS2339: Property 'role' does not exist on type 'never'.
+src/lib/store.tsx(115,26): error TS2339: Property 'full_name' does not exist on type 'never'.
+src/lib/store.tsx(117,27): error TS2339: Property 'role' does not exist on type 'never'.
+src/lib/store.tsx(242,25): error TS2339: Property 'slug' does not exist on type 'never'.
+src/lib/store.tsx(243,21): error TS2339: Property 'id' does not exist on type 'never'.
+src/lib/store.tsx(244,23): error TS2339: Property 'slug' does not exist on type 'never'.
+src/lib/store.tsx(245,23): error TS2339: Property 'name' does not exist on type 'never'.
+src/lib/store.tsx(246,24): error TS2339: Property 'brand' does not exist on type 'never'.
+src/lib/store.tsx(247,27): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/lib/store.tsx(248,22): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/lib/store.tsx(249,31): error TS2339: Property 'price' does not exist on type 'never'.
+src/lib/store.tsx(250,28): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/lib/store.tsx(250,56): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/lib/store.tsx(251,31): error TS2339: Property 'stock' does not exist on type 'never'.
+src/lib/store.tsx(252,24): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/lib/store.tsx(253,32): error TS2339: Property 'rating' does not exist on type 'never'.
+src/lib/store.tsx(254,33): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/lib/store.tsx(255,35): error TS2339: Property 'is_featured' does not exist on type 'never'.
+src/lib/store.tsx(256,32): error TS2339: Property 'is_offer' does not exist on type 'never'.
+src/lib/store.tsx(257,30): error TS2339: Property 'description' does not exist on type 'never'.
+src/lib/store.tsx(258,24): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/checkout.tsx(86,47): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/checkout.tsx(89,50): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/checkout.tsx(93,44): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/checkout.tsx(95,33): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/checkout.tsx(96,35): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/checkout.tsx(111,11): error TS2322: Type '{ order_number: string; customer_id: string | null; customer_name: string; customer_email: string; customer_phone: string; delivery_address: { name: string; street: string; postcode: string; phone: string; }; subtotal: number; shipping_fee: number; total: number; status: string; }' is not assignable to type 'never'.
+src/routes/checkout.tsx(138,28): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/checkout.tsx(146,77): error TS2345: Argument of type '{ order_id: any; product_id: string | null; product_name: string; quantity: number; unit_price: number; total_price: number; }[]' is not assignable to parameter of type 'never[]'.
+  Type '{ order_id: any; product_id: string | null; product_name: string; quantity: number; unit_price: number; total_price: number; }' is not assignable to type 'never'.
+src/routes/checkout.tsx(153,9): error TS2322: Type '{ order_id: any; status: string; actor_id: string | null; actor_name: string; notes: string; }' is not assignable to type 'never'.
+src/routes/checkout.tsx(154,30): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/checkout.tsx(173,55): error TS2339: Property 'stock_level' does not exist on type 'never'.
+src/routes/checkout.tsx(176,25): error TS2345: Argument of type '{ stock_level: number; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/routes/checkout.tsx(187,56): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/checkout.tsx(190,25): error TS2345: Argument of type '{ stock: number; updated_at: string; }' is not assignable to parameter of type 'never'.
+src/routes/index.tsx(77,19): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/index.tsx(78,21): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/index.tsx(79,21): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/index.tsx(80,22): error TS2339: Property 'brand' does not exist on type 'never'.
+src/routes/index.tsx(81,25): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/index.tsx(82,20): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/routes/index.tsx(83,29): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/index.tsx(84,29): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/index.tsx(85,22): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/routes/index.tsx(86,30): error TS2339: Property 'rating' does not exist on type 'never'.
+src/routes/index.tsx(87,31): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/routes/index.tsx(88,33): error TS2339: Property 'is_featured' does not exist on type 'never'.
+src/routes/index.tsx(89,30): error TS2339: Property 'is_offer' does not exist on type 'never'.
+src/routes/index.tsx(90,28): error TS2339: Property 'description' does not exist on type 'never'.
+src/routes/index.tsx(91,22): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/index.tsx(169,13): error TS2322: Type '{ badge: string; title: string; desc: string; }' is not assignable to type 'IntrinsicAttributes & { title: string; subtitle?: string | undefined; action?: ReactNode; }'.
+  Property 'badge' does not exist on type 'IntrinsicAttributes & { title: string; subtitle?: string | undefined; action?: ReactNode; }'.
+src/routes/index.tsx(218,13): error TS2322: Type '{ badge: string; title: string; desc: string; }' is not assignable to type 'IntrinsicAttributes & { title: string; subtitle?: string | undefined; action?: ReactNode; }'.
+  Property 'badge' does not exist on type 'IntrinsicAttributes & { title: string; subtitle?: string | undefined; action?: ReactNode; }'.
+src/routes/index.tsx(241,13): error TS2322: Type '{ badge: string; title: string; desc: string; light: true; }' is not assignable to type 'IntrinsicAttributes & { title: string; subtitle?: string | undefined; action?: ReactNode; }'.
+  Property 'badge' does not exist on type 'IntrinsicAttributes & { title: string; subtitle?: string | undefined; action?: ReactNode; }'.
+src/routes/offers.tsx(36,19): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/offers.tsx(37,21): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/offers.tsx(38,21): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/offers.tsx(39,22): error TS2339: Property 'brand' does not exist on type 'never'.
+src/routes/offers.tsx(40,25): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/offers.tsx(41,20): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/routes/offers.tsx(42,29): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/offers.tsx(43,26): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/routes/offers.tsx(43,54): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/routes/offers.tsx(44,29): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/offers.tsx(45,22): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/routes/offers.tsx(46,30): error TS2339: Property 'rating' does not exist on type 'never'.
+src/routes/offers.tsx(47,31): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/routes/offers.tsx(48,33): error TS2339: Property 'is_featured' does not exist on type 'never'.
+src/routes/offers.tsx(49,30): error TS2339: Property 'is_offer' does not exist on type 'never'.
+src/routes/offers.tsx(50,28): error TS2339: Property 'description' does not exist on type 'never'.
+src/routes/offers.tsx(51,22): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/order-gas.tsx(57,19): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/order-gas.tsx(58,21): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/order-gas.tsx(59,21): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/order-gas.tsx(60,22): error TS2339: Property 'brand' does not exist on type 'never'.
+src/routes/order-gas.tsx(61,25): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/order-gas.tsx(62,20): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/routes/order-gas.tsx(63,29): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/order-gas.tsx(64,29): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/order-gas.tsx(65,22): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/routes/order-gas.tsx(66,30): error TS2339: Property 'rating' does not exist on type 'never'.
+src/routes/order-gas.tsx(67,31): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/routes/order-gas.tsx(68,33): error TS2339: Property 'is_featured' does not exist on type 'never'.
+src/routes/order-gas.tsx(69,30): error TS2339: Property 'is_offer' does not exist on type 'never'.
+src/routes/order-gas.tsx(70,28): error TS2339: Property 'description' does not exist on type 'never'.
+src/routes/order-gas.tsx(71,22): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/products.$slug.tsx(77,22): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/products.$slug.tsx(78,24): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/products.$slug.tsx(79,24): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/products.$slug.tsx(80,25): error TS2339: Property 'brand' does not exist on type 'never'.
+src/routes/products.$slug.tsx(81,28): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/products.$slug.tsx(82,23): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/routes/products.$slug.tsx(83,32): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/products.$slug.tsx(84,29): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/routes/products.$slug.tsx(84,62): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/routes/products.$slug.tsx(85,32): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/products.$slug.tsx(86,25): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/routes/products.$slug.tsx(87,33): error TS2339: Property 'rating' does not exist on type 'never'.
+src/routes/products.$slug.tsx(88,34): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/routes/products.$slug.tsx(89,36): error TS2339: Property 'is_featured' does not exist on type 'never'.
+src/routes/products.$slug.tsx(90,33): error TS2339: Property 'is_offer' does not exist on type 'never'.
+src/routes/products.$slug.tsx(91,31): error TS2339: Property 'description' does not exist on type 'never'.
+src/routes/products.$slug.tsx(92,25): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/products.$slug.tsx(101,39): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/products.$slug.tsx(108,22): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/products.$slug.tsx(109,24): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/products.$slug.tsx(110,24): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/products.$slug.tsx(111,25): error TS2339: Property 'brand' does not exist on type 'never'.
+src/routes/products.$slug.tsx(112,28): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/products.$slug.tsx(113,23): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/routes/products.$slug.tsx(114,32): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/products.$slug.tsx(115,32): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/products.$slug.tsx(116,25): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/routes/products.$slug.tsx(117,33): error TS2339: Property 'rating' does not exist on type 'never'.
+src/routes/products.$slug.tsx(118,34): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/routes/products.$slug.tsx(119,31): error TS2339: Property 'description' does not exist on type 'never'.
+src/routes/products.$slug.tsx(120,25): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/products.index.tsx(77,19): error TS2339: Property 'id' does not exist on type 'never'.
+src/routes/products.index.tsx(78,21): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/products.index.tsx(79,21): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/products.index.tsx(80,22): error TS2339: Property 'brand' does not exist on type 'never'.
+src/routes/products.index.tsx(81,25): error TS2339: Property 'category_slug' does not exist on type 'never'.
+src/routes/products.index.tsx(82,20): error TS2339: Property 'subcategory' does not exist on type 'never'.
+src/routes/products.index.tsx(83,29): error TS2339: Property 'price' does not exist on type 'never'.
+src/routes/products.index.tsx(84,26): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/routes/products.index.tsx(84,54): error TS2339: Property 'compare_at_price' does not exist on type 'never'.
+src/routes/products.index.tsx(85,29): error TS2339: Property 'stock' does not exist on type 'never'.
+src/routes/products.index.tsx(86,22): error TS2339: Property 'image_url' does not exist on type 'never'.
+src/routes/products.index.tsx(87,30): error TS2339: Property 'rating' does not exist on type 'never'.
+src/routes/products.index.tsx(88,31): error TS2339: Property 'reviews_count' does not exist on type 'never'.
+src/routes/products.index.tsx(89,33): error TS2339: Property 'is_featured' does not exist on type 'never'.
+src/routes/products.index.tsx(90,30): error TS2339: Property 'is_offer' does not exist on type 'never'.
+src/routes/products.index.tsx(91,28): error TS2339: Property 'description' does not exist on type 'never'.
+src/routes/products.index.tsx(92,22): error TS2339: Property 'specs' does not exist on type 'never'.
+src/routes/products.index.tsx(99,21): error TS2339: Property 'slug' does not exist on type 'never'.
+src/routes/products.index.tsx(100,21): error TS2339: Property 'name' does not exist on type 'never'.
+src/routes/products.index.tsx(102,21): error TS2339: Property 'subcategories' does not exist on type 'never'.

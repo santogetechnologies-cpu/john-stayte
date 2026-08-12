@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -16,12 +17,14 @@ import {
   MapPin,
   Star,
   Quote,
+  Loader2,
 } from "lucide-react";
 import { SiteLayout, SectionHead } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
-import { categories, products, offers, testimonials, IMG } from "@/data/catalog";
+import { testimonials } from "@/data/catalog";
 import hero from "@/assets/hero-delivery.jpg";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,8 +52,60 @@ const iconMap: Record<string, typeof Flame> = {
 };
 
 function Home() {
-  const featured = products.filter((p) => p.featured).slice(0, 8);
-  const dealProducts = products.filter((p) => p.offer).slice(0, 4);
+  const [dbProducts, setDbProducts] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [loadingCats, setLoadingCats] = useState<boolean>(true);
+
+  useEffect(() => {
+    async function loadHomeData() {
+      setLoadingCats(true);
+      try {
+        const [{ data: prodData }, { data: catData }] = await Promise.all([
+          supabase
+            .from("products")
+            .select("*")
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("is_active", true)
+            .order("display_order", { ascending: true }),
+        ]);
+
+        if (prodData) {
+          const mapped = prodData.map((p) => ({
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            brand: p.brand || "Calor",
+            category: p.category_slug || "gas",
+            sub: p.subcategory || "General",
+            price: Number(p.price),
+            stock: Number(p.stock || 0),
+            image: p.image_url || "/placeholder.svg",
+            rating: Number(p.rating || 5.0),
+            reviews: Number(p.reviews_count || 0),
+            featured: Boolean(p.is_featured),
+            offer: Boolean(p.is_offer),
+            description: p.description || "",
+            specs: p.specs || {},
+          }));
+          setDbProducts(mapped);
+        }
+
+        if (catData && catData.length > 0) {
+          setDbCategories(catData);
+        }
+      } catch (err) {
+        console.error("Home load data error:", err);
+      } finally {
+        setLoadingCats(false);
+      }
+    }
+    loadHomeData();
+  }, []);
+
+  const featured = dbProducts.slice(0, 8);
 
   return (
     <SiteLayout>
@@ -107,213 +162,100 @@ function Home() {
         </div>
       </section>
 
-      {/* Quick actions */}
-      <section className="container-page -mt-10 relative z-10">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            { label: "Order Gas", to: "/order-gas", icon: Flame, search: undefined },
-            { label: "Coal & Logs", to: "/products", icon: Logs, search: { category: "coal-logs" } },
-            { label: "Gas Bottles", to: "/products", icon: Flame, search: { category: "gas" } },
-            { label: "Appliances", to: "/products", icon: CookingPot, search: { category: "gas-appliances" } },
-            { label: "Filling Stations", to: "/filling-stations", icon: MapPin, search: undefined },
-          ].map((a) => (
-            <Link
-              key={a.label}
-              to={a.to}
-              search={a.search as never}
-              className="surface-card group flex items-center gap-3 p-4 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[var(--shadow-lift)]"
-            >
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent text-primary">
-                <a.icon className="h-5 w-5" />
-              </span>
-              <span className="min-w-0 truncate text-sm font-bold">{a.label}</span>
-              <ArrowRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Promo trio */}
-      <section className="container-page mt-16 grid gap-4 md:grid-cols-3">
-        {[
-          { title: "Auto Gas Update", body: "Our auto gas tanks and pumps have been replaced with new ones.", cta: "Read more", to: "/blog", img: IMG.cylinder },
-          { title: "Order Gas Online", body: "You can now order your gas online — make sure to order in time.", cta: "Order now", to: "/order-gas", img: IMG.truck },
-          { title: "Gas Heaters", body: "As the weather turns colder, check out our mobile gas heaters.", cta: "Shop now", to: "/products", img: IMG.heater },
-        ].map((c) => (
-          <article key={c.title} className="surface-card flex items-center gap-4 overflow-hidden p-5">
-            <div className="min-w-0">
-              <h3 className="text-base font-extrabold uppercase tracking-wide text-primary">{c.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{c.body}</p>
-              <Button asChild size="sm" className="mt-4 rounded-full">
-                <Link to={c.to}>{c.cta}</Link>
-              </Button>
-            </div>
-            <img src={c.img} alt="" loading="lazy" className="h-28 w-24 shrink-0 object-contain" />
-          </article>
-        ))}
-      </section>
-
-      {/* Categories */}
-      <section className="container-page mt-24">
-        <SectionHead
-          title="Shop by category"
-          subtitle="Everything from cylinders to kindling, in one catalogue."
-          action={
-            <Button asChild variant="ghost" className="rounded-full">
-              <Link to="/products">All products <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
-            </Button>
-          }
-        />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {categories.map((c) => {
-            const Icon = iconMap[c.icon] ?? Flame;
-            return (
-              <Link
-                key={c.slug}
-                to="/products"
-                search={{ category: c.slug }}
-                className="surface-card group grid place-items-center gap-3 p-6 text-center transition-all hover:-translate-y-1 hover:border-primary/40"
-              >
-                <span className="grid h-14 w-14 place-items-center rounded-2xl bg-accent text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  <Icon className="h-6 w-6" />
-                </span>
-                <span className="text-sm font-bold">{c.name}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Popular */}
-      <section className="container-page mt-24">
-        <SectionHead title="Popular products" subtitle="What Gloucestershire is ordering this week." />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {featured.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
-      </section>
-
-      {/* Offers */}
-      <section className="mt-24 bg-surface py-20">
-        <div className="container-page">
+      {/* Categories Grid (REAL SUPABASE DATA) */}
+      <section className="section-padding bg-slate-50 border-y border-slate-200/60">
+        <div className="container-page space-y-8">
           <SectionHead
-            title="Latest offers"
-            subtitle="Bundles and seasonal deals, refreshed every month."
-            action={
-              <Button asChild variant="ghost" className="rounded-full">
-                <Link to="/offers">All offers <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
-              </Button>
-            }
+            badge="Product Catalogue"
+            title="Browse by Category"
+            desc="Gas cylinders, solid fuel, animal feed and appliances delivered to your door."
           />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {offers.map((o) => (
-              <article key={o.title} className="surface-card flex flex-col p-6">
-                <span className="w-fit rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold uppercase text-primary-foreground">
-                  {o.tag}
-                </span>
-                <h3 className="mt-4 text-lg font-extrabold">{o.title}</h3>
-                <p className="mt-2 flex-1 text-sm text-muted-foreground">{o.desc}</p>
-                <p className="mt-4 font-display text-2xl font-extrabold">{o.price}</p>
-              </article>
-            ))}
-          </div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {dealProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
+
+          {loadingCats ? (
+            <div className="surface-card p-12 text-center text-xs font-bold text-muted-foreground rounded-3xl border bg-white">
+              <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
+              Loading categories from Supabase...
+            </div>
+          ) : (
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+              {dbCategories.map((c) => {
+                const Icon = iconMap[c.icon] || Flame;
+                const subs = c.subcategories || [];
+                return (
+                  <Link
+                    key={c.id || c.slug}
+                    to="/products"
+                    search={{ category: c.slug }}
+                    className="surface-card group p-5 rounded-3xl border bg-white hover:border-primary/50 transition-all flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="p-3 rounded-2xl bg-primary/10 text-primary w-fit group-hover:bg-primary group-hover:text-primary-foreground transition-colors mb-3">
+                        <Icon className="h-6 w-6" />
+                      </div>
+                      <h3 className="font-extrabold text-base text-foreground group-hover:text-primary transition-colors">
+                        {c.name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {subs.length > 0 ? subs.slice(0, 3).join(", ") : c.description}
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center gap-1 text-xs font-bold text-primary">
+                      <span>Shop category</span>
+                      <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* About + coverage */}
-      <section className="container-page mt-24 grid gap-12 lg:grid-cols-2 lg:items-center">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">About us</p>
-          <h2 className="mt-3 text-3xl font-extrabold md:text-4xl">
-            A local supplier that still answers the phone
-          </h2>
-          <p className="mt-4 text-muted-foreground">
-            John Stayte Services has fuelled homes, farms, pubs and anglers across Gloucestershire for
-            over fifty years. Three filling stations, our own delivery fleet, and a team that knows
-            which regulator fits your cylinder.
-          </p>
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-            {[
-              { icon: Truck, t: "Own delivery fleet" },
-              { icon: ShieldCheck, t: "Fully certified LPG" },
-              { icon: Clock, t: "Next-day standard" },
-              { icon: MapPin, t: "40-mile radius" },
-            ].map((f) => (
-              <li key={f.t} className="flex items-center gap-3 rounded-xl bg-surface p-3 text-sm font-semibold">
-                <f.icon className="h-4 w-4 shrink-0 text-primary" /> {f.t}
-              </li>
-            ))}
-          </ul>
-          <Button asChild className="mt-8 rounded-full px-6">
-            <Link to="/about">More about JSS</Link>
-          </Button>
-        </div>
-        <div className="surface-card overflow-hidden p-8">
-          <h3 className="text-lg font-extrabold">Delivery coverage</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            We deliver within 40 miles of Whitminster, including:
-          </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {["Gloucester", "Stroud", "Dursley", "Cam", "Stonehouse", "Frampton", "Berkeley", "Cheltenham", "Tewkesbury", "Nailsworth", "Wotton", "Forest of Dean"].map((a) => (
-              <span key={a} className="rounded-full border bg-surface px-3 py-1.5 text-xs font-semibold">
-                {a}
-              </span>
-            ))}
-          </div>
-          <div className="mt-6 overflow-hidden rounded-2xl border">
-            <iframe
-              title="Delivery coverage map"
-              className="h-64 w-full"
-              loading="lazy"
-              src="https://www.openstreetmap.org/export/embed.html?bbox=-2.75%2C51.60%2C-2.05%2C51.95&layer=mapnik"
-            />
-          </div>
+      {/* Featured Products */}
+      <section className="section-padding bg-white">
+        <div className="container-page space-y-8">
+          <SectionHead
+            badge="Live Catalog"
+            title="Available Products"
+            desc="Real live products from our Whitminster depot ready for immediate dispatch."
+          />
+
+          {featured.length === 0 ? (
+            <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs text-muted-foreground font-bold">
+              Loading live products from Supabase...
+            </div>
+          ) : (
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 items-stretch justify-start">
+              {featured.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="container-page mt-24">
-        <SectionHead title="What our customers say" />
-        <div className="grid gap-4 md:grid-cols-3">
-          {testimonials.map((t) => (
-            <figure key={t.name} className="surface-card p-6">
-              <Quote className="h-6 w-6 text-primary" />
-              <blockquote className="mt-4 text-sm leading-relaxed">{t.quote}</blockquote>
-              <figcaption className="mt-5 flex items-center gap-3 border-t pt-4">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-accent font-bold text-primary">
-                  {t.name.charAt(0)}
-                </span>
-                <span>
-                  <span className="block text-sm font-bold">{t.name}</span>
-                  <span className="block text-xs text-muted-foreground">{t.role}</span>
-                </span>
-                <span className="ml-auto flex gap-0.5">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star key={i} className="h-3.5 w-3.5 fill-warning text-warning" />
-                  ))}
-                </span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      <section className="section-padding bg-slate-900 text-white">
+        <div className="container-page space-y-8">
+          <SectionHead
+            badge="Testimonials"
+            title="Trusted across Gloucestershire"
+            desc="What local residents and businesses say about John Stayte Services."
+            light
+          />
 
-      {/* CTA */}
-      <section className="container-page mt-24">
-        <div className="overflow-hidden rounded-[2rem] bg-primary px-8 py-14 text-center text-primary-foreground md:px-16">
-          <h2 className="text-3xl font-extrabold md:text-4xl">Running low? Order before 2pm.</h2>
-          <p className="mx-auto mt-3 max-w-xl text-primary-foreground/85">
-            Place your order today and we'll usually be with you the next working day.
-          </p>
-          <Button asChild size="lg" variant="secondary" className="mt-8 rounded-full px-8 text-base">
-            <Link to="/order-gas">Start your gas order</Link>
-          </Button>
+          <div className="grid gap-6 md:grid-cols-3">
+            {testimonials.map((t) => (
+              <div key={t.name} className="p-6 rounded-3xl border border-white/10 bg-white/5 space-y-4">
+                <Quote className="h-8 w-8 text-primary/60" />
+                <p className="text-sm italic text-slate-300">"{t.quote}"</p>
+                <div>
+                  <p className="font-bold text-sm text-white">{t.name}</p>
+                  <p className="text-xs text-slate-400">{t.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </SiteLayout>

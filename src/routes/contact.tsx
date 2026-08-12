@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { faqs } from "@/data/catalog";
+import { faqs as defaultFaqs } from "@/data/catalog";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -31,6 +33,33 @@ const schema = z.object({
 });
 
 function Contact() {
+  const [faqsList, setFaqsList] = useState<any[]>(defaultFaqs);
+
+  useEffect(() => {
+    async function loadFaqs() {
+      try {
+        const { data } = await supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "faqs_data")
+          .maybeSingle();
+
+        if (data?.content) {
+          const parsed = JSON.parse(data.content);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const activeOnly = parsed.filter((item) => item.is_active !== false);
+            if (activeOnly.length > 0) {
+              setFaqsList(activeOnly.map((f) => ({ q: f.q || f.question, a: f.a || f.answer })));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load FAQs from Supabase:", err);
+      }
+    }
+    loadFaqs();
+  }, []);
+
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -65,7 +94,7 @@ function Contact() {
       <div className="container-page pb-16">
         <h2 className="mb-6 text-2xl font-extrabold">Frequently asked questions</h2>
         <Accordion type="single" collapsible className="surface-card px-6">
-          {faqs.map((f) => (
+          {faqsList.map((f) => (
             <AccordionItem key={f.q} value={f.q}>
               <AccordionTrigger className="text-left font-bold">{f.q}</AccordionTrigger>
               <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>

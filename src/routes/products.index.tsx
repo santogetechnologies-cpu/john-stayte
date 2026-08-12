@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { SlidersHorizontal, X, Loader2 } from "lucide-react";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { categories, products } from "@/data/catalog";
+import { categories as fallbackCategories, type Category, type Product } from "@/data/catalog";
+import { supabase } from "@/lib/supabase";
 
 type Search = {
   q?: string;
@@ -53,19 +54,80 @@ export const Route = createFileRoute("/products/")({
   component: ProductsPage,
 });
 
-const brands = Array.from(new Set(products.map((p) => p.brand))).sort();
-const maxPrice = Math.ceil(Math.max(...products.map((p) => p.price)));
-
 function ProductsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/products/" });
+
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [dbCategories, setDbCategories] = useState<Category[]>(fallbackCategories);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch real product & category catalog from Supabase
+  useEffect(() => {
+    async function loadSupabaseCatalog() {
+      setLoading(true);
+      try {
+        const [{ data: prods }, { data: cats }] = await Promise.all([
+          supabase.from("products").select("*").order("created_at", { ascending: false }),
+          supabase.from("categories").select("*"),
+        ]);
+
+        if (prods) {
+          const mapped: Product[] = prods.map((p) => ({
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            brand: p.brand || "Calor",
+            category: p.category_slug || "gas",
+            sub: p.subcategory || "General",
+            price: Number(p.price),
+            compareAt: p.compare_at_price ? Number(p.compare_at_price) : undefined,
+            stock: Number(p.stock || 0),
+            image: p.image_url || "/placeholder.svg",
+            rating: Number(p.rating || 5.0),
+            reviews: Number(p.reviews_count || 0),
+            featured: Boolean(p.is_featured),
+            offer: Boolean(p.is_offer),
+            description: p.description || "",
+            specs: p.specs && typeof p.specs === "object" && !Array.isArray(p.specs) ? (p.specs as Record<string, string>) : {},
+          }));
+          setDbProducts(mapped);
+        }
+
+        if (cats && cats.length > 0) {
+          const mappedCats: Category[] = cats.map((c) => ({
+            slug: c.slug,
+            name: c.name,
+            icon: "Flame",
+            subs: c.subcategories || [],
+          }));
+          setDbCategories(mappedCats);
+        }
+      } catch (err) {
+        console.error("Failed to fetch products from Supabase:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSupabaseCatalog();
+  }, []);
+
   const set = (patch: Partial<Search>) =>
     navigate({ search: ((prev: Search) => ({ ...prev, ...patch })) as never });
 
-  const cat = categories.find((c) => c.slug === search.category);
+  const cat = dbCategories.find((c) => c.slug === search.category);
+
+  const brands = useMemo(() => {
+    return Array.from(new Set(dbProducts.map((p) => p.brand))).sort();
+  }, [dbProducts]);
+
+  const maxPrice = useMemo(() => {
+    if (dbProducts.length === 0) return 100;
+    return Math.ceil(Math.max(...dbProducts.map((p) => p.price)));
+  }, [dbProducts]);
 
   const list = useMemo(() => {
-    let r = products.slice();
+    let r = dbProducts.slice();
     if (search.q) {
       const q = search.q.toLowerCase();
       r = r.filter((p) => (p.name + p.brand + p.sub).toLowerCase().includes(q));
@@ -76,13 +138,20 @@ function ProductsPage() {
     if (search.max) r = r.filter((p) => p.price <= search.max!);
     if (search.inStock) r = r.filter((p) => p.stock > 0);
     switch (search.sort) {
-      case "price-asc": r.sort((a, b) => a.price - b.price); break;
-      case "price-desc": r.sort((a, b) => b.price - a.price); break;
-      case "name": r.sort((a, b) => a.name.localeCompare(b.name)); break;
-      default: r.sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
+      case "price-asc":
+        r.sort((a, b) => a.price - b.price);
+        break;
+      case "price-desc":
+        r.sort((a, b) => b.price - a.price);
+        break;
+      case "name":
+        r.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      default:
+        r.sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
     }
     return r;
-  }, [search]);
+  }, [dbProducts, search]);
 
   const Filters = (
     <div className="space-y-7">
@@ -100,25 +169,33 @@ function ProductsPage() {
         <div className="grid gap-1">
           <button
             onClick={() => set({ category: undefined, sub: undefined })}
-            className={`rounded-lg px-3 py-1.5 text-left text-sm ${!search.category ? "bg-primary text-primary-foreground" : "hover:bg-surface"}`}
+            className={`rounded-lg px-3 py-1.5 text-left text-sm ${
+              !search.category ? "bg-primary text-primary-foreground font-bold" : "hover:bg-surface font-medium"
+            }`}
           >
             All products
           </button>
-          {categories.map((c) => (
+          {dbCategories.map((c) => (
             <div key={c.slug}>
               <button
                 onClick={() => set({ category: c.slug, sub: undefined })}
-                className={`w-full rounded-lg px-3 py-1.5 text-left text-sm font-medium ${search.category === c.slug ? "bg-primary text-primary-foreground" : "hover:bg-surface"}`}
+                className={`w-full rounded-lg px-3 py-1.5 text-left text-sm font-semibold ${
+                  search.category === c.slug ? "bg-primary text-primary-foreground font-bold" : "hover:bg-surface"
+                }`}
               >
                 {c.name}
               </button>
-              {search.category === c.slug && (
+              {search.category === c.slug && c.subs && c.subs.length > 0 && (
                 <div className="ml-3 mt-1 grid gap-0.5 border-l pl-3">
                   {c.subs.map((s) => (
                     <button
                       key={s}
                       onClick={() => set({ sub: search.sub === s ? undefined : s })}
-                      className={`rounded-md px-2 py-1 text-left text-xs ${search.sub === s ? "font-bold text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      className={`rounded-md px-2 py-1 text-left text-xs ${
+                        search.sub === s
+                          ? "font-bold text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
                     >
                       {s}
                     </button>
@@ -129,16 +206,27 @@ function ProductsPage() {
           ))}
         </div>
       </div>
-      <div>
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-wide">Brand</h3>
-        <Select value={search.brand ?? "all"} onValueChange={(v) => set({ brand: v === "all" ? undefined : v })}>
-          <SelectTrigger className="rounded-full bg-surface"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All brands</SelectItem>
-            {brands.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+      {brands.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-bold uppercase tracking-wide">Brand</h3>
+          <Select
+            value={search.brand ?? "all"}
+            onValueChange={(v) => set({ brand: v === "all" ? undefined : v })}
+          >
+            <SelectTrigger className="rounded-full bg-surface">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All brands</SelectItem>
+              {brands.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div>
         <h3 className="mb-3 text-sm font-bold uppercase tracking-wide">
           Max price · £{search.max ?? maxPrice}
@@ -158,7 +246,11 @@ function ProductsPage() {
         />
         In stock only
       </label>
-      <Button variant="outline" className="w-full rounded-full" onClick={() => navigate({ search: {} as never })}>
+      <Button
+        variant="outline"
+        className="w-full rounded-full"
+        onClick={() => navigate({ search: {} as never })}
+      >
         <X className="mr-1.5 h-4 w-4" /> Clear filters
       </Button>
     </div>
@@ -180,7 +272,9 @@ function ProductsPage() {
               {list.length} products
             </p>
             <Select value={search.sort ?? "featured"} onValueChange={(v) => set({ sort: v })}>
-              <SelectTrigger className="w-44 rounded-full"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-44 rounded-full">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="featured">Featured</SelectItem>
                 <SelectItem value="price-asc">Price: low to high</SelectItem>
@@ -189,7 +283,15 @@ function ProductsPage() {
               </SelectContent>
             </Select>
           </div>
-          {list.length === 0 ? (
+
+          {loading ? (
+            <div className="surface-card p-16 text-center space-y-3">
+              <Loader2 className="mx-auto h-8 w-8 text-primary animate-spin" />
+              <p className="font-bold text-sm text-muted-foreground">
+                Loading products from Supabase...
+              </p>
+            </div>
+          ) : list.length === 0 ? (
             <div className="surface-card p-16 text-center">
               <p className="font-bold">No products match those filters.</p>
               <Button className="mt-4 rounded-full" onClick={() => navigate({ search: {} as never })}>
@@ -198,11 +300,18 @@ function ProductsPage() {
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {list.map((p) => <ProductCard key={p.id} product={p} />)}
+              {list.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
             </div>
           )}
+
           <p className="mt-10 text-center text-sm text-muted-foreground">
-            Can't find it? <Link to="/contact" className="font-semibold text-primary">Ask our team</Link>.
+            Can't find it?{" "}
+            <Link to="/contact" className="font-semibold text-primary">
+              Ask our team
+            </Link>
+            .
           </p>
         </div>
       </div>

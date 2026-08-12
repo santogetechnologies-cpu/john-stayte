@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Menu,
@@ -39,6 +39,27 @@ const navLinks = [
   { to: "/contact", label: "Contact" },
 ];
 
+/**
+ * Route-aware active navigation helper.
+ * Strictly checks pathname to ensure correct nav item highlights in JSS Red.
+ */
+function isLinkActive(linkTo: string, currentPath: string): boolean {
+  if (linkTo === "/") {
+    return currentPath === "/";
+  }
+
+  if (linkTo === "/products") {
+    return (
+      currentPath === "/products" ||
+      currentPath.startsWith("/products/") ||
+      currentPath.startsWith("/product/") ||
+      currentPath.startsWith("/categories/")
+    );
+  }
+
+  return currentPath === linkTo || currentPath.startsWith(`${linkTo}/`);
+}
+
 export function SiteHeader() {
   const { cart, user, logout, wishlist } = useStore();
   const navigate = useNavigate();
@@ -46,7 +67,11 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const count = cart.reduce((s, l) => s + l.qty, 0);
 
-  const dashPath = user?.role === "admin" ? "/admin" : user?.role === "manager" ? "/manager" : "/account";
+  // Subscribe to current router location pathname
+  const currentPath = useRouterState({ select: (s) => s.location.pathname });
+
+  const dashPath =
+    user?.role === "admin" ? "/admin" : user?.role === "manager" ? "/manager" : "/account";
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +94,13 @@ export function SiteHeader() {
 
       <div className="container-page grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3 lg:grid-cols-[auto_minmax(0,1fr)_auto]">
         <Link to="/" className="flex min-w-0 items-center gap-3">
-          <img src={logo} alt="John Stayte Services logo" className="h-11 w-11 shrink-0 rounded-xl" width={44} height={44} />
+          <img
+            src={logo}
+            alt="John Stayte Services logo"
+            className="h-11 w-11 shrink-0 rounded-xl"
+            width={44}
+            height={44}
+          />
           <span className="min-w-0">
             <span className="block truncate font-display text-base font-extrabold leading-tight sm:text-lg">
               JOHN STAYTE SERVICES
@@ -95,7 +126,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-1.5">
           <Button asChild variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex">
-            <Link to="/account" aria-label="Wishlist">
+            <Link to={user ? "/account/wishlist" : "/login"} aria-label="Wishlist">
               <Heart className="h-5 w-5" />
               {wishlist.length > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
@@ -122,7 +153,12 @@ export function SiteHeader() {
                     <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { logout(); navigate({ to: "/" }); }}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    navigate({ to: "/" });
+                  }}
+                >
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -153,16 +189,23 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent side="right" className="w-80 overflow-y-auto">
               <nav className="mt-8 grid gap-1">
-                {navLinks.map((l) => (
-                  <Link
-                    key={l.to}
-                    to={l.to}
-                    onClick={() => setOpen(false)}
-                    className="rounded-xl px-3 py-2.5 text-sm font-semibold hover:bg-surface"
-                  >
-                    {l.label}
-                  </Link>
-                ))}
+                {navLinks.map((l) => {
+                  const isActive = isLinkActive(l.to, currentPath);
+                  return (
+                    <Link
+                      key={l.to}
+                      to={l.to}
+                      onClick={() => setOpen(false)}
+                      className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                        isActive
+                          ? "bg-primary text-primary-foreground font-extrabold hover:bg-primary hover:text-primary-foreground"
+                          : "text-slate-700 hover:bg-surface hover:text-slate-900"
+                      }`}
+                    >
+                      {l.label}
+                    </Link>
+                  );
+                })}
                 <div className="mt-4 border-t pt-4">
                   <p className="px-3 pb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Categories
@@ -173,7 +216,7 @@ export function SiteHeader() {
                       to="/products"
                       search={{ category: c.slug }}
                       onClick={() => setOpen(false)}
-                      className="block rounded-xl px-3 py-2 text-sm hover:bg-surface"
+                      className="block rounded-xl px-3 py-2 text-sm hover:bg-surface font-medium"
                     >
                       {c.name}
                     </Link>
@@ -181,7 +224,9 @@ export function SiteHeader() {
                 </div>
                 <div className="mt-4 grid gap-2 border-t pt-4">
                   <Button asChild variant="outline" className="rounded-full">
-                    <Link to="/login" onClick={() => setOpen(false)}>Sign in</Link>
+                    <Link to="/login" onClick={() => setOpen(false)}>
+                      Sign in
+                    </Link>
                   </Button>
                 </div>
               </nav>
@@ -192,17 +237,22 @@ export function SiteHeader() {
 
       <nav className="hidden border-t border-border/70 lg:block">
         <div className="container-page flex items-center gap-1 overflow-x-auto py-1.5">
-          {navLinks.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              activeOptions={{ exact: l.to === "/" }}
-              activeProps={{ className: "bg-primary text-primary-foreground" }}
-              className="whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold uppercase tracking-wide transition-colors hover:bg-surface"
-            >
-              {l.label}
-            </Link>
-          ))}
+          {navLinks.map((l) => {
+            const isActive = isLinkActive(l.to, currentPath);
+            return (
+              <Link
+                key={l.to}
+                to={l.to}
+                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] uppercase tracking-wide transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground font-extrabold hover:bg-primary hover:text-primary-foreground shadow-2xs"
+                    : "text-slate-700 font-semibold hover:bg-surface hover:text-slate-900"
+                }`}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </header>

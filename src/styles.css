@@ -182,3 +182,29 @@
 @utility animate-rise {
   animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+@utility section-padding {
+  padding-block: 4rem;
+  @media (min-width: 768px) {
+    padding-block: 5.5rem;
+  }
+}
+
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.85 0.004 255) transparent;
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: oklch(0.85 0.004 255);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.75 0.008 255);
+  }
+}
