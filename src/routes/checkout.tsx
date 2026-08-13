@@ -128,7 +128,9 @@ function Checkout() {
         const currentStock = Number(dbProduct.stock || 0);
         if (currentStock < line.qty) {
           throw new Error(
-            `Insufficient stock for '${dbProduct.name}'. Available: ${currentStock}, requested: ${line.qty}.`,
+            currentStock === 0
+              ? `'${dbProduct.name}' is currently out of stock. Please update your basket.`
+              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`
           );
         }
 

@@ -242,7 +242,7 @@ function ProductPage() {
                     : "bg-red-50 text-red-700",
                 )}
               >
-                {product.stock > 0 ? `In Stock (${product.stock} available)` : "Out of Stock"}
+                {product.stock > 0 ? "In Stock" : "Out of Stock"}
               </span>
             </div>
 

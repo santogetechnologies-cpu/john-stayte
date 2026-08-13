@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Layers, Search, Save } from "lucide-react";
+import { Layers, Search, Save, Edit, AlertTriangle, CheckCircle2, XCircle, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -13,26 +14,74 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerInventoryView() {
-  const [inventory, setInventory] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [stockVal, setStockVal] = useState<string>("0");
+  const [saving, setSaving] = useState(false);
 
   const loadInventory = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data, error } = await supabase
-        .from("inventory")
-        .select("*, products(*)")
-        .order("updated_at", { ascending: false });
+      const { data: dbProducts, error: prodErr } = await supabase
+        .from("products")
+        .select("*")
+        .order("name", { ascending: true });
 
-      if (error) throw error;
-      setInventory(data || []);
+      if (prodErr) throw prodErr;
+
+      const { data: dbInventory } = await supabase.from("inventory").select("*");
+      const invMap = new Map((dbInventory || []).map((inv: any) => [inv.product_id, inv]));
+
+      const merged = (dbProducts || []).map((prod: any) => {
+        const invMeta = invMap.get(prod.id);
+        const stock = Number(prod.stock || 0);
+        const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 5);
+        const depot = invMeta?.depot_location || "Gloucestershire Depot (Whitminster)";
+        const sku = prod.specs?.sku || prod.slug?.toUpperCase() || `SKU-${prod.id.slice(0, 6).toUpperCase()}`;
+
+        let status: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
+        if (stock === 0) {
+          status = "out_of_stock";
+        } else if (stock <= threshold) {
+          status = "low_stock";
+        }
+
+        return {
+          id: prod.id,
+          inventory_id: invMeta?.id || null,
+          product_id: prod.id,
+          name: prod.name.trim(),
+          brand: prod.brand || "John Stayte Services",
+          category_slug: prod.category_slug || "gas",
+          price: Number(prod.price || 0),
+          stock: stock,
+          reorder_threshold: threshold,
+          depot_location: depot,
+          sku: sku,
+          status: status,
+        };
+      });
+
+      setInventoryItems(merged);
     } catch (err: any) {
-      toast.error("Failed to load inventory: " + err.message);
+      console.error("Failed to load manager inventory:", err);
+      setError(err.message || "Failed to query products from Supabase");
     } finally {
       setLoading(false);
     }
@@ -40,134 +89,174 @@ export function ManagerInventoryView() {
 
   useEffect(() => {
     loadInventory();
+
+    const channel = supabase
+      .channel("manager_inventory_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadInventory())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const handleStockChange = (id: string, newStock: number) => {
-    setInventory((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, current_stock: newStock } : i)),
-    );
+  const handleOpenEdit = (item: any) => {
+    setSelectedProduct(item);
+    setStockVal(String(item.stock));
+    setModalOpen(true);
   };
 
-  const handleSaveStock = async (invItem: any) => {
-    setUpdatingId(invItem.id);
+  const handleSaveStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    setSaving(true);
+
     try {
-      const { error } = await supabase
-        .from("inventory")
-        .update({ current_stock: invItem.current_stock, updated_at: new Date().toISOString() })
-        .eq("id", invItem.id);
-
-      if (error) throw error;
-
-      if (invItem.product_id) {
-        await supabase
-          .from("products")
-          .update({ stock: invItem.current_stock })
-          .eq("id", invItem.product_id);
+      const newStock = Number(stockVal);
+      if (isNaN(newStock) || newStock < 0) {
+        throw new Error("Stock quantity must be a non-negative number.");
       }
 
-      toast.success("Stock level updated in Supabase!");
+      // Update public.products
+      const { error: prodErr } = await supabase
+        .from("products")
+        .update({ stock: newStock, updated_at: new Date().toISOString() })
+        .eq("id", selectedProduct.product_id);
+
+      if (prodErr) throw prodErr;
+
+      // Update or Insert public.inventory
+      const invPayload = {
+        product_id: selectedProduct.product_id,
+        current_stock: newStock,
+        reorder_threshold: selectedProduct.reorder_threshold,
+        depot_location: selectedProduct.depot_location,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (selectedProduct.inventory_id) {
+        await supabase
+          .from("inventory")
+          .update(invPayload)
+          .eq("id", selectedProduct.inventory_id);
+      } else {
+        await supabase
+          .from("inventory")
+          .insert([invPayload]);
+      }
+
+      toast.success(`Depot stock for ${selectedProduct.name} updated to ${newStock} units!`);
+      setModalOpen(false);
+      window.dispatchEvent(new Event("admin_modules_updated"));
       await loadInventory();
     } catch (err: any) {
       toast.error("Failed to update stock: " + err.message);
     } finally {
-      setUpdatingId(null);
+      setSaving(false);
     }
   };
 
-  const filtered = inventory.filter((inv) => {
-    const prodName = inv.products?.name || "";
-    return prodName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return inventoryItems;
+    const q = searchQuery.toLowerCase();
+    return inventoryItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.sku.toLowerCase().includes(q) ||
+        item.category_slug.toLowerCase().includes(q)
+    );
+  }, [inventoryItems, searchQuery]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
             <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
             <span>/</span>
-            <span className="text-foreground">Inventory</span>
+            <span className="text-foreground font-bold">Inventory</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Depot Stock Control ({inventory.length})
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
+            <Layers className="h-7 w-7 text-primary" /> Depot Stock Level Monitoring ({inventoryItems.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Adjust stock levels and reorder thresholds in Supabase.
+            Track and adjust cylinder stock availability for Whitminster & Gloucestershire depots.
           </p>
         </div>
       </div>
 
-      <div className="surface-card p-4 rounded-3xl border bg-white flex items-center justify-between">
+      <div className="surface-card p-4 rounded-3xl border bg-white flex items-center justify-between shadow-xs">
         <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search stock by product name..."
-            className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs"
+            placeholder="Search depot inventory by product name or SKU..."
+            className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs h-9"
           />
         </div>
       </div>
 
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading stock control matrix from Supabase...
+          <div className="p-12 text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Fetching depot inventory from Supabase...
+          </div>
+        ) : error ? (
+          <div className="p-12 text-center space-y-3">
+            <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
+            <h3 className="font-bold text-sm text-foreground">Database Error</h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
+            <Button onClick={loadInventory} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
+              <RotateCcw className="h-3.5 w-3.5" /> Retry
+            </Button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <Layers className="mx-auto h-10 w-10 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">No inventory records found</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Depot stock items will render here when populated in Supabase.
-            </p>
+            <Layers className="mx-auto h-12 w-12 text-slate-300" />
+            <h3 className="font-extrabold text-base text-foreground">No depot inventory records found</h3>
           </div>
         ) : (
           <Table>
             <TableHeader className="bg-slate-50/80">
               <TableRow>
-                <TableHead className="font-bold text-xs">Product</TableHead>
-                <TableHead className="font-bold text-xs">Current Stock</TableHead>
-                <TableHead className="font-bold text-xs">Reorder Threshold</TableHead>
+                <TableHead className="font-bold text-xs">Product Details</TableHead>
+                <TableHead className="font-bold text-xs">SKU</TableHead>
+                <TableHead className="font-bold text-xs">Available Stock</TableHead>
+                <TableHead className="font-bold text-xs">Reorder Level</TableHead>
+                <TableHead className="font-bold text-xs">Depot Allocation</TableHead>
                 <TableHead className="font-bold text-xs">Status</TableHead>
-                <TableHead className="font-bold text-xs text-right">Save Update</TableHead>
+                <TableHead className="font-bold text-xs text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((inv) => (
-                <TableRow key={inv.id} className="hover:bg-slate-50/60">
-                  <TableCell className="font-bold text-xs text-foreground">
-                    {inv.products?.name || "Product"}
+              {filtered.map((item) => (
+                <TableRow key={item.id} className="hover:bg-slate-50/60 transition-colors">
+                  <TableCell className="text-xs">
+                    <p className="font-extrabold text-foreground">{item.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{gbp(item.price)}</p>
                   </TableCell>
-                  <TableCell className="font-extrabold text-xs">
-                    <Input
-                      type="number"
-                      value={inv.current_stock}
-                      onChange={(e) => handleStockChange(inv.id, Number(e.target.value))}
-                      className="w-20 h-8 text-xs font-bold rounded-xl"
-                    />
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{inv.reorder_threshold}</TableCell>
+                  <TableCell className="font-mono text-xs font-semibold text-slate-700">{item.sku}</TableCell>
+                  <TableCell className="font-black text-sm">{item.stock} units</TableCell>
+                  <TableCell className="text-xs text-muted-foreground font-semibold">&le; {item.reorder_threshold} units</TableCell>
+                  <TableCell className="text-xs font-medium text-slate-700">{item.depot_location}</TableCell>
                   <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`font-bold text-[10px] ${
-                        inv.current_stock < inv.reorder_threshold
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      }`}
-                    >
-                      {inv.current_stock < inv.reorder_threshold ? "Low Stock Alert" : "Stock Healthy"}
-                    </Badge>
+                    {item.status === "out_of_stock" ? (
+                      <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px] font-extrabold">Out of Stock</Badge>
+                    ) : item.status === "low_stock" ? (
+                      <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-[10px] font-extrabold">Low Stock Alert</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">In Stock (Healthy)</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button
                       size="sm"
-                      onClick={() => handleSaveStock(inv)}
-                      disabled={updatingId === inv.id}
-                      className="rounded-full text-xs font-bold h-7 gap-1"
+                      variant="ghost"
+                      onClick={() => handleOpenEdit(item)}
+                      className="rounded-full text-xs font-bold gap-1 text-primary"
                     >
-                      <Save className="h-3.5 w-3.5" /> Save
+                      <Edit className="h-3.5 w-3.5" /> Adjust Stock
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -176,6 +265,45 @@ export function ManagerInventoryView() {
           </Table>
         )}
       </div>
+
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white">
+          <DialogHeader>
+            <DialogTitle className="font-black text-lg text-foreground">
+              Adjust Depot Stock: {selectedProduct?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProduct && (
+            <form onSubmit={handleSaveStock} className="space-y-4 pt-2 text-xs">
+              <div>
+                <Label className="font-bold text-slate-700">Available Stock Quantity *</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={stockVal}
+                  onChange={(e) => setStockVal(e.target.value)}
+                  className="mt-1 rounded-xl text-xs font-black h-10 border-slate-200"
+                  required
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t">
+                <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-full font-extrabold text-xs gap-1.5 shadow-md bg-primary text-white"
+                >
+                  <Save className="h-4 w-4" /> {saving ? "Saving..." : "Update Stock"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
