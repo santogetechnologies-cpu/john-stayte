@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Heart, Plus, Star } from "lucide-react";
+import { Heart, Plus, Star, XCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/data/catalog";
 import { gbp, useStore } from "@/lib/store";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart, wishlist, toggleWishlist } = useStore();
   const wished = wishlist.includes(product.slug);
+  const isOutOfStock = Number(product.stock || 0) <= 0;
 
   return (
     <article className="group surface-card relative flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]">
@@ -22,7 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
       </button>
 
       {product.offer && (
-        <span className="absolute left-3 top-3 z-10 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary-foreground">
+        <span className="absolute left-3 top-3 z-10 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary-foreground shadow-xs">
           Offer
         </span>
       )}
@@ -53,17 +54,33 @@ export function ProductCard({ product }: { product: Product }) {
             <span className="pb-0.5 text-sm text-muted-foreground line-through">{gbp(product.compareAt)}</span>
           )}
         </div>
-        <p className={cn("mt-1 text-xs font-semibold", product.stock > 10 ? "text-success" : "text-primary")}>
-          {product.stock > 10 ? "In stock" : `Only ${product.stock} left`}
-        </p>
+
+        {/* Real-time Product Availability Badge (In Stock / Out of Stock) */}
+        <div className="mt-2 flex items-center gap-1.5">
+          {isOutOfStock ? (
+            <span className="inline-flex items-center text-xs font-bold text-rose-600">
+              <XCircle className="mr-1 h-3.5 w-3.5" /> Out of Stock
+            </span>
+          ) : (
+            <span className="inline-flex items-center text-xs font-bold text-emerald-600">
+              <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> In Stock
+            </span>
+          )}
+        </div>
+
         <Button
-          className="mt-4 w-full rounded-full"
+          disabled={isOutOfStock}
+          className="mt-4 w-full rounded-full font-bold shadow-xs"
           onClick={() => {
+            if (isOutOfStock) {
+              toast.error(`${product.name} is currently out of stock.`);
+              return;
+            }
             addToCart(product.slug);
             toast.success(`${product.name} added to basket`);
           }}
         >
-          <Plus className="mr-1 h-4 w-4" /> Add to basket
+          <Plus className="mr-1 h-4 w-4" /> {isOutOfStock ? "Out of Stock" : "Add to basket"}
         </Button>
       </div>
     </article>

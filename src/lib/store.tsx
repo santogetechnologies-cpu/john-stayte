@@ -1,31 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { products, type Product } from "@/data/catalog";
+import { supabase } from "@/lib/supabase";
 
 export type Role = "customer" | "manager" | "admin";
-export type User = { name: string; email: string; role: Role };
-
-const ACCOUNTS: Record<string, { password: string; user: User }> = {
-  "customer@jss.com": {
-    password: "123456",
-    user: { name: "Sarah Hughes", email: "customer@jss.com", role: "customer" },
-  },
-  "manager@jss.com": {
-    password: "123456",
-    user: { name: "Dave Miller", email: "manager@jss.com", role: "manager" },
-  },
-  "admin@jss.com": {
-    password: "123456",
-    user: { name: "John Stayte", email: "admin@jss.com", role: "admin" },
-  },
-};
+export type User = { id?: string; name: string; email: string; role: Role };
 
 export type CartLine = { slug: string; qty: number };
 
 type Store = {
   user: User | null;
-  login: (email: string, password: string) => { ok: boolean; error?: string; user?: User };
-  register: (name: string, email: string) => User;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: User }>;
+  register: (name: string, email: string, password: string, role?: Role) => Promise<{ ok: boolean; error?: string; user?: User }>;
+  logout: () => Promise<void>;
   cart: CartLine[];
   addToCart: (slug: string, qty?: number) => void;
   setQty: (slug: string, qty: number) => void;
@@ -56,37 +42,139 @@ function usePersisted<T>(key: string, initial: T) {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = usePersisted<User | null>("jss.user", null);
+  const [user, setUser] = useState<User | null>(null);
   const [cart, setCart] = usePersisted<CartLine[]>("jss.cart", []);
   const [wishlist, setWishlist] = usePersisted<string[]>("jss.wishlist", []);
 
-  const login: Store["login"] = useCallback(
-    (email, password) => {
-      const account = ACCOUNTS[email.trim().toLowerCase()];
-      if (!account || account.password !== password) {
-        return { ok: false, error: "Invalid email or password." };
+  // Listen to Supabase Auth State Changes
+  useEffect(() => {
+    const fetchSessionUser = async (session: any) => {
+      if (!session?.user) {
+        setUser(null);
+        return;
       }
-      setUser(account.user);
-      return { ok: true, user: account.user };
-    },
-    [setUser],
-  );
 
-  const register: Store["register"] = useCallback(
-    (name, email) => {
-      const u: User = { name, email, role: "customer" };
-      setUser(u);
-      return u;
-    },
-    [setUser],
-  );
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        setUser({
+          id: session.user.id,
+          name: profile?.full_name || session.user.email?.split("@")[0] || "Customer",
+          email: session.user.email || "",
+          role: (profile?.role as Role) || "customer",
+        });
+      } catch {
+        setUser({
+          id: session.user.id,
+          name: session.user.email?.split("@")[0] || "Customer",
+          email: session.user.email || "",
+          role: "customer",
+        });
+      }
+    };
+
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      fetchSessionUser(session);
+    });
+
+    // Auth listener
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      fetchSessionUser(session);
+    });
+
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+
+  const login: Store["login"] = useCallback(async (email, password) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      if (data.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", data.user.id)
+          .single();
+
+        const u: User = {
+          id: data.user.id,
+          name: profile?.full_name || data.user.email?.split("@")[0] || "Customer",
+          email: data.user.email || email,
+          role: (profile?.role as Role) || "customer",
+        };
+        setUser(u);
+        return { ok: true, user: u };
+      }
+
+      return { ok: false, error: "Sign in failed" };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || "Authentication failed" };
+    }
+  }, []);
+
+  const register: Store["register"] = useCallback(async (name, email, password, role = "customer") => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: name,
+            role: role,
+          },
+        },
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      if (data.user) {
+        const u: User = {
+          id: data.user.id,
+          name,
+          email,
+          role,
+        };
+        setUser(u);
+        return { ok: true, user: u };
+      }
+
+      return { ok: false, error: "Registration failed" };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || "Registration error" };
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* ignore */
+    }
+    setUser(null);
+  }, []);
 
   const value = useMemo<Store>(
     () => ({
       user,
       login,
       register,
-      logout: () => setUser(null),
+      logout,
       cart,
       addToCart: (slug, qty = 1) =>
         setCart((c) =>
@@ -102,7 +190,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleWishlist: (slug) =>
         setWishlist((w) => (w.includes(slug) ? w.filter((s) => s !== slug) : [...w, slug])),
     }),
-    [user, cart, wishlist, login, register, setUser, setCart, setWishlist],
+    [user, cart, wishlist, login, register, logout, setCart, setWishlist],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -119,13 +207,101 @@ export const findProduct = (slug: string): Product | undefined => products.find(
 export const gbp = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
 
+/**
+ * Reconciles cart lines against live Supabase public.products database.
+ * Automatically removes stale/deleted products from cart.
+ */
 export function useCartTotals() {
-  const { cart } = useStore();
-  const lines = cart
-    .map((l) => ({ ...l, product: findProduct(l.slug) }))
-    .filter((l): l is CartLine & { product: Product } => Boolean(l.product));
-  const subtotal = lines.reduce((s, l) => s + l.product.price * l.qty, 0);
-  const shipping = subtotal === 0 || subtotal >= 75 ? 0 : 6.95;
-  const vat = subtotal * 0.2;
-  return { lines, subtotal, shipping, vat, total: subtotal + shipping + vat };
+  const { cart, removeFromCart } = useStore();
+  const [liveLines, setLiveLines] = useState<(CartLine & { product: Product })[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function reconcileCart() {
+      if (cart.length === 0) {
+        if (isMounted) {
+          setLiveLines([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const slugs = cart.map((c) => c.slug);
+        const { data: dbProducts } = await supabase
+          .from("products")
+          .select("*")
+          .in("slug", slugs);
+
+        if (!isMounted) return;
+
+        const dbMap = new Map<string, Product>();
+        if (dbProducts) {
+          for (const p of dbProducts) {
+            dbMap.set(p.slug, {
+              id: p.id,
+              slug: p.slug,
+              name: p.name,
+              brand: p.brand || "Calor",
+              category: p.category_slug || "gas",
+              sub: p.subcategory || "General",
+              price: Number(p.price),
+              compareAt: p.compare_at_price ? Number(p.compare_at_price) : undefined,
+              stock: Number(p.stock || 0),
+              image: p.image_url || "/placeholder.svg",
+              rating: Number(p.rating || 5.0),
+              reviews: Number(p.reviews_count || 0),
+              featured: Boolean(p.is_featured),
+              offer: Boolean(p.is_offer),
+              description: p.description || "",
+              specs: p.specs && typeof p.specs === "object" && !Array.isArray(p.specs) ? (p.specs as Record<string, string>) : {},
+            });
+          }
+        }
+
+        const validLines: (CartLine & { product: Product })[] = [];
+        const staleSlugs: string[] = [];
+
+        for (const line of cart) {
+          const prod = dbMap.get(line.slug) || findProduct(line.slug);
+          if (prod) {
+            validLines.push({ ...line, product: prod });
+          } else {
+            staleSlugs.push(line.slug);
+          }
+        }
+
+        // Auto prune stale items that no longer exist in DB
+        if (staleSlugs.length > 0) {
+          staleSlugs.forEach((s) => removeFromCart(s));
+        }
+
+        setLiveLines(validLines);
+      } catch (err) {
+        console.error("Cart database reconciliation error:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+
+    reconcileCart();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cart, removeFromCart]);
+
+  const subtotal = useMemo(
+    () => liveLines.reduce((s, l) => s + l.product.price * l.qty, 0),
+    [liveLines],
+  );
+  const shipping = useMemo(
+    () => (subtotal === 0 || subtotal >= 75 ? 0 : 6.95),
+    [subtotal],
+  );
+  const vat = useMemo(() => subtotal * 0.2, [subtotal]);
+  const total = useMemo(() => subtotal + shipping + vat, [subtotal, shipping, vat]);
+
+  return { lines: liveLines, subtotal, shipping, vat, total, loading };
 }

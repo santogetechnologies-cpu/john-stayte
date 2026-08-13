@@ -1,0 +1,2 @@
+src/components/admin/AdminOrdersView.tsx(258,94): error TS2345: Argument of type 'string' is not assignable to parameter of type 'OrderStatus'.
+src/components/manager/ManagerOrdersView.tsx(238,94): error TS2345: Argument of type 'string' is not assignable to parameter of type 'OrderStatus'.

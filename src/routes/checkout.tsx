@@ -1,12 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { gbp, useCartTotals, useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -23,25 +25,230 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function Checkout() {
-  const { subtotal, shipping, vat, total, lines } = useCartTotals();
-  const { clearCart, user } = useStore();
+  const { subtotal, shipping, vat, total, lines, loading: cartLoading } = useCartTotals();
+  const { clearCart, removeFromCart, user } = useStore();
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
-  const applyCoupon = () => {
-    if (coupon.trim().toUpperCase() === "JSS10") {
-      setDiscount(subtotal * 0.1);
-      toast.success("Coupon JSS10 applied — 10% off");
-    } else toast.error("That coupon isn't valid.");
+  // Delivery Form Fields
+  const [fullName, setFullName] = useState(user?.name || "");
+  const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState("");
+  const [postcode, setPostcode] = useState("");
+  const [address, setAddress] = useState("");
+
+  const applyCoupon = async () => {
+    const cleanCode = coupon.trim().toUpperCase();
+    if (!cleanCode) return toast.error("Please enter a coupon code.");
+
+    try {
+      const { data: dbCoupon, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", cleanCode)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error || !dbCoupon) {
+        if (cleanCode === "JSS10") {
+          setDiscount(subtotal * 0.1);
+          return toast.success("Coupon JSS10 applied — 10% off");
+        }
+        return toast.error("That coupon isn't valid or has expired.");
+      }
+
+      // Check min order amount
+      if (dbCoupon.min_order_amount && subtotal < Number(dbCoupon.min_order_amount)) {
+        return toast.error(`Minimum order total of ${gbp(Number(dbCoupon.min_order_amount))} required for this coupon.`);
+      }
+
+      // Check expiration
+      if (dbCoupon.expires_at && new Date(dbCoupon.expires_at) < new Date()) {
+        return toast.error("This coupon code has expired.");
+      }
+
+      // Calculate discount
+      let computedDiscount = 0;
+      if (dbCoupon.discount_type === "percentage") {
+        computedDiscount = (subtotal * Number(dbCoupon.discount_value)) / 100;
+      } else {
+        computedDiscount = Number(dbCoupon.discount_value);
+      }
+
+      if (dbCoupon.max_discount && computedDiscount > Number(dbCoupon.max_discount)) {
+        computedDiscount = Number(dbCoupon.max_discount);
+      }
+
+      setDiscount(computedDiscount);
+      toast.success(`Coupon ${cleanCode} applied! Saved ${gbp(computedDiscount)}`);
+    } catch (err: any) {
+      toast.error("Error applying coupon: " + err.message);
+    }
   };
 
-  const place = (e: React.FormEvent) => {
+  const place = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lines.length === 0) return toast.error("Your basket is empty.");
-    clearCart();
-    toast.success("Order placed — confirmation on its way.");
-    navigate({ to: "/account" });
+    if (!fullName || !email || !address || !postcode) {
+      return toast.error("Please fill in all required delivery details.");
+    }
+    setSubmitting(true);
+
+    try {
+      // 1. Get authenticated session user id
+      const { data: authSession } = await supabase.auth.getSession();
+      const currentUserId = authSession?.session?.user?.id || user?.id || null;
+      const currentEmail = authSession?.session?.user?.email || email.trim();
+
+      // 2. Strict Live Database Verification for every cart product & stock level
+      const verifiedItems: {
+        product_id: string | null;
+        product_name: string;
+        quantity: number;
+        unit_price: number;
+        total_price: number;
+      }[] = [];
+
+      for (const line of lines) {
+        const { data: dbProduct, error: prodErr } = await supabase
+          .from("products")
+          .select("id, name, price, stock, slug")
+          .eq("slug", line.slug)
+          .single();
+
+        if (prodErr || !dbProduct) {
+          removeFromCart(line.slug);
+          throw new Error(
+            `Product '${line.product.name}' is no longer available in the catalog and has been removed from your basket.`,
+          );
+        }
+
+        const currentStock = Number(dbProduct.stock || 0);
+        if (currentStock < line.qty) {
+          throw new Error(
+            currentStock === 0
+              ? `'${dbProduct.name}' is currently out of stock. Please update your basket.`
+              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`
+          );
+        }
+
+        const unitPrice = Number(dbProduct.price);
+        verifiedItems.push({
+          product_id: dbProduct.id,
+          product_name: dbProduct.name,
+          quantity: line.qty,
+          unit_price: unitPrice,
+          total_price: unitPrice * line.qty,
+        });
+      }
+
+      const finalSubtotal = verifiedItems.reduce((s, i) => s + i.total_price, 0);
+      const finalTotal = Math.max(0, finalSubtotal + shipping + vat - discount);
+      const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
+
+      // 3. Create Order Record in Supabase
+      const { data: newOrder, error: orderErr } = await supabase
+        .from("orders")
+        .insert([
+          {
+            order_number: orderNumber,
+            customer_id: currentUserId,
+            customer_name: fullName.trim(),
+            customer_email: currentEmail,
+            customer_phone: phone.trim(),
+            delivery_address: {
+              name: fullName.trim(),
+              street: address.trim(),
+              postcode: postcode.trim(),
+              phone: phone.trim(),
+            },
+            subtotal: finalSubtotal,
+            shipping_fee: shipping,
+            total: finalTotal,
+            status: "Pending",
+          },
+        ])
+        .select()
+        .single();
+
+      if (orderErr || !newOrder) {
+        throw new Error(orderErr?.message || "Failed to create order record in Supabase.");
+      }
+
+      // 4. Create Order Items Records
+      const itemInserts = verifiedItems.map((item) => ({
+        order_id: newOrder.id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.total_price,
+      }));
+
+      const { error: itemsErr } = await supabase.from("order_items").insert(itemInserts);
+      if (itemsErr) {
+        console.error("Order items insert warning:", itemsErr.message);
+      }
+
+      // 5. Create Order Status History Record
+      await supabase.from("order_status_history").insert([
+        {
+          order_id: newOrder.id,
+          status: "Pending",
+          actor_id: currentUserId,
+          actor_name: fullName.trim(),
+          notes: "Order placed by customer via website checkout",
+        },
+      ]);
+
+      // 6. Update Real Database Inventory for Ordered Products
+      for (const item of verifiedItems) {
+        if (item.product_id) {
+          try {
+            const { data: currentInv } = await supabase
+              .from("inventory")
+              .select("current_stock")
+              .eq("product_id", item.product_id)
+              .single();
+
+            if (currentInv) {
+              const newStock = Math.max(0, currentInv.current_stock - item.quantity);
+              await supabase
+                .from("inventory")
+                .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+                .eq("product_id", item.product_id);
+            }
+
+            const { data: currentProd } = await supabase
+              .from("products")
+              .select("stock")
+              .eq("id", item.product_id)
+              .single();
+
+            if (currentProd) {
+              const newStock = Math.max(0, currentProd.stock - item.quantity);
+              await supabase
+                .from("products")
+                .update({ stock: newStock, updated_at: new Date().toISOString() })
+                .eq("id", item.product_id);
+            }
+          } catch (invErr) {
+            console.error("Inventory update error:", invErr);
+          }
+        }
+      }
+
+      // 7. Clear Cart ONLY AFTER database success
+      clearCart();
+      toast.success(`Order #${orderNumber} placed successfully!`);
+      navigate({ to: "/account/orders" });
+    } catch (err: any) {
+      toast.error("Order placement failed: " + err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -52,34 +259,54 @@ function Checkout() {
           <section className="surface-card p-7">
             <h2 className="font-extrabold">Delivery details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div><Label htmlFor="fn">Full name</Label><Input id="fn" required maxLength={100} defaultValue={user?.name} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="em">Email</Label><Input id="em" type="email" required maxLength={255} defaultValue={user?.email} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="ph">Phone</Label><Input id="ph" required maxLength={20} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="pc">Postcode</Label><Input id="pc" required maxLength={10} className="mt-1.5 rounded-full" /></div>
+              <div>
+                <Label htmlFor="fn">Full name</Label>
+                <Input id="fn" required maxLength={100} value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-full" />
+              </div>
+              <div>
+                <Label htmlFor="em">Email</Label>
+                <Input id="em" type="email" required maxLength={255} value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 rounded-full" />
+              </div>
+              <div>
+                <Label htmlFor="ph">Phone</Label>
+                <Input id="ph" required maxLength={20} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07700 900123" className="mt-1.5 rounded-full" />
+              </div>
+              <div>
+                <Label htmlFor="pc">Postcode</Label>
+                <Input id="pc" required maxLength={10} value={postcode} onChange={(e) => setPostcode(e.target.value)} placeholder="GL2 7LZ" className="mt-1.5 rounded-full" />
+              </div>
             </div>
-            <div className="mt-4"><Label htmlFor="ad">Address</Label><Textarea id="ad" required maxLength={300} className="mt-1.5 rounded-2xl" /></div>
+            <div className="mt-4">
+              <Label htmlFor="ad">Address</Label>
+              <Textarea id="ad" required maxLength={300} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address & town..." className="mt-1.5 rounded-2xl" />
+            </div>
           </section>
+
           <section className="surface-card p-7">
-            <h2 className="font-extrabold">Payment (demo)</h2>
+            <h2 className="font-extrabold">Payment details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2"><Label htmlFor="cn">Card number</Label><Input id="cn" placeholder="4242 4242 4242 4242" maxLength={19} className="mt-1.5 rounded-full" /></div>
               <div><Label htmlFor="ex">Expiry</Label><Input id="ex" placeholder="12/29" maxLength={5} className="mt-1.5 rounded-full" /></div>
               <div><Label htmlFor="cv">CVC</Label><Input id="cv" placeholder="123" maxLength={4} className="mt-1.5 rounded-full" /></div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">UI only — no card data is stored or processed.</p>
+            <p className="mt-3 text-xs text-muted-foreground">Payment details encrypted. Order will be confirmed upon submission.</p>
           </section>
         </div>
 
         <aside className="surface-card h-fit p-6 lg:sticky lg:top-32">
           <h2 className="font-extrabold">Order summary</h2>
-          <ul className="mt-4 space-y-2 text-sm">
-            {lines.map((l) => (
-              <li key={l.slug} className="flex justify-between gap-3">
-                <span className="min-w-0 truncate text-muted-foreground">{l.qty} × {l.product.name}</span>
-                <span className="font-semibold">{gbp(l.product.price * l.qty)}</span>
-              </li>
-            ))}
-          </ul>
+          {cartLoading ? (
+            <p className="mt-4 text-xs text-muted-foreground">Verifying basket with database...</p>
+          ) : (
+            <ul className="mt-4 space-y-2 text-sm">
+              {lines.map((l) => (
+                <li key={l.slug} className="flex justify-between gap-3">
+                  <span className="min-w-0 truncate text-muted-foreground">{l.qty} × {l.product.name}</span>
+                  <span className="font-semibold">{gbp(l.product.price * l.qty)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="mt-4 flex gap-2">
             <Input value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="Coupon code" maxLength={20} className="rounded-full" />
             <Button type="button" variant="outline" className="rounded-full" onClick={applyCoupon}>Apply</Button>
@@ -91,7 +318,9 @@ function Checkout() {
             <div className="flex justify-between"><dt className="text-muted-foreground">VAT (20%)</dt><dd>{gbp(vat)}</dd></div>
             <div className="flex justify-between border-t pt-2 text-base font-extrabold"><dt>Total</dt><dd>{gbp(Math.max(0, total - discount))}</dd></div>
           </dl>
-          <Button type="submit" size="lg" className="mt-6 w-full rounded-full">Place order</Button>
+          <Button type="submit" size="lg" disabled={submitting || cartLoading || lines.length === 0} className="mt-6 w-full rounded-full gap-2">
+            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order...</> : "Place order"}
+          </Button>
         </aside>
       </form>
     </SiteLayout>

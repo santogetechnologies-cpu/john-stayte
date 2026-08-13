@@ -35,19 +35,31 @@ export function PageHero({
 }
 
 export function SectionHead({
+  badge,
   title,
   subtitle,
+  desc,
+  light,
   action,
 }: {
+  badge?: string;
   title: string;
   subtitle?: string;
+  desc?: string;
+  light?: boolean;
   action?: ReactNode;
 }) {
+  const subText = subtitle || desc;
   return (
     <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
       <div className="min-w-0">
-        <h2 className="text-2xl font-extrabold md:text-3xl">{title}</h2>
-        {subtitle && <p className="mt-2 text-sm text-muted-foreground md:text-base">{subtitle}</p>}
+        {badge && (
+          <p className={`text-xs font-bold uppercase tracking-[0.2em] mb-1 ${light ? "text-primary-foreground/80" : "text-primary"}`}>
+            {badge}
+          </p>
+        )}
+        <h2 className={`text-2xl font-extrabold md:text-3xl ${light ? "text-white" : "text-foreground"}`}>{title}</h2>
+        {subText && <p className={`mt-2 text-sm md:text-base ${light ? "text-slate-300" : "text-muted-foreground"}`}>{subText}</p>}
       </div>
       {action}
     </div>

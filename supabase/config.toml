@@ -1,0 +1,58 @@
+# ====================================================================
+# SUPABASE CONFIGURATION: PRODUCTION AUTH & CUSTOM SMTP BRANDING
+# ====================================================================
+
+[project]
+id = "wttchknauwvbfjatdscc"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+
+[auth]
+enabled = true
+site_url = "https://johnstayte.co.uk"
+additional_redirect_urls = ["http://localhost:3000", "http://localhost:5173"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+# ====================================================================
+# BRANDED EMAIL TEMPLATES
+# ====================================================================
+
+[auth.email.template.change_email]
+subject = "Confirm your new email address | John Stayte Services"
+content_path = "./supabase/templates/change_email.html"
+
+[auth.email.template.confirmation]
+subject = "Welcome to John Stayte Services - Confirm your account"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Reset your John Stayte Services password"
+content_path = "./supabase/templates/recovery.html"
+
+# ====================================================================
+# CUSTOM SMTP SENDER CONFIGURATION
+# ====================================================================
+
+[auth.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 587
+user = "resend"
+pass = "env(SMTP_PASSWORD)"
+sender_name = "John Stayte Services"
+sender_address = "noreply@johnstayte.co.uk"
