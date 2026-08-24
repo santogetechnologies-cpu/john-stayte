@@ -15,11 +15,18 @@ import {
   Lock,
   Smartphone,
   Info,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +36,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 export function CustomerSettingsView() {
   const { logout } = useStore();
@@ -46,8 +54,84 @@ export function CustomerSettingsView() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+  // Real Change Password Modal States
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   const handleSave = () => {
     toast.success("Settings saved");
+  };
+
+  // REAL SUPABASE AUTH CHANGE PASSWORD HANDLER
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (!currentPassword) {
+      setPasswordError("Current password is required.");
+      return;
+    }
+
+    if (!newPassword) {
+      setPasswordError("New password is required.");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      // 1. Fetch current authenticated user
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user?.email) {
+        throw new Error("You must be logged in to update your password.");
+      }
+
+      // 2. Verify current password via real Supabase Auth sign-in check
+      const { error: verifyErr } = await supabase.auth.signInWithPassword({
+        email: authUser.user.email,
+        password: currentPassword,
+      });
+
+      if (verifyErr) {
+        setPasswordError("Current password is incorrect.");
+        setUpdatingPassword(false);
+        return;
+      }
+
+      // 3. Update password in Supabase Auth
+      const { error: updateAuthErr } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateAuthErr) throw updateAuthErr;
+
+      setPasswordModalOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      toast.success("Password updated successfully.");
+    } catch (err: any) {
+      console.error("Change password error:", err);
+      setPasswordError("Unable to update password. Please check your current password and try again.");
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   return (
@@ -230,7 +314,7 @@ export function CustomerSettingsView() {
             </div>
           </div>
 
-          {/* SECTION 5: SECURITY */}
+          {/* SECTION 5: SECURITY (REAL BACKEND PASSWORD MANAGEMENT) */}
           <div className="surface-card p-6 rounded-3xl border bg-white space-y-5">
             <div className="flex items-center gap-2.5 border-b pb-4">
               <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
@@ -243,16 +327,30 @@ export function CustomerSettingsView() {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-3.5 rounded-2xl border bg-slate-50/50 flex items-center justify-between gap-3">
+              {/* Real Password Management Row */}
+              <div className="p-3.5 rounded-2xl border bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <p className="font-bold text-foreground">Password</p>
-                  <p className="text-[11px] text-muted-foreground">Password management will be available here.</p>
+                  <p className="text-[11px] text-muted-foreground">Manage your account password and keep your account secure.</p>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold bg-white text-muted-foreground">
-                  UI Placeholder
-                </Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCurrentPassword("");
+                    setNewPassword("");
+                    setConfirmNewPassword("");
+                    setPasswordError(null);
+                    setPasswordModalOpen(true);
+                  }}
+                  className="rounded-full text-xs font-extrabold border-slate-300 hover:bg-white text-foreground hover:text-primary gap-1 shrink-0 self-start sm:self-center"
+                >
+                  Change Password <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
               </div>
 
+              {/* Active Session Row */}
               <div className="p-3.5 rounded-2xl border bg-slate-50/50 flex items-center justify-between gap-3">
                 <div>
                   <p className="font-bold text-foreground">Session</p>
@@ -336,6 +434,126 @@ export function CustomerSettingsView() {
           </div>
         </div>
       </div>
+
+      {/* REAL SUPABASE AUTH CHANGE PASSWORD MODAL */}
+      <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white">
+          <DialogHeader>
+            <DialogTitle className="font-black text-xl text-foreground flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" /> Change Password
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Update your password to keep your account secure.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleChangePasswordSubmit} className="space-y-4 pt-2 text-xs">
+            {/* Current Password Field */}
+            <div className="space-y-1.5">
+              <Label className="font-bold text-slate-700">Current Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  placeholder="••••••••••••"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password Field */}
+            <div className="space-y-1.5">
+              <Label className="font-bold text-slate-700">New Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  placeholder="••••••••••••"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm New Password Field */}
+            <div className="space-y-1.5">
+              <Label className="font-bold text-slate-700">Confirm New Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmNewPassword}
+                  onChange={(e) => {
+                    setConfirmNewPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  placeholder="••••••••••••"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {passwordError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            {/* Dialog Footer Actions */}
+            <div className="pt-3 flex items-center justify-end gap-2 border-t">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setPasswordModalOpen(false)}
+                disabled={updatingPassword}
+                className="rounded-full text-xs font-bold"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={updatingPassword}
+                className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
+              >
+                {updatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {updatingPassword ? "Updating Password..." : "Update Password"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* DELETE ACCOUNT CONFIRMATION MODAL */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

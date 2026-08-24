@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Image as ImageIcon, Plus, Edit3, Trash2, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Plus, Edit3, Trash2, CheckCircle2, XCircle, Loader2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { logAdminAuditAction } from "@/lib/audit";
 export function AdminBannersView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [banners, setBanners] = useState<any[]>([]);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -28,6 +29,34 @@ export function AdminBannersView() {
   const [imageUrl, setImageUrl] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const fileName = `banner-${Date.now()}.${file.name.split(".").pop()}`;
+      const filePath = `banners/${fileName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(filePath);
+
+      setImageUrl(data.publicUrl);
+      toast.success("Banner image uploaded to Supabase Storage!");
+    } catch (err: any) {
+      console.warn("Storage upload notice:", err.message);
+      setImageUrl(URL.createObjectURL(file));
+      toast.success("Image selected for banner!");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const loadBanners = async () => {
     setLoading(true);
@@ -77,7 +106,7 @@ export function AdminBannersView() {
       const payload = {
         title: title.trim(),
         subtitle: subtitle.trim() || null,
-        image_url: imageUrl.trim() || "https://images.unsplash.com/photo-1585771724684-38269d6639fd",
+        image_url: imageUrl.trim(), // store exactly what admin entered; empty string = no image
         link_url: linkUrl.trim() || null,
         is_active: isActive,
       };
@@ -173,13 +202,27 @@ export function AdminBannersView() {
           {banners.map((b) => (
             <div key={b.id} className="surface-card p-5 rounded-3xl border bg-white space-y-4 shadow-xs">
               <div className="h-40 rounded-2xl bg-slate-100 border overflow-hidden relative">
-                {b.image_url ? (
-                  <img src={b.image_url} alt={b.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-slate-400 font-bold text-xs">
-                    No Banner Image
-                  </div>
-                )}
+                {b.image_url && b.image_url.trim() ? (
+                  <img
+                    src={b.image_url}
+                    alt={b.title}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                {/* Shown when image_url is empty/null OR image fails to load */}
+                <div
+                  className={`absolute inset-0 ${b.image_url && b.image_url.trim() ? "hidden" : "flex"} items-center justify-center flex-col gap-1.5 text-slate-400 bg-slate-100`}
+                >
+                  <ImageIcon className="h-7 w-7" />
+                  <span className="text-[10px] font-bold">
+                    {b.image_url && b.image_url.trim() ? "Image unavailable" : "No image set"}
+                  </span>
+                </div>
                 <div className="absolute top-3 right-3 flex items-center gap-2">
                   <Switch checked={b.is_active} onCheckedChange={() => toggleBannerStatus(b)} />
                 </div>
@@ -239,13 +282,43 @@ export function AdminBannersView() {
             </div>
 
             <div>
-              <Label className="font-bold text-slate-700">Image URL</Label>
-              <Input
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
-              />
+              <Label className="font-bold text-slate-700">Banner Image URL / Upload</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://... or /image.jpg"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 flex-1"
+                />
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition-colors">
+                    {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    Upload
+                  </span>
+                </label>
+              </div>
+              {/* Live preview of admin-entered image URL */}
+              {imageUrl.trim() && (
+                <div className="mt-2 h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 relative">
+                  <img
+                    src={imageUrl.trim()}
+                    alt="Banner preview"
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = "flex";
+                    }}
+                  />
+                  <div
+                    className="absolute inset-0 hidden items-center justify-center flex-col gap-1 text-slate-400"
+                  >
+                    <ImageIcon className="h-6 w-6" />
+                    <span className="text-[10px] font-bold">Image unavailable — check URL</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>

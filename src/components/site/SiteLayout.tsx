@@ -2,12 +2,18 @@ import type { ReactNode } from "react";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
 
-export function SiteLayout({ children }: { children: ReactNode }) {
+export function SiteLayout({
+  children,
+  footerClassName,
+}: {
+  children: ReactNode;
+  footerClassName?: string;
+}) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
       <main className="flex-1">{children}</main>
-      <SiteFooter />
+      <SiteFooter className={footerClassName} />
     </div>
   );
 }
@@ -23,11 +29,11 @@ export function PageHero({
 }) {
   return (
     <section className="border-b bg-surface">
-      <div className="container-page py-14 md:py-20">
+      <div className="container-page py-10 md:py-14">
         {eyebrow && (
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">{eyebrow}</p>
         )}
-        <h1 className="mt-3 max-w-3xl text-4xl font-extrabold md:text-5xl">{title}</h1>
+        <h1 className="mt-2 max-w-3xl text-3xl font-extrabold md:text-4xl">{title}</h1>
         {subtitle && <p className="mt-4 max-w-2xl text-muted-foreground md:text-lg">{subtitle}</p>}
       </div>
     </section>
@@ -51,7 +57,7 @@ export function SectionHead({
 }) {
   const subText = subtitle || desc;
   return (
-    <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+    <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
       <div className="min-w-0">
         {badge && (
           <p className={`text-xs font-bold uppercase tracking-[0.2em] mb-1 ${light ? "text-primary-foreground/80" : "text-primary"}`}>

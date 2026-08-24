@@ -1,37 +1,50 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Heart, ArrowRight, Loader2 } from "lucide-react";
+import { Heart, ArrowRight, Loader2, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
 export function CustomerWishlistView() {
-  const { wishlist, addToCart } = useStore();
+  const { wishlist, toggleWishlist, addToCart } = useStore();
   const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
+  // Fetch product data from Supabase using the canonical wishlist slugs
   useEffect(() => {
+    let isMounted = true;
+
     async function loadWishlistProducts() {
       if (wishlist.length === 0) {
-        setWishlistProducts([]);
-        setLoading(false);
+        if (isMounted) {
+          setWishlistProducts([]);
+          setLoading(false);
+        }
         return;
       }
-      setLoading(true);
+      if (isMounted) setLoading(true);
       try {
-        const { data: prods } = await supabase
+        const { data: prods, error } = await supabase
           .from("products")
           .select("*")
           .in("slug", wishlist);
-        setWishlistProducts(prods || []);
+        if (error) throw error;
+        if (isMounted) {
+          setWishlistProducts(prods || []);
+        }
       } catch (err) {
-        console.error("Wishlist DB Load error:", err);
+        console.error("Wishlist product load error:", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
+
     loadWishlistProducts();
+
+    return () => {
+      isMounted = false;
+    };
   }, [wishlist]);
 
   return (
@@ -52,7 +65,7 @@ export function CustomerWishlistView() {
       {loading ? (
         <div className="surface-card p-12 text-center text-xs text-muted-foreground font-bold rounded-3xl border bg-white">
           <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
-          Loading saved products from Supabase...
+          Loading your wishlist from Supabase...
         </div>
       ) : wishlist.length === 0 || wishlistProducts.length === 0 ? (
         <div className="surface-card p-12 sm:p-16 text-center rounded-3xl border bg-white space-y-4">
@@ -62,7 +75,7 @@ export function CustomerWishlistView() {
           <div className="space-y-1 max-w-sm mx-auto">
             <h2 className="font-black text-lg text-foreground">Your wishlist is empty</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Save products here to find them later.
+              Save products here to find them later. Your wishlist is saved to your account and syncs across all your devices.
             </p>
           </div>
           <div className="pt-2">
@@ -89,16 +102,29 @@ export function CustomerWishlistView() {
                 <p className="font-bold text-foreground truncate">{p.name}</p>
                 <p className="text-muted-foreground font-extrabold mt-0.5">{gbp(Number(p.price))}</p>
               </div>
-              <Button
-                size="sm"
-                className="rounded-full text-xs font-bold"
-                onClick={() => {
-                  addToCart(p.slug);
-                  toast.success("Added to basket");
-                }}
-              >
-                Add
-              </Button>
+              <div className="flex flex-col gap-1.5 shrink-0">
+                <Button
+                  size="sm"
+                  className="rounded-full text-xs font-bold gap-1"
+                  onClick={() => {
+                    addToCart(p.slug);
+                    toast.success("Added to basket");
+                  }}
+                >
+                  <ShoppingCart className="h-3 w-3" /> Add
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="rounded-full text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-red-50"
+                  onClick={() => {
+                    toggleWishlist(p.slug);
+                    toast("Removed from wishlist");
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
             </div>
           ))}
         </div>

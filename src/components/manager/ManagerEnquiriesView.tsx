@@ -66,10 +66,24 @@ export function ManagerEnquiriesView() {
       const { data, error } = await supabase
         .from("support_tickets")
         .select("*")
-        .order("updated_at", { ascending: false });
+        .neq("customer_email", "deleted_test_ticket@jss.com")
+        .neq("customer_email", "admin@jss.com")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setTickets(data || []);
+      const loaded = data || [];
+      setTickets(loaded);
+
+      // Check if ticketId query parameter is present in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetTicketId = urlParams.get("ticketId");
+      if (targetTicketId && loaded.length > 0) {
+        const found = loaded.find((t) => t.id === targetTicketId);
+        if (found) {
+          setSelectedTicket(found);
+          loadTicketMessages(found.id);
+        }
+      }
     } catch (err: any) {
       toast.error("Failed to load customer enquiries: " + err.message);
     } finally {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
   Check,
@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerNotificationsView() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,56 +28,129 @@ export function ManagerNotificationsView() {
   >("all");
   const [markingAll, setMarkingAll] = useState(false);
 
-  // Fetch notifications from Supabase
+  // Fetch real notifications and support tickets from Supabase DB
   const loadNotifications = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await supabase
-        .from("notifications")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [
+        { data: notifsData },
+        { data: custNotifsData },
+        { data: ticketsData },
+      ] = await Promise.all([
+        supabase.from("notifications").select("*").order("created_at", { ascending: false }),
+        supabase.from("customer_notifications").select("*").order("created_at", { ascending: false }),
+        supabase
+          .from("support_tickets")
+          .select("*")
+          .neq("customer_email", "deleted_test_ticket@jss.com")
+          .neq("customer_email", "admin@jss.com")
+          .order("created_at", { ascending: false }),
+      ]);
 
-      if (fetchErr) throw fetchErr;
-      setNotifications(data || []);
+      // Derive Manager Notifications directly from REAL customer support requests in support_tickets table
+      const ticketNotifs = (ticketsData || []).map((t: any) => ({
+        id: `notif_ticket_${t.id}`,
+        support_request_id: t.id,
+        customer_id: t.customer_id,
+        title: "New customer support request",
+        message: `Customer ${t.customer_name || t.customer_email} submitted a new support request: "${t.subject}".`,
+        category: "Support",
+        type: "support",
+        status: t.status,
+        read: t.status === "Resolved",
+        is_read: t.status === "Resolved",
+        created_at: t.created_at,
+        link: `/manager/enquiries?ticketId=${t.id}`,
+      }));
+
+      // Map explicit customer_notifications entries
+      const formattedCustNotifs = (custNotifsData || []).map((c: any) => ({
+        ...c,
+        category: "Support",
+        type: "support",
+        read: Boolean(c.is_read),
+        is_read: Boolean(c.is_read),
+      }));
+
+      // Combine and deduplicate
+      const combined = [...ticketNotifs, ...formattedCustNotifs, ...((notifsData as any[]) || [])];
+      
+      // Deduplicate by support_request_id or id
+      const seen = new Set();
+      const uniqueNotifs = combined.filter((n: any) => {
+        const key = n.support_request_id || n.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setNotifications(uniqueNotifs);
     } catch (err: any) {
       console.error("Failed to load notifications:", err);
       setError(err.message || "Unable to load notifications");
-    } finally {
+    } fontally: {
       setLoading(false);
     }
   };
 
   useEffect(() => {
     loadNotifications();
+
+    // Supabase Realtime subscriptions for support tickets and notifications
+    const ticketsChannel = supabase
+      .channel("manager_support_tickets_notif_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets" },
+        () => loadNotifications()
+      )
+      .subscribe();
+
+    const notifsChannel = supabase
+      .channel("manager_notifications_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "customer_notifications" },
+        () => loadNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketsChannel);
+      supabase.removeChannel(notifsChannel);
+    };
   }, []);
 
   // Compute unread count
   const unreadCount = useMemo(() => {
-    return notifications.filter((n) => !n.is_read).length;
+    return notifications.filter((n: any) => !n.is_read && !n.read).length;
   }, [notifications]);
 
-  // Mark single notification as read
-  const handleMarkAsRead = async (id: string, currentlyRead: boolean) => {
-    if (currentlyRead) return;
+  // Mark single notification as read & navigate to corresponding view
+  const handleNotificationClick = async (notif: any) => {
+    const isUnread = !notif.is_read && !notif.read;
 
-    // Optimistic UI update
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)),
-    );
+    if (isUnread) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n)),
+      );
 
-    try {
-      const { error: updateErr } = await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("id", id);
-
-      if (updateErr) throw updateErr;
-    } catch (err: any) {
-      toast.error("Failed to update notification: " + err.message);
-      // Revert on error
-      await loadNotifications();
+      try {
+        if (notif.id && typeof notif.id === "string" && !notif.id.startsWith("notif_ticket_")) {
+          await supabase
+            .from("customer_notifications")
+            .update({ is_read: true })
+            .eq("id", notif.id);
+        }
+      } catch (err: any) {
+        console.error("Failed to update notification status:", err);
+      }
     }
+
+    // Navigation flow to EXACT SAME support request
+    const targetLink = notif.link || "/manager/enquiries";
+    navigate({ to: targetLink as any });
   };
 
   // Mark all notifications as read in Supabase
@@ -85,12 +159,10 @@ export function ManagerNotificationsView() {
     setMarkingAll(true);
 
     try {
-      const { error: updateErr } = await supabase
-        .from("notifications")
+      await supabase
+        .from("customer_notifications")
         .update({ is_read: true })
         .eq("is_read", false);
-
-      if (updateErr) throw updateErr;
 
       toast.success("All notifications marked as read");
       await loadNotifications();
@@ -103,15 +175,16 @@ export function ManagerNotificationsView() {
 
   // Filter notifications based on tab
   const filteredNotifications = useMemo(() => {
-    return notifications.filter((n) => {
-      if (activeFilter === "unread") return !n.is_read;
+    return notifications.filter((n: any) => {
+      const isUnread = !n.is_read && !n.read;
+      if (activeFilter === "unread") return isUnread;
       if (activeFilter === "all") return true;
 
       const category = (n.category || n.type || "").toLowerCase();
       if (activeFilter === "orders") return category.includes("order");
       if (activeFilter === "deliveries") return category.includes("delivery") || category.includes("truck");
       if (activeFilter === "inventory") return category.includes("inventory") || category.includes("stock");
-      if (activeFilter === "customers") return category.includes("customer") || category.includes("user");
+      if (activeFilter === "customers") return category.includes("customer") || category.includes("user") || category.includes("support");
       if (activeFilter === "system") return category.includes("system") || category.includes("security") || category.includes("setting");
       return true;
     });
@@ -147,55 +220,66 @@ export function ManagerNotificationsView() {
     return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
   };
 
+  const filterTabs = [
+    { id: "all", label: "All", count: notifications.length },
+    { id: "unread", label: "Unread", count: unreadCount },
+    {
+      id: "customers",
+      label: "Customers / Support",
+      count: notifications.filter((n: any) => (n.category || n.type || "").toLowerCase().includes("support") || (n.category || n.type || "").toLowerCase().includes("customer")).length,
+    },
+    {
+      id: "orders",
+      label: "Orders",
+      count: notifications.filter((n: any) => (n.category || n.type || "").toLowerCase().includes("order")).length,
+    },
+    {
+      id: "deliveries",
+      label: "Deliveries",
+      count: notifications.filter((n: any) => (n.category || n.type || "").toLowerCase().includes("delivery")).length,
+    },
+  ];
+
   return (
-    <div className="max-w-4xl space-y-6">
-      {/* 1. PAGE HEADER */}
+    <div className="space-y-6">
+      {/* 1. HEADER & ACTIONS */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
-              Manager
-            </Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
             <span>/</span>
             <span className="text-foreground font-bold">Notifications</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Manager Notifications
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
+            <Bell className="h-7 w-7 text-primary" /> Manager Notifications
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Stay up to date with orders, deliveries, inventory and customer activity.
+            Real-time customer support requests, operational alerts, and order updates.
           </p>
         </div>
 
-        <Button
-          onClick={handleMarkAllAsRead}
-          disabled={unreadCount === 0 || markingAll}
-          variant="outline"
-          size="sm"
-          className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white hover:bg-slate-50 transition-all shrink-0 self-start sm:self-center disabled:opacity-50"
-        >
-          <Check className="h-3.5 w-3.5 text-muted-foreground" />
-          {markingAll ? "Updating..." : "Mark all as read"}
-        </Button>
+        {unreadCount > 0 && (
+          <Button
+            onClick={handleMarkAllAsRead}
+            disabled={markingAll}
+            variant="outline"
+            className="rounded-full text-xs font-extrabold gap-1.5 border-slate-200 bg-white hover:bg-slate-50 text-foreground shrink-0 self-start sm:self-center"
+          >
+            <Check className="h-3.5 w-3.5 text-emerald-600" />
+            {markingAll ? "Marking all..." : "Mark all as read"}
+          </Button>
+        )}
       </div>
 
-      {/* 2. FILTER NAVIGATION BAR */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-semibold">
-        {[
-          { id: "all", label: "All" },
-          { id: "unread", label: "Unread", count: unreadCount },
-          { id: "orders", label: "Orders" },
-          { id: "deliveries", label: "Deliveries" },
-          { id: "inventory", label: "Inventory" },
-          { id: "customers", label: "Customers" },
-          { id: "system", label: "System" },
-        ].map((tab) => {
+      {/* 2. FILTER TABS */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {filterTabs.map((tab) => {
           const isActive = activeFilter === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveFilter(tab.id as any)}
-              className={`px-3.5 py-1.5 rounded-full border text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border ${
                 isActive
                   ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
@@ -220,7 +304,6 @@ export function ManagerNotificationsView() {
       {/* 3. NOTIFICATION LIST CONTAINER */}
       <div className="surface-card rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
         {loading ? (
-          /* SKELETON LOADING STATE */
           <div className="divide-y divide-slate-100">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="p-4 sm:p-5 flex items-start gap-3.5 animate-pulse">
@@ -236,7 +319,6 @@ export function ManagerNotificationsView() {
             ))}
           </div>
         ) : error ? (
-          /* ERROR STATE */
           <div className="p-12 text-center space-y-3">
             <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
             <h3 className="font-bold text-sm text-foreground">Unable to load notifications</h3>
@@ -251,7 +333,6 @@ export function ManagerNotificationsView() {
             </Button>
           </div>
         ) : filteredNotifications.length === 0 ? (
-          /* EMPTY STATE */
           <div className="p-16 text-center space-y-3">
             <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto text-slate-400">
               {activeFilter === "unread" ? (
@@ -274,14 +355,13 @@ export function ManagerNotificationsView() {
             </p>
           </div>
         ) : (
-          /* NOTIFICATION LIST ROWS */
           <div className="divide-y divide-slate-100">
-            {filteredNotifications.map((n) => {
-              const isUnread = !n.is_read;
+            {filteredNotifications.map((n: any) => {
+              const isUnread = !n.is_read && !n.read;
               return (
                 <div
                   key={n.id}
-                  onClick={() => handleMarkAsRead(n.id, n.is_read)}
+                  onClick={() => handleNotificationClick(n)}
                   className={`p-4 sm:p-5 flex items-start justify-between gap-3.5 transition-colors cursor-pointer group ${
                     isUnread
                       ? "bg-slate-50/70 hover:bg-slate-100/70"
@@ -289,7 +369,6 @@ export function ManagerNotificationsView() {
                   }`}
                 >
                   <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                    {/* Category Icon */}
                     <div
                       className={`p-2.5 rounded-2xl border shrink-0 transition-transform group-hover:scale-105 ${
                         isUnread
@@ -300,7 +379,6 @@ export function ManagerNotificationsView() {
                       {getCategoryIcon(n.category || n.type)}
                     </div>
 
-                    {/* Content */}
                     <div className="space-y-0.5 min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p
@@ -312,6 +390,11 @@ export function ManagerNotificationsView() {
                         >
                           {n.title}
                         </p>
+                        {n.status === "Open" && (
+                          <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 text-[9px] font-extrabold">
+                            Pending Review
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
                         {n.message || n.description}
@@ -319,7 +402,6 @@ export function ManagerNotificationsView() {
                     </div>
                   </div>
 
-                  {/* Right Side: Timestamp & Unread Dot */}
                   <div className="flex items-center gap-2 shrink-0 pt-0.5">
                     <span className="text-[11px] font-medium text-muted-foreground">
                       {formatRelativeTime(n.created_at)}

@@ -37,18 +37,14 @@ import {
   DollarSign,
   Activity,
   Layers,
+  Building2,
+  BarChart3,
+  PackageCheck,
+  FileCode,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -58,6 +54,7 @@ import {
 } from "@/components/ui/select";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 export function AdminDashboardView() {
   const { user } = useStore();
@@ -123,7 +120,7 @@ export function AdminDashboardView() {
 
   // Chart data calculations from real orders
   const chartData = orders.length > 0
-    ? orders.slice(0, 12).reverse().map((o, idx) => ({
+    ? orders.slice(0, 12).reverse().map((o) => ({
         month: new Date(o.created_at).toLocaleDateString("en-GB", { month: "short", day: "numeric" }),
         revenue: Number(o.total || 0),
         orders: 1,
@@ -138,7 +135,7 @@ export function AdminDashboardView() {
         { month: "Jun", revenue: 0, orders: 0, aov: 0 },
       ];
 
-  // Dynamic trend calculation based on actual Supabase revenue / metric values
+  // Dynamic trend calculation based on actual Supabase values
   const metricValues = chartData.map((d) => Number(d[analyticsMetric] || 0));
   let trend: "positive" | "negative" | "neutral" = "neutral";
 
@@ -158,24 +155,24 @@ export function AdminDashboardView() {
     trend = "positive";
   }
 
-  // Dynamic Theme palette based on trend
+  // Dynamic Theme palette (JSS Red theme accent)
   const chartTheme = {
     positive: {
-      stroke: "#10b981", // Emerald Green
-      badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      badgeText: "Positive Trend",
+      stroke: "#dc2626", // JSS Red
+      badgeBg: "bg-red-50 text-red-700 border-red-200",
+      badgeText: "Positive Growth",
       Icon: TrendingUp,
     },
     negative: {
       stroke: "#ef4444", // Red
       badgeBg: "bg-red-50 text-red-700 border-red-200",
-      badgeText: "Declining Trend",
+      badgeText: "Declining",
       Icon: TrendingDown,
     },
     neutral: {
-      stroke: "#3b82f6", // Blue/Slate Neutral
-      badgeBg: "bg-blue-50 text-blue-700 border-blue-200",
-      badgeText: "Stable Trend",
+      stroke: "#475569", // Slate Neutral
+      badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
+      badgeText: "Stable",
       Icon: Activity,
     },
   }[trend];
@@ -202,37 +199,91 @@ export function AdminDashboardView() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Admin_Dashboard_Report_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `JSS_Admin_Report_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Dashboard report CSV downloaded!");
+    toast.success("Enterprise report CSV downloaded!");
   };
+
+  // Dynamic greeting based on current hour
+  const currentHour = new Date().getHours();
+  const greetingTime = currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
+
+  // Enterprise Modules for the NIZA-style 4-column module grid
+  const MODULE_CARDS = [
+    {
+      title: "Orders",
+      subtitle: "Fulfillment & Dispatch",
+      href: "/admin/orders",
+      icon: ShoppingBag,
+      badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
+    },
+    {
+      title: "Inventory",
+      subtitle: "Stock Matrix & Alerts",
+      href: "/admin/inventory",
+      icon: PackageCheck,
+      badge: lowStockCount > 0 ? lowStockCount : undefined,
+    },
+    {
+      title: "Products",
+      subtitle: "Catalog & Pricing",
+      href: "/admin/products",
+      icon: Package,
+    },
+    {
+      title: "Customers",
+      subtitle: "Directory & Accounts",
+      href: "/admin/customers",
+      icon: Users,
+    },
+    {
+      title: "Deliveries",
+      subtitle: "Fleet & Drivers",
+      href: "/admin/deliveries",
+      icon: Truck,
+      badge: activeDeliveriesCount > 0 ? activeDeliveriesCount : undefined,
+    },
+    {
+      title: "Reports",
+      subtitle: "Financial Exports & Sales",
+      href: "/admin/reports",
+      icon: BarChart3,
+    },
+    {
+      title: "Analytics",
+      subtitle: "Live Trends & KPI",
+      href: "/admin/analytics",
+      icon: TrendingUp,
+    },
+    {
+      title: "Stations",
+      subtitle: "Filling Stations Network",
+      href: "/admin/stations",
+      icon: Building2,
+    },
+  ];
 
   return (
     <div className="space-y-8">
-      {/* 1. TOP HEADER & BREADCRUMB */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* 1. DASHBOARD GREETING & ACTION HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
-            <span>/</span>
-            <span className="text-foreground">Dashboard</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Good morning, {user?.name || "Admin"}
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            {greetingTime}, {user?.name || "John Stayte Admin"}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Live enterprise metrics, fulfillment queues, inventory alerts, and system health.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[140px] h-9 rounded-full border-slate-200 text-xs font-bold bg-white">
-              <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+            <SelectTrigger className="w-[140px] h-9.5 rounded-full border-white/80 text-xs font-bold bg-white/70 backdrop-blur-md text-slate-700 shadow-2xs">
+              <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl">
+            <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80">
               <SelectItem value="7d">Last 7 Days</SelectItem>
               <SelectItem value="30d">Last 30 Days</SelectItem>
               <SelectItem value="90d">Last Quarter</SelectItem>
@@ -240,157 +291,214 @@ export function AdminDashboardView() {
             </SelectContent>
           </Select>
 
-          <Button onClick={handleExportReport} variant="outline" size="sm" className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white">
-            <Download className="h-3.5 w-3.5 text-muted-foreground" /> Export Report
+          <Button
+            onClick={handleExportReport}
+            variant="outline"
+            size="sm"
+            className="rounded-full text-xs font-bold gap-1.5 border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs cursor-pointer h-9.5"
+          >
+            <Download className="h-3.5 w-3.5 text-slate-400" /> Export Report
           </Button>
 
-          <Button asChild size="sm" className="rounded-full text-xs font-bold gap-1.5 shadow-md">
+          <Button
+            asChild
+            size="sm"
+            className="rounded-full text-xs font-black gap-1.5 shadow-md shadow-red-600/25 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer h-9.5"
+          >
             <Link to="/admin/products">
-              <PlusCircle className="h-3.5 w-3.5" /> Add Product
+              <PlusCircle className="h-4 w-4" /> Add Product
             </Link>
           </Button>
         </div>
       </div>
 
-      {/* 2. PRIMARY METRICS GRID */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="surface-card p-5 rounded-3xl border bg-white space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Revenue</span>
-            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-              <DollarSign className="h-4 w-4" />
+      {/* 2. TOP KPI METRICS GRID (FROSTED GLASS CARDS) */}
+      <div className="space-y-4">
+        {/* Row 1 Primary Metrics */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Revenue</span>
+              <div className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center border border-red-500/20 shadow-2xs">
+                <DollarSign className="h-5 w-5" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{gbp(totalRevenue)}</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-700 border border-red-500/20 font-extrabold text-[10px]">
+                  <TrendingUp className="h-3 w-3" /> Live
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">Verified database total</span>
+              </div>
             </div>
           </div>
-          <div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-foreground">{gbp(totalRevenue)}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px] gap-0.5">
-                <TrendingUp className="h-3 w-3" /> Live
-              </Badge>
-              <span className="text-[11px] text-muted-foreground">Real order total</span>
+
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Orders</span>
+              <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
+                <ShoppingBag className="h-5 w-5" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{totalOrdersCount}</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px]">
+                  {pendingOrdersCount} Pending
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">Orders placed</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Customers</span>
+              <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
+                <Users className="h-5 w-5" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{customers.length}</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px]">
+                  {customers.length} Accounts
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">Registered customers</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Live Products</span>
+              <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
+                <Package className="h-5 w-5" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{products.length}</p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 border border-amber-500/20 font-extrabold text-[10px]">
+                  {lowStockCount} Low Stock
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium">Catalog items</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="surface-card p-5 rounded-3xl border bg-white space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Orders</span>
-            <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
-              <ShoppingBag className="h-4 w-4" />
+        {/* Row 2 Secondary Operational KPIs */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Pending Orders</p>
+              <p className="text-xl font-black text-slate-900 mt-0.5">{pendingOrdersCount}</p>
             </div>
+            <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/60 font-extrabold text-[11px]">
+              Queue
+            </span>
           </div>
-          <div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-foreground">{totalOrdersCount}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-bold text-[10px]">
-                {pendingOrdersCount} Pending
-              </Badge>
-              <span className="text-[11px] text-muted-foreground">Orders placed</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="surface-card p-5 rounded-3xl border bg-white space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Customers</span>
-            <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
-              <Users className="h-4 w-4" />
+          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Low Stock Items</p>
+              <p className="text-xl font-black text-slate-900 mt-0.5">{lowStockCount}</p>
             </div>
+            <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px]">
+              Threshold
+            </span>
           </div>
-          <div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-foreground">{customers.length}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold text-[10px]">
-                {customers.length} Accounts
-              </Badge>
-              <span className="text-[11px] text-muted-foreground">Registered DB profiles</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="surface-card p-5 rounded-3xl border bg-white space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Live Products</span>
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
-              <Package className="h-4 w-4" />
+          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Active Deliveries</p>
+              <p className="text-xl font-black text-slate-900 mt-0.5">{activeDeliveriesCount}</p>
             </div>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[11px]">
+              En Route
+            </span>
           </div>
-          <div>
-            <p className="font-display text-2xl sm:text-3xl font-black text-foreground">{products.length}</p>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold text-[10px]">
-                {lowStockCount} Low Stock
-              </Badge>
-              <span className="text-[11px] text-muted-foreground">Catalog products</span>
+
+          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Average Order Value</p>
+              <p className="text-xl font-black text-slate-900 mt-0.5">{gbp(averageOrderValue)}</p>
             </div>
+            <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px]">
+              AOV
+            </span>
           </div>
         </div>
       </div>
 
-      {/* 3. SECONDARY METRICS BAR */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="surface-card p-4 rounded-2xl border bg-white flex items-center justify-between">
+      {/* 3. MODULE / QUICK ACCESS GRID (NIZA CLOUD REFERENCE MATCH - LARGE GLASS CARDS) */}
+      <section className="space-y-4 pt-2">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pending Orders</p>
-            <p className="text-xl font-black text-foreground mt-0.5">{pendingOrdersCount}</p>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Enterprise Modules</h2>
+            <p className="text-xs text-slate-500 font-semibold">Select a module to get started</p>
           </div>
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold text-xs">
-            Queue
-          </Badge>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest hidden sm:inline">8 Active Modules</span>
         </div>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Low Stock Items</p>
-            <p className="text-xl font-black text-foreground mt-0.5">{lowStockCount}</p>
-          </div>
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-bold text-xs">
-            Threshold
-          </Badge>
-        </div>
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {MODULE_CARDS.map((module) => {
+            const IconComponent = module.icon;
+            return (
+              <Link
+                key={module.title}
+                to={module.href as never}
+                className="group relative surface-card bg-white/70 backdrop-blur-xl rounded-[28px] border border-white/80 p-8 min-h-[210px] flex flex-col items-center justify-center text-center space-y-4 hover:shadow-[0_14px_45px_rgba(225,29,72,0.12)] hover:border-red-500/40 hover:-translate-y-1.5 hover:bg-white/85 transition-all duration-300 cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.03)]"
+              >
+                {/* Floating Notification Badge */}
+                {module.badge !== undefined && (
+                  <span className="absolute top-4.5 right-4.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs px-2.5 py-0.5 rounded-full shadow-md shadow-red-600/30 border border-white/60">
+                    {module.badge}
+                  </span>
+                )}
 
-        <div className="surface-card p-4 rounded-2xl border bg-white flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Active Deliveries</p>
-            <p className="text-xl font-black text-foreground mt-0.5">{activeDeliveriesCount}</p>
-          </div>
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-bold text-xs">
-            En Route
-          </Badge>
-        </div>
+                {/* Large Centered Circular Icon Container (Glass Treatment) */}
+                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-red-500/15 via-rose-500/10 to-red-500/5 border border-red-500/20 text-red-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-red-600 group-hover:to-rose-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                  <IconComponent className="h-8 w-8" />
+                </div>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Average Order Value</p>
-            <p className="text-xl font-black text-foreground mt-0.5">{gbp(averageOrderValue)}</p>
-          </div>
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-xs">
-            AOV
-          </Badge>
+                {/* Module Title & Subtitle */}
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-lg group-hover:text-red-600 transition-colors">
+                    {module.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-semibold mt-1">
+                    {module.subtitle}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
         </div>
-      </div>
+      </section>
 
-      {/* 4. MAIN ANALYTICS SECTION */}
+      {/* 4. MAIN ANALYTICS CHARTS SECTION (FROSTED GLASS PANELS) */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left 2 Cols: Revenue & Performance Chart */}
-        <div className="lg:col-span-2 surface-card p-6 rounded-3xl border bg-white space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b pb-4">
+        <div className="lg:col-span-2 surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/50 pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-black text-foreground">Revenue Analytics</h2>
-                <Badge variant="outline" className={`text-[10px] font-bold gap-1 rounded-full ${chartTheme.badgeBg}`}>
-                  <chartTheme.Icon className="h-3 w-3" />
+                <h2 className="text-base font-black text-slate-900">Revenue Analytics</h2>
+                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${chartTheme.badgeBg}`}>
                   {chartTheme.badgeText}
-                </Badge>
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground">Real order totals from Supabase database</p>
+              <p className="text-xs text-slate-500 font-medium">Real order total history from Supabase database</p>
             </div>
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-white/80 p-1 rounded-xl border border-white/80 backdrop-blur-md">
               <Button
                 size="sm"
                 variant={analyticsMetric === "revenue" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("revenue")}
-                className="h-7 text-[11px] font-bold rounded-lg px-3"
+                className={cn("h-7 text-[11px] font-bold rounded-lg px-3", analyticsMetric === "revenue" && "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs")}
               >
                 Revenue
               </Button>
@@ -398,7 +506,7 @@ export function AdminDashboardView() {
                 size="sm"
                 variant={analyticsMetric === "orders" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("orders")}
-                className="h-7 text-[11px] font-bold rounded-lg px-3"
+                className={cn("h-7 text-[11px] font-bold rounded-lg px-3", analyticsMetric === "orders" && "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs")}
               >
                 Orders
               </Button>
@@ -406,7 +514,7 @@ export function AdminDashboardView() {
                 size="sm"
                 variant={analyticsMetric === "aov" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("aov")}
-                className="h-7 text-[11px] font-bold rounded-lg px-3"
+                className={cn("h-7 text-[11px] font-bold rounded-lg px-3", analyticsMetric === "aov" && "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs")}
               >
                 AOV
               </Button>
@@ -415,18 +523,18 @@ export function AdminDashboardView() {
 
           <div className="h-[280px] w-full">
             {orders.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed rounded-2xl bg-slate-50/50">
-                <BarChart2 className="h-8 w-8 text-muted-foreground/40" />
-                <p className="text-xs font-bold text-foreground">No order data yet</p>
-                <p className="text-[11px] text-muted-foreground">Revenue analytics will update when orders are created.</p>
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
+                <BarChart2 className="h-8 w-8 text-slate-300" />
+                <p className="text-xs font-bold text-slate-700">No order data yet</p>
+                <p className="text-[11px] text-slate-500">Revenue analytics will update when orders are created.</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={chartTheme.stroke} stopOpacity={0.35} />
-                      <stop offset="95%" stopColor={chartTheme.stroke} stopOpacity={0.0} />
+                    <linearGradient id="colorMetricRed" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#dc2626" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#dc2626" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -436,13 +544,13 @@ export function AdminDashboardView() {
                     contentStyle={{
                       backgroundColor: "#ffffff",
                       borderRadius: "16px",
-                      border: `1px solid ${chartTheme.stroke}40`,
+                      border: "1px solid #fee2e2",
                       fontSize: "12px",
                       boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
                     }}
                     formatter={(val: any) => [analyticsMetric === "orders" ? val : gbp(val), analyticsMetric.toUpperCase()]}
                   />
-                  <Area type="monotone" dataKey={analyticsMetric} stroke={chartTheme.stroke} strokeWidth={3} fillOpacity={1} fill="url(#colorMetric)" />
+                  <Area type="monotone" dataKey={analyticsMetric} stroke="#dc2626" strokeWidth={3} fillOpacity={1} fill="url(#colorMetricRed)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -450,22 +558,22 @@ export function AdminDashboardView() {
         </div>
 
         {/* Right Col: Category Breakdown */}
-        <div className="surface-card p-6 rounded-3xl border bg-white space-y-6">
-          <div className="flex items-center justify-between border-b pb-4">
+        <div className="surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
             <div>
-              <h2 className="text-base font-black text-foreground">Category Performance</h2>
-              <p className="text-xs text-muted-foreground">Database product distribution</p>
+              <h2 className="text-base font-black text-slate-900">Category Performance</h2>
+              <p className="text-xs text-slate-500 font-medium">Product distribution matrix</p>
             </div>
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-white/80 p-1 rounded-xl border border-white/80 backdrop-blur-md">
               <button
                 onClick={() => setCategoryMetric("revenue")}
-                className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${categoryMetric === "revenue" ? "bg-white text-foreground shadow-2xs" : "text-muted-foreground"}`}
+                className={cn("text-[10px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer", categoryMetric === "revenue" ? "bg-white text-slate-900 shadow-2xs font-extrabold" : "text-slate-500")}
               >
                 Price
               </button>
               <button
                 onClick={() => setCategoryMetric("units")}
-                className={`text-[10px] font-bold px-2 py-1 rounded-lg transition-colors ${categoryMetric === "units" ? "bg-white text-foreground shadow-2xs" : "text-muted-foreground"}`}
+                className={cn("text-[10px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer", categoryMetric === "units" ? "bg-white text-slate-900 shadow-2xs font-extrabold" : "text-slate-500")}
               >
                 Stock
               </button>
@@ -474,10 +582,10 @@ export function AdminDashboardView() {
 
           <div className="h-[280px] w-full">
             {products.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed rounded-2xl bg-slate-50/50">
-                <Layers className="h-8 w-8 text-muted-foreground/40" />
-                <p className="text-xs font-bold text-foreground">No categories yet</p>
-                <p className="text-[11px] text-muted-foreground">Product breakdown will render here.</p>
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
+                <Layers className="h-8 w-8 text-slate-300" />
+                <p className="text-xs font-bold text-slate-700">No categories yet</p>
+                <p className="text-[11px] text-slate-500">Product breakdown will render here.</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -485,7 +593,7 @@ export function AdminDashboardView() {
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#475569" }} width={80} />
                   <Tooltip formatter={(val: any) => [categoryMetric === "revenue" ? gbp(val) : val, categoryMetric.toUpperCase()]} />
-                  <Bar dataKey={categoryMetric} fill="var(--color-primary, #dc2626)" radius={[0, 8, 8, 0]} barSize={16} />
+                  <Bar dataKey={categoryMetric} fill="#dc2626" radius={[0, 8, 8, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -493,57 +601,57 @@ export function AdminDashboardView() {
         </div>
       </div>
 
-      {/* 5. ATTENTION REQUIRED QUEUE & QUICK ACTIONS */}
+      {/* 5. ATTENTION REQUIRED QUEUE & QUICK ACTIONS (FROSTED GLASS PANELS) */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Attention Required Cards */}
-        <div className="lg:col-span-2 surface-card p-6 rounded-3xl border bg-white space-y-4">
-          <div className="flex items-center justify-between border-b pb-4">
+        {/* Attention Required Queue */}
+        <div className="lg:col-span-2 surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <h2 className="text-base font-black text-foreground">Attention Required</h2>
+              <h2 className="text-base font-black text-slate-900">Attention Required</h2>
             </div>
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-bold text-xs">
+            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/20 font-extrabold text-xs">
               {pendingOrdersCount + lowStockCount} Actions Needed
-            </Badge>
+            </span>
           </div>
 
           {pendingOrdersCount === 0 && lowStockCount === 0 ? (
-            <div className="p-8 text-center space-y-2 border-2 border-dashed rounded-2xl bg-slate-50/50">
+            <div className="p-8 text-center space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
               <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
-              <p className="text-xs font-bold text-foreground">No attention items</p>
-              <p className="text-[11px] text-muted-foreground">All orders and inventory levels are healthy.</p>
+              <p className="text-xs font-bold text-slate-900">No attention items</p>
+              <p className="text-[11px] text-slate-500">All orders and inventory levels are healthy.</p>
             </div>
           ) : (
             <div className="space-y-3">
               {orders.filter((o) => o.status === "Pending").slice(0, 3).map((o) => (
-                <div key={o.id} className="p-4 rounded-2xl border bg-slate-50/50 flex items-center justify-between gap-4">
+                <div key={o.id} className="p-4 rounded-2xl border border-white/80 bg-white/80 flex items-center justify-between gap-4 shadow-2xs">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-amber-100 text-amber-700">
+                    <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 font-bold">
                       <Clock className="h-4 w-4" />
                     </div>
                     <div className="text-xs">
-                      <p className="font-bold text-foreground">Order #{o.order_number || o.id.slice(0, 8)} awaiting fulfillment</p>
-                      <p className="text-muted-foreground">{o.customer_name} · Total {gbp(o.total)}</p>
+                      <p className="font-extrabold text-slate-900">Order #{o.order_number || o.id.slice(0, 8)} awaiting fulfillment</p>
+                      <p className="text-slate-500 font-medium">{o.customer_name} · Total {gbp(o.total)}</p>
                     </div>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0">
+                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0 border-white/80 bg-white hover:bg-slate-50 shadow-2xs">
                     <Link to="/admin/orders">Review</Link>
                   </Button>
                 </div>
               ))}
 
               {inventoryAlerts.slice(0, 2).map((inv) => (
-                <div key={inv.id} className="p-4 rounded-2xl border bg-red-50/30 flex items-center justify-between gap-4">
+                <div key={inv.id} className="p-4 rounded-2xl border border-red-200/70 bg-red-50/40 flex items-center justify-between gap-4 shadow-2xs">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-red-100 text-red-700">
+                    <div className="p-2.5 rounded-xl bg-red-100 text-red-700">
                       <AlertTriangle className="h-4 w-4" />
                     </div>
                     <div className="text-xs">
-                      <p className="font-bold text-foreground">Low Stock Alert: {inv.products?.name || "Product"}</p>
-                      <p className="text-muted-foreground">Stock: {inv.current_stock} (Reorder threshold: {inv.reorder_threshold})</p>
+                      <p className="font-extrabold text-slate-900">Low Stock Alert: {inv.products?.name || "Product"}</p>
+                      <p className="text-slate-500 font-medium">Current Stock: {inv.current_stock} (Reorder threshold: {inv.reorder_threshold})</p>
                     </div>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0 border-red-200 text-red-700 hover:bg-red-50">
+                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0 border-red-200 text-red-700 bg-white hover:bg-red-50 shadow-2xs">
                     <Link to="/admin/inventory">Reorder</Link>
                   </Button>
                 </div>
@@ -552,29 +660,31 @@ export function AdminDashboardView() {
           )}
         </div>
 
-        {/* Quick Admin Actions */}
-        <div className="surface-card p-6 rounded-3xl border bg-white space-y-4">
-          <h2 className="text-base font-black text-foreground">Admin Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-2.5">
-            {[
-              { label: "Products", href: "/admin/products", icon: Package, color: "text-blue-600 bg-blue-50" },
-              { label: "Orders", href: "/admin/orders", icon: ShoppingBag, color: "text-emerald-600 bg-emerald-50" },
-              { label: "Customers", href: "/admin/customers", icon: Users, color: "text-purple-600 bg-purple-50" },
-              { label: "Inventory", href: "/admin/inventory", icon: Layers, color: "text-amber-600 bg-amber-50" },
-              { label: "Deliveries", href: "/admin/deliveries", icon: Truck, color: "text-red-600 bg-red-50" },
-              { label: "Audit Logs", href: "/admin/audit", icon: Activity, color: "text-slate-600 bg-slate-100" },
-            ].map((item) => (
-              <Link
-                key={item.label}
-                to={item.href as never}
-                className="p-3.5 rounded-2xl border bg-background hover:bg-slate-50 hover:border-primary/40 transition-all flex flex-col items-center justify-center text-center group"
-              >
-                <div className={`p-2.5 rounded-xl ${item.color} group-hover:scale-110 transition-transform mb-1.5`}>
-                  <item.icon className="h-4 w-4" />
+        {/* Audit Log Activity Feed */}
+        <div className="surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
+            <h2 className="text-base font-black text-slate-900">Recent Audit Logs</h2>
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs font-bold text-red-600 hover:text-red-700 p-0">
+              <Link to="/admin/audit">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {auditLogs.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">No recent audit log activity.</p>
+            ) : (
+              auditLogs.slice(0, 5).map((log) => (
+                <div key={log.id} className="p-3 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md space-y-1 shadow-2xs">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-extrabold text-slate-900 truncate max-w-[140px]">{log.action || "System Action"}</span>
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      {new Date(log.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium truncate">{log.details || log.target_table || "Logged action"}</p>
                 </div>
-                <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{item.label}</span>
-              </Link>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { products, type Product } from "@/data/catalog";
+import { type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 
 export type Role = "customer" | "manager" | "admin";
@@ -44,45 +44,162 @@ function usePersisted<T>(key: string, initial: T) {
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [cart, setCart] = usePersisted<CartLine[]>("jss.cart", []);
-  const [wishlist, setWishlist] = usePersisted<string[]>("jss.wishlist", []);
+  const [wishlist, setWishlist] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("jss.wishlist");
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Sync user's wishlist from Supabase wishlists + wishlist_items tables
+  const syncWishlistWithDb = useCallback(async (userId: string) => {
+    if (!userId || typeof userId !== "string") return;
+
+    try {
+      // 1. Get or create user's wishlist container row
+      const { data: wList, error: getWishlistErr } = await supabase
+        .from("wishlists")
+        .select("id")
+        .eq("user_id", userId);
+
+      if (getWishlistErr) {
+        console.error("Wishlist fetch error:", getWishlistErr.message);
+      }
+
+      let wid: string | null = null;
+      if (wList && wList.length > 0) {
+        wid = wList[0].id;
+      } else {
+        const { data: newWishlist, error: createWishlistErr } = await supabase
+          .from("wishlists")
+          .insert({ user_id: userId })
+          .select("id");
+
+        if (createWishlistErr) {
+          console.error("Wishlist create error:", createWishlistErr.message);
+        }
+        if (newWishlist && newWishlist.length > 0) {
+          wid = newWishlist[0].id;
+        }
+      }
+
+      if (!wid) {
+        console.warn("Could not resolve wishlist container for user:", userId);
+        return;
+      }
+
+      // 2. Fetch all wishlist items for this wishlist
+      const { data: items, error: itemsErr } = await supabase
+        .from("wishlist_items")
+        .select("id, product_id, products(slug)")
+        .eq("wishlist_id", wid);
+
+      if (itemsErr) {
+        console.error("Wishlist items fetch error:", itemsErr.message);
+        return;
+      }
+
+      let dbSlugs = (items || [])
+        .map((item: any) => item.products?.slug)
+        .filter(Boolean) as string[];
+
+      // Fallback: If products join didn't populate slug, resolve by product_id directly
+      if (dbSlugs.length === 0 && items && items.length > 0) {
+        const pids = items.map((i: any) => i.product_id).filter(Boolean);
+        if (pids.length > 0) {
+          const { data: directProds } = await supabase
+            .from("products")
+            .select("id, slug")
+            .in("id", pids);
+          if (directProds) {
+            dbSlugs = directProds.map((p) => p.slug).filter(Boolean);
+          }
+        }
+      }
+
+      // 3. Migrate any guest wishlist items from localStorage if not already in DB
+      let finalSlugs = [...dbSlugs];
+      try {
+        const rawLocal = localStorage.getItem("jss.wishlist");
+        if (rawLocal) {
+          const localSlugs = JSON.parse(rawLocal) as string[];
+          if (Array.isArray(localSlugs) && localSlugs.length > 0) {
+            const missingSlugs = localSlugs.filter((s) => !dbSlugs.includes(s));
+            if (missingSlugs.length > 0) {
+              const { data: prodsToMigrate } = await supabase
+                .from("products")
+                .select("id, slug")
+                .in("slug", missingSlugs);
+
+              if (prodsToMigrate && prodsToMigrate.length > 0) {
+                const insertPayload = prodsToMigrate.map((p) => ({
+                  wishlist_id: wid!,
+                  product_id: p.id,
+                }));
+                await supabase.from("wishlist_items").insert(insertPayload);
+                prodsToMigrate.forEach((p) => {
+                  if (!finalSlugs.includes(p.slug)) finalSlugs.push(p.slug);
+                });
+              }
+            }
+            // Clear the guest local storage cache once migrated
+            localStorage.removeItem("jss.wishlist");
+          }
+        }
+      } catch (migrationErr) {
+        console.error("Guest wishlist migration error:", migrationErr);
+      }
+
+      setWishlist(Array.from(new Set(finalSlugs)));
+    } catch (err) {
+      console.error("Failed to sync wishlist from Supabase:", err);
+    }
+  }, []);
 
   // Listen to Supabase Auth State Changes
   useEffect(() => {
     const fetchSessionUser = async (session: any) => {
-      if (!session?.user) {
+      if (!session?.user?.id) {
         setUser(null);
         return;
       }
+
+      const currentUid = session.user.id;
 
       try {
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", session.user.id)
+          .eq("id", currentUid)
           .single();
 
         setUser({
-          id: session.user.id,
+          id: currentUid,
           name: profile?.full_name || session.user.email?.split("@")[0] || "Customer",
           email: session.user.email || "",
           role: (profile?.role as Role) || "customer",
         });
       } catch {
         setUser({
-          id: session.user.id,
+          id: currentUid,
           name: session.user.email?.split("@")[0] || "Customer",
           email: session.user.email || "",
           role: "customer",
         });
       }
+
+      // Sync Supabase-backed Wishlist for authenticated user
+      syncWishlistWithDb(currentUid);
     };
 
-    // Initial check
+    // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       fetchSessionUser(session);
     });
 
-    // Auth listener
+    // Auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       fetchSessionUser(session);
     });
@@ -90,7 +207,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [syncWishlistWithDb]);
 
   const login: Store["login"] = useCallback(async (email, password) => {
     try {
@@ -103,20 +220,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: error.message };
       }
 
-      if (data.user) {
+      if (data.user?.id) {
+        const uid = data.user.id;
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", data.user.id)
+          .eq("id", uid)
           .single();
 
         const u: User = {
-          id: data.user.id,
+          id: uid,
           name: profile?.full_name || data.user.email?.split("@")[0] || "Customer",
           email: data.user.email || email,
           role: (profile?.role as Role) || "customer",
         };
         setUser(u);
+        syncWishlistWithDb(uid);
         return { ok: true, user: u };
       }
 
@@ -124,7 +243,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       return { ok: false, error: err?.message || "Authentication failed" };
     }
-  }, []);
+  }, [syncWishlistWithDb]);
 
   const register: Store["register"] = useCallback(async (name, email, password, role = "customer") => {
     try {
@@ -143,14 +262,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: error.message };
       }
 
-      if (data.user) {
+      if (data.user?.id) {
+        const uid = data.user.id;
         const u: User = {
-          id: data.user.id,
+          id: uid,
           name,
           email,
           role,
         };
         setUser(u);
+        syncWishlistWithDb(uid);
         return { ok: true, user: u };
       }
 
@@ -158,7 +279,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       return { ok: false, error: err?.message || "Registration error" };
     }
-  }, []);
+  }, [syncWishlistWithDb]);
 
   const logout = useCallback(async () => {
     try {
@@ -167,7 +288,106 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
     setUser(null);
+    setWishlist([]);
+    try {
+      localStorage.removeItem("jss.wishlist");
+    } catch {}
   }, []);
+
+  const toggleWishlist = useCallback(async (slug: string) => {
+    if (!slug) return;
+
+    // 1. Optimistic UI update for immediate feedback
+    setWishlist((current) => {
+      const exists = current.includes(slug);
+      return exists ? current.filter((s) => s !== slug) : [...current, slug];
+    });
+
+    // 2. Obtain current user ID directly from state or live session
+    let effectiveUserId: string | null = user?.id || null;
+    if (!effectiveUserId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        effectiveUserId = session.user.id;
+      }
+    }
+
+    if (!effectiveUserId) {
+      // Unauthenticated guest user: store in localStorage
+      try {
+        const raw = localStorage.getItem("jss.wishlist");
+        const current = raw ? (JSON.parse(raw) as string[]) : [];
+        const next = current.includes(slug) ? current.filter((s) => s !== slug) : [...current, slug];
+        localStorage.setItem("jss.wishlist", JSON.stringify(next));
+      } catch {}
+      return;
+    }
+
+    // 3. Authenticated user: persist to Supabase wishlists + wishlist_items
+    try {
+      // Get or create user's wishlist container row
+      const { data: wList } = await supabase
+        .from("wishlists")
+        .select("id")
+        .eq("user_id", effectiveUserId);
+
+      let wid: string | null = null;
+      if (wList && wList.length > 0) {
+        wid = wList[0].id;
+      } else {
+        const { data: newWishlist } = await supabase
+          .from("wishlists")
+          .insert({ user_id: effectiveUserId })
+          .select("id");
+        if (newWishlist && newWishlist.length > 0) {
+          wid = newWishlist[0].id;
+        }
+      }
+
+      if (!wid) {
+        console.error("Failed to obtain wishlist ID for user:", effectiveUserId);
+        return;
+      }
+
+      // Resolve product ID by slug
+      const { data: prod } = await supabase
+        .from("products")
+        .select("id")
+        .eq("slug", slug)
+        .maybeSingle();
+
+      if (!prod?.id) {
+        console.error("Product slug not found in DB:", slug);
+        return;
+      }
+
+      // Check if item already exists in wishlist_items
+      const { data: existingItems } = await supabase
+        .from("wishlist_items")
+        .select("id")
+        .eq("wishlist_id", wid)
+        .eq("product_id", prod.id);
+
+      if (existingItems && existingItems.length > 0) {
+        // Remove from DB
+        await supabase
+          .from("wishlist_items")
+          .delete()
+          .eq("wishlist_id", wid)
+          .eq("product_id", prod.id);
+      } else {
+        // Add to DB
+        await supabase
+          .from("wishlist_items")
+          .insert({
+            wishlist_id: wid,
+            product_id: prod.id,
+          });
+      }
+    } catch (err) {
+      console.error("Failed to toggle wishlist in Supabase:", err);
+    }
+  }, [user?.id]);
 
   const value = useMemo<Store>(
     () => ({
@@ -187,10 +407,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       removeFromCart: (slug) => setCart((c) => c.filter((l) => l.slug !== slug)),
       clearCart: () => setCart([]),
       wishlist,
-      toggleWishlist: (slug) =>
-        setWishlist((w) => (w.includes(slug) ? w.filter((s) => s !== slug) : [...w, slug])),
+      toggleWishlist,
     }),
-    [user, cart, wishlist, login, register, logout, setCart, setWishlist],
+    [user, cart, wishlist, login, register, logout, setCart, toggleWishlist],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -202,7 +421,6 @@ export function useStore() {
   return ctx;
 }
 
-export const findProduct = (slug: string): Product | undefined => products.find((p) => p.slug === slug);
 
 export const gbp = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
@@ -264,7 +482,7 @@ export function useCartTotals() {
         const staleSlugs: string[] = [];
 
         for (const line of cart) {
-          const prod = dbMap.get(line.slug) || findProduct(line.slug);
+          const prod = dbMap.get(line.slug);
           if (prod) {
             validLines.push({ ...line, product: prod });
           } else {

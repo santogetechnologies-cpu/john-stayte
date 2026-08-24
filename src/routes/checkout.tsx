@@ -240,7 +240,40 @@ function Checkout() {
         }
       }
 
-      // 7. Clear Cart ONLY AFTER database success
+      // 7. Create Invoice Record in Supabase
+      try {
+        await supabase.from("invoices").insert([
+          {
+            invoice_number: `INV-${orderNumber.replace("JSS-", "")}`,
+            order_id: newOrder.id,
+            customer_id: currentUserId,
+            total_amount: finalTotal,
+            status: "Paid",
+          },
+        ]);
+      } catch (invErr) {
+        console.error("Invoice creation warning:", invErr);
+      }
+
+      // 8. Create Customer & Admin Notifications
+      try {
+        if (currentUserId) {
+          await supabase.from("notifications").insert([
+            {
+              user_id: currentUserId,
+              title: `Order #${orderNumber} Confirmed`,
+              message: `Your order for ${verifiedItems.length} item(s) totalling ${gbp(finalTotal)} has been received.`,
+              category: "order",
+              read: false,
+              is_read: false,
+            },
+          ]);
+        }
+      } catch (notifErr) {
+        console.error("Notification creation warning:", notifErr);
+      }
+
+      // 9. Clear Cart ONLY AFTER database success
       clearCart();
       toast.success(`Order #${orderNumber} placed successfully!`);
       navigate({ to: "/account/orders" });

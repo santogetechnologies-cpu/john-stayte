@@ -184,9 +184,9 @@
 }
 
 @utility section-padding {
-  padding-block: 4rem;
+  padding-block: 2.75rem;
   @media (min-width: 768px) {
-    padding-block: 5.5rem;
+    padding-block: 3.75rem;
   }
 }
 
@@ -207,4 +207,34 @@
   &::-webkit-scrollbar-thumb:hover {
     background-color: oklch(0.75 0.008 255);
   }
+}
+
+/* =========================================================================
+   ISOLATED SECTION WRAPPERS (Scoped to avoid cross-section CSS collisions)
+   ========================================================================= */
+.why-trust-us-section {
+  contain: layout style;
+}
+
+.filling-stations-section {
+  contain: layout style;
+}
+
+@keyframes timeline-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+@utility animate-timeline-pulse {
+  animation: timeline-pulse 2s ease-in-out infinite;
 }

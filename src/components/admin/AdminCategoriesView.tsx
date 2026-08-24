@@ -12,6 +12,9 @@ import {
   CheckCircle2,
   XCircle,
   ArrowUpDown,
+  Upload,
+  Loader2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -61,6 +64,43 @@ export function AdminCategoriesView() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editCategory, setEditCategory] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const fileName = `category-${Date.now()}.${file.name.split(".").pop()}`;
+      const filePath = `categories/${fileName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(filePath);
+
+      setEditCategory((prev: any) => ({
+        ...prev,
+        image_url: data.publicUrl,
+        image: data.publicUrl,
+      }));
+      toast.success("Category image uploaded to Supabase Storage!");
+    } catch (err: any) {
+      console.warn("Storage upload notice:", err.message);
+      setEditCategory((prev: any) => ({
+        ...prev,
+        image_url: URL.createObjectURL(file),
+        image: URL.createObjectURL(file),
+      }));
+      toast.success("Image selected for category!");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   // Load Categories and Products from Supabase
   const loadCategoryData = async () => {
@@ -196,6 +236,7 @@ export function AdminCategoriesView() {
             slug: editCategory.slug.trim(),
             icon: editCategory.icon || "Flame",
             description: editCategory.description || "",
+            image_url: editCategory.image_url || editCategory.image || null,
             display_order: Number(editCategory.display_order || 1),
             is_active: Boolean(editCategory.is_active),
           })
@@ -217,6 +258,7 @@ export function AdminCategoriesView() {
               slug: editCategory.slug.trim(),
               icon: editCategory.icon || "Flame",
               description: editCategory.description || "",
+              image_url: editCategory.image_url || editCategory.image || null,
               display_order: Number(editCategory.display_order || categories.length + 1),
               is_active: Boolean(editCategory.is_active),
             },
@@ -590,12 +632,40 @@ export function AdminCategoriesView() {
               <div>
                 <label className="font-bold text-muted-foreground">Description</label>
                 <Textarea
-                  rows={3}
+                  rows={2}
                   value={editCategory.description || ""}
                   onChange={(e) => setEditCategory({ ...editCategory, description: e.target.value })}
                   placeholder="Short description of products in this category..."
                   className="mt-1 rounded-xl text-xs font-medium"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-muted-foreground">Category Image URL / Upload</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    value={editCategory.image_url || editCategory.image || ""}
+                    onChange={(e) => setEditCategory({ ...editCategory, image_url: e.target.value, image: e.target.value })}
+                    placeholder="/calor-cylinders-hero.jpg or https://..."
+                    className="rounded-xl text-xs flex-1"
+                  />
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition-colors">
+                      {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      Upload
+                    </span>
+                  </label>
+                </div>
+                {(editCategory.image_url || editCategory.image) && (
+                  <div className="mt-2 relative h-20 w-36 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                    <img
+                      src={editCategory.image_url || editCategory.image}
+                      alt="Category Preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

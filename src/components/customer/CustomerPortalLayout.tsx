@@ -66,7 +66,7 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   const customerNavGroups: NavGroup[] = [
     {
       groupLabel: "OVERVIEW",
-      items: [{ title: "Dashboard", href: "/account", icon: LayoutDashboard }],
+      items: [{ title: "Home", href: "/account", icon: LayoutDashboard }],
     },
     {
       groupLabel: "SHOPPING",
@@ -110,11 +110,11 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   };
 
   const renderNavItems = (isMobile = false) => (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {customerNavGroups.map((group) => (
-        <div key={group.groupLabel} className="space-y-1">
+        <div key={group.groupLabel} className="space-y-0.5">
           {(!collapsed || isMobile) && (
-            <p className="px-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-1.5 select-none">
+            <p className="px-3 text-[9px] font-bold text-slate-400 uppercase tracking-[0.12em] mb-2 select-none">
               {group.groupLabel}
             </p>
           )}
@@ -128,19 +128,29 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.href + item.title}
                 to={item.href as never}
-                className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all select-none ${isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-slate-100"
-                  } ${collapsed && !isMobile ? "justify-center px-2 py-2.5" : ""}`}
+                className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all duration-150 select-none ${
+                  isActive
+                    ? "bg-primary text-white shadow-sm shadow-primary/30"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                } ${collapsed && !isMobile ? "justify-center px-2.5" : ""}`}
               >
-                <item.icon className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"}`} />
+                <item.icon
+                  className={`h-[17px] w-[17px] shrink-0 transition-all duration-150 ${
+                    isActive
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-slate-700 group-hover:scale-110"
+                  }`}
+                />
                 {(!collapsed || isMobile) && (
-                  <span className="flex-1 truncate">{item.title}</span>
+                  <span className="flex-1 truncate leading-none">{item.title}</span>
                 )}
                 {(!collapsed || isMobile) && item.badge && (
                   <span
-                    className={`ml-auto px-1.5 py-0.5 rounded-md text-[10px] font-extrabold ${isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                      }`}
+                    className={`ml-auto px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                      isActive
+                        ? "bg-white/25 text-white"
+                        : "bg-primary/10 text-primary"
+                    }`}
                   >
                     {item.badge}
                   </span>
@@ -153,7 +163,7 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
                 <TooltipProvider key={item.href + item.title} delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                    <TooltipContent side="right" className="font-bold text-xs">
+                    <TooltipContent side="right" className="font-semibold text-xs">
                       {item.title}
                     </TooltipContent>
                   </Tooltip>
@@ -169,130 +179,145 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-foreground font-sans antialiased flex flex-col">
+    <div className="min-h-screen bg-[#f8f8fa] text-foreground font-sans antialiased flex flex-col">
       {/* GLOBAL PORTAL SEARCH DIALOG */}
       <CustomerGlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 h-16 border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs">
-        {/* Left Branding & Breadcrumbs */}
+      <header className="sticky top-0 z-40 h-[60px] border-b border-slate-200/70 bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+        {/* Left: Branding & Breadcrumbs */}
         <div className="flex items-center gap-3">
           {/* Mobile Sheet Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-xl">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="lg:hidden rounded-lg h-9 w-9 hover:bg-slate-100">
+                <Menu className="h-[18px] w-[18px] text-slate-600" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-4 pt-6 bg-white">
-              <div className="flex items-center gap-3 px-2 mb-6">
+            <SheetContent side="left" className="w-72 p-0 pt-0 bg-white border-r border-slate-200">
+              <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
                 <img src={logo} alt="JSS" className="h-8 w-8 rounded-lg" />
                 <div>
-                  <h2 className="font-display font-extrabold text-sm tracking-tight text-foreground">JSS CUSTOMER PORTAL</h2>
-                  <p className="text-[10px] text-muted-foreground font-medium">John Stayte Services</p>
+                  <h2 className="font-display font-extrabold text-[13px] tracking-tight text-foreground">JSS CUSTOMER PORTAL</h2>
+                  <p className="text-[10px] text-slate-400 font-medium">John Stayte Services</p>
                 </div>
               </div>
-              <div className="max-h-[calc(100vh-100px)] overflow-y-auto pr-1">
+              <div className="p-4 max-h-[calc(100vh-80px)] overflow-y-auto">
                 {renderNavItems(true)}
               </div>
             </SheetContent>
           </Sheet>
 
-          <Link to="/account" className="flex items-center gap-3 group select-none">
-            <img src={logo} alt="JSS Logo" className="h-9 w-9 rounded-xl shadow-xs shrink-0 group-hover:scale-105 transition-transform" />
+          <Link to="/account" className="flex items-center gap-2.5 group select-none">
+            <img
+              src={logo}
+              alt="JSS Logo"
+              className="h-8 w-8 rounded-lg shrink-0 group-hover:opacity-90 transition-opacity"
+            />
             <div className="hidden sm:block">
               <div className="flex items-center gap-2">
-                <span className="font-display font-black text-sm tracking-tight text-foreground">JSS CUSTOMER PORTAL</span>
+                <span className="font-display font-black text-[13px] tracking-tight text-foreground">
+                  JSS CUSTOMER PORTAL
+                </span>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium -mt-0.5">
-                Account / <span className="text-foreground font-bold">{getBreadcrumb()}</span>
+              <p className="text-[11px] text-slate-400 font-medium -mt-0.5">
+                Account /{" "}
+                <span className="text-slate-700 font-semibold">{getBreadcrumb()}</span>
               </p>
             </div>
           </Link>
         </div>
 
-        {/* Center Search Bar */}
-        <div className="flex-1 max-w-md hidden md:block">
+        {/* Center: Search Bar */}
+        <div className="flex-1 max-w-sm hidden md:block">
           <button
             onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center justify-between gap-3 px-3.5 py-2 rounded-full border border-slate-200 bg-slate-50/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all text-xs text-muted-foreground group"
+            className="w-full flex items-center justify-between gap-3 px-3.5 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-300 hover:shadow-sm transition-all duration-150 text-[12px] text-slate-400 group"
           >
             <span className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-              <span>Search account, orders, products...</span>
+              <Search className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-500 shrink-0" />
+              <span>Search orders, products...</span>
             </span>
-            <kbd className="flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-bold border text-muted-foreground shadow-2xs">
-              <span>⌘</span>K
+            <kbd className="flex items-center gap-0.5 rounded-md bg-white px-1.5 py-0.5 text-[10px] font-bold border border-slate-200 text-slate-400 shadow-xs">
+              ⌘K
             </kbd>
           </button>
         </div>
 
-        {/* Right Header Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Right: Header Actions */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSearchOpen(true)}
-            className="md:hidden rounded-full hover:bg-slate-100"
+            className="md:hidden rounded-lg h-9 w-9 hover:bg-slate-100"
           >
-            <Search className="h-4 w-4 text-muted-foreground" />
+            <Search className="h-4 w-4 text-slate-500" />
           </Button>
 
           <CustomerNotificationsPopover />
 
-          <Button asChild variant="outline" size="sm" className="hidden sm:inline-flex rounded-full text-xs font-bold gap-1.5 border-slate-200 hover:bg-slate-50">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex rounded-lg text-[12px] font-semibold gap-1.5 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 h-8 px-3"
+          >
             <Link to="/">
-              <ExternalLink className="h-3.5 w-3.5 text-primary" /> View Site
+              <ExternalLink className="h-3.5 w-3.5 text-primary" />
+              View Site
             </Link>
           </Button>
 
-          <div className="h-5 w-[1px] bg-slate-200 mx-1 hidden sm:block" />
+          <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
 
-          {/* Customer Profile Menu Dropdown */}
+          {/* Customer Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-100 transition-colors focus:outline-none select-none">
-                <Avatar className="h-8 w-8 border border-slate-200 shadow-2xs">
-                  <AvatarFallback className="bg-primary text-white font-black text-xs">
+              <button className="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-100 transition-colors duration-150 focus:outline-none select-none">
+                <Avatar className="h-7 w-7 border border-slate-200">
+                  <AvatarFallback className="bg-primary text-white font-black text-[11px]">
                     {customerName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden xl:block text-left pr-1">
-                  <p className="text-xs font-bold leading-tight text-foreground truncate max-w-[120px]">{customerName}</p>
-                  <p className="text-[10px] font-medium text-muted-foreground leading-tight">Customer</p>
+                <div className="hidden xl:block text-left pr-0.5">
+                  <p className="text-[12px] font-bold leading-tight text-foreground truncate max-w-[110px]">
+                    {customerName}
+                  </p>
+                  <p className="text-[10px] font-medium text-slate-400 leading-tight">Customer</p>
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5 shadow-xl border bg-white">
-              <DropdownMenuLabel className="p-2">
-                <p className="text-xs font-bold text-foreground">{customerName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{customerEmail}</p>
+            <DropdownMenuContent align="end" className="w-54 rounded-xl p-1.5 shadow-lg border border-slate-200 bg-white">
+              <DropdownMenuLabel className="px-2.5 py-2">
+                <p className="text-[12px] font-bold text-foreground">{customerName}</p>
+                <p className="text-[11px] text-slate-400 truncate font-medium">{customerEmail}</p>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/account/profile" className="flex items-center gap-2 text-xs font-medium">
-                  <User className="h-4 w-4 text-muted-foreground" /> My Profile
+              <DropdownMenuSeparator className="my-1" />
+              <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                <Link to="/account/profile" className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2">
+                  <User className="h-3.5 w-3.5 text-slate-400" /> My Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/account/settings" className="flex items-center gap-2 text-xs font-medium">
-                  <Settings className="h-4 w-4 text-muted-foreground" /> Account Settings
+              <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                <Link to="/account/settings" className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2">
+                  <Settings className="h-3.5 w-3.5 text-slate-400" /> Account Settings
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/" className="flex items-center gap-2 text-xs font-medium">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" /> View Public Site
+              <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
+                <Link to="/" className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2">
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" /> View Public Site
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem
                 onClick={() => {
                   logout();
                   navigate({ to: "/" });
                 }}
-                className="rounded-xl cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 text-xs font-semibold"
+                className="rounded-lg cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 text-[12px] font-semibold px-2.5 py-2"
               >
-                <LogOut className="h-4 w-4 mr-2" /> Sign out
+                <LogOut className="h-3.5 w-3.5 mr-2" /> Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -303,25 +328,26 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 flex min-h-0">
         {/* DESKTOP COLLAPSIBLE SIDEBAR */}
         <aside
-          className={`hidden lg:flex flex-col border-r border-slate-200/80 bg-white transition-all duration-300 relative z-20 ${collapsed ? "w-18" : "w-64"
-            }`}
+          className={`hidden lg:flex flex-col border-r border-slate-200/80 bg-white transition-all duration-300 relative z-20 ${
+            collapsed ? "w-[68px]" : "w-[232px]"
+          }`}
         >
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="absolute -right-3 top-6 z-30 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-all hover:scale-110"
+            className="absolute -right-3 top-5 z-30 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-all duration-150 hover:scale-110"
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
           </button>
 
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-6">
+          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
             {renderNavItems(false)}
           </div>
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8 animate-rise">
+        <main className="flex-1 min-w-0 overflow-y-auto p-5 sm:p-7 lg:p-8">
+          <div className="max-w-7xl mx-auto space-y-7 animate-rise">
             {children}
           </div>
         </main>
