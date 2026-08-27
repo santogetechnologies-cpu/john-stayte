@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Bell, Check, Sparkles } from "lucide-react";
 import {
   Popover,
@@ -10,33 +11,123 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerNotificationsPopover() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
 
-  useEffect(() => {
-    async function loadNotifications() {
-      try {
-        const { data } = await supabase
-          .from("notifications")
+  const loadNotifications = async () => {
+    try {
+      const [
+        { data: notifsData },
+        { data: custNotifsData },
+        { data: ticketsData },
+      ] = await Promise.all([
+        supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(10),
+        supabase.from("customer_notifications").select("*").order("created_at", { ascending: false }).limit(10),
+        supabase
+          .from("support_tickets")
           .select("*")
+          .neq("customer_email", "deleted_test_ticket@jss.com")
+          .neq("customer_email", "admin@jss.com")
           .order("created_at", { ascending: false })
-          .limit(10);
-        setNotifications(data || []);
+          .limit(10),
+      ]);
+
+      const ticketNotifs = (ticketsData || []).map((t: any) => ({
+        id: `notif_ticket_${t.id}`,
+        support_request_id: t.id,
+        title: "New customer support request",
+        message: `Customer ${t.customer_name || t.customer_email} submitted a new support request: "${t.subject}".`,
+        category: "Support",
+        read: t.status === "Resolved",
+        is_read: t.status === "Resolved",
+        created_at: t.created_at,
+        link: `/manager/enquiries?ticketId=${t.id}`,
+      }));
+
+      const formattedCustNotifs = (custNotifsData || []).map((c: any) => ({
+        ...c,
+        category: "Support",
+        read: Boolean(c.is_read),
+        is_read: Boolean(c.is_read),
+      }));
+
+      const combined = [...ticketNotifs, ...formattedCustNotifs, ...((notifsData as any[]) || [])];
+      
+      const seen = new Set();
+      const uniqueNotifs = combined.filter((n: any) => {
+        const key = n.support_request_id || n.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      setNotifications(uniqueNotifs);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+
+    const ticketsChannel = supabase
+      .channel("manager_popover_tickets_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "support_tickets" },
+        () => loadNotifications()
+      )
+      .subscribe();
+
+    const notifsChannel = supabase
+      .channel("manager_popover_notifications_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "customer_notifications" },
+        () => loadNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketsChannel);
+      supabase.removeChannel(notifsChannel);
+    };
+  }, []);
+
+  const unreadCount = notifications.filter((n: any) => !n.is_read && !n.read).length;
+
+  const markAllRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read: true })));
+    try {
+      await supabase
+        .from("customer_notifications")
+        .update({ is_read: true })
+        .eq("is_read", false);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const handleItemClick = async (item: any) => {
+    const isUnread = !item.is_read && !item.read;
+    if (isUnread) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === item.id ? { ...n, is_read: true, read: true } : n))
+      );
+      try {
+        if (item.id && typeof item.id === "string" && !item.id.startsWith("notif_ticket_")) {
+          await supabase
+            .from("customer_notifications")
+            .update({ is_read: true })
+            .eq("id", item.id);
+        }
       } catch {
         /* ignore */
       }
     }
-    loadNotifications();
-  }, []);
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-  const markAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    try {
-      await supabase.from("notifications").update({ is_read: true }).eq("is_read", false);
-    } catch {
-      /* ignore */
-    }
+    const targetLink = item.link || "/manager/enquiries";
+    navigate({ to: targetLink as any });
   };
 
   return (
@@ -80,24 +171,30 @@ export function ManagerNotificationsPopover() {
               <p className="text-xs font-medium">All caught up! No unread alerts.</p>
             </div>
           ) : (
-            notifications.map((item) => (
-              <div
-                key={item.id}
-                className={`flex gap-3 p-3.5 hover:bg-muted/40 transition-colors text-left ${!item.is_read ? "bg-primary/5" : ""}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-xs font-bold text-foreground truncate">{item.title}</p>
-                    <span className="text-[10px] text-muted-foreground shrink-0">
-                      {new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+            notifications.map((item: any) => {
+              const isUnread = !item.is_read && !item.read;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleItemClick(item)}
+                  className={`flex gap-3 p-3.5 hover:bg-muted/40 transition-colors text-left cursor-pointer ${
+                    isUnread ? "bg-primary/5 font-semibold" : ""
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-bold text-foreground truncate">{item.title}</p>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                      {item.message || item.description}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                    {item.message || item.description}
-                  </p>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </PopoverContent>

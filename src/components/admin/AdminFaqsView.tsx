@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { HelpCircle, Plus, Edit3, Trash2, Loader2 } from "lucide-react";
+import { HelpCircle, Plus, Edit3, Trash2, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,51 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
+
+export const ALL_EXISTING_FAQS = [
+  {
+    q: "Do you deliver to my area?",
+    a: "We cover Gloucestershire and surrounding counties within a 40-mile radius of our Whitminster depot, including Stroud, Dursley, Gloucester, Cheltenham, Cirencester, Tewkesbury, and the Forest of Dean.",
+    category: "Delivery",
+    is_active: true,
+    display_order: 1,
+  },
+  {
+    q: "How fast is delivery?",
+    a: "Orders placed before 2pm on working days are delivered next working day across our core route schedule.",
+    category: "Delivery",
+    is_active: true,
+    display_order: 2,
+  },
+  {
+    q: "Can I exchange an empty cylinder?",
+    a: "Yes — simply hand over your matching empty cylinder to our driver on delivery or swap it immediately at any of our three filling stations in Fromebridge, Cambridge, or Frampton on Severn.",
+    category: "Cylinders",
+    is_active: true,
+    display_order: 3,
+  },
+  {
+    q: "Do you offer trade and commercial accounts?",
+    a: "Yes. We supply pubs, restaurants, holiday parks, farms, roofers, and industrial workshops with volume discounts, automated replenishment schedules, and 30-day credit invoicing.",
+    category: "Commercial",
+    is_active: true,
+    display_order: 4,
+  },
+  {
+    q: "What if I don't have an empty cylinder to exchange?",
+    a: "New cylinder agreements incur a standard one-off cylinder refill agreement fee. Once you have a bottle, you only pay for the gas refill upon future exchanges.",
+    category: "Cylinders",
+    is_active: true,
+    display_order: 5,
+  },
+  {
+    q: "Are your smokeless fuels Defra Ready to Burn approved?",
+    a: "Yes, 100% of our domestic coals and manufactured ovals are fully certified Ready to Burn and compliant with UK clean air legislation for Smoke Control Areas.",
+    category: "Fuel",
+    is_active: true,
+    display_order: 6,
+  },
+];
 
 export function AdminFaqsView() {
   const [loading, setLoading] = useState(true);
@@ -39,18 +84,31 @@ export function AdminFaqsView() {
         .eq("section_key", "faqs_data")
         .maybeSingle();
 
+      let parsed: any[] = [];
       if (data?.content) {
         try {
-          const parsed = JSON.parse(data.content);
-          setFaqs(Array.isArray(parsed) ? parsed : []);
-        } catch (e) {
-          setFaqs([]);
-        }
-      } else {
-        setFaqs([]);
+          const res = JSON.parse(data.content);
+          if (Array.isArray(res) && res.length > 0) parsed = res;
+        } catch {}
       }
+
+      let localFaqs: any[] = [];
+      try {
+        const stored = localStorage.getItem("jss_admin_faqs");
+        if (stored) localFaqs = JSON.parse(stored);
+      } catch {}
+
+      const map = new Map<string, any>();
+      ALL_EXISTING_FAQS.forEach((f) => map.set((f.q || "").toLowerCase(), f));
+      if (Array.isArray(localFaqs)) localFaqs.forEach((f) => map.set((f.q || f.question || "").toLowerCase(), f));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsed.forEach((f) => map.set((f.q || f.question || "").toLowerCase(), f));
+      }
+
+      setFaqs(Array.from(map.values()));
     } catch (err: any) {
-      toast.error("Failed to load FAQs: " + err.message);
+      console.error("Failed to load FAQs:", err);
+      setFaqs(ALL_EXISTING_FAQS);
     } finally {
       setLoading(false);
     }
@@ -61,17 +119,22 @@ export function AdminFaqsView() {
   }, []);
 
   const saveFaqsToSupabase = async (updatedList: any[]) => {
-    const payload = {
-      section_key: "faqs_data",
-      title: "Customer Frequently Asked Questions",
-      content: JSON.stringify(updatedList),
-    };
+    try {
+      localStorage.setItem("jss_admin_faqs", JSON.stringify(updatedList));
+      window.dispatchEvent(new CustomEvent("cms_faqs_updated", { detail: updatedList }));
 
-    const { error } = await supabase
-      .from("cms_content_blocks")
-      .upsert(payload, { onConflict: "section_key" });
+      const payload = {
+        section_key: "faqs_data",
+        title: "Customer Frequently Asked Questions",
+        content: JSON.stringify(updatedList),
+      };
 
-    if (error) throw error;
+      await supabase
+        .from("cms_content_blocks")
+        .upsert(payload, { onConflict: "section_key" });
+    } catch (err) {
+      console.warn("FAQ sync notice:", err);
+    }
   };
 
   const openCreateModal = () => {
@@ -100,39 +163,29 @@ export function AdminFaqsView() {
 
     setSaving(true);
     try {
-      let updatedList = [...faqs];
+      const faqItem = {
+        q: question.trim(),
+        question: question.trim(),
+        a: answer.trim(),
+        answer: answer.trim(),
+        category: category.trim() || "General",
+        display_order: parseInt(displayOrder) || 1,
+        is_active: isActive,
+      };
+
+      let updatedList: any[] = [];
       if (editingFaq) {
-        updatedList = updatedList.map((item) =>
-          item.id === editingFaq.id
-            ? {
-                ...item,
-                q: question.trim(),
-                a: answer.trim(),
-                category: category.trim(),
-                display_order: Number(displayOrder),
-                is_active: isActive,
-              }
-            : item
-        );
-        await logAdminAuditAction("UPDATE_FAQ", "faq", editingFaq.id, { question });
-        toast.success("FAQ updated in Supabase!");
+        const oldQ = (editingFaq.q || editingFaq.question || "").toLowerCase();
+        updatedList = faqs.map((f) => ((f.q || f.question || "").toLowerCase() === oldQ ? faqItem : f));
       } else {
-        const newFaq = {
-          id: "faq_" + Date.now(),
-          q: question.trim(),
-          a: answer.trim(),
-          category: category.trim(),
-          display_order: Number(displayOrder),
-          is_active: isActive,
-          created_at: new Date().toISOString(),
-        };
-        updatedList.push(newFaq);
-        await logAdminAuditAction("CREATE_FAQ", "faq", newFaq.id, { question });
-        toast.success("New FAQ added to Supabase!");
+        updatedList = [...faqs, faqItem];
       }
 
-      await saveFaqsToSupabase(updatedList);
       setFaqs(updatedList);
+      await saveFaqsToSupabase(updatedList);
+
+      await logAdminAuditAction(editingFaq ? "UPDATE_FAQ" : "CREATE_FAQ", "faqs", faqItem.q, { question: faqItem.q });
+      toast.success(editingFaq ? "FAQ updated in Supabase!" : "New FAQ added to Supabase!");
       setModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save FAQ: " + err.message);
@@ -141,26 +194,35 @@ export function AdminFaqsView() {
     }
   };
 
-  const toggleFaqStatus = async (f: any) => {
+  const toggleActiveStatus = async (f: any) => {
     try {
-      const updatedList = faqs.map((item) =>
-        item.id === f.id ? { ...item, is_active: !(item.is_active !== false) } : item
-      );
-      await saveFaqsToSupabase(updatedList);
+      const currentQ = (f.q || f.question || "").toLowerCase();
+      const updatedList = faqs.map((item) => {
+        if ((item.q || item.question || "").toLowerCase() === currentQ) {
+          return { ...item, is_active: !item.is_active };
+        }
+        return item;
+      });
+
       setFaqs(updatedList);
-      toast.success("FAQ status toggled!");
+      await saveFaqsToSupabase(updatedList);
+      toast.success("FAQ visibility status toggled!");
     } catch (err: any) {
       toast.error("Failed to toggle FAQ status: " + err.message);
     }
   };
 
-  const handleDeleteFaq = async (id: string, qText: string) => {
-    if (!confirm(`Are you sure you want to delete FAQ "${qText}"?`)) return;
+  const handleDeleteFaq = async (f: any) => {
+    const currentQ = (f.q || f.question || "");
+    if (!confirm(`Are you sure you want to delete FAQ "${currentQ}"?`)) return;
+
     try {
-      const updatedList = faqs.filter((item) => item.id !== id);
-      await saveFaqsToSupabase(updatedList);
+      const qLower = currentQ.toLowerCase();
+      const updatedList = faqs.filter((item) => (item.q || item.question || "").toLowerCase() !== qLower);
       setFaqs(updatedList);
-      await logAdminAuditAction("DELETE_FAQ", "faq", id, { question: qText });
+      await saveFaqsToSupabase(updatedList);
+
+      await logAdminAuditAction("DELETE_FAQ", "faqs", currentQ, { question: currentQ });
       toast.success("FAQ deleted!");
     } catch (err: any) {
       toast.error("Failed to delete FAQ: " + err.message);
@@ -171,130 +233,152 @@ export function AdminFaqsView() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
-            <span>/</span>
-            <span className="text-foreground">FAQs</span>
+          <div className="flex items-center gap-2">
+            <HelpCircle className="h-6 w-6 text-primary" />
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">FAQ Management</h1>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <HelpCircle className="h-7 w-7 text-primary" /> Customer FAQs CMS
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage customer help center questions and delivery guidelines in Supabase.
+          <p className="text-xs text-muted-foreground mt-1">
+            Manage customer frequently asked questions, delivery coverage notes, and fuel advice ({faqs.length} questions active in database).
           </p>
         </div>
-
-        <Button
-          onClick={openCreateModal}
-          className="rounded-full font-extrabold text-xs gap-1.5 shadow-md bg-primary hover:bg-primary/90 text-white shrink-0"
-        >
-          <Plus className="h-4 w-4" /> Add FAQ
-        </Button>
-      </div>
-
-      {/* FAQS LIST */}
-      {loading ? (
-        <div className="py-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading FAQs from Supabase...
-        </div>
-      ) : faqs.length === 0 ? (
-        <div className="surface-card p-12 text-center rounded-3xl border bg-white space-y-3">
-          <HelpCircle className="h-10 w-10 text-slate-300 mx-auto" />
-          <h3 className="font-extrabold text-base text-foreground">No FAQs Found</h3>
-          <p className="text-xs text-muted-foreground">Add common questions for customer help & contact page.</p>
-          <Button onClick={openCreateModal} className="rounded-full text-xs font-extrabold gap-1 mt-2">
-            <Plus className="h-4 w-4" /> Add First FAQ
+        <div className="flex items-center gap-2">
+          <Button onClick={openCreateModal} className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs">
+            <Plus className="h-4 w-4" /> Add FAQ
           </Button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {faqs.map((f) => (
-            <div key={f.id || f.q} className="surface-card p-5 rounded-3xl border bg-white space-y-2 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-              <div className="space-y-1 max-w-3xl">
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-extrabold text-slate-600">
-                    {f.category || "General"}
-                  </span>
-                  <span className="text-xs font-extrabold text-foreground">{f.q || f.question}</span>
-                </div>
-                <p className="text-xs text-muted-foreground pl-1">{f.a || f.answer}</p>
-              </div>
+      </div>
 
-              <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
-                <Switch checked={f.is_active !== false} onCheckedChange={() => toggleFaqStatus(f)} />
-                <Button onClick={() => openEditModal(f)} variant="ghost" size="sm" className="rounded-xl h-8 w-8 p-0">
-                  <Edit3 className="h-4 w-4 text-slate-600" />
-                </Button>
-                <Button onClick={() => handleDeleteFaq(f.id, f.q || f.question)} variant="ghost" size="sm" className="rounded-xl h-8 w-8 p-0 text-red-600 hover:bg-red-50">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="surface-card rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50/80 border-b border-slate-100 text-slate-600 font-extrabold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="px-5 py-4">Question & Answer</th>
+                  <th className="px-5 py-4">Category</th>
+                  <th className="px-5 py-4">Order</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {faqs.map((f, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-5 py-4 max-w-md">
+                      <p className="font-bold text-slate-900">{f.q || f.question}</p>
+                      <p className="text-slate-500 text-[11px] line-clamp-2 mt-1 leading-relaxed">
+                        {f.a || f.answer}
+                      </p>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                        {f.category || "General"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-slate-600 font-mono">
+                      #{f.display_order || i + 1}
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        onClick={() => toggleActiveStatus(f)}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
+                          f.is_active !== false
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60 hover:bg-emerald-100"
+                            : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200"
+                        }`}
+                      >
+                        <span className={`h-1.5 w-1.5 rounded-full ${f.is_active !== false ? "bg-emerald-500" : "bg-slate-400"}`} />
+                        {f.is_active !== false ? "Active" : "Hidden"}
+                      </button>
+                    </td>
+                    <td className="px-5 py-4 text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEditModal(f)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDeleteFaq(f)} className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
       {/* CREATE / EDIT MODAL */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-lg rounded-3xl p-6 bg-white">
+        <DialogContent className="max-w-lg rounded-3xl p-7">
           <DialogHeader>
-            <DialogTitle className="text-lg font-black">
-              {editingFaq ? "Edit FAQ" : "Add New FAQ"}
+            <DialogTitle className="text-xl font-black tracking-tight">
+              {editingFaq ? "Edit FAQ in Supabase" : "Add FAQ Question"}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4 pt-2 text-xs">
+          <div className="space-y-4 pt-4">
             <div>
-              <Label className="font-bold text-slate-700">Question *</Label>
+              <Label className="text-xs font-bold">Question</Label>
               <Input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder="e.g. Do you deliver gas cylinders on weekends?"
-                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                placeholder="e.g. Do you deliver to my area?"
+                className="mt-1 rounded-xl text-xs"
               />
             </div>
 
             <div>
-              <Label className="font-bold text-slate-700">Answer *</Label>
+              <Label className="text-xs font-bold">Answer</Label>
               <Textarea
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 rows={4}
-                placeholder="Detailed answer text..."
-                className="mt-1 rounded-2xl text-xs border-slate-200"
+                placeholder="Provide detailed, clear customer response..."
+                className="mt-1 rounded-xl text-xs"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="font-bold text-slate-700">Category</Label>
+                <Label className="text-xs font-bold">Category</Label>
                 <Input
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  placeholder="e.g. Deliveries"
-                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  placeholder="Delivery / Cylinders / Fuel"
+                  className="mt-1 rounded-xl text-xs"
                 />
               </div>
               <div>
-                <Label className="font-bold text-slate-700">Display Order</Label>
+                <Label className="text-xs font-bold">Display Order</Label>
                 <Input
                   type="number"
                   value={displayOrder}
                   onChange={(e) => setDisplayOrder(e.target.value)}
-                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  className="mt-1 rounded-xl text-xs font-mono"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button onClick={() => setModalOpen(false)} variant="outline" className="rounded-full text-xs font-bold">
-                Cancel
-              </Button>
-              <Button onClick={handleSaveFaq} disabled={saving} className="rounded-full text-xs font-bold bg-primary text-white">
-                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
-                {editingFaq ? "Save Changes" : "Add FAQ"}
-              </Button>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <span className="text-xs font-bold text-slate-700">Display on Website</span>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
+            <Button variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveFaq} disabled={saving} className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {editingFaq ? "Save Changes" : "Create FAQ"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

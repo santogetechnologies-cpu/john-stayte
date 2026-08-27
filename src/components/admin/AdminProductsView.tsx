@@ -41,6 +41,7 @@ import {
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
+import { products as catalogProducts } from "@/data/catalog";
 
 export function AdminProductsView() {
   const [products, setProducts] = useState<any[]>([]);
@@ -57,7 +58,38 @@ export function AdminProductsView() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Fetch real products & categories from Supabase DB
+  const [migrating, setMigrating] = useState(false);
+
+  const autoMigrateProducts = async () => {
+    try {
+      for (const p of catalogProducts) {
+        const payload = {
+          name: p.name,
+          slug: p.slug,
+          brand: p.brand || "Calor",
+          category_slug: p.category,
+          price: Number(p.price),
+          stock: Number(p.stock || 20),
+          description: p.description || "",
+          image_url: p.image,
+          is_featured: Boolean(p.featured),
+          is_offer: Boolean(p.offer),
+        };
+        await supabase.from("products").upsert(payload, { onConflict: "slug" });
+      }
+      const { data: refreshed } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (refreshed && refreshed.length > 0) {
+        setProducts(refreshed);
+      }
+    } catch (e) {
+      console.warn("Auto-migrate products notice:", e);
+    }
+  };
+
+  // Fetch real products & categories from Supabase DB ONLY (Strict Source of Truth)
   const loadProductsAndCategories = async () => {
     setLoading(true);
     try {
@@ -69,12 +101,50 @@ export function AdminProductsView() {
       if (prodErr) throw prodErr;
       if (catErr) throw catErr;
 
-      setProducts(prodData || []);
+      if (!prodData || prodData.length < catalogProducts.length) {
+        await autoMigrateProducts();
+      } else {
+        setProducts(prodData || []);
+      }
       setCategories(catData || []);
     } catch (err: any) {
-      toast.error("Failed to load catalog data: " + err.message);
+      console.error("Catalog query error:", err);
+      toast.error("Failed to load products from Supabase: " + err.message);
+      setProducts([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMigrateCatalogToSupabase = async () => {
+    setMigrating(true);
+    try {
+      let insertedCount = 0;
+      for (const p of catalogProducts) {
+        const payload = {
+          name: p.name,
+          slug: p.slug,
+          brand: p.brand || "Calor",
+          category_slug: p.category,
+          price: Number(p.price),
+          stock: Number(p.stock || 20),
+          description: p.description || "",
+          image_url: p.image,
+          is_featured: Boolean(p.featured),
+          is_offer: Boolean(p.offer),
+        };
+        const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
+        if (!error) insertedCount++;
+        else console.error("Product migration error:", p.slug, error);
+      }
+
+      await logAdminAuditAction("MIGRATE_CATALOG", "products", "catalog", { count: insertedCount });
+      toast.success(`Migration complete: ${insertedCount} catalog items added to Supabase products table!`);
+      await loadProductsAndCategories();
+    } catch (err: any) {
+      toast.error("Migration error: " + err.message);
+    } finally {
+      setMigrating(false);
     }
   };
 
@@ -273,6 +343,18 @@ export function AdminProductsView() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+          {products.length < catalogProducts.length && (
+            <Button
+              onClick={handleMigrateCatalogToSupabase}
+              disabled={migrating}
+              variant="outline"
+              size="sm"
+              className="rounded-full font-bold text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
+            >
+              {migrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              Migrate Legacy Catalog ({catalogProducts.length - products.length} items)
+            </Button>
+          )}
           <Button onClick={handleOpenNew} size="sm" className="rounded-full font-bold text-xs gap-1.5 shadow-md">
             <Plus className="h-4 w-4" /> Add Product
           </Button>

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Menu,
   Search,
@@ -13,7 +13,8 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
-import { categories } from "@/data/catalog";
+import { categories as defaultCategories } from "@/data/catalog";
+import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,13 +30,13 @@ import {
 
 const navLinks = [
   { to: "/", label: "Home" },
+  { to: "/about", label: "About" },
   { to: "/products", label: "Shop" },
   { to: "/order-gas", label: "Order Gas" },
   { to: "/filling-stations", label: "Filling Stations" },
   { to: "/services", label: "Services" },
   { to: "/offers", label: "Offers" },
   { to: "/blog", label: "Blog" },
-  { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
 ];
 
@@ -65,7 +66,24 @@ export function SiteHeader() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [categories, setCategories] = useState<any[]>(defaultCategories);
   const count = cart.reduce((s, l) => s + l.qty, 0);
+
+  useEffect(() => {
+    async function loadCats() {
+      try {
+        const { data } = await supabase
+          .from("categories")
+          .select("*")
+          .eq("is_active", true)
+          .order("display_order", { ascending: true });
+        if (data && data.length > 0) {
+          setCategories(data);
+        }
+      } catch {}
+    }
+    loadCats();
+  }, []);
 
   // Subscribe to current router location pathname
   const currentPath = useRouterState({ select: (s) => s.location.pathname });

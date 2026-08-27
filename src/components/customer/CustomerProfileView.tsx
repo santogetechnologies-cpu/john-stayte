@@ -17,8 +17,8 @@ import {
   Upload,
   KeyRound,
   BadgeCheck,
-  Send,
-  Check,
+  Eye,
+  EyeOff,
   AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,7 +39,7 @@ import { supabase } from "@/lib/supabase";
 
 export function CustomerProfileView() {
   const { user } = useStore();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,25 +48,37 @@ export function CustomerProfileView() {
   const [status, setStatus] = useState("Active");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [emailVerified, setEmailVerified] = useState(true);
   const [rawPrefs, setRawPrefs] = useState<any>({});
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Validation Error States
+  // Profile Form Validation Error States
   const [nameError, setNameError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  // Change Email Modal States
-  const [changeEmailModalOpen, setChangeEmailModalOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [confirmNewEmail, setConfirmNewEmail] = useState("");
-  const [changingEmail, setChangingEmail] = useState(false);
-  const [changeEmailError, setChangeEmailError] = useState<string | null>(null);
-  const [emailSentNotice, setEmailSentNotice] = useState<string | null>(null);
-  const [isRateLimited, setIsRateLimited] = useState(false);
+  // Upload Profile Photo Dialog States
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // Remove Photo Confirmation Dialog States
+  const [removeModalOpen, setRemoveModalOpen] = useState(false);
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+
+  // Change Password Dialog States
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   // Load authenticated customer profile from Supabase
   const loadProfile = async () => {
@@ -80,6 +92,7 @@ export function CustomerProfileView() {
 
       setEmail(authUser.user.email || "");
       setCreatedAt(authUser.user.created_at || null);
+      setEmailVerified(Boolean(authUser.user.email_confirmed_at || authUser.user.confirmed_at));
 
       const { data: profile, error: profErr } = await supabase
         .from("profiles")
@@ -128,19 +141,30 @@ export function CustomerProfileView() {
     return parts[0].substring(0, 2).toUpperCase();
   }, [name]);
 
-  // Real Supabase Storage Avatar File Upload Handler
-  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Photo File Selection in Upload Dialog
+  const handleModalPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!validTypes.includes(file.type)) {
-      toast.error("Invalid image format. Please select a JPEG, PNG, WEBP, or GIF image.");
+      toast.error("Invalid image format. Please select a JPG, PNG, WebP, or GIF file.");
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size exceeds 5MB limit. Please select a smaller photo.");
+      toast.error("File size exceeds 5MB limit. Please choose a smaller photo.");
+      return;
+    }
+
+    setSelectedPhotoFile(file);
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+  };
+
+  // Upload Selected Photo to Supabase Storage
+  const handleExecutePhotoUpload = async () => {
+    if (!selectedPhotoFile) {
+      toast.error("Please select an image file first.");
       return;
     }
 
@@ -150,14 +174,14 @@ export function CustomerProfileView() {
       if (!authUser?.user) throw new Error("Authentication session expired.");
 
       const userId = authUser.user.id;
-      const fileExt = file.name.split(".").pop();
-      const storagePath = `avatars/${userId}/avatar_${Date.now()}.${fileExt}`;
+      const fileExt = selectedPhotoFile.name.split(".").pop();
+      const storagePath = `avatars/${userId}/profile_${Date.now()}.${fileExt}`;
 
       const { data: uploadData, error: uploadErr } = await supabase.storage
         .from("product-images")
-        .upload(storagePath, file, {
+        .upload(storagePath, selectedPhotoFile, {
           upsert: true,
-          contentType: file.type,
+          contentType: selectedPhotoFile.type,
         });
 
       if (uploadErr) throw uploadErr;
@@ -181,19 +205,23 @@ export function CustomerProfileView() {
 
       setAvatarUrl(publicAvatarUrl);
       setRawPrefs(updatedPrefs);
-      toast.success("Profile photo uploaded and saved successfully!");
+      setUploadModalOpen(false);
+      setSelectedPhotoFile(null);
+      setPhotoPreviewUrl(null);
+
+      toast.success("Profile photo updated successfully.");
       window.dispatchEvent(new Event("user_profile_updated"));
     } catch (err: any) {
-      toast.error("Failed to upload photo: " + err.message);
+      console.error("Photo upload error:", err);
+      toast.error("Unable to update profile photo. Please try again.");
     } finally {
       setUploadingPhoto(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Remove Photo Handler
-  const handleRemovePhoto = async () => {
-    setUploadingPhoto(true);
+  // Confirm and Remove Photo from Supabase Storage & Profiles DB
+  const handleExecutePhotoRemove = async () => {
+    setRemovingPhoto(true);
     try {
       const { data: authUser } = await supabase.auth.getUser();
       if (!authUser?.user) throw new Error("Authentication session expired.");
@@ -214,16 +242,19 @@ export function CustomerProfileView() {
 
       setAvatarUrl(null);
       setRawPrefs(updatedPrefs);
+      setRemoveModalOpen(false);
+
       toast.success("Profile photo removed.");
       window.dispatchEvent(new Event("user_profile_updated"));
     } catch (err: any) {
-      toast.error("Failed to remove photo: " + err.message);
+      console.error("Photo removal error:", err);
+      toast.error("Failed to remove profile photo: " + err.message);
     } finally {
-      setUploadingPhoto(false);
+      setRemovingPhoto(false);
     }
   };
 
-  // Form Validation & Save Profile
+  // Form Validation & Save Personal Information
   const validateForm = () => {
     let valid = true;
     setNameError(null);
@@ -269,102 +300,76 @@ export function CustomerProfileView() {
         user.name = cleanName;
       }
 
-      toast.success("Profile details updated successfully!");
+      toast.success("Saved successfully");
       window.dispatchEvent(new Event("user_profile_updated"));
       await loadProfile();
     } catch (err: any) {
-      toast.error("Failed to update profile: " + err.message);
+      console.error("Save profile error:", err);
+      toast.error("Failed to save changes: " + err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  // REAL SUPABASE AUTH CHANGE EMAIL HANDLER
-  const handleChangeEmailSubmit = async (e: React.FormEvent) => {
+  // REAL SUPABASE AUTH CHANGE PASSWORD HANDLER
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setChangeEmailError(null);
-    setEmailSentNotice(null);
+    setPasswordError(null);
 
-    const cleanNewEmail = newEmail.trim().toLowerCase();
-    const cleanConfirmEmail = confirmNewEmail.trim().toLowerCase();
-
-    // 1. Validation
-    if (!cleanNewEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanNewEmail)) {
-      setChangeEmailError("Please enter a valid new email address.");
+    if (!currentPassword) {
+      setPasswordError("Please enter your current password.");
       return;
     }
 
-    if (cleanNewEmail === email.toLowerCase()) {
-      setChangeEmailError("New email address must be different from your current email.");
+    if (!newPassword || newPassword.length < 6) {
+      setPasswordError("New password must be at least 6 characters long.");
       return;
     }
 
-    if (cleanNewEmail !== cleanConfirmEmail) {
-      setChangeEmailError("New email address and confirmation email do not match.");
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("New password and confirmation password do not match.");
       return;
     }
 
-    setChangingEmail(true);
+    setUpdatingPassword(true);
     try {
-      // 2. Call real Supabase Auth updateUser API
-      const { data: authData, error: authUpdateErr } = await supabase.auth.updateUser({
-        email: cleanNewEmail,
+      // 1. Verify current password by attempting authentication check
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user?.email) throw new Error("Authentication session expired.");
+
+      const { error: verifyErr } = await supabase.auth.signInWithPassword({
+        email: authUser.user.email,
+        password: currentPassword,
       });
 
-      if (authUpdateErr) throw authUpdateErr;
-
-      // Also update profiles.email column if configured
-      const { data: authUser } = await supabase.auth.getUser();
-      if (authUser?.user) {
-        await supabase
-          .from("profiles")
-          .update({ email: cleanNewEmail, updated_at: new Date().toISOString() })
-          .eq("id", authUser.user.id);
+      if (verifyErr) {
+        setPasswordError("Current password is incorrect.");
+        setUpdatingPassword(false);
+        return;
       }
 
-      setEmailSentNotice(
-        `Verification email dispatched to ${cleanNewEmail}. Please check your inbox and click the confirmation link to complete the change.`
-      );
-      toast.success(`Verification link sent to ${cleanNewEmail}!`);
+      // 2. Update user password in Supabase Auth
+      const { error: updateAuthErr } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateAuthErr) throw updateAuthErr;
+
+      setPasswordModalOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      toast.success("Password updated successfully!");
     } catch (err: any) {
-      console.error("Supabase change email error:", err);
-
-      const errMsg = (err.message || "").toLowerCase();
-      const errCode = (err.code || "").toLowerCase();
-      const status = err.status || 0;
-
-      const isRateLimitErr =
-        status === 429 ||
-        errCode.includes("rate_limit") ||
-        errMsg.includes("rate limit") ||
-        errMsg.includes("too many requests") ||
-        errMsg.includes("over_email_send_rate_limit");
-
-      if (isRateLimitErr) {
-        setIsRateLimited(true);
-        const friendlyRateMsg = "Too many verification emails have been requested. Please try again later.";
-        setChangeEmailError(friendlyRateMsg);
-        toast.error(friendlyRateMsg);
-      } else {
-        setChangeEmailError(err.message || "Failed to update email address.");
-        toast.error(err.message || "Failed to update email address.");
-      }
+      console.error("Change password error:", err);
+      setPasswordError(err.message || "Failed to update password.");
     } finally {
-      setChangingEmail(false);
+      setUpdatingPassword(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Hidden File Input for Real Supabase Storage Avatar Upload */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handlePhotoSelect}
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        className="hidden"
-      />
-
       {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -374,17 +379,17 @@ export function CustomerProfileView() {
             <span className="text-foreground font-bold">Profile</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <User className="h-7 w-7 text-primary" /> My Profile & Account Settings
+            <User className="h-7 w-7 text-primary" /> My Profile
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage your personal profile details, account security credentials, and profile photo in Supabase.
+            Manage your personal information, profile photo and account security.
           </p>
         </div>
       </div>
 
       {loading ? (
         <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs font-bold text-muted-foreground shadow-xs flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Querying profile credentials from Supabase...
+          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Querying profile details from Supabase...
         </div>
       ) : error ? (
         <div className="p-12 text-center space-y-3 surface-card rounded-3xl border bg-white shadow-xs">
@@ -399,7 +404,7 @@ export function CustomerProfileView() {
         <div className="space-y-6">
           {/* 2. TWO-COLUMN DESKTOP GRID LAYOUT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* LEFT COLUMN — PROFILE OVERVIEW & AVATAR CARD */}
+            {/* LEFT OVERVIEW CARD */}
             <div className="surface-card p-6 sm:p-8 rounded-3xl border border-slate-200/80 bg-white flex flex-col items-center text-center space-y-5 shadow-xs">
               <div className="relative group">
                 <Avatar className="h-28 w-28 border-4 border-slate-100 shadow-md ring-2 ring-primary/20 transition-all group-hover:opacity-90">
@@ -414,12 +419,15 @@ export function CustomerProfileView() {
                 {/* Edit Photo Overlay Button */}
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPhoto}
+                  onClick={() => {
+                    setSelectedPhotoFile(null);
+                    setPhotoPreviewUrl(avatarUrl);
+                    setUploadModalOpen(true);
+                  }}
                   className="absolute bottom-0 right-0 h-9 w-9 rounded-full bg-primary text-white shadow-lg flex items-center justify-center border-2 border-white hover:scale-110 transition-all cursor-pointer"
-                  title="Change Profile Photo"
+                  title="Update Profile Photo"
                 >
-                  {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                  <Camera className="h-4 w-4" />
                 </button>
               </div>
 
@@ -428,22 +436,24 @@ export function CustomerProfileView() {
                 <p className="text-xs text-muted-foreground font-medium truncate">{email}</p>
               </div>
 
-              {/* Photo Actions */}
+              {/* Photo Action Buttons */}
               <div className="flex flex-wrap items-center justify-center gap-2 w-full pt-1">
                 <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingPhoto}
+                  onClick={() => {
+                    setSelectedPhotoFile(null);
+                    setPhotoPreviewUrl(avatarUrl);
+                    setUploadModalOpen(true);
+                  }}
                   size="sm"
                   variant="outline"
                   className="rounded-full text-xs font-bold gap-1.5 border-slate-200 hover:bg-slate-50"
                 >
-                  <Upload className="h-3.5 w-3.5 text-primary" /> {avatarUrl ? "Change Photo" : "Upload Photo"}
+                  <Upload className="h-3.5 w-3.5 text-primary" /> {avatarUrl ? "Change Photo" : "Change Photo"}
                 </Button>
 
                 {avatarUrl && (
                   <Button
-                    onClick={handleRemovePhoto}
-                    disabled={uploadingPhoto}
+                    onClick={() => setRemoveModalOpen(true)}
                     size="sm"
                     variant="ghost"
                     className="rounded-full text-xs font-bold gap-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
@@ -453,23 +463,45 @@ export function CustomerProfileView() {
                 )}
               </div>
 
-              {/* Status Badges */}
+              {/* Badges */}
               <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t w-full">
                 <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[10px] font-extrabold px-3 py-1">
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" /> Active Account
                 </Badge>
                 <Badge variant="outline" className="text-[10px] font-extrabold uppercase border-slate-200 px-3 py-1">
-                  <BadgeCheck className="h-3.5 w-3.5 mr-1 text-primary" /> {role} Portal
+                  <BadgeCheck className="h-3.5 w-3.5 mr-1 text-primary" /> Customer
                 </Badge>
+              </div>
+
+              {/* Account Summary Specs */}
+              <div className="w-full text-left pt-3 border-t space-y-2.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Account Type:</span>
+                  <span className="font-bold text-foreground">Customer</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Account Status:</span>
+                  <span className="font-bold text-emerald-600">Active & Verified</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Member Since:</span>
+                  <span className="font-bold text-slate-700">
+                    {createdAt ? new Date(createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Aug 2026"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Email Verification:</span>
+                  <span className="font-bold text-blue-600">{emailVerified ? "Verified" : "Pending"}</span>
+                </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN — PERSONAL INFORMATION FORM CARD */}
+            {/* RIGHT COLUMN — PERSONAL INFORMATION CARD */}
             <div className="lg:col-span-2 surface-card p-6 sm:p-8 rounded-3xl border border-slate-200/80 bg-white space-y-6 shadow-xs">
               <div>
                 <h2 className="font-black text-lg text-foreground">Personal Information</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Update your display name and contact phone number. Your changes will persist across all JSS services.
+                  Update the information used for your JSS customer account.
                 </p>
               </div>
 
@@ -494,42 +526,23 @@ export function CustomerProfileView() {
                   )}
                 </div>
 
-                {/* Email Address Input (Read-only with Change Email Trigger) */}
+                {/* Email Address (Read-only) */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Label className="font-bold text-slate-700">Email Address (Primary Account)</Label>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="link"
-                        onClick={() => {
-                          setNewEmail("");
-                          setConfirmNewEmail("");
-                          setChangeEmailError(null);
-                          setEmailSentNotice(null);
-                          setChangeEmailModalOpen(true);
-                        }}
-                        className="h-auto p-0 text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
-                      >
-                        <Mail className="h-3.5 w-3.5" /> Change Email
-                      </Button>
-                      <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 border-l pl-2">
-                        <Lock className="h-3 w-3 text-slate-400" /> Read-only
-                      </span>
-                    </div>
+                    <Label className="font-bold text-slate-700">Email Address</Label>
+                    <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                      <Lock className="h-3 w-3 text-slate-400" /> Protected / Read-only
+                    </span>
                   </div>
                   <div className="relative">
                     <Input
                       type="email"
                       value={email}
                       disabled
-                      className="rounded-xl text-xs font-semibold h-10 bg-slate-50/80 border-slate-200 text-slate-500 cursor-not-allowed pr-9"
+                      className="rounded-xl text-xs font-semibold h-10 bg-slate-50 border-slate-200 text-slate-500 cursor-not-allowed pr-9"
                     />
                     <Mail className="absolute right-3 top-3 h-4 w-4 text-slate-400" />
                   </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Your email address is permanently tied to your authentication account. Click "Change Email" above to update it via Supabase Auth verification.
-                  </p>
                 </div>
 
                 {/* Contact Phone Input */}
@@ -558,182 +571,284 @@ export function CustomerProfileView() {
                   )}
                 </div>
 
-                {/* Form Save Button */}
-                <div className="pt-4 flex items-center justify-end gap-3 border-t">
+                {/* Save Changes Button */}
+                <div className="pt-4 flex items-center justify-end border-t">
                   <Button
                     type="submit"
                     disabled={saving}
                     className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {saving ? "Saving Changes..." : "Save Changes"}
+                    {saving ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
               </form>
             </div>
           </div>
 
-          {/* 3. BOTTOM SECTION — ACCOUNT & SECURITY INFORMATION CARD */}
+          {/* 3. SECURITY & PASSWORD CARD */}
           <div className="surface-card p-6 sm:p-8 rounded-3xl border border-slate-200/80 bg-white space-y-4 shadow-xs text-xs">
             <div>
-              <h2 className="font-black text-base text-foreground flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-primary" /> Account & Security Specifications
+              <h2 className="font-black text-lg text-foreground flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" /> Security & Password
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Authentication credentials and role authorization managed by Supabase Auth & RLS policies.
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Manage your account password and security credentials.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">Account Role</p>
-                <p className="font-black text-sm text-foreground capitalize">{role}</p>
-                <p className="text-[10px] text-muted-foreground font-medium">Customer Portal Access</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div>
+                <p className="font-bold text-slate-800 text-xs">Account Password</p>
+                <p className="text-[11px] font-mono text-slate-500 mt-0.5">••••••••••••••••</p>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">Account Status</p>
-                <p className="font-black text-sm text-emerald-600 flex items-center gap-1">
-                  <CheckCircle2 className="h-4 w-4" /> {status} & Verified
-                </p>
-                <p className="text-[10px] text-muted-foreground font-medium">Active Customer Profile</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">Member Since</p>
-                <p className="font-black text-sm text-foreground">
-                  {createdAt ? new Date(createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Aug 2026"}
-                </p>
-                <p className="text-[10px] text-muted-foreground font-medium">Registration Date</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
-                <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">Email Verification</p>
-                <p className="font-black text-sm text-blue-600 flex items-center gap-1">
-                  <KeyRound className="h-4 w-4" /> Protected
-                </p>
-                <p className="text-[10px] text-muted-foreground font-medium">Supabase Auth Session</p>
-              </div>
+              <Button
+                type="button"
+                onClick={() => {
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmNewPassword("");
+                  setPasswordError(null);
+                  setPasswordModalOpen(true);
+                }}
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs font-extrabold gap-1.5 border-slate-300 hover:bg-white shrink-0"
+              >
+                <KeyRound className="h-3.5 w-3.5 text-primary" /> Change Password
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 4. REAL SUPABASE AUTH CHANGE EMAIL MODAL */}
-      <Dialog open={changeEmailModalOpen} onOpenChange={setChangeEmailModalOpen}>
+      {/* 4. UPLOAD PROFILE PHOTO DIALOG MODAL */}
+      <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white">
           <DialogHeader>
             <DialogTitle className="font-black text-xl text-foreground flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" /> Change Account Email Address
+              <Camera className="h-5 w-5 text-primary" /> Update Profile Photo
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-1">
-              Enter your new email address. Supabase Auth will send a confirmation link to verify ownership.
+              Select an image file from your device. Supported formats: JPG, PNG, WebP (Max 5MB).
             </DialogDescription>
           </DialogHeader>
 
-          {emailSentNotice ? (
-            <div className="space-y-4 pt-2 text-xs">
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-2 text-emerald-900">
-                <div className="flex items-center gap-2 font-black text-sm text-emerald-800">
-                  <Check className="h-5 w-5 text-emerald-600" /> Verification Email Sent
-                </div>
-                <p className="leading-relaxed">{emailSentNotice}</p>
-              </div>
+          <input
+            type="file"
+            ref={modalFileInputRef}
+            onChange={handleModalPhotoSelect}
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+          />
 
-              <div className="pt-2 flex justify-end">
-                <Button
-                  onClick={() => setChangeEmailModalOpen(false)}
-                  className="rounded-full text-xs font-bold px-6 shadow-xs"
+          <div className="space-y-5 pt-2 text-xs">
+            {/* Preview Box */}
+            <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-3">
+              <Avatar className="h-24 w-24 border-4 border-white shadow-md">
+                {photoPreviewUrl ? (
+                  <AvatarImage src={photoPreviewUrl} className="object-cover" />
+                ) : null}
+                <AvatarFallback className="bg-primary text-white font-black text-2xl">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+
+              <p className="text-[11px] font-semibold text-slate-600">
+                {selectedPhotoFile ? selectedPhotoFile.name : "No new file selected yet"}
+              </p>
+
+              <Button
+                type="button"
+                onClick={() => modalFileInputRef.current?.click()}
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs font-bold gap-1.5 border-slate-300"
+              >
+                <Upload className="h-3.5 w-3.5 text-primary" /> Choose Image
+              </Button>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 border-t pt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setUploadModalOpen(false)}
+                disabled={uploadingPhoto}
+                className="rounded-full text-xs font-bold"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleExecutePhotoUpload}
+                disabled={uploadingPhoto || !selectedPhotoFile}
+                className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
+              >
+                {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploadingPhoto ? "Uploading..." : "Upload Photo"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 5. REMOVE PHOTO CONFIRMATION DIALOG MODAL */}
+      <Dialog open={removeModalOpen} onOpenChange={setRemoveModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white">
+          <DialogHeader>
+            <DialogTitle className="font-black text-lg text-rose-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-600" /> Remove Profile Photo?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              Are you sure you want to remove your profile photo? Your account will use your initials instead.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-end gap-2 border-t pt-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setRemoveModalOpen(false)}
+              disabled={removingPhoto}
+              className="rounded-full text-xs font-bold"
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleExecutePhotoRemove}
+              disabled={removingPhoto}
+              className="rounded-full font-extrabold text-xs gap-1.5 px-6 shadow-md bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {removingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {removingPhoto ? "Removing..." : "Remove Photo"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 6. REAL SUPABASE AUTH CHANGE PASSWORD DIALOG MODAL */}
+      <Dialog open={passwordModalOpen} onOpenChange={setPasswordModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white">
+          <DialogHeader>
+            <DialogTitle className="font-black text-xl text-foreground flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" /> Change Password
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Enter your current password and choose a new password for your account.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleChangePasswordSubmit} className="space-y-4 pt-2 text-xs">
+            {/* Current Password Field */}
+            <div className="space-y-1.5">
+              <Label className="font-bold text-slate-700">Current Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  placeholder="Enter current password"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                 >
-                  Done & Close
-                </Button>
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
-          ) : (
-            <form onSubmit={handleChangeEmailSubmit} className="space-y-4 pt-2 text-xs">
-              {/* Current Email (Read-only) */}
-              <div className="space-y-1.5">
-                <Label className="font-bold text-slate-700">Current Email Address</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  disabled
-                  className="rounded-xl text-xs font-semibold h-10 bg-slate-50 text-slate-500 border-slate-200 cursor-not-allowed"
-                />
-              </div>
 
-              {/* New Email Input */}
-              <div className="space-y-1.5">
-                <Label className="font-bold text-slate-700">New Email Address *</Label>
+            {/* New Password Field */}
+            <div className="space-y-1.5">
+              <Label className="font-bold text-slate-700">New Password *</Label>
+              <div className="relative">
                 <Input
-                  type="email"
-                  value={newEmail}
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
                   onChange={(e) => {
-                    setNewEmail(e.target.value);
-                    if (changeEmailError) setChangeEmailError(null);
+                    setNewPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
                   }}
-                  placeholder="e.g. new.email@example.com"
-                  className="rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  placeholder="Minimum 6 characters"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 pr-10"
                   required
                 />
-              </div>
-
-              {/* Confirm New Email Input */}
-              <div className="space-y-1.5">
-                <Label className="font-bold text-slate-700">Confirm New Email Address *</Label>
-                <Input
-                  type="email"
-                  value={confirmNewEmail}
-                  onChange={(e) => {
-                    setConfirmNewEmail(e.target.value);
-                    if (changeEmailError) setChangeEmailError(null);
-                  }}
-                  placeholder="Re-enter new email address"
-                  className="rounded-xl text-xs font-semibold h-10 border-slate-200"
-                  required
-                />
-              </div>
-
-              {isRateLimited ? (
-                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-start gap-2.5">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-extrabold text-amber-900">Verification Rate Limit Exceeded</p>
-                    <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                      Too many verification emails have been requested. Please try again later.
-                    </p>
-                  </div>
-                </div>
-              ) : changeEmailError ? (
-                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
-                  <span>{changeEmailError}</span>
-                </div>
-              ) : null}
-
-              {/* Dialog Footer Controls */}
-              <div className="pt-3 flex items-center justify-end gap-2 border-t">
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  onClick={() => setChangeEmailModalOpen(false)}
-                  disabled={changingEmail}
-                  className="rounded-full text-xs font-bold"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                 >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={changingEmail || isRateLimited}
-                  className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {changingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  {isRateLimited ? "Rate Limited — Try Later" : changingEmail ? "Sending Verification..." : "Send Verification Link"}
-                </Button>
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            </form>
-          )}
+            </div>
+
+            {/* Confirm New Password Field */}
+            <div className="space-y-1.5">
+              <Label className="font-bold text-slate-700">Confirm New Password *</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmNewPassword}
+                  onChange={(e) => {
+                    setConfirmNewPassword(e.target.value);
+                    if (passwordError) setPasswordError(null);
+                  }}
+                  placeholder="Re-enter new password"
+                  className="rounded-xl text-xs font-semibold h-10 border-slate-200 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {passwordError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
+
+            {/* Dialog Footer Actions */}
+            <div className="pt-3 flex items-center justify-end gap-2 border-t">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setPasswordModalOpen(false)}
+                disabled={updatingPassword}
+                className="rounded-full text-xs font-bold"
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                disabled={updatingPassword}
+                className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
+              >
+                {updatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {updatingPassword ? "Updating Password..." : "Update Password"}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>
