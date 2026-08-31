@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/checkout")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Checkout | John Stayte Services" },
-      { name: "description", content: "Secure checkout for gas, fuel and appliance orders with guest or account options." },
+      { name: "description", content: "Secure checkout for gas, fuel and appliance orders with account verification." },
       { property: "og:title", content: "Checkout | John Stayte Services" },
       { property: "og:description", content: "Complete your John Stayte Services order." },
     ],
@@ -25,12 +25,23 @@ export const Route = createFileRoute("/checkout")({
 });
 
 function Checkout() {
-  const { subtotal, shipping, vat, total, lines, loading: cartLoading } = useCartTotals();
+  const { lines, subtotal, shipping, vat, total, settings, loading: cartLoading } = useCartTotals();
   const { clearCart, removeFromCart, user } = useStore();
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  // Redirect unauthenticated visitors to login with return path to /checkout
+  useEffect(() => {
+    if (!user) {
+      toast.info("Please sign in or create an account to proceed with checkout.", {
+        id: "checkout-auth-required",
+        duration: 4000,
+      });
+      navigate({ to: "/login", search: { redirect: "/checkout" } });
+    }
+  }, [user, navigate]);
 
   // Delivery Form Fields
   const [fullName, setFullName] = useState(user?.name || "");
@@ -91,16 +102,33 @@ function Checkout() {
   const place = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lines.length === 0) return toast.error("Your basket is empty.");
+
+    // 1. Enforce active authenticated customer account
+    const { data: authSession } = await supabase.auth.getSession();
+    const activeAuthUser = authSession?.session?.user || user;
+
+    if (!activeAuthUser?.id) {
+      toast.error("Please sign in or create an account to complete checkout.", {
+        description: "Your basket items will remain saved in your basket.",
+      });
+      navigate({ to: "/login", search: { redirect: "/checkout" } });
+      return;
+    }
+
+    if (settings?.minOrderValue && subtotal < settings.minOrderValue) {
+      return toast.error(`A minimum order value of ${gbp(settings.minOrderValue)} is required to place an order.`);
+    }
+
     if (!fullName || !email || !address || !postcode) {
       return toast.error("Please fill in all required delivery details.");
     }
     setSubmitting(true);
 
+    let createdOrderId: string | null = null;
+
     try {
-      // 1. Get authenticated session user id
-      const { data: authSession } = await supabase.auth.getSession();
-      const currentUserId = authSession?.session?.user?.id || user?.id || null;
-      const currentEmail = authSession?.session?.user?.email || email.trim();
+      const currentUserId = activeAuthUser.id;
+      const currentEmail = activeAuthUser.email || email.trim();
 
       // 2. Strict Live Database Verification for every cart product & stock level
       const verifiedItems: {
@@ -177,7 +205,9 @@ function Checkout() {
         throw new Error(orderErr?.message || "Failed to create order record in Supabase.");
       }
 
-      // 4. Create Order Items Records
+      createdOrderId = newOrder.id;
+
+      // 4. Create Order Items Records (with strict transaction rollback on failure)
       const itemInserts = verifiedItems.map((item) => ({
         order_id: newOrder.id,
         product_id: item.product_id,
@@ -189,7 +219,9 @@ function Checkout() {
 
       const { error: itemsErr } = await supabase.from("order_items").insert(itemInserts);
       if (itemsErr) {
-        console.error("Order items insert warning:", itemsErr.message);
+        // Roll back parent order record to avoid orphan orders
+        await supabase.from("orders").delete().eq("id", newOrder.id);
+        throw new Error(`Failed to save items for order: ${itemsErr.message}`);
       }
 
       // 5. Create Order Status History Record
@@ -235,7 +267,7 @@ function Checkout() {
                 .eq("id", item.product_id);
             }
           } catch (invErr) {
-            console.error("Inventory update error:", invErr);
+            console.warn("Inventory update notice:", invErr);
           }
         }
       }
@@ -252,32 +284,64 @@ function Checkout() {
           },
         ]);
       } catch (invErr) {
-        console.error("Invoice creation warning:", invErr);
+        console.warn("Invoice record notice:", invErr);
       }
 
-      // 8. Create Customer & Admin Notifications
+      // 8. Create Customer Notification in Supabase customer_notifications
       try {
-        if (currentUserId) {
-          await supabase.from("notifications").insert([
+        await supabase.from("customer_notifications").insert([
+          {
+            user_id: currentUserId,
+            title: `Order #${orderNumber} Confirmed`,
+            message: `Your order for ${verifiedItems.length} item(s) totalling ${gbp(finalTotal)} has been received.`,
+            category: "Orders",
+            is_read: false,
+          },
+        ]);
+      } catch (notifErr) {
+        console.error("Customer notification creation error:", notifErr);
+      }
+
+      // 9. Create Real Persistent Manager Notification in public.notifications (P0 FIX 1)
+      try {
+        const { data: existingStaffNotifs } = await supabase
+          .from("notifications")
+          .select("id")
+          .eq("title", `New Order #${orderNumber}`)
+          .limit(1);
+
+        if (!existingStaffNotifs || existingStaffNotifs.length === 0) {
+          const { error: staffNotifErr } = await (supabase.from("notifications") as any).insert([
             {
-              user_id: currentUserId,
-              title: `Order #${orderNumber} Confirmed`,
-              message: `Your order for ${verifiedItems.length} item(s) totalling ${gbp(finalTotal)} has been received.`,
-              category: "order",
+              user_id: null, // Broadcast to all operations managers and admins
+              title: `New Order #${orderNumber}`,
+              message: `${fullName.trim()} placed a new order #${orderNumber} (${verifiedItems.length} item(s), total ${gbp(finalTotal)}).`,
+              category: "Orders",
+              link: `/manager/orders?orderId=${newOrder.id}`,
               read: false,
               is_read: false,
             },
           ]);
+          if (staffNotifErr) {
+            console.error("Failed to insert manager order notification:", staffNotifErr);
+          }
         }
-      } catch (notifErr) {
-        console.error("Notification creation warning:", notifErr);
+      } catch (staffErr) {
+        console.error("Manager notification creation notice:", staffErr);
       }
 
-      // 9. Clear Cart ONLY AFTER database success
+      // 10. Clear Cart ONLY AFTER database success
       clearCart();
       toast.success(`Order #${orderNumber} placed successfully!`);
-      navigate({ to: "/account/orders" });
+      navigate({ to: `/account/orders/${newOrder.id}` as any });
     } catch (err: any) {
+      // If parent order was created but downstream failed, attempt safe cleanup
+      if (createdOrderId) {
+        try {
+          await supabase.from("order_items").delete().eq("order_id", createdOrderId);
+          await supabase.from("orders").delete().eq("id", createdOrderId);
+        } catch {}
+      }
       toast.error("Order placement failed: " + err.message);
     } finally {
       setSubmitting(false);

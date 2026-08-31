@@ -103,8 +103,33 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const managerName = user?.name || "Manager Account";
-  const managerEmail = user?.email || "manager@jss.com";
+  // Protect Manager Portal: only managers and admins are allowed
+  if (!user || (user.role !== "manager" && user.role !== "admin")) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-50 px-4 font-sans">
+        <div className="surface-card max-w-sm p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white">
+          <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl mb-4 shadow-sm" />
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+            Manager Access Required
+          </h1>
+          <p className="mt-2 text-xs text-slate-600 leading-relaxed">
+            Please sign in using an Operations Manager or Administrator account to access the Manager Operations Portal.
+          </p>
+          <Button
+            asChild
+            className="mt-6 w-full rounded-full shadow-md font-bold bg-primary hover:bg-primary/90 text-white"
+          >
+            <Link to="/login" search={{ redirect: currentPath || "/manager" }}>
+              Sign In to Manager Portal
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const managerName = user.name || "Manager";
+  const managerEmail = user.email || "";
 
   const renderNavItems = (isMobile = false) => (
     <div className="space-y-6">

@@ -125,6 +125,7 @@ export function AdminBannersView() {
 
       setModalOpen(false);
       loadBanners();
+      window.dispatchEvent(new Event("cms_banners_updated"));
     } catch (err: any) {
       toast.error("Failed to save banner: " + err.message);
     } finally {
@@ -140,6 +141,7 @@ export function AdminBannersView() {
       await logAdminAuditAction(updatedStatus ? "ENABLE_BANNER" : "DISABLE_BANNER", "banner", b.id);
       toast.success(`Banner status updated!`);
       loadBanners();
+      window.dispatchEvent(new Event("cms_banners_updated"));
     } catch (err: any) {
       toast.error("Failed to update status: " + err.message);
     }
@@ -153,6 +155,7 @@ export function AdminBannersView() {
       await logAdminAuditAction("DELETE_BANNER", "banner", id, { title: bannerTitle });
       toast.success("Banner deleted!");
       loadBanners();
+      window.dispatchEvent(new Event("cms_banners_updated"));
     } catch (err: any) {
       toast.error("Failed to delete banner: " + err.message);
     }

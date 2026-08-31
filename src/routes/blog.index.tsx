@@ -1081,15 +1081,8 @@ function BlogKnowledgeCentrePage() {
           } catch {}
         }
 
-        let local: any[] = [];
-        try {
-          const stored = localStorage.getItem("jss_admin_blog_posts");
-          if (stored) local = JSON.parse(stored);
-        } catch {}
-
         const combined = new Map<string, any>();
         if (Array.isArray(parsed)) parsed.forEach((p) => combined.set(p.slug, p));
-        if (Array.isArray(local)) local.forEach((p) => combined.set(p.slug, { ...combined.get(p.slug), ...p }));
         if (Array.isArray(tablePosts) && tablePosts.length > 0) {
           tablePosts.forEach((p) => combined.set(p.slug, { ...combined.get(p.slug), ...p }));
         }

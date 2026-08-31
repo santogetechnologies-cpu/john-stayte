@@ -681,7 +681,17 @@ export function AdminDashboardView() {
                       {new Date(log.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-medium truncate">{log.details || log.target_table || "Logged action"}</p>
+                  <p className="text-[11px] text-slate-500 font-medium truncate">
+                    {typeof log.details === "string" && log.details.trim()
+                      ? log.details
+                      : log.details && typeof log.details === "object" && Object.keys(log.details).length > 0
+                      ? (log.details.message || log.details.description || JSON.stringify(log.details))
+                      : (typeof log.target_table === "string" && log.target_table
+                      ? log.target_table
+                      : (typeof log.entity_type === "string" && log.entity_type
+                      ? log.entity_type
+                      : (log.actor_email ? `By ${log.actor_email}` : "System event")))}
+                  </p>
                 </div>
               ))
             )}

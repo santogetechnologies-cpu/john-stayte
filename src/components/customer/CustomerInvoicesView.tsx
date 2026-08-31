@@ -15,6 +15,12 @@ import {
   MapPin,
   AlertTriangle,
   RotateCcw,
+  Sparkles,
+  ShoppingBag,
+  ArrowRight,
+  TrendingUp,
+  Receipt,
+  Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -77,7 +83,7 @@ export function CustomerInvoicesView() {
       const { data: dbOrders, error: ordErr } = await query;
       if (ordErr) throw ordErr;
 
-      // Filter out test/verification orders (AUDIT, TEST, VERIFY, STALE)
+      // Filter out test/verification orders (AUDIT, TEST, VERIFY, STALE, MOCK, DEMO, SEED)
       const realOrders = (dbOrders || []).filter((o) => {
         const num = (o.order_number || "").toUpperCase();
         return (
@@ -103,6 +109,19 @@ export function CustomerInvoicesView() {
   useEffect(() => {
     loadCustomerInvoices();
   }, [user]);
+
+  // Compute summary metrics from real orders
+  const totalInvoices = orders.length;
+
+  const totalBilled = useMemo(() => {
+    return orders
+      .filter((o) => o.status !== "Cancelled")
+      .reduce((sum, o) => sum + Number(o.total || 0), 0);
+  }, [orders]);
+
+  const latestInvoice = useMemo(() => {
+    return orders.length > 0 ? orders[0] : null;
+  }, [orders]);
 
   const handleOpenViewInvoice = (order: any) => {
     setSelectedInvoiceOrder(order);
@@ -255,149 +274,417 @@ export function CustomerInvoicesView() {
     }
   };
 
+  const getStatusBadge = (status: string) => {
+    if (status === "Cancelled") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+          Cancelled
+        </span>
+      );
+    }
+    if (status === "Pending") {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/70">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+          Pending
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+        Paid & Issued
+      </span>
+    );
+  };
+
   return (
-    <div className="space-y-6">
-      {/* 1. PAGE HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/account" className="hover:text-primary transition-colors">Account</Link>
-            <span>/</span>
-            <span className="text-foreground font-bold">Invoices</span>
+    <div className="space-y-6 sm:space-y-7">
+      {/* ============================================================ */}
+      {/* 1. HEADER SECTION                                            */}
+      {/* ============================================================ */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+              <Link to="/account" className="hover:text-primary transition-colors">
+                Account
+              </Link>
+              <span>/</span>
+              <span className="text-slate-800 font-bold">Invoices</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 leading-tight flex items-center gap-2.5">
+              <Receipt className="h-7 w-7 text-primary shrink-0" />
+              VAT Invoices & Billing
+            </h1>
+
+            <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
+              View and download official VAT tax invoices for your commercial and domestic orders with John Stayte Services.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <FileText className="h-7 w-7 text-primary" /> VAT Invoices & Billing Statements
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            View and download official VAT tax invoices for your commercial orders with John Stayte Services.
+
+          <div className="shrink-0">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-4 gap-1.5"
+            >
+              <Link to="/account/orders">
+                <ShoppingBag className="h-3.5 w-3.5 text-primary" /> View Orders
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* ============================================================ */}
+      {/* 2. COMPACT SUMMARY CARDS                                     */}
+      {/* ============================================================ */}
+      <div className="grid gap-3.5 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+        {/* Total Invoices */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs transition-all hover:border-slate-300">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Total Invoices
+            </span>
+            <div className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+              <FileText className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-display font-black text-slate-900 leading-none">
+            {loading ? "..." : totalInvoices}
+          </p>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            {totalInvoices === 1 ? "1 VAT invoice on file" : `${totalInvoices} invoices on file`}
+          </p>
+        </div>
+
+        {/* Total Billed */}
+        <div className="bg-white rounded-2xl border border-primary/30 shadow-[0_4px_16px_rgba(227,27,35,0.06)] p-4 sm:p-5 transition-all">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Total Billed
+            </span>
+            <div className="p-2 rounded-xl bg-primary/10 text-primary border border-primary/20">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-display font-black text-primary leading-none">
+            {loading ? "..." : gbp(totalBilled)}
+          </p>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            Cumulative spend including VAT
+          </p>
+        </div>
+
+        {/* Latest Invoice */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-xs transition-all hover:border-slate-300">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              Latest Invoice
+            </span>
+            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Calendar className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-xl sm:text-2xl font-display font-black text-slate-900 leading-none truncate">
+            {loading
+              ? "..."
+              : latestInvoice
+              ? `INV-${latestInvoice.order_number}`
+              : "None"}
+          </p>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            {latestInvoice
+              ? new Date(latestInvoice.created_at).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "No issued invoices"}
           </p>
         </div>
       </div>
 
-      {/* 2. INVOICES CONTAINER */}
+      {/* ============================================================ */}
+      {/* 3. INVOICE LIST / TABLE                                      */}
+      {/* ============================================================ */}
       {loading ? (
-        <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs font-bold text-muted-foreground shadow-xs flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Querying your invoices from Supabase orders...
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
+          <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
+          <p className="text-xs text-slate-500 font-bold">
+            Loading your VAT invoices from Supabase...
+          </p>
         </div>
       ) : error ? (
-        <div className="p-12 text-center space-y-3 surface-card rounded-3xl border bg-white shadow-xs">
+        <div className="p-10 text-center space-y-3 bg-white rounded-2xl border border-slate-200/90 shadow-xs">
           <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
-          <h3 className="font-bold text-sm text-foreground">Database Query Error</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
-          <Button onClick={loadCustomerInvoices} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
+          <h3 className="font-bold text-sm text-slate-900">Database Query Error</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">{error}</p>
+          <Button
+            onClick={loadCustomerInvoices}
+            size="sm"
+            variant="outline"
+            className="rounded-xl text-xs font-bold gap-1.5 mt-2"
+          >
             <RotateCcw className="h-3.5 w-3.5" /> Retry Query
           </Button>
         </div>
       ) : orders.length === 0 ? (
-        <div className="surface-card p-16 text-center rounded-3xl border bg-white space-y-4 shadow-xs">
-          <div className="p-4 rounded-full bg-slate-100 text-slate-500 w-fit mx-auto">
-            <FileText className="h-10 w-10 text-slate-400" />
+        /* EMPTY STATE */
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-14 text-center shadow-xs space-y-4 max-w-lg mx-auto">
+          <div className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <FileText className="h-8 w-8 text-slate-400" />
           </div>
-          <div className="space-y-1 max-w-sm mx-auto">
-            <h2 className="font-black text-lg text-foreground">No customer invoices found</h2>
-            <p className="text-xs text-muted-foreground leading-relaxed">
+          <div className="space-y-1.5 max-w-sm mx-auto">
+            <h2 className="font-display font-extrabold text-lg text-slate-900">
+              No invoices yet
+            </h2>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
               Official VAT tax invoices will appear here automatically when you place orders with John Stayte Services.
             </p>
+          </div>
+          <div className="pt-2">
+            <Button
+              asChild
+              className="rounded-xl font-extrabold text-xs shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-9 px-5 gap-2"
+            >
+              <Link to="/account/orders">
+                <ShoppingBag className="h-3.5 w-3.5" /> View My Orders
+              </Link>
+            </Button>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => {
-            const invoiceNo = `INV-${order.order_number}`;
-            const subtotal = Number(order.subtotal || order.total || 0);
-            const shippingFee = Number(order.shipping_fee || 0);
-            const vatAmount = subtotal * 0.2;
-            const grandTotal = Number(order.total || subtotal + vatAmount + shippingFee);
-            const orderDate = new Date(order.created_at).toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            });
+          {/* DESKTOP & TABLET: REFINED TABLE LAYOUT */}
+          <div className="hidden md:block bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <Table>
+              <TableHeader className="bg-slate-50/70 border-b border-slate-100">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5 pl-6">
+                    Invoice
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5">
+                    Order Ref
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5">
+                    Date Issued
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5">
+                    Status
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5 text-right">
+                    Subtotal
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5 text-right">
+                    VAT (20%)
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5 text-right">
+                    Total
+                  </TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-500 py-3.5 text-right pr-6">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-slate-100">
+                {orders.map((order) => {
+                  const invoiceNo = `INV-${order.order_number}`;
+                  const subtotal = Number(order.subtotal || order.total || 0);
+                  const shippingFee = Number(order.shipping_fee || 0);
+                  const vatAmount = subtotal * 0.2;
+                  const grandTotal = Number(order.total || subtotal + vatAmount + shippingFee);
+                  const orderDate = new Date(order.created_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  });
 
-            const isCancelled = order.status === "Cancelled";
+                  return (
+                    <TableRow
+                      key={order.id}
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
+                      {/* Invoice # */}
+                      <TableCell className="pl-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <FileText className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="font-mono font-bold text-xs text-slate-900">
+                            {invoiceNo}
+                          </span>
+                        </div>
+                      </TableCell>
 
-            return (
-              <div
-                key={order.id}
-                className="surface-card p-6 rounded-3xl border bg-white flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs hover:border-slate-300 transition-all"
-              >
-                {/* Left Invoice Info */}
-                <div className="flex items-start gap-4">
-                  <div className="p-3.5 rounded-2xl bg-primary/10 text-primary shrink-0">
-                    <FileText className="h-6 w-6" />
+                      {/* Order Ref */}
+                      <TableCell className="py-4">
+                        <Link
+                          to="/account/orders/$orderId"
+                          params={{ orderId: order.id }}
+                          className="font-mono text-xs font-semibold text-slate-700 hover:text-primary hover:underline inline-flex items-center gap-1"
+                        >
+                          #{order.order_number}
+                        </Link>
+                      </TableCell>
+
+                      {/* Date Issued */}
+                      <TableCell className="py-4 text-xs font-medium text-slate-500">
+                        {orderDate}
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell className="py-4">
+                        {getStatusBadge(order.status)}
+                      </TableCell>
+
+                      {/* Subtotal */}
+                      <TableCell className="py-4 text-right text-xs font-medium text-slate-600">
+                        {gbp(subtotal)}
+                      </TableCell>
+
+                      {/* VAT (20%) */}
+                      <TableCell className="py-4 text-right text-xs font-medium text-slate-500">
+                        {gbp(vatAmount)}
+                      </TableCell>
+
+                      {/* Total */}
+                      <TableCell className="py-4 text-right font-display font-black text-sm text-slate-900">
+                        {gbp(grandTotal)}
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="py-4 pr-6 text-right">
+                        <div className="inline-flex items-center gap-1.5 justify-end">
+                          <Button
+                            onClick={() => handleOpenViewInvoice(order)}
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl text-xs font-bold gap-1 border-slate-200 text-slate-700 hover:bg-slate-50 h-8 px-3 transition-colors"
+                          >
+                            <Eye className="h-3.5 w-3.5 text-slate-500" /> View
+                          </Button>
+
+                          <Button
+                            onClick={() => handleDownloadVATInvoice(order)}
+                            size="sm"
+                            className="rounded-xl text-xs font-extrabold gap-1 shadow-xs bg-primary hover:bg-primary/90 text-white h-8 px-3 transition-all"
+                          >
+                            <Download className="h-3.5 w-3.5" /> Download
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* MOBILE: COMPACT RESPONSIVE CARDS */}
+          <div className="md:hidden space-y-3">
+            {orders.map((order) => {
+              const invoiceNo = `INV-${order.order_number}`;
+              const subtotal = Number(order.subtotal || order.total || 0);
+              const shippingFee = Number(order.shipping_fee || 0);
+              const vatAmount = subtotal * 0.2;
+              const grandTotal = Number(order.total || subtotal + vatAmount + shippingFee);
+              const orderDate = new Date(order.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+
+              return (
+                <div
+                  key={order.id}
+                  className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs space-y-3"
+                >
+                  {/* Top: Invoice # & Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <FileText className="h-3.5 w-3.5" />
+                      </div>
+                      <span className="font-mono font-bold text-sm text-slate-900">
+                        {invoiceNo}
+                      </span>
+                    </div>
+                    {getStatusBadge(order.status)}
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-black text-base text-foreground">{invoiceNo}</h3>
-                      <span className="text-xs text-muted-foreground font-semibold">
-                        (Order #{order.order_number})
+                  {/* Middle: Order Ref & Date */}
+                  <div className="text-xs text-slate-500 font-medium flex items-center gap-2 border-t border-slate-100 pt-2.5">
+                    <span>Order #{order.order_number}</span>
+                    <span className="text-slate-300">·</span>
+                    <span>{orderDate}</span>
+                  </div>
+
+                  {/* Financials Grid */}
+                  <div className="bg-slate-50/70 rounded-xl p-2.5 border border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Subtotal
                       </span>
-                      <Badge
-                        variant="outline"
-                        className={`text-[10px] font-extrabold ${
-                          isCancelled
-                            ? "bg-rose-50 text-rose-700 border-rose-200"
-                            : "bg-emerald-50 text-emerald-800 border-emerald-200"
-                        }`}
-                      >
-                        {isCancelled ? "Order Cancelled" : "Paid & Issued"}
-                      </Badge>
+                      <span className="font-semibold text-slate-700">
+                        {gbp(subtotal)}
+                      </span>
                     </div>
-
-                    <p className="text-xs text-muted-foreground font-medium">
-                      Date Issued: <strong className="text-foreground">{orderDate}</strong> &bull; Billed to:{" "}
-                      <strong className="text-foreground">{order.customer_name || user?.name}</strong>
-                    </p>
-
-                    {/* Financial Summary Line */}
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs pt-1">
-                      <span className="text-muted-foreground">
-                        Subtotal: <strong className="text-foreground">{gbp(subtotal)}</strong>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        VAT (20%)
                       </span>
-                      <span className="text-muted-foreground">
-                        VAT (20%): <strong className="text-foreground">{gbp(vatAmount)}</strong>
+                      <span className="font-semibold text-slate-700">
+                        {gbp(vatAmount)}
                       </span>
-                      <span className="text-muted-foreground">
-                        Delivery: <strong className="text-foreground">{shippingFee === 0 ? "Free" : gbp(shippingFee)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Total
                       </span>
-                      <span className="font-black text-primary text-sm">
-                        Total: {gbp(grandTotal)}
+                      <span className="font-black text-slate-900 font-display">
+                        {gbp(grandTotal)}
                       </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Right Action Buttons */}
-                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
-                  <Button
-                    onClick={() => handleOpenViewInvoice(order)}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full text-xs font-bold gap-1.5 border-slate-200 hover:bg-slate-50"
-                  >
-                    <Eye className="h-3.5 w-3.5 text-slate-600" /> View Invoice
-                  </Button>
+                  {/* Bottom: Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Button
+                      onClick={() => handleOpenViewInvoice(order)}
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs font-bold gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 h-9"
+                    >
+                      <Eye className="h-3.5 w-3.5 text-slate-500" /> View
+                    </Button>
 
-                  <Button
-                    onClick={() => handleDownloadVATInvoice(order)}
-                    size="sm"
-                    className="rounded-full text-xs font-extrabold gap-1.5 shadow-xs bg-primary text-white hover:bg-primary/90"
-                  >
-                    <Download className="h-3.5 w-3.5" /> Download VAT Invoice
-                  </Button>
+                    <Button
+                      onClick={() => handleDownloadVATInvoice(order)}
+                      size="sm"
+                      className="rounded-xl text-xs font-extrabold gap-1.5 shadow-xs bg-primary hover:bg-primary/90 text-white h-9"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Download
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* 3. VIEW INVOICE DOCUMENT MODAL */}
+      {/* ============================================================ */}
+      {/* 4. VIEW INVOICE DOCUMENT MODAL                               */}
+      {/* ============================================================ */}
       <Dialog open={viewInvoiceModalOpen} onOpenChange={setViewInvoiceModalOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white">
           <DialogHeader>
-            <DialogTitle className="font-black text-xl text-foreground flex items-center justify-between">
+            <DialogTitle className="font-display font-black text-xl text-slate-900 flex items-center justify-between">
               <span>VAT Tax Invoice: INV-{selectedInvoiceOrder?.order_number}</span>
             </DialogTitle>
           </DialogHeader>
@@ -408,33 +695,33 @@ export function CustomerInvoicesView() {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="font-black text-base text-primary">JOHN STAYTE SERVICES</h2>
-                  <p className="text-[11px] text-muted-foreground">Whitminster Depot, Gloucestershire, GL2 7NY</p>
-                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">VAT Reg No: GB 123 4567 89</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Whitminster Depot, Gloucestershire, GL2 7NY</p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">VAT Reg No: GB 123 4567 89</p>
                 </div>
 
                 <div className="sm:text-right">
                   <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold mb-1">
                     Official Tax Invoice
                   </Badge>
-                  <p className="font-black text-sm text-foreground">Ref: #{selectedInvoiceOrder.order_number}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="font-mono font-black text-sm text-slate-900">Ref: #{selectedInvoiceOrder.order_number}</p>
+                  <p className="text-[11px] text-slate-500">
                     Date: {new Date(selectedInvoiceOrder.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
                   </p>
                 </div>
               </div>
 
               {/* Billed To Address */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border bg-white">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border border-slate-200/80 bg-white">
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">Customer Information</p>
-                  <p className="font-black text-sm text-foreground mt-1">{selectedInvoiceOrder.customer_name || user?.name}</p>
-                  <p className="text-muted-foreground">{selectedInvoiceOrder.customer_email || user?.email}</p>
-                  <p className="text-muted-foreground">{selectedInvoiceOrder.customer_phone || "Phone on file"}</p>
+                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Customer Information</p>
+                  <p className="font-black text-sm text-slate-900 mt-1">{selectedInvoiceOrder.customer_name || user?.name}</p>
+                  <p className="text-slate-500">{selectedInvoiceOrder.customer_email || user?.email}</p>
+                  <p className="text-slate-500">{selectedInvoiceOrder.customer_phone || "Phone on file"}</p>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">Delivery & Billing Address</p>
-                  <p className="font-semibold text-foreground mt-1">
+                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Delivery & Billing Address</p>
+                  <p className="font-semibold text-slate-800 mt-1">
                     {typeof selectedInvoiceOrder.delivery_address === "object" && selectedInvoiceOrder.delivery_address !== null
                       ? `${selectedInvoiceOrder.delivery_address.street || ""}, ${selectedInvoiceOrder.delivery_address.postcode || ""}`
                       : selectedInvoiceOrder.delivery_address || "Gloucestershire Delivery Address"}
@@ -444,7 +731,7 @@ export function CustomerInvoicesView() {
               </div>
 
               {/* Items Breakdown Table */}
-              <div className="rounded-2xl border bg-white overflow-hidden">
+              <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
@@ -464,11 +751,11 @@ export function CustomerInvoicesView() {
 
                       return (
                         <TableRow key={item.id}>
-                          <TableCell className="font-bold text-xs">{item.product_name}</TableCell>
+                          <TableCell className="font-bold text-xs text-slate-900">{item.product_name}</TableCell>
                           <TableCell className="text-center font-bold">{qty}</TableCell>
                           <TableCell className="text-right">{gbp(uPrice)}</TableCell>
-                          <TableCell className="text-right text-muted-foreground">{gbp(itemVat)}</TableCell>
-                          <TableCell className="text-right font-black">{gbp(itemTotal)}</TableCell>
+                          <TableCell className="text-right text-slate-500">{gbp(itemVat)}</TableCell>
+                          <TableCell className="text-right font-black text-slate-900">{gbp(itemTotal)}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -477,33 +764,33 @@ export function CustomerInvoicesView() {
               </div>
 
               {/* Financial Totals Breakdown */}
-              <div className="p-4 rounded-2xl bg-slate-50 border space-y-1.5 max-w-xs ml-auto text-right">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 max-w-xs ml-auto text-right">
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground font-medium">Subtotal (excl. VAT):</span>
-                  <span className="font-bold text-foreground">{gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total))}</span>
+                  <span className="text-slate-500 font-medium">Subtotal (excl. VAT):</span>
+                  <span className="font-bold text-slate-900">{gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total))}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground font-medium">VAT (Standard 20%):</span>
-                  <span className="font-bold text-foreground">{gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total) * 0.2)}</span>
+                  <span className="text-slate-500 font-medium">VAT (Standard 20%):</span>
+                  <span className="font-bold text-slate-900">{gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total) * 0.2)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground font-medium">Carriage / Delivery:</span>
-                  <span className="font-bold text-foreground">{selectedInvoiceOrder.shipping_fee === 0 ? "FREE" : gbp(Number(selectedInvoiceOrder.shipping_fee || 0))}</span>
+                  <span className="text-slate-500 font-medium">Carriage / Delivery:</span>
+                  <span className="font-bold text-slate-900">{selectedInvoiceOrder.shipping_fee === 0 ? "FREE" : gbp(Number(selectedInvoiceOrder.shipping_fee || 0))}</span>
                 </div>
-                <div className="flex justify-between text-base font-black text-primary border-t pt-1.5 mt-1">
+                <div className="flex justify-between text-base font-black text-primary border-t border-slate-200 pt-1.5 mt-1">
                   <span>Total Paid:</span>
                   <span>{gbp(Number(selectedInvoiceOrder.total))}</span>
                 </div>
               </div>
 
               {/* Actions Footer */}
-              <div className="pt-3 flex justify-end gap-2 border-t">
-                <Button variant="ghost" onClick={() => setViewInvoiceModalOpen(false)} className="rounded-full text-xs font-bold">
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <Button variant="ghost" onClick={() => setViewInvoiceModalOpen(false)} className="rounded-xl text-xs font-bold">
                   Close
                 </Button>
                 <Button
                   onClick={() => handleDownloadVATInvoice(selectedInvoiceOrder)}
-                  className="rounded-full text-xs font-extrabold gap-1.5 shadow-md bg-primary text-white"
+                  className="rounded-xl text-xs font-extrabold gap-1.5 shadow-sm bg-primary hover:bg-primary/90 text-white h-9 px-4"
                 >
                   <Download className="h-4 w-4" /> Download VAT Document
                 </Button>

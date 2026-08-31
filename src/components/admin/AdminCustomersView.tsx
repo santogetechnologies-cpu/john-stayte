@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 
 export function AdminCustomersView() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -76,7 +77,8 @@ export function AdminCustomersView() {
     setCreating(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const ephemeralClient = getEphemeralAuthClient();
+      const { error } = await ephemeralClient.auth.signUp({
         email: newEmail.trim(),
         password: newPassword,
         options: {

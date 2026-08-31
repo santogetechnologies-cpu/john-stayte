@@ -59,9 +59,6 @@ export function CustomerOrdersView() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
 
-  // Selected Order for Details Modal
-  const [selectedOrderDetails, setSelectedOrderDetails] = useState<any | null>(null);
-
   // Cancellation Confirmation State & Reason Selection
   const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
   const [cancellationReason, setCancellationReason] = useState<string>("");
@@ -121,12 +118,6 @@ export function CustomerOrdersView() {
         }));
 
         setOrders(enhancedOrders);
-
-        // Update selected order details if modal is open
-        if (selectedOrderDetails) {
-          const updated = enhancedOrders.find((x) => x.id === selectedOrderDetails.id);
-          if (updated) setSelectedOrderDetails(updated);
-        }
       } else {
         setOrders([]);
       }
@@ -442,12 +433,13 @@ export function CustomerOrdersView() {
                       )}
 
                       {remainingCount > 0 && (
-                        <p
-                          className="text-[11px] font-bold text-primary hover:underline cursor-pointer mt-1"
-                          onClick={() => setSelectedOrderDetails(o)}
+                        <Link
+                          to="/account/orders/$orderId"
+                          params={{ orderId: o.id }}
+                          className="text-[11px] font-bold text-primary hover:underline block mt-1"
                         >
                           + {remainingCount} more item(s) in this order
-                        </p>
+                        </Link>
                       )}
                     </div>
                   </div>
@@ -517,10 +509,12 @@ export function CustomerOrdersView() {
 
                       <Button
                         size="sm"
-                        onClick={() => setSelectedOrderDetails(o)}
+                        asChild
                         className="rounded-full text-xs font-bold gap-1 shadow-2xs"
                       >
-                        View Details <ChevronRight className="h-3.5 w-3.5" />
+                        <Link to="/account/orders/$orderId" params={{ orderId: o.id }}>
+                          View Details <ChevronRight className="h-3.5 w-3.5" />
+                        </Link>
                       </Button>
                     </div>
                   </div>
@@ -529,228 +523,6 @@ export function CustomerOrdersView() {
             );
           })}
         </div>
-      )}
-
-      {/* 4. REDESIGNED PREMIUM ORDER DETAILS MODAL */}
-      {selectedOrderDetails && (
-        <Dialog open={Boolean(selectedOrderDetails)} onOpenChange={() => setSelectedOrderDetails(null)}>
-          <DialogContent className="max-w-2xl rounded-3xl p-6 bg-white space-y-6 max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="border-b pb-4 flex flex-row items-center justify-between gap-4">
-              <div>
-                <DialogTitle className="text-xl font-black text-foreground">
-                  ORDER #{selectedOrderDetails.order_number || selectedOrderDetails.id.slice(0, 8)}
-                </DialogTitle>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Placed on {new Date(selectedOrderDetails.created_at).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-
-              <Badge
-                variant="outline"
-                className={`font-bold text-xs px-3.5 py-1 rounded-full ${
-                  selectedOrderDetails.status === "Cancelled"
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : selectedOrderDetails.status === "Delivered"
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-primary/10 text-primary border-primary/20"
-                }`}
-              >
-                {selectedOrderDetails.status}
-              </Badge>
-            </DialogHeader>
-
-            {/* PREMIUM VISUAL FULFILLMENT STATUS PROGRESSION */}
-            {selectedOrderDetails.status === "Cancelled" ? (
-              <div className="bg-red-50/80 border border-red-200 p-4.5 rounded-2xl space-y-2">
-                <div className="flex items-center gap-2 text-red-700 font-extrabold text-xs">
-                  <XCircle className="h-4 w-4 shrink-0" />
-                  <span>This order was cancelled</span>
-                </div>
-                {selectedOrderDetails.cancellation_reason && (
-                  <p className="text-xs font-bold text-slate-800">
-                    Reason: <span className="font-semibold text-slate-700">{selectedOrderDetails.cancellation_reason}</span>
-                  </p>
-                )}
-                <p className="text-[11px] text-red-600 leading-relaxed">
-                  Cancelled on{" "}
-                  {selectedOrderDetails.cancelled_at
-                    ? new Date(selectedOrderDetails.cancelled_at).toLocaleString("en-GB")
-                    : selectedOrderDetails.order_status_history?.find((h: any) => h.status === "Cancelled")
-                    ? new Date(
-                        selectedOrderDetails.order_status_history.find((h: any) => h.status === "Cancelled").created_at,
-                      ).toLocaleString("en-GB")
-                    : new Date(selectedOrderDetails.updated_at || selectedOrderDetails.created_at).toLocaleString("en-GB")}
-                  . Reserved inventory has been restored.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-slate-50/90 p-5 rounded-2xl border border-slate-200/80 space-y-4">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                  Fulfillment Status Progression
-                </p>
-
-                <div className="relative flex items-center justify-between px-2">
-                  <div className="absolute left-6 right-6 top-4 h-1 bg-slate-200 -z-0" />
-                  {STATUS_STEPS.map((step, idx) => {
-                    const currentIdx = STATUS_STEPS.indexOf(selectedOrderDetails.status);
-                    const isCompleted = currentIdx > idx;
-                    const isCurrent = currentIdx === idx;
-
-                    const historyEntry = selectedOrderDetails.order_status_history?.find(
-                      (h: any) => h.status === step,
-                    );
-
-                    return (
-                      <div key={step} className="relative z-10 flex flex-col items-center text-center max-w-[80px]">
-                        <div
-                          className={`h-8 w-8 rounded-full grid place-items-center font-bold text-xs transition-all shadow-xs ${
-                            isCurrent
-                              ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110"
-                              : isCompleted
-                              ? "bg-emerald-600 text-white"
-                              : "bg-white text-slate-400 border-2 border-slate-300"
-                          }`}
-                        >
-                          {isCompleted ? "✓" : idx + 1}
-                        </div>
-
-                        <p
-                          className={`text-[11px] font-bold mt-2 leading-tight ${
-                            isCurrent
-                              ? "text-primary"
-                              : isCompleted
-                              ? "text-slate-800"
-                              : "text-slate-400 font-medium"
-                          }`}
-                        >
-                          {step}
-                        </p>
-
-                        {historyEntry && (
-                          <span className="text-[9px] text-muted-foreground font-mono mt-0.5">
-                            {new Date(historyEntry.created_at).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Delivery Information */}
-            <div className="bg-slate-50 p-4 rounded-2xl border space-y-1 text-xs">
-              <p className="font-bold text-foreground flex items-center gap-1.5 mb-1">
-                <MapPin className="h-4 w-4 text-primary" /> Delivery Details
-              </p>
-              <p className="font-bold text-foreground">{selectedOrderDetails.customer_name}</p>
-              <p className="text-muted-foreground">
-                {selectedOrderDetails.delivery_address?.street || "123 High Street"},{" "}
-                {selectedOrderDetails.delivery_address?.postcode || "GL2 7LZ"}
-              </p>
-              {selectedOrderDetails.assigned_driver && (
-                <p className="font-semibold text-primary mt-1">
-                  Assigned Driver: {selectedOrderDetails.assigned_driver} (Depot: {selectedOrderDetails.assigned_depot || "Whitminster"})
-                </p>
-              )}
-            </div>
-
-            {/* Real Order Items List */}
-            <div className="space-y-3">
-              <p className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-                Order Items ({selectedOrderDetails.order_items?.length || 0})
-              </p>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {selectedOrderDetails.order_items?.map((item: any, idx: number) => (
-                  <div key={idx} className="flex items-center justify-between p-3 rounded-2xl border bg-card text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-xl bg-slate-50 border p-1 grid place-items-center shrink-0">
-                        {item.product_info?.image_url ? (
-                          <img src={item.product_info.image_url} alt="" className="h-full w-full object-contain" />
-                        ) : (
-                          <Package className="h-5 w-5 text-primary/70" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground">{item.product_name}</p>
-                        <p className="text-muted-foreground">Qty: {item.quantity} × {gbp(Number(item.unit_price))}</p>
-                      </div>
-                    </div>
-                    <p className="font-extrabold text-foreground">{gbp(Number(item.total_price))}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Order Totals Summary */}
-            <div className="border-t pt-4 space-y-1.5 text-xs">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>{gbp(Number(selectedOrderDetails.subtotal))}</span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping Fee</span>
-                <span>
-                  {Number(selectedOrderDetails.shipping_fee) === 0
-                    ? "Free"
-                    : gbp(Number(selectedOrderDetails.shipping_fee))}
-                </span>
-              </div>
-              <div className="flex justify-between text-base font-black text-foreground border-t pt-2">
-                <span>Total Amount</span>
-                <span>{gbp(Number(selectedOrderDetails.total))}</span>
-              </div>
-            </div>
-
-            {/* Modal Actions Footer */}
-            <div className="border-t pt-4 flex flex-wrap items-center justify-between gap-2">
-              {isCancellable(selectedOrderDetails.status) ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setOrderToCancel(selectedOrderDetails);
-                    setCancellationReason("");
-                    setCustomReasonText("");
-                  }}
-                  className="rounded-full text-xs font-bold text-red-600 border-red-200 hover:bg-red-50 gap-1.5"
-                >
-                  <XCircle className="h-3.5 w-3.5" /> Cancel Order
-                </Button>
-              ) : (
-                <div />
-              )}
-
-              <div className="flex items-center gap-2">
-                {selectedOrderDetails.status !== "Cancelled" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={reorderingId === selectedOrderDetails.id}
-                    onClick={() => handleReorder(selectedOrderDetails)}
-                    className="rounded-full text-xs font-bold gap-1.5"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" /> Reorder
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  onClick={() => setSelectedOrderDetails(null)}
-                  className="rounded-full text-xs font-bold"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       )}
 
       {/* 5. CANCELLATION CONFIRMATION DIALOG WITH REASON SELECTION */}

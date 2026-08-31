@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ExternalLink,
   Menu,
+  ShoppingCart,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,8 @@ type NavGroup = {
 };
 
 export function CustomerPortalLayout({ children }: { children: ReactNode }) {
-  const { user, logout, wishlist } = useStore();
+  const { user, logout, wishlist, cart } = useStore();
+  const cartCount = (cart || []).reduce((acc, l) => acc + l.qty, 0);
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
@@ -60,8 +62,8 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const customerName = user?.name && user.name !== "Sarah Hughes" ? user.name : "My Account";
-  const customerEmail = user?.email && user.email !== "customer@jss.com" ? user.email : "customer@jss.com";
+  const customerName = user?.name || "Customer Account";
+  const customerEmail = user?.email || "";
 
   const customerNavGroups: NavGroup[] = [
     {
@@ -253,6 +255,24 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
             className="md:hidden rounded-lg h-9 w-9 hover:bg-slate-100"
           >
             <Search className="h-4 w-4 text-slate-500" />
+          </Button>
+
+          {/* Live Cart Button */}
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="rounded-lg text-[12px] font-semibold gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30 h-8 px-2.5 sm:px-3 relative transition-colors"
+          >
+            <Link to="/cart" aria-label={`View Cart, ${cartCount} items`}>
+              <ShoppingCart className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="hidden sm:inline font-bold">Cart</span>
+              {cartCount > 0 && (
+                <span className="rounded-full bg-primary text-white px-1.5 py-0.2 text-[10px] font-black leading-tight min-w-[17px] text-center shadow-xs">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
           </Button>
 
           <CustomerNotificationsPopover />

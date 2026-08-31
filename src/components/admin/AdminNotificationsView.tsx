@@ -239,17 +239,17 @@ export function AdminNotificationsView() {
                   </div>
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-extrabold text-sm text-foreground">{n.title}</span>
+                      <span className="font-extrabold text-sm text-foreground">{typeof n.title === "string" ? n.title : String(n.title || "Notification")}</span>
                       {isUnread && (
                         <Badge className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded uppercase">
                           New Alert
                         </Badge>
                       )}
                       <Badge variant="outline" className="bg-white text-slate-600 text-[10px] font-bold">
-                        {n.category || "System"}
+                        {typeof n.category === "string" ? n.category : "System"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{n.message}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{typeof n.message === "string" ? n.message : String(n.message || "")}</p>
                     <p className="text-[10px] font-medium text-slate-400">
                       {new Date(n.created_at).toLocaleString("en-GB")}
                     </p>

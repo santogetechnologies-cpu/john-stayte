@@ -45,12 +45,6 @@ function Contact() {
           .eq("section_key", "faqs_data")
           .maybeSingle();
 
-        let local: any[] = [];
-        try {
-          const stored = localStorage.getItem("jss_admin_faqs");
-          if (stored) local = JSON.parse(stored);
-        } catch {}
-
         if (data?.content) {
           try {
             const parsed = JSON.parse(data.content);
@@ -62,13 +56,6 @@ function Contact() {
               }
             }
           } catch {}
-        }
-
-        if (local.length > 0) {
-          const activeOnly = local.filter((item) => item.is_active !== false);
-          if (activeOnly.length > 0) {
-            setFaqsList(activeOnly.map((f) => ({ q: f.q || f.question, a: f.a || f.answer })));
-          }
         }
       } catch (err) {
         console.error("Failed to load FAQs from Supabase:", err);

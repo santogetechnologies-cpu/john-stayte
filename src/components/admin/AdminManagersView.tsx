@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 
 export function AdminManagersView() {
   const [managers, setManagers] = useState<any[]>([]);
@@ -66,7 +67,8 @@ export function AdminManagersView() {
 
     try {
       // Create Auth user with manager role metadata
-      const { data, error } = await supabase.auth.signUp({
+      const ephemeralClient = getEphemeralAuthClient();
+      const { data, error } = await ephemeralClient.auth.signUp({
         email: newEmail.trim(),
         password: newPassword,
         options: {

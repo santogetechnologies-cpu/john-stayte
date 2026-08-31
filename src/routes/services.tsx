@@ -120,12 +120,6 @@ function Services() {
           .eq("section_key", "services_data")
           .maybeSingle();
 
-        let local: any[] = [];
-        try {
-          const stored = localStorage.getItem("jss_admin_services");
-          if (stored) local = JSON.parse(stored);
-        } catch {}
-
         if (block?.content) {
           try {
             const parsed = JSON.parse(block.content);
@@ -134,10 +128,6 @@ function Services() {
               return;
             }
           } catch {}
-        }
-
-        if (local.length > 0) {
-          setServiceList(local);
         }
       } catch (err) {
         console.error("Failed to load services from Supabase:", err);

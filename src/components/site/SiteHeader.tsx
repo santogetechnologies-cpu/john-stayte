@@ -68,6 +68,7 @@ export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<any[]>(defaultCategories);
   const count = cart.reduce((s, l) => s + l.qty, 0);
+  const [activeBanner, setActiveBanner] = useState<any | null>(null);
 
   useEffect(() => {
     async function loadCats() {
@@ -85,6 +86,49 @@ export function SiteHeader() {
     loadCats();
   }, []);
 
+  useEffect(() => {
+    async function loadActiveBanner() {
+      try {
+        const { data, error } = await supabase
+          .from("cms_banners")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const now = new Date();
+          const valid = data.find((b: any) => {
+            const startOk = !b.starts_at || new Date(b.starts_at) <= now;
+            const endOk = !b.expires_at || new Date(b.expires_at) >= now;
+            return startOk && endOk;
+          });
+          setActiveBanner(valid || null);
+        } else {
+          setActiveBanner(null);
+        }
+      } catch {
+        setActiveBanner(null);
+      }
+    }
+
+    loadActiveBanner();
+
+    const handleUpdate = () => loadActiveBanner();
+    window.addEventListener("cms_banners_updated", handleUpdate);
+
+    const channel = supabase
+      .channel("site_header_cms_banners")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cms_banners" }, () => loadActiveBanner())
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("cms_banners_updated", handleUpdate);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Subscribe to current router location pathname
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
@@ -100,11 +144,33 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/85 backdrop-blur-xl">
       <div className="hidden bg-ink text-ink-foreground md:block">
         <div className="container-page flex h-9 items-center justify-between text-xs">
-          <p className="flex items-center gap-2">
-            <Truck className="h-3.5 w-3.5 text-primary" /> Free delivery on orders over £75 across
-            Gloucestershire
-          </p>
-          <a href="tel:01452741234" className="flex items-center gap-2 hover:text-primary">
+          {activeBanner ? (
+            <p className="flex items-center gap-2 font-medium truncate">
+              <Truck className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span>
+                {typeof (activeBanner.message || activeBanner.title) === "string"
+                  ? (activeBanner.message || activeBanner.title)
+                  : ""}
+                {typeof activeBanner.subtitle === "string" && activeBanner.subtitle.trim()
+                  ? ` — ${activeBanner.subtitle}`
+                  : ""}
+              </span>
+              {activeBanner.link_url && (
+                <Link
+                  to={activeBanner.link_url}
+                  className="underline underline-offset-2 font-bold hover:text-primary transition-colors ml-1.5"
+                >
+                  {activeBanner.link_text || "Learn more"}
+                </Link>
+              )}
+            </p>
+          ) : (
+            <p className="flex items-center gap-2">
+              <Truck className="h-3.5 w-3.5 text-primary" /> Free delivery on orders over £75 across
+              Gloucestershire
+            </p>
+          )}
+          <a href="tel:01452741234" className="flex items-center gap-2 hover:text-primary shrink-0 ml-4">
             <Phone className="h-3.5 w-3.5" /> 01452 741234
           </a>
         </div>

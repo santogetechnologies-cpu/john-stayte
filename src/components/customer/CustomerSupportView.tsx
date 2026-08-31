@@ -221,18 +221,36 @@ export function CustomerSupportView() {
         return;
       }
 
-      // 2. Persist real Manager Notification in customer_notifications table in Supabase DB
+      // 2. Persist Customer Confirmation in customer_notifications
       try {
         await supabase.from("customer_notifications").insert([
           {
             user_id: activeUser.id,
-            title: "New customer support request",
-            message: `Customer ${user?.name || "Customer"} submitted a new support request: "${derivedSubject}".`,
+            title: `Support Request Submitted #${generatedTicketNumber}`,
+            message: `Your request "${derivedSubject}" has been received. Our team will respond shortly.`,
+            category: "Support",
             is_read: false,
           },
         ]);
       } catch (notifErr) {
-        console.error("Failed to insert notification into customer_notifications:", notifErr);
+        console.error("Failed to insert customer confirmation notification:", notifErr);
+      }
+
+      // 3. Persist Real Staff Notification in public.notifications for Operations Managers & Admins
+      try {
+        await (supabase.from("notifications") as any).insert([
+          {
+            user_id: null,
+            title: `New Support Request #${generatedTicketNumber}`,
+            message: `Customer ${user?.name || "Customer"} submitted support request: "${derivedSubject}".`,
+            category: "Support",
+            link: `/manager/enquiries?ticketId=${insertedTicket.id}`,
+            read: false,
+            is_read: false,
+          },
+        ]);
+      } catch (staffNotifErr) {
+        console.error("Failed to insert staff ticket notification:", staffNotifErr);
       }
 
       // Clean success feedback
@@ -432,7 +450,9 @@ export function CustomerSupportView() {
                     >
                       <div className="space-y-1 min-w-0 pr-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-bold text-foreground text-xs truncate">{req.subject}</p>
+                          <p className="font-bold text-foreground text-xs truncate">
+                            {typeof req.subject === "string" ? req.subject : "Support Request"}
+                          </p>
                           {getStatusBadge(req.status)}
                           {matchedOrder && (
                             <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 text-[10px] font-bold flex items-center gap-1">
@@ -453,7 +473,7 @@ export function CustomerSupportView() {
                     {isExpanded && (
                       <div className="pt-2 border-t border-slate-200/60 space-y-2 text-xs">
                         <p className="text-slate-700 font-medium leading-relaxed bg-white p-3 rounded-xl border border-slate-200/60">
-                          {req.description}
+                          {typeof req.description === "string" ? req.description : ""}
                         </p>
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground font-semibold pt-1">
                           <span>Status: {req.status === "Open" ? "Pending Support Team Review" : req.status}</span>
