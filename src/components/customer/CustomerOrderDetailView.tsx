@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { cleanImageUrl } from "@/lib/utils";
 
 const TRACKING_STEPS = [
   { key: "Pending", label: "Order Placed", desc: "Order submitted via website" },
@@ -858,9 +859,12 @@ export function CustomerOrderDetailView() {
                       <div className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 p-1.5 flex items-center justify-center shrink-0 group-hover:border-slate-300 transition-colors">
                         {item.product_info?.image_url ? (
                           <img
-                            src={item.product_info.image_url}
+                            src={cleanImageUrl(item.product_info.image_url, item.product_info.slug)}
                             alt={item.product_name}
                             className="h-full w-full object-contain"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/placeholder.svg";
+                            }}
                           />
                         ) : (
                           <Package className="h-6 w-6 text-primary/70" />
@@ -1081,9 +1085,12 @@ export function CustomerOrderDetailView() {
                   <div className="h-32 rounded-xl bg-slate-50 p-2 flex items-center justify-center overflow-hidden">
                     {p.image_url ? (
                       <img
-                        src={p.image_url}
+                        src={cleanImageUrl(p.image_url, p.slug)}
                         alt={p.name}
                         className="h-full w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        }}
                       />
                     ) : (
                       <Flame className="h-8 w-8 text-primary/60" />

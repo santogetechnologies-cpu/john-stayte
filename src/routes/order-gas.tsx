@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type Product } from "@/data/catalog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, cleanImageUrl } from "@/lib/utils";
 
 export const Route = createFileRoute("/order-gas")({
   head: () => ({
@@ -62,7 +62,7 @@ function OrderGasPage() {
             sub: p.subcategory || "Propane Cylinders",
             price: Number(p.price),
             stock: Number(p.stock || 0),
-            image: p.image_url || "/placeholder.svg",
+            image: cleanImageUrl(p.image_url, p.slug),
             rating: Number(p.rating || 5.0),
             reviews: Number(p.reviews_count || 0),
             featured: Boolean(p.is_featured),

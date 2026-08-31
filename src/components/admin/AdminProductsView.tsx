@@ -42,6 +42,7 @@ import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 import { products as catalogProducts } from "@/data/catalog";
+import { cleanImageUrl } from "@/lib/utils";
 
 export function AdminProductsView() {
   const [products, setProducts] = useState<any[]>([]);
@@ -71,7 +72,7 @@ export function AdminProductsView() {
           price: Number(p.price),
           stock: Number(p.stock || 20),
           description: p.description || "",
-          image_url: p.image,
+          image_url: cleanImageUrl(p.image, p.slug),
           is_featured: Boolean(p.featured),
           is_offer: Boolean(p.offer),
         };
@@ -129,7 +130,7 @@ export function AdminProductsView() {
           price: Number(p.price),
           stock: Number(p.stock || 20),
           description: p.description || "",
-          image_url: p.image,
+          image_url: cleanImageUrl(p.image, p.slug),
           is_featured: Boolean(p.featured),
           is_offer: Boolean(p.offer),
         };
@@ -465,7 +466,14 @@ export function AdminProductsView() {
                   <TableCell>
                     <div className="h-10 w-10 rounded-xl bg-slate-50 border p-1 grid place-items-center">
                       {p.image_url && p.image_url !== "/placeholder.svg" ? (
-                        <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
+                        <img
+                          src={cleanImageUrl(p.image_url, p.slug)}
+                          alt={p.name}
+                          className="h-full w-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/placeholder.svg";
+                          }}
+                        />
                       ) : (
                         <Package className="h-5 w-5 text-slate-400" />
                       )}
@@ -609,9 +617,12 @@ export function AdminProductsView() {
                 {editProduct.image_url && editProduct.image_url !== "/placeholder.svg" ? (
                   <div className="flex items-center gap-3">
                     <img
-                      src={editProduct.image_url}
+                      src={cleanImageUrl(editProduct.image_url, editProduct.slug)}
                       alt="Preview"
                       className="h-16 w-16 object-contain rounded-xl border bg-white p-1"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
                     />
                     <div className="space-y-1">
                       <p className="text-[11px] text-muted-foreground truncate max-w-xs">{editProduct.image_url}</p>

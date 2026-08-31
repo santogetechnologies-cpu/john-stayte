@@ -18,7 +18,7 @@ import {
 import { type Product } from "@/data/catalog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { cn } from "@/lib/utils";
+import { cn, cleanImageUrl } from "@/lib/utils";
 
 export const Route = createFileRoute("/products/$slug")({
   head: () => ({
@@ -104,7 +104,7 @@ function ProductPage() {
           price: Number(dbProd.price),
           compareAt: dbProd.compare_at_price ? Number(dbProd.compare_at_price) : undefined,
           stock: Number(dbProd.stock || 0),
-          image: dbProd.image_url || "/placeholder.svg",
+          image: cleanImageUrl(dbProd.image_url, dbProd.slug),
           rating: Number(dbProd.rating || 5.0),
           reviews: Number(dbProd.reviews_count || 0),
           featured: Boolean(dbProd.is_featured),
@@ -135,7 +135,7 @@ function ProductPage() {
               sub: rp.subcategory || "General",
               price: Number(rp.price),
               stock: Number(rp.stock || 0),
-              image: rp.image_url || "/placeholder.svg",
+              image: cleanImageUrl(rp.image_url, rp.slug),
               rating: Number(rp.rating || 5.0),
               reviews: Number(rp.reviews_count || 0),
               description: rp.description || "",
@@ -257,11 +257,14 @@ function ProductPage() {
         <div className="mt-8 grid gap-10 lg:grid-cols-2">
           <div className="surface-card grid place-items-center bg-surface p-10">
             <img
-              src={product.image}
+              src={cleanImageUrl(product.image, product.slug)}
               alt={product.name}
               className="max-h-[420px] w-full object-contain"
               width={520}
               height={520}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/placeholder.svg";
+              }}
             />
           </div>
 

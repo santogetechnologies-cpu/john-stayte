@@ -72,7 +72,7 @@ import workwearImg from "@/assets/workwear-cat.jpg";
 import { supabase } from "@/lib/supabase";
 import { gbp, useStore } from "@/lib/store";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, cleanImageUrl } from "@/lib/utils";
 
 type CategorySearch = {
   q?: string;
@@ -170,7 +170,7 @@ function CategoryLandingPage() {
             price: Number(p.price),
             compareAt: p.compare_at_price ? Number(p.compare_at_price) : undefined,
             stock: Number(p.stock || 0),
-            image: p.image_url || "/placeholder.svg",
+            image: cleanImageUrl(p.image_url, p.slug),
             rating: Number(p.rating || 5.0),
             reviews: Number(p.reviews_count || 0),
             featured: Boolean(p.is_featured),
@@ -675,10 +675,13 @@ function CategoryLandingPage() {
                     className="w-full h-full flex items-center justify-center"
                   >
                     <img
-                      src={activeFeatured.image}
+                      src={cleanImageUrl(activeFeatured.image, activeFeatured.slug)}
                       alt={activeFeatured.name}
                       className="max-h-[280px] w-full object-contain transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
                     />
                   </Link>
 
@@ -862,10 +865,13 @@ function CategoryLandingPage() {
                       >
                         <div className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0">
                           <img
-                            src={p.image}
+                            src={cleanImageUrl(p.image, p.slug)}
                             alt={p.name}
                             className="h-full w-full object-contain"
                             loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/placeholder.svg";
+                            }}
                           />
                         </div>
                         <div className="min-w-0 flex-1">
