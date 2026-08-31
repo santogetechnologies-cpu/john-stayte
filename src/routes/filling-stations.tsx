@@ -52,25 +52,7 @@ function Stations() {
           return;
         }
 
-        let local: any[] = [];
-        try {
-          const stored = localStorage.getItem("jss_admin_stations");
-          if (stored) local = JSON.parse(stored);
-        } catch {}
-
-        if (local.length > 0) {
-          const mapped = local.map((s) => ({
-            name: s.name,
-            address: s.address + (s.postcode ? `, ${s.postcode}` : ""),
-            phone: s.phone || "01452 741234",
-            hours: s.hours || "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
-            maps: s.maps_link || `https://maps.google.com/?q=${encodeURIComponent(s.name + " " + s.address)}`,
-          }));
-          setStationList(mapped);
-          return;
-        }
-
-        // 2. Try fetching from cms_content_blocks
+        // 2. Fetch from cms_content_blocks in Supabase
         const { data: block } = await supabase
           .from("cms_content_blocks")
           .select("content")

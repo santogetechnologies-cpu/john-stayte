@@ -230,7 +230,7 @@ function TestimonialsCarousel({ customItems }: { customItems?: any[] }) {
                     </div>
                     {/* Quote Body */}
                     <p className="text-sm sm:text-[14.5px] font-medium text-slate-700 leading-relaxed">
-                      {item.quote}
+                      {typeof item.quote === "string" ? item.quote : String(item.quote || "")}
                     </p>
                   </div>
 
@@ -244,10 +244,10 @@ function TestimonialsCarousel({ customItems }: { customItems?: any[] }) {
                       </div>
                       <div>
                         <h4 className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
-                          {item.name}
+                          {typeof item.name === "string" ? item.name : String(item.name || "")}
                         </h4>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          {item.role}
+                          {typeof item.role === "string" ? item.role : String(item.role || "")}
                         </p>
                       </div>
                     </div>
@@ -352,7 +352,7 @@ function BlogCarousel({ posts }: { posts: any[] }) {
                         loading="lazy"
                       />
                       <span className="absolute top-3.5 left-3.5 rounded-full bg-white/95 backdrop-blur-xs px-3 py-1 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-primary shadow-2xs">
-                        {post.tag}
+                        {typeof post.tag === "string" ? post.tag : "Safety Guide"}
                       </span>
                     </div>
 
@@ -360,7 +360,7 @@ function BlogCarousel({ posts }: { posts: any[] }) {
                     <div className="p-5 sm:p-6 space-y-2.5">
                       <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
                         <span className="flex items-center gap-1.5 text-primary">
-                          <Clock className="h-3.5 w-3.5 text-primary" /> {post.readingTime}
+                          <Clock className="h-3.5 w-3.5 text-primary" /> {typeof post.readingTime === "string" ? post.readingTime : "4 min read"}
                         </span>
                         <span className="text-slate-300">•</span>
                         <span className="flex items-center gap-1.5 text-slate-500">
@@ -374,10 +374,10 @@ function BlogCarousel({ posts }: { posts: any[] }) {
                       </div>
 
                       <h3 className="text-base sm:text-lg font-extrabold text-slate-900 group-hover:text-primary transition-colors line-clamp-2 leading-snug tracking-tight">
-                        {post.title}
+                        {typeof post.title === "string" ? post.title : String(post.title || "")}
                       </h3>
                       <p className="text-xs sm:text-[13px] text-slate-500 line-clamp-3 leading-relaxed">
-                        {post.excerpt}
+                        {typeof post.excerpt === "string" ? post.excerpt : String(post.excerpt || "")}
                       </p>
                     </div>
                   </div>
@@ -811,6 +811,12 @@ function Reveal({
   );
 }
 
+const safeStr = (val: any, fallback = ""): string => {
+  if (typeof val === "string") return val;
+  if (typeof val === "number") return String(val);
+  return fallback;
+};
+
 function Home() {
   const [dbProducts, setDbProducts] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<any[]>([]);
@@ -905,6 +911,7 @@ function Home() {
   });
   const [dbStations, setDbStations] = useState<any[]>(stations);
   const [dbTestimonials, setDbTestimonials] = useState<any[]>(testimonials);
+  const [dbServices, setDbServices] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadHomeData() {
@@ -917,6 +924,7 @@ function Home() {
           { data: homeBlock },
           { data: stnBlock },
           { data: testBlock },
+          { data: srvBlock },
         ] = await Promise.all([
           supabase
             .from("products")
@@ -947,6 +955,11 @@ function Home() {
             .from("cms_content_blocks")
             .select("content")
             .eq("section_key", "testimonials_data")
+            .maybeSingle(),
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "services_data")
             .maybeSingle(),
         ]);
 
@@ -984,11 +997,14 @@ function Home() {
           try {
             const parsed = JSON.parse(homeBlock.content);
             if (parsed && typeof parsed === "object") {
-              // Strip hero text fields — the approved hero content is always
-              // served from the hardcoded defaults and must never be overridden
-              // by whatever is stored in the CMS database.
-              const { heroEyebrow: _ey, heroHeading: _hh, heroSubtitle: _hs, ...safeParsed } = parsed;
-              setHomeData((prev: any) => ({ ...prev, ...safeParsed }));
+              setHomeData((prev: any) => {
+                const updated = { ...prev, ...parsed };
+                // Preserve approved defaults only if CMS field is empty or blank
+                if (!parsed.heroEyebrow?.trim()) updated.heroEyebrow = prev.heroEyebrow;
+                if (!parsed.heroHeading?.trim()) updated.heroHeading = prev.heroHeading;
+                if (!parsed.heroSubtitle?.trim()) updated.heroSubtitle = prev.heroSubtitle;
+                return updated;
+              });
             }
           } catch {}
         }
@@ -1010,6 +1026,15 @@ function Home() {
             }
           } catch {}
         }
+
+        if (srvBlock?.content) {
+          try {
+            const parsedServices = JSON.parse(srvBlock.content);
+            if (Array.isArray(parsedServices) && parsedServices.length > 0) {
+              setDbServices(parsedServices.filter((s: any) => s.status !== "Inactive"));
+            }
+          } catch {}
+        }
       } catch (err) {
         console.error("Home load data error:", err);
       } finally {
@@ -1022,10 +1047,12 @@ function Home() {
     window.addEventListener("cms_home_updated", handleUpdate);
     window.addEventListener("cms_stations_updated", handleUpdate);
     window.addEventListener("cms_testimonials_updated", handleUpdate);
+    window.addEventListener("cms_services_updated", handleUpdate);
     return () => {
       window.removeEventListener("cms_home_updated", handleUpdate);
       window.removeEventListener("cms_stations_updated", handleUpdate);
       window.removeEventListener("cms_testimonials_updated", handleUpdate);
+      window.removeEventListener("cms_services_updated", handleUpdate);
     };
   }, []);
 
@@ -1072,25 +1099,26 @@ function Home() {
     if (dbBlogPosts.length > 0) {
       return dbBlogPosts.map((post) => {
         const found = blogArticles.find((a) => a.slug === post.slug);
+        const rawExcerpt = post.excerpt || found?.excerpt || "";
         return {
-          slug: post.slug,
-          title: post.title,
-          excerpt: post.excerpt || found?.excerpt || "",
+          slug: typeof post.slug === "string" ? post.slug : String(post.slug || ""),
+          title: typeof post.title === "string" ? post.title : String(post.title || ""),
+          excerpt: typeof rawExcerpt === "string" ? rawExcerpt : String(rawExcerpt || ""),
           date: post.created_at,
-          image: post.image_url || found?.heroImage || guideSafeStorage,
-          tag: found?.tag || "Safety Guide",
-          readingTime: found?.readingTime || "4 min read",
+          image: typeof post.image_url === "string" ? post.image_url : (found?.heroImage || guideSafeStorage),
+          tag: typeof (found?.tag) === "string" ? found!.tag : "Safety Guide",
+          readingTime: typeof (found?.readingTime) === "string" ? found!.readingTime : "4 min read",
         };
       });
     }
     return blogArticles.map((post) => ({
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
+      slug: typeof post.slug === "string" ? post.slug : String(post.slug || ""),
+      title: typeof post.title === "string" ? post.title : String(post.title || ""),
+      excerpt: typeof post.excerpt === "string" ? post.excerpt : String(post.excerpt || ""),
       date: post.date,
       image: post.heroImage,
-      tag: post.tag,
-      readingTime: post.readingTime,
+      tag: typeof post.tag === "string" ? post.tag : "Safety Guide",
+      readingTime: typeof post.readingTime === "string" ? post.readingTime : "4 min read",
     }));
   }, [dbBlogPosts]);
 
@@ -1141,7 +1169,7 @@ function Home() {
               }}
             >
               <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em]">
-                <span className="h-2 w-2 rounded-full bg-primary" /> {homeData?.heroEyebrow || "Family run since 1972"}
+                <span className="h-2 w-2 rounded-full bg-primary" /> {typeof homeData?.heroEyebrow === "string" && homeData.heroEyebrow.trim() ? homeData.heroEyebrow : "Family run since 1972"}
               </span>
             </div>
 
@@ -1157,7 +1185,7 @@ function Home() {
                 transitionDelay: "150ms",
               }}
             >
-              {homeData?.heroHeading ? (
+              {typeof homeData?.heroHeading === "string" && homeData.heroHeading.trim() ? (
                 homeData.heroHeading.includes("gas delivery") ? (
                   <>
                     {homeData.heroHeading.split("gas delivery")[0]}
@@ -1184,8 +1212,9 @@ function Home() {
                 transitionDelay: "250ms",
               }}
             >
-              {homeData?.heroSubtitle ||
-                "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call."}
+              {typeof homeData?.heroSubtitle === "string" && homeData.heroSubtitle.trim()
+                ? homeData.heroSubtitle
+                : "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call."}
             </p>
 
             {/* CTA Buttons */}
@@ -1541,7 +1570,7 @@ function Home() {
                         workwear: "High-visibility waterproof jackets, heavy-duty trousers & PPE.",
                       };
                       const catImage = c.image_url || categoryImagesMap[c.slug] || coalLogs;
-                      const description = categoryDescriptionsMap[c.slug] || c.description || "Quality supplies with fast Gloucestershire delivery.";
+                      const description = (typeof categoryDescriptionsMap[c.slug] === "string" ? categoryDescriptionsMap[c.slug] : (typeof c.description === "string" ? c.description : "")) || "Quality supplies with fast Gloucestershire delivery.";
 
                       return (
                         <Link
@@ -1572,10 +1601,10 @@ function Home() {
                               <div className="h-0.5 w-5 bg-primary rounded-full group-hover:w-8 transition-all duration-300 mb-2" />
 
                               <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors duration-200 line-clamp-1">
-                                {c.name}
+                                {typeof c.name === "string" ? c.name : String(c.name || "")}
                               </h3>
                               <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1 min-h-[34px]">
-                                {description}
+                                {typeof description === "string" ? description : "Quality supplies with fast Gloucestershire delivery."}
                               </p>
                             </div>
 
@@ -1638,8 +1667,8 @@ function Home() {
                       <option value="all">Categories: All</option>
                       {dbCategories && dbCategories.length > 0 ? (
                         dbCategories.map((c) => (
-                          <option key={c.id || c.slug} value={c.slug}>
-                            {c.name}
+                          <option key={c.id || c.slug} value={typeof c.slug === "string" ? c.slug : String(c.slug || "")}>
+                            {typeof c.name === "string" ? c.name : String(c.name || "")}
                           </option>
                         ))
                       ) : (
@@ -1758,7 +1787,7 @@ function Home() {
                               {/* Product Title */}
                               <h3 className="mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-2xl font-extrabold text-slate-900 tracking-tight leading-tight sm:leading-snug line-clamp-2">
                                 <Link to="/products/$slug" params={{ slug: p.slug }} className="hover:text-primary transition-colors">
-                                  {p.name}
+                                  {typeof p.name === "string" ? p.name : String(p.name || "")}
                                 </Link>
                               </h3>
 
@@ -1797,7 +1826,7 @@ function Home() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  addToCart(p);
+                                  addToCart(p.slug);
                                   toast.success(`Added ${p.name} to your basket`);
                                 }}
                                 disabled={isOutOfStock}
@@ -1957,17 +1986,17 @@ function Home() {
 
             {/* 3 Large Service Cards */}
             <div className="grid gap-6 md:gap-7 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch">
-              {/* Service 1: Gas Cylinder Delivery */}
+              {/* Service 1 */}
               <ScrollRevealItem variant="card" delay={100} className="h-full">
                 <Link
-                  to="/order-gas"
+                  to={dbServices[0]?.link || "/order-gas"}
                   className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
                 >
                   {/* Upper Image Frame (~55-60% height) */}
                   <div className="relative h-56 sm:h-64 bg-[#fbf2ef] overflow-hidden flex items-center justify-center p-6">
                     <img
-                      src={cylinderImg}
-                      alt="Gas cylinder delivery"
+                      src={dbServices[0]?.image || cylinderImg}
+                      alt={dbServices[0]?.title || "Gas cylinder delivery"}
                       className="max-h-[190px] sm:max-h-[210px] w-auto object-contain group-hover:scale-[1.04] transition-transform duration-500"
                       loading="lazy"
                     />
@@ -1982,17 +2011,17 @@ function Home() {
 
                     <div className="space-y-2 relative z-1">
                       <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
-                        Gas Cylinder Delivery
+                        {safeStr(dbServices[0]?.title, "Gas Cylinder Delivery")}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        Reliable bottled gas delivery for homes and businesses across Gloucestershire.
+                        {safeStr(dbServices[0]?.desc, safeStr(dbServices[0]?.description, "Reliable bottled gas delivery for homes and businesses across Gloucestershire."))}
                       </p>
                     </div>
 
                     {/* Compact Red Button-Style CTA */}
                     <div className="pt-1 relative z-1">
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
-                        <span>Order cylinders</span>
+                        <span>{safeStr(dbServices[0]?.ctaText, "Order cylinders")}</span>
                         <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
@@ -2000,17 +2029,17 @@ function Home() {
                 </Link>
               </ScrollRevealItem>
 
-              {/* Service 2: Forecourts & Filling Stations */}
+              {/* Service 2 */}
               <ScrollRevealItem variant="card" delay={200} className="h-full">
                 <Link
-                  to="/filling-stations"
+                  to={dbServices[1]?.link || "/filling-stations"}
                   className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
                 >
                   {/* Upper Image Frame (~55-60% height) */}
                   <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
                     <img
-                      src={stationImg}
-                      alt="Service stations and forecourts"
+                      src={dbServices[1]?.image || stationImg}
+                      alt={safeStr(dbServices[1]?.title, "Service stations and forecourts")}
                       className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                       loading="lazy"
                     />
@@ -2025,17 +2054,17 @@ function Home() {
 
                     <div className="space-y-2 relative z-1">
                       <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
-                        Forecourts & Filling Stations
+                        {safeStr(dbServices[1]?.title, "Forecourts & Filling Stations")}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        Fuel, autogas and cylinder exchange at our local service stations.
+                        {safeStr(dbServices[1]?.desc, safeStr(dbServices[1]?.description, "Fuel, autogas and cylinder exchange at our local service stations."))}
                       </p>
                     </div>
 
                     {/* Compact Red Button-Style CTA */}
                     <div className="pt-1 relative z-1">
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
-                        <span>Find a forecourt</span>
+                        <span>{safeStr(dbServices[1]?.ctaText, "Find a forecourt")}</span>
                         <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
@@ -2043,18 +2072,18 @@ function Home() {
                 </Link>
               </ScrollRevealItem>
 
-              {/* Service 3: Gas Appliances & Spares */}
+              {/* Service 3 */}
               <ScrollRevealItem variant="card" delay={300} className="h-full">
                 <Link
-                  to="/products"
-                  search={{ category: "gas-appliances" }}
+                  to={dbServices[2]?.link || "/products"}
+                  search={dbServices[2]?.link ? undefined : ({ category: "gas-appliances" } as any)}
                   className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
                 >
                   {/* Upper Image Frame (~55-60% height) */}
                   <div className="relative h-56 sm:h-64 bg-[#f3f4f6] overflow-hidden flex items-center justify-center p-4">
                     <img
-                      src={heaterImg}
-                      alt="Gas heaters, appliances and genuine spares"
+                      src={dbServices[2]?.image || heaterImg}
+                      alt={safeStr(dbServices[2]?.title, "Gas heaters, appliances and genuine spares")}
                       className="max-h-[190px] sm:max-h-[210px] w-auto object-contain group-hover:scale-[1.04] transition-transform duration-500"
                       loading="lazy"
                     />
@@ -2069,17 +2098,17 @@ function Home() {
 
                     <div className="space-y-2 relative z-1">
                       <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
-                        Gas Appliances & Spares
+                        {safeStr(dbServices[2]?.title, "Gas Appliances & Spares")}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        Quality appliances, regulators, hoses and genuine replacement parts.
+                        {safeStr(dbServices[2]?.desc, safeStr(dbServices[2]?.description, "Quality appliances, regulators, hoses and genuine replacement parts."))}
                       </p>
                     </div>
 
                     {/* Compact Red Button-Style CTA */}
                     <div className="pt-1 relative z-1">
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
-                        <span>Browse appliances</span>
+                        <span>{safeStr(dbServices[2]?.ctaText, "Browse appliances")}</span>
                         <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </div>
@@ -2388,7 +2417,7 @@ function Home() {
                             <div className="filling-station-content p-5 pt-6 space-y-3.5">
                               <div>
                                 <h3 className="font-extrabold text-base text-slate-900 tracking-tight leading-snug">
-                                  {s.name}
+                                  {typeof s.name === "string" ? s.name : String(s.name || "")}
                                 </h3>
                                 <div className="h-0.5 w-5 bg-primary rounded-full mt-2" />
                               </div>
@@ -2396,15 +2425,15 @@ function Home() {
                               <ul className="space-y-2.5 text-xs text-slate-600">
                                 <li className="flex items-start gap-2.5">
                                   <MapPin className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
-                                  <span className="leading-relaxed">{s.address}</span>
+                                  <span className="leading-relaxed">{typeof s.address === "string" ? s.address : String(s.address || "")}</span>
                                 </li>
                                 <li className="flex items-center gap-2.5">
                                   <Phone className="h-3.5 w-3.5 shrink-0 text-primary" />
                                   <a
-                                    href={`tel:${(s.phone || "").replace(/\s/g, "")}`}
+                                    href={`tel:${(typeof s.phone === "string" ? s.phone : String(s.phone || "")).replace(/\s/g, "")}`}
                                     className="hover:text-primary font-bold text-slate-800 transition-colors"
                                   >
-                                    {s.phone}
+                                    {typeof s.phone === "string" ? s.phone : String(s.phone || "")}
                                   </a>
                                 </li>
                                 <li className="flex items-start gap-2.5">

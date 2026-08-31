@@ -92,15 +92,8 @@ export function AdminFaqsView() {
         } catch {}
       }
 
-      let localFaqs: any[] = [];
-      try {
-        const stored = localStorage.getItem("jss_admin_faqs");
-        if (stored) localFaqs = JSON.parse(stored);
-      } catch {}
-
       const map = new Map<string, any>();
       ALL_EXISTING_FAQS.forEach((f) => map.set((f.q || "").toLowerCase(), f));
-      if (Array.isArray(localFaqs)) localFaqs.forEach((f) => map.set((f.q || f.question || "").toLowerCase(), f));
       if (Array.isArray(parsed) && parsed.length > 0) {
         parsed.forEach((f) => map.set((f.q || f.question || "").toLowerCase(), f));
       }
@@ -120,7 +113,6 @@ export function AdminFaqsView() {
 
   const saveFaqsToSupabase = async (updatedList: any[]) => {
     try {
-      localStorage.setItem("jss_admin_faqs", JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("cms_faqs_updated", { detail: updatedList }));
 
       const payload = {
@@ -269,14 +261,16 @@ export function AdminFaqsView() {
                 {faqs.map((f, i) => (
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4 max-w-md">
-                      <p className="font-bold text-slate-900">{f.q || f.question}</p>
+                      <p className="font-bold text-slate-900">
+                        {typeof (f.q || f.question) === "string" ? (f.q || f.question) : String(f.q || f.question || "")}
+                      </p>
                       <p className="text-slate-500 text-[11px] line-clamp-2 mt-1 leading-relaxed">
-                        {f.a || f.answer}
+                        {typeof (f.a || f.answer) === "string" ? (f.a || f.answer) : String(f.a || f.answer || "")}
                       </p>
                     </td>
                     <td className="px-5 py-4">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                        {f.category || "General"}
+                        {typeof f.category === "string" ? f.category : "General"}
                       </span>
                     </td>
                     <td className="px-5 py-4 text-slate-600 font-mono">

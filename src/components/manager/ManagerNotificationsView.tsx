@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Bell,
@@ -28,143 +28,121 @@ export function ManagerNotificationsView() {
   >("all");
   const [markingAll, setMarkingAll] = useState(false);
 
-  // Fetch real notifications and support tickets from Supabase DB
-  const loadNotifications = async () => {
+  // Fetch real persistent staff notifications from public.notifications in Supabase
+  const loadNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [
-        { data: notifsData },
-        { data: custNotifsData },
-        { data: ticketsData },
-      ] = await Promise.all([
-        supabase.from("notifications").select("*").order("created_at", { ascending: false }),
-        supabase.from("customer_notifications").select("*").order("created_at", { ascending: false }),
-        supabase
-          .from("support_tickets")
+      let { data: notifsData, error: notifErr } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (notifErr) throw notifErr;
+
+      // If notifications table is completely empty, seed initial recent order alerts so historical orders appear
+      if ((!notifsData || notifsData.length === 0)) {
+        const { data: recentOrders } = await supabase
+          .from("orders")
           .select("*")
-          .neq("customer_email", "deleted_test_ticket@jss.com")
-          .neq("customer_email", "admin@jss.com")
-          .order("created_at", { ascending: false }),
-      ]);
+          .order("created_at", { ascending: false })
+          .limit(10);
 
-      // Derive Manager Notifications directly from REAL customer support requests in support_tickets table
-      const ticketNotifs = (ticketsData || []).map((t: any) => ({
-        id: `notif_ticket_${t.id}`,
-        support_request_id: t.id,
-        customer_id: t.customer_id,
-        title: "New customer support request",
-        message: `Customer ${t.customer_name || t.customer_email} submitted a new support request: "${t.subject}".`,
-        category: "Support",
-        type: "support",
-        status: t.status,
-        read: t.status === "Resolved",
-        is_read: t.status === "Resolved",
-        created_at: t.created_at,
-        link: `/manager/enquiries?ticketId=${t.id}`,
-      }));
+        if (recentOrders && recentOrders.length > 0) {
+          const backfillRows = recentOrders.map((o: any) => ({
+            user_id: null,
+            title: `New Order #${o.order_number || o.id.slice(0, 8)}`,
+            message: `${o.customer_name || o.customer_email || "Customer"} placed an order #${o.order_number || o.id.slice(0, 8)} (Total: £${Number(o.total || 0).toFixed(2)}).`,
+            category: "Orders",
+            link: `/manager/orders?orderId=${o.id}`,
+            read: o.status !== "Pending",
+            is_read: o.status !== "Pending",
+            created_at: o.created_at,
+          }));
+          await (supabase.from("notifications") as any).insert(backfillRows);
+          const { data: refreshed } = await supabase
+            .from("notifications")
+            .select("*")
+            .order("created_at", { ascending: false });
+          if (refreshed) notifsData = refreshed;
+        }
+      }
 
-      // Map explicit customer_notifications entries
-      const formattedCustNotifs = (custNotifsData || []).map((c: any) => ({
-        ...c,
-        category: "Support",
-        type: "support",
-        read: Boolean(c.is_read),
-        is_read: Boolean(c.is_read),
-      }));
-
-      // Combine and deduplicate
-      const combined = [...ticketNotifs, ...formattedCustNotifs, ...((notifsData as any[]) || [])];
-      
-      // Deduplicate by support_request_id or id
-      const seen = new Set();
-      const uniqueNotifs = combined.filter((n: any) => {
-        const key = n.support_request_id || n.id;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
-      setNotifications(uniqueNotifs);
+      setNotifications(notifsData || []);
     } catch (err: any) {
-      console.error("Failed to load notifications:", err);
+      console.error("Failed to load notifications from Supabase:", err);
       setError(err.message || "Unable to load notifications");
-    } fontally: {
+    } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadNotifications();
 
-    // Supabase Realtime subscriptions for support tickets and notifications
-    const ticketsChannel = supabase
-      .channel("manager_support_tickets_notif_realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "support_tickets" },
-        () => loadNotifications()
-      )
-      .subscribe();
-
+    // Supabase Realtime subscription on public.notifications
     const notifsChannel = supabase
-      .channel("manager_notifications_realtime")
+      .channel("manager_notifications_live")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "customer_notifications" },
+        { event: "*", schema: "public", table: "notifications" },
         () => loadNotifications()
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(ticketsChannel);
       supabase.removeChannel(notifsChannel);
     };
-  }, []);
+  }, [loadNotifications]);
 
-  // Compute unread count
+  // Compute live unread count based on database state
   const unreadCount = useMemo(() => {
     return notifications.filter((n: any) => !n.is_read && !n.read).length;
   }, [notifications]);
 
-  // Mark single notification as read & navigate to corresponding view
+  // Mark single notification as read in Supabase & navigate to corresponding view
   const handleNotificationClick = async (notif: any) => {
     const isUnread = !notif.is_read && !notif.read;
 
     if (isUnread) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n)),
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n))
       );
 
       try {
-        if (notif.id && typeof notif.id === "string" && !notif.id.startsWith("notif_ticket_")) {
-          await supabase
-            .from("customer_notifications")
-            .update({ is_read: true })
-            .eq("id", notif.id);
-        }
+        await supabase
+          .from("notifications")
+          .update({ is_read: true, read: true })
+          .eq("id", notif.id);
       } catch (err: any) {
-        console.error("Failed to update notification status:", err);
+        console.error("Failed to update notification status in Supabase:", err);
       }
     }
 
-    // Navigation flow to EXACT SAME support request
-    const targetLink = notif.link || "/manager/enquiries";
+    const targetLink =
+      notif.link ||
+      ((notif.category || "").toLowerCase().includes("order")
+        ? "/manager/orders"
+        : "/manager/enquiries");
     navigate({ to: targetLink as any });
   };
 
-  // Mark all notifications as read in Supabase
+  // Mark all notifications as read in Supabase database
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0 || markingAll) return;
     setMarkingAll(true);
 
     try {
-      await supabase
-        .from("customer_notifications")
-        .update({ is_read: true })
-        .eq("is_read", false);
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read: true })));
 
-      toast.success("All notifications marked as read");
+      const { error: updErr } = await supabase
+        .from("notifications")
+        .update({ is_read: true, read: true })
+        .or("is_read.eq.false,read.eq.false");
+
+      if (updErr) throw updErr;
+
+      toast.success("All manager notifications marked as read in database");
       await loadNotifications();
     } catch (err: any) {
       toast.error("Failed to mark all as read: " + err.message);
@@ -182,10 +160,22 @@ export function ManagerNotificationsView() {
 
       const category = (n.category || n.type || "").toLowerCase();
       if (activeFilter === "orders") return category.includes("order");
-      if (activeFilter === "deliveries") return category.includes("delivery") || category.includes("truck");
-      if (activeFilter === "inventory") return category.includes("inventory") || category.includes("stock");
-      if (activeFilter === "customers") return category.includes("customer") || category.includes("user") || category.includes("support");
-      if (activeFilter === "system") return category.includes("system") || category.includes("security") || category.includes("setting");
+      if (activeFilter === "deliveries")
+        return category.includes("delivery") || category.includes("truck");
+      if (activeFilter === "inventory")
+        return category.includes("inventory") || category.includes("stock");
+      if (activeFilter === "customers")
+        return (
+          category.includes("customer") ||
+          category.includes("user") ||
+          category.includes("support")
+        );
+      if (activeFilter === "system")
+        return (
+          category.includes("system") ||
+          category.includes("security") ||
+          category.includes("setting")
+        );
       return true;
     });
   }, [notifications, activeFilter]);
@@ -194,10 +184,14 @@ export function ManagerNotificationsView() {
   const getCategoryIcon = (category: string) => {
     const cat = (category || "").toLowerCase();
     if (cat.includes("order")) return <ShoppingBag className="h-3.5 w-3.5 text-blue-600" />;
-    if (cat.includes("delivery") || cat.includes("truck")) return <Truck className="h-3.5 w-3.5 text-purple-600" />;
-    if (cat.includes("inventory") || cat.includes("stock")) return <Package className="h-3.5 w-3.5 text-amber-600" />;
-    if (cat.includes("customer") || cat.includes("user")) return <Users className="h-3.5 w-3.5 text-emerald-600" />;
-    if (cat.includes("support") || cat.includes("enquiry")) return <MessageSquare className="h-3.5 w-3.5 text-rose-600" />;
+    if (cat.includes("delivery") || cat.includes("truck"))
+      return <Truck className="h-3.5 w-3.5 text-purple-600" />;
+    if (cat.includes("inventory") || cat.includes("stock"))
+      return <Package className="h-3.5 w-3.5 text-amber-600" />;
+    if (cat.includes("customer") || cat.includes("user"))
+      return <Users className="h-3.5 w-3.5 text-emerald-600" />;
+    if (cat.includes("support") || cat.includes("enquiry"))
+      return <MessageSquare className="h-3.5 w-3.5 text-rose-600" />;
     return <Settings className="h-3.5 w-3.5 text-slate-600" />;
   };
 
@@ -224,19 +218,27 @@ export function ManagerNotificationsView() {
     { id: "all", label: "All", count: notifications.length },
     { id: "unread", label: "Unread", count: unreadCount },
     {
-      id: "customers",
-      label: "Customers / Support",
-      count: notifications.filter((n: any) => (n.category || n.type || "").toLowerCase().includes("support") || (n.category || n.type || "").toLowerCase().includes("customer")).length,
-    },
-    {
       id: "orders",
       label: "Orders",
-      count: notifications.filter((n: any) => (n.category || n.type || "").toLowerCase().includes("order")).length,
+      count: notifications.filter((n: any) =>
+        (n.category || n.type || "").toLowerCase().includes("order")
+      ).length,
+    },
+    {
+      id: "customers",
+      label: "Customers / Support",
+      count: notifications.filter(
+        (n: any) =>
+          (n.category || n.type || "").toLowerCase().includes("support") ||
+          (n.category || n.type || "").toLowerCase().includes("customer")
+      ).length,
     },
     {
       id: "deliveries",
       label: "Deliveries",
-      count: notifications.filter((n: any) => (n.category || n.type || "").toLowerCase().includes("delivery")).length,
+      count: notifications.filter((n: any) =>
+        (n.category || n.type || "").toLowerCase().includes("delivery")
+      ).length,
     },
   ];
 
@@ -246,7 +248,9 @@ export function ManagerNotificationsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Notifications</span>
           </div>
@@ -254,7 +258,7 @@ export function ManagerNotificationsView() {
             <Bell className="h-7 w-7 text-primary" /> Manager Notifications
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Real-time customer support requests, operational alerts, and order updates.
+            Real-time customer orders, support enquiries, and operational updates.
           </p>
         </div>
 
@@ -351,7 +355,7 @@ export function ManagerNotificationsView() {
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               {activeFilter === "unread"
                 ? "There are no unread notifications right now."
-                : "Activity and system notifications will appear here in real-time."}
+                : "Customer orders, delivery updates and enquiries will appear here in real-time."}
             </p>
           </div>
         ) : (
@@ -388,16 +392,27 @@ export function ManagerNotificationsView() {
                               : "font-semibold text-slate-700"
                           }`}
                         >
-                          {n.title}
+                          {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
                         </p>
-                        {n.status === "Open" && (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 text-[9px] font-extrabold">
+                        {n.status === "Pending" && n.type === "order" && (
+                          <Badge
+                            variant="outline"
+                            className="bg-blue-50 text-blue-800 border-blue-200 text-[9px] font-extrabold"
+                          >
+                            New Order
+                          </Badge>
+                        )}
+                        {n.status === "Open" && n.type === "support" && (
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-50 text-amber-800 border-amber-200 text-[9px] font-extrabold"
+                          >
                             Pending Review
                           </Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                        {n.message || n.description}
+                        {typeof (n.message || n.description) === "string" ? (n.message || n.description) : String(n.message || n.description || "")}
                       </p>
                     </div>
                   </div>

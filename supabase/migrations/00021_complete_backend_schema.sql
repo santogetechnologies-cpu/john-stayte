@@ -269,6 +269,48 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Ensure necessary columns exist on pre-existing tables before RLS
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS slug TEXT;
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS maps_url TEXT;
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS fuel_types TEXT[] DEFAULT '{}';
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS services TEXT[] DEFAULT '{}';
+ALTER TABLE public.stations ADD COLUMN IF NOT EXISTS display_order INT DEFAULT 0;
+
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE public.cms_banners ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT true;
+
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS user_name TEXT;
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS comment TEXT;
+ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'approved';
+
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS customer_name TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS customer_email TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS subtotal NUMERIC(10,2);
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS vat_amount NUMERIC(10,2);
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS pdf_url TEXT;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS due_date TIMESTAMPTZ;
+
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS order_ref TEXT;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS customer_name TEXT;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS area TEXT;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS vehicle_plate TEXT;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS dispatched_at TIMESTAMPTZ;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ;
+ALTER TABLE public.delivery_assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS actor_email TEXT;
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS entity_type TEXT;
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS entity_id TEXT;
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE public.audit_logs ADD COLUMN IF NOT EXISTS ip_address TEXT;
+
 -- Enable RLS on all tables
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stations ENABLE ROW LEVEL SECURITY;

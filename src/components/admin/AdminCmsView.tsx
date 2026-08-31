@@ -249,7 +249,6 @@ export function AdminCmsView() {
   const handleSaveHomeCms = async () => {
     setSubmitting(true);
     try {
-      localStorage.setItem("jss_admin_home_cms", JSON.stringify(homeCms));
       window.dispatchEvent(new CustomEvent("cms_home_updated", { detail: homeCms }));
 
       await supabase.from("cms_content_blocks").upsert({
@@ -271,7 +270,6 @@ export function AdminCmsView() {
   const handleSaveAboutCms = async () => {
     setSubmitting(true);
     try {
-      localStorage.setItem("jss_admin_about_cms", JSON.stringify(aboutCms));
       window.dispatchEvent(new CustomEvent("cms_about_updated", { detail: aboutCms }));
 
       await supabase.from("cms_content_blocks").upsert({
@@ -346,7 +344,6 @@ export function AdminCmsView() {
         : [...services, payload];
 
       setServices(updatedList);
-      localStorage.setItem("jss_admin_services", JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: updatedList }));
 
       await supabase.from("cms_content_blocks").upsert({
@@ -369,7 +366,6 @@ export function AdminCmsView() {
     try {
       const updatedList = services.filter((s) => s.id !== id);
       setServices(updatedList);
-      localStorage.setItem("jss_admin_services", JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: updatedList }));
 
       await supabase.from("cms_content_blocks").upsert({
@@ -422,7 +418,6 @@ export function AdminCmsView() {
         : [...reviews, payload];
 
       setReviews(updatedList);
-      localStorage.setItem("jss_admin_reviews", JSON.stringify(updatedList));
 
       await supabase.from("cms_content_blocks").upsert({
         section_key: "testimonials_data",
@@ -681,8 +676,8 @@ export function AdminCmsView() {
                       <img src={s.image} alt={s.title} className="h-full w-full object-cover" />
                     </div>
                   )}
-                  <h4 className="font-bold text-slate-900 text-sm">{s.title}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{s.desc || s.description}</p>
+                  <h4 className="font-bold text-slate-900 text-sm">{typeof s.title === "string" ? s.title : String(s.title || "")}</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{typeof (s.desc || s.description) === "string" ? (s.desc || s.description) : String(s.desc || s.description || "")}</p>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
                   <Button variant="ghost" size="sm" onClick={() => handleOpenServiceModal(s)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
@@ -723,10 +718,10 @@ export function AdminCmsView() {
                       {r.status || "Published"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-slate-700 italic leading-relaxed">"{r.quote}"</p>
+                  <p className="text-xs text-slate-700 italic leading-relaxed">"{typeof r.quote === "string" ? r.quote : String(r.quote || "")}"</p>
                   <div>
-                    <p className="text-xs font-bold text-slate-900">{r.name}</p>
-                    <p className="text-[11px] text-slate-400">{r.role || "Gloucestershire Customer"}</p>
+                    <p className="text-xs font-bold text-slate-900">{typeof r.name === "string" ? r.name : String(r.name || "")}</p>
+                    <p className="text-[11px] text-slate-400">{typeof r.role === "string" ? r.role : "Gloucestershire Customer"}</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 mt-3">
@@ -763,8 +758,8 @@ export function AdminCmsView() {
               <TableBody className="text-xs">
                 {offers.map((o) => (
                   <TableRow key={o.id}>
-                    <td className="font-bold text-slate-900">{o.title}</td>
-                    <td className="text-slate-500 max-w-sm">{o.description}</td>
+                    <td className="font-bold text-slate-900">{typeof o.title === "string" ? o.title : String(o.title || "")}</td>
+                    <td className="text-slate-500 max-w-sm">{typeof o.description === "string" ? o.description : String(o.description || "")}</td>
                     <td className="font-mono font-bold text-primary">{o.discount_percentage ? `${o.discount_percentage}%` : "Special"}</td>
                     <td>
                       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
@@ -799,8 +794,8 @@ export function AdminCmsView() {
               <TableBody className="text-xs">
                 {banners.map((b) => (
                   <TableRow key={b.id}>
-                    <td className="font-bold text-slate-900">{b.title}</td>
-                    <td className="text-slate-500 max-w-md">{b.message}</td>
+                    <td className="font-bold text-slate-900">{typeof b.title === "string" ? b.title : String(b.title || "")}</td>
+                    <td className="text-slate-500 max-w-md">{typeof b.message === "string" ? b.message : String(b.message || "")}</td>
                     <td className="font-mono text-primary">{b.link_url || "/offers"}</td>
                     <td>
                       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">

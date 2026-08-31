@@ -138,9 +138,9 @@ export function SiteFooter({ className }: { className?: string } = {}) {
           <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Shop</h4>
           <ul className="mt-4 space-y-2 text-sm text-ink-foreground/75">
             {categories.slice(0, 6).map((c) => (
-              <li key={c.slug}>
-                <Link to="/products" search={{ category: c.slug }} className="hover:text-primary">
-                  {c.name}
+              <li key={typeof c.slug === "string" ? c.slug : String(c.id || Math.random())}>
+                <Link to="/products" search={{ category: typeof c.slug === "string" ? c.slug : "" }} className="hover:text-primary">
+                  {typeof c.name === "string" ? c.name : ""}
                 </Link>
               </li>
             ))}
@@ -164,10 +164,27 @@ export function SiteFooter({ className }: { className?: string } = {}) {
           <p className="mt-4 text-sm text-ink-foreground/75">Seasonal offers and fuel price updates.</p>
           <form
             className="mt-4 flex gap-2"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              toast.success("You're subscribed to JSS updates.");
-              (e.target as HTMLFormElement).reset();
+              const form = e.target as HTMLFormElement;
+              const input = form.querySelector('input[type="email"]') as HTMLInputElement;
+              const emailVal = input?.value?.trim();
+              if (!emailVal) return;
+
+              try {
+                const { error } = await supabase
+                  .from("newsletter_subscribers")
+                  .insert([{ email: emailVal, source: "website_footer", status: "active" }]);
+
+                if (error && error.code !== "23505") {
+                  throw error;
+                }
+                toast.success("You're subscribed to JSS updates!");
+                form.reset();
+              } catch (err: any) {
+                console.error("Newsletter subscription error:", err);
+                toast.error("Subscription failed: " + (err.message || "Please try again."));
+              }
             }}
           >
             <Input required type="email" placeholder="Email address" className="h-11 rounded-full border-white/15 bg-white/10 text-ink-foreground placeholder:text-ink-foreground/50" />

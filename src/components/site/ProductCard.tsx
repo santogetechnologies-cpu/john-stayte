@@ -38,7 +38,9 @@ export function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="flex flex-1 flex-col p-4">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{product.brand}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          {typeof product.brand === "string" ? product.brand : "Calor"}
+        </p>
         <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug">
           <Link to="/products/$slug" params={{ slug: product.slug }} className="hover:text-primary">
             {product.name}

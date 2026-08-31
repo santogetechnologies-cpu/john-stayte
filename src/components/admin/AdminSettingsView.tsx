@@ -134,6 +134,7 @@ export function AdminSettingsView() {
       await logAdminAuditAction("UPDATE_SETTINGS", "settings", "admin_config", { platformName, vatRate });
       toast.success("System preferences saved to Supabase database!");
       window.dispatchEvent(new Event("admin_modules_updated"));
+      window.dispatchEvent(new Event("admin_system_settings_updated"));
     } catch (err: any) {
       toast.error("Failed to save settings: " + err.message);
     } finally {

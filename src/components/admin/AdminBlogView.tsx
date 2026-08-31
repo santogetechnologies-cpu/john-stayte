@@ -350,7 +350,6 @@ export function AdminBlogView() {
 
   const persistPostsUpdate = async (updatedPostsList: any[]) => {
     try {
-      localStorage.setItem("jss_admin_blog_posts", JSON.stringify(updatedPostsList));
       window.dispatchEvent(new CustomEvent("cms_blog_updated", { detail: updatedPostsList }));
       
       // Save to Supabase cms_content_blocks (blog_posts_data)

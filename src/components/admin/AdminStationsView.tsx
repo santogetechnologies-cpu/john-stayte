@@ -200,7 +200,6 @@ export function AdminStationsView() {
 
   const persistStations = async (updatedList: any[]) => {
     try {
-      localStorage.setItem("jss_admin_stations", JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("cms_stations_updated", { detail: updatedList }));
       await supabase.from("cms_content_blocks").upsert({
         section_key: "stations_data",

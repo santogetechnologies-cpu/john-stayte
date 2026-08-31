@@ -101,7 +101,7 @@ export function AdminProductsView() {
       if (prodErr) throw prodErr;
       if (catErr) throw catErr;
 
-      if (!prodData || prodData.length < catalogProducts.length) {
+      if (!prodData || prodData.length === 0) {
         await autoMigrateProducts();
       } else {
         setProducts(prodData || []);

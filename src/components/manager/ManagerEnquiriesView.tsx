@@ -171,17 +171,20 @@ export function ManagerEnquiriesView() {
         reply: replyText.substring(0, 50),
       });
 
-      // 4. Create Notification for Customer if customer_id exists
+      // 4. Create Notification for Customer in customer_notifications table
       if (selectedTicket.customer_id) {
-        await supabase.from("notifications").insert([
+        const { error: notifErr } = await supabase.from("customer_notifications").insert([
           {
             user_id: selectedTicket.customer_id,
-            title: `Update on Ticket #${selectedTicket.ticket_number || selectedTicket.id.slice(0, 8)}`,
-            message: `Manager response: ${replyText.substring(0, 80)}...`,
-            category: "support",
-            read: false,
+            title: `Support Update: Ticket #${selectedTicket.ticket_number || selectedTicket.id.slice(0, 8)}`,
+            message: `Manager response: ${replyText.substring(0, 100)}`,
+            category: "Support",
+            is_read: false,
           },
         ]);
+        if (notifErr) {
+          console.error("Customer notification error:", notifErr);
+        }
       }
 
       toast.success("Response sent successfully to customer!");
@@ -366,11 +369,11 @@ export function ManagerEnquiriesView() {
                     #{t.ticket_number || t.id.slice(0, 8)}
                   </TableCell>
                   <TableCell className="text-xs">
-                    <p className="font-bold text-foreground">{t.customer_name}</p>
-                    <p className="text-[10px] text-muted-foreground">{t.customer_email}</p>
+                    <p className="font-bold text-foreground">{typeof t.customer_name === "string" ? t.customer_name : String(t.customer_name || "")}</p>
+                    <p className="text-[10px] text-muted-foreground">{typeof t.customer_email === "string" ? t.customer_email : String(t.customer_email || "")}</p>
                   </TableCell>
                   <TableCell className="text-xs font-bold text-foreground truncate max-w-[200px]">
-                    {t.subject}
+                    {typeof t.subject === "string" ? t.subject : String(t.subject || "")}
                   </TableCell>
                   <TableCell>
                     <Badge className={`text-[10px] ${getPriorityBadgeClass(t.priority)}`}>
@@ -419,9 +422,9 @@ export function ManagerEnquiriesView() {
                 <SheetTitle className="font-black text-xl text-foreground mt-2">
                   Ticket #{selectedTicket.ticket_number || selectedTicket.id.slice(0, 8)}
                 </SheetTitle>
-                <p className="font-extrabold text-sm text-foreground">{selectedTicket.subject}</p>
+                <p className="font-extrabold text-sm text-foreground">{typeof selectedTicket.subject === "string" ? selectedTicket.subject : String(selectedTicket.subject || "")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Customer: <span className="font-bold text-foreground">{selectedTicket.customer_name}</span> ({selectedTicket.customer_email})
+                  Customer: <span className="font-bold text-foreground">{typeof selectedTicket.customer_name === "string" ? selectedTicket.customer_name : String(selectedTicket.customer_name || "")}</span> ({typeof selectedTicket.customer_email === "string" ? selectedTicket.customer_email : String(selectedTicket.customer_email || "")})
                 </p>
               </SheetHeader>
 
@@ -488,7 +491,7 @@ export function ManagerEnquiriesView() {
                           </span>
                         </div>
                         <p className="text-xs text-foreground leading-relaxed pt-1">
-                          {m.message || m.text}
+                          {typeof (m.message || m.text) === "string" ? (m.message || m.text) : String(m.message || m.text || "")}
                         </p>
                       </div>
                     );

@@ -29,7 +29,19 @@ function usePersisted<T>(key: string, initial: T) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(key);
-      if (raw) setValue(JSON.parse(raw) as T);
+      if (raw) {
+        let parsed = JSON.parse(raw);
+        if (key === "jss.cart" && Array.isArray(parsed)) {
+          parsed = parsed
+            .filter((i) => i && typeof i === "object")
+            .map((i) => ({
+              slug: typeof i.slug === "string" ? i.slug : (typeof i.slug === "object" && i.slug?.slug ? String(i.slug.slug) : ""),
+              qty: typeof i.qty === "number" && i.qty > 0 ? i.qty : 1,
+            }))
+            .filter((i) => i.slug && i.slug.length > 0);
+        }
+        setValue(parsed as T);
+      }
     } catch {
       /* ignore */
     }
@@ -425,14 +437,84 @@ export function useStore() {
 export const gbp = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
 
+export interface CartSystemSettings {
+  vatRate: number;
+  fuelVatRate: number;
+  defaultShippingFee: number;
+  freeDeliveryThreshold: number;
+  minOrderValue: number;
+  deliverySlaDays: number;
+}
+
+export const DEFAULT_CART_SYSTEM_SETTINGS: CartSystemSettings = {
+  vatRate: 20,
+  fuelVatRate: 5,
+  defaultShippingFee: 4.99,
+  freeDeliveryThreshold: 100,
+  minOrderValue: 15,
+  deliverySlaDays: 2,
+};
+
 /**
  * Reconciles cart lines against live Supabase public.products database.
+ * Dynamically applies system shipping thresholds & VAT rates from admin_system_settings.
  * Automatically removes stale/deleted products from cart.
  */
 export function useCartTotals() {
   const { cart, removeFromCart } = useStore();
   const [liveLines, setLiveLines] = useState<(CartLine & { product: Product })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<CartSystemSettings>(DEFAULT_CART_SYSTEM_SETTINGS);
+
+  // Load Admin System Settings from Supabase
+  useEffect(() => {
+    let isMounted = true;
+    async function loadSettings() {
+      try {
+        const { data } = await supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "admin_system_settings")
+          .maybeSingle();
+
+        if (data?.content && isMounted) {
+          const parsed = JSON.parse(data.content);
+          if (parsed && typeof parsed === "object") {
+            setSettings({
+              vatRate: Number(parsed.vatRate ?? 20),
+              fuelVatRate: Number(parsed.fuelVatRate ?? 5),
+              defaultShippingFee: Number(parsed.defaultShippingFee ?? 4.99),
+              freeDeliveryThreshold: Number(parsed.freeDeliveryThreshold ?? 100),
+              minOrderValue: Number(parsed.minOrderValue ?? 15),
+              deliverySlaDays: Number(parsed.deliverySlaDays ?? 2),
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Cart system settings fetch notice:", err);
+      }
+    }
+
+    loadSettings();
+
+    const handleUpdate = () => loadSettings();
+    window.addEventListener("admin_system_settings_updated", handleUpdate);
+
+    const channel = supabase
+      .channel("cart_system_settings_live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cms_content_blocks" },
+        () => loadSettings()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("admin_system_settings_updated", handleUpdate);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -515,11 +597,14 @@ export function useCartTotals() {
     [liveLines],
   );
   const shipping = useMemo(
-    () => (subtotal === 0 || subtotal >= 75 ? 0 : 6.95),
-    [subtotal],
+    () => (subtotal === 0 || subtotal >= settings.freeDeliveryThreshold ? 0 : settings.defaultShippingFee),
+    [subtotal, settings.freeDeliveryThreshold, settings.defaultShippingFee],
   );
-  const vat = useMemo(() => subtotal * 0.2, [subtotal]);
+  const vat = useMemo(
+    () => subtotal * (settings.vatRate / 100),
+    [subtotal, settings.vatRate]
+  );
   const total = useMemo(() => subtotal + shipping + vat, [subtotal, shipping, vat]);
 
-  return { lines: liveLines, subtotal, shipping, vat, total, loading };
+  return { lines: liveLines, subtotal, shipping, vat, total, loading, settings };
 }

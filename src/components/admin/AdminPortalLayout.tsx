@@ -27,6 +27,9 @@ import {
   ChevronRight,
   ExternalLink,
   LifeBuoy,
+  FileText,
+  Star,
+  Mail,
   User,
   Menu,
 } from "lucide-react";
@@ -90,6 +93,8 @@ const adminNavGroups: NavGroup[] = [
         badgeKey: "inventoryLow",
         badgeColor: "bg-red-100 text-red-700 font-extrabold",
       },
+      { title: "Invoices", href: "/admin/invoices", icon: FileText },
+      { title: "Enquiries", href: "/admin/enquiries", icon: LifeBuoy },
       { title: "Customers", href: "/admin/customers", icon: Users },
     ],
   },
@@ -98,6 +103,7 @@ const adminNavGroups: NavGroup[] = [
     items: [
       { title: "Products", href: "/admin/products", icon: Package },
       { title: "Categories", href: "/admin/categories", icon: Layers },
+      { title: "Reviews", href: "/admin/reviews", icon: Star },
       { title: "Offers", href: "/admin/offers", icon: Tag, moduleKey: "offers" },
       { title: "Coupons", href: "/admin/coupons", icon: Ticket, moduleKey: "coupons" },
     ],
@@ -124,6 +130,7 @@ const adminNavGroups: NavGroup[] = [
       { title: "Banners", href: "/admin/banners", icon: ImageIcon, moduleKey: "banners" },
       { title: "Blog", href: "/admin/blog", icon: BookOpen, moduleKey: "blog" },
       { title: "FAQs", href: "/admin/faqs", icon: HelpCircle, moduleKey: "faqs" },
+      { title: "Newsletter", href: "/admin/newsletter", icon: Mail },
     ],
   },
   {
@@ -418,19 +425,25 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
                 <Avatar className="h-8.5 w-8.5 border border-white/80 shadow-2xs">
                   <AvatarImage src="" />
                   <AvatarFallback className="bg-gradient-to-br from-red-600 to-rose-600 text-white font-black text-xs shadow-xs">
-                    {user.name.charAt(0)}
+                    {(typeof user?.name === "string" ? user.name : "A").charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden xl:block text-left pr-1">
-                  <p className="text-xs font-extrabold leading-tight text-slate-900 truncate max-w-[120px]">{user.name}</p>
+                  <p className="text-xs font-extrabold leading-tight text-slate-900 truncate max-w-[120px]">
+                    {typeof user?.name === "string" ? user.name : "Administrator"}
+                  </p>
                   <p className="text-[10px] font-semibold text-slate-500 leading-tight">Administrator</p>
                 </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5 shadow-xl border border-white/80 bg-white/95 backdrop-blur-2xl">
               <DropdownMenuLabel className="p-2">
-                <p className="text-xs font-bold text-slate-900">{user.name}</p>
-                <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                <p className="text-xs font-bold text-slate-900">
+                  {typeof user?.name === "string" ? user.name : "Administrator"}
+                </p>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {typeof user?.email === "string" ? user.email : ""}
+                </p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
