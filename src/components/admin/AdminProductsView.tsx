@@ -364,33 +364,60 @@ export function AdminProductsView() {
 
       {/* 2. REAL SUPABASE KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
+        <button
+          type="button"
+          onClick={() => {
+            setStockFilter("all");
+            setCategoryFilter("all");
+          }}
+          className={`surface-card p-4 rounded-2xl border bg-white space-y-1 text-left cursor-pointer transition-all hover:border-slate-300 hover:shadow-xs ${
+            stockFilter === "all" && categoryFilter === "all" ? "ring-2 ring-slate-400/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
             Total Products
           </p>
           <p className="text-2xl font-black text-foreground">{totalProducts}</p>
-        </div>
+        </button>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
+        <button
+          type="button"
+          onClick={() => setStockFilter("all")}
+          className={`surface-card p-4 rounded-2xl border bg-white space-y-1 text-left cursor-pointer transition-all hover:border-emerald-300 hover:shadow-xs ${
+            stockFilter === "all" ? "ring-2 ring-emerald-500/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
             Active Products
           </p>
           <p className="text-2xl font-black text-emerald-600">{activeProducts}</p>
-        </div>
+        </button>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
+        <button
+          type="button"
+          onClick={() => setStockFilter("low")}
+          className={`surface-card p-4 rounded-2xl border bg-white space-y-1 text-left cursor-pointer transition-all hover:border-amber-300 hover:shadow-xs ${
+            stockFilter === "low" ? "ring-2 ring-amber-500/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
             Low Stock (&le; 10)
           </p>
           <p className="text-2xl font-black text-amber-600">{lowStockProducts}</p>
-        </div>
+        </button>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
+        <button
+          type="button"
+          onClick={() => setStockFilter("out")}
+          className={`surface-card p-4 rounded-2xl border bg-white space-y-1 text-left cursor-pointer transition-all hover:border-red-300 hover:shadow-xs ${
+            stockFilter === "out" ? "ring-2 ring-red-500/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
             Out of Stock
           </p>
           <p className="text-2xl font-black text-red-600">{outOfStockProducts}</p>
-        </div>
+        </button>
       </div>
 
       {/* 3. SEARCH & TOOLBAR */}

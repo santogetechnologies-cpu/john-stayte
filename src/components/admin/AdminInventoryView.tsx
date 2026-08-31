@@ -53,7 +53,13 @@ export function AdminInventoryView() {
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "in_stock" | "low_stock" | "out_of_stock">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "in_stock" | "low_stock" | "out_of_stock">(() => {
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search).get("status");
+      if (p === "low_stock" || p === "in_stock" || p === "out_of_stock") return p;
+    }
+    return "all";
+  });
 
   // Modal State for Adding/Editing Stock
   const [modalOpen, setModalOpen] = useState(false);
@@ -293,29 +299,53 @@ export function AdminInventoryView() {
 
       {/* 2. INVENTORY SUMMARY KPIS (4 CARDS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("all")}
+          className={`surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs text-left cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm ${
+            statusFilter === "all" ? "ring-2 ring-slate-400/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Tracked Catalog Items</p>
           <p className="text-2xl font-black text-foreground">{totalItemsCount}</p>
           <p className="text-[11px] text-muted-foreground font-medium">Active products in database</p>
-        </div>
+        </button>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("in_stock")}
+          className={`surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs text-left cursor-pointer transition-all hover:border-emerald-300 hover:shadow-sm ${
+            statusFilter === "in_stock" ? "ring-2 ring-emerald-500/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Stock Healthy</p>
           <p className="text-2xl font-black text-emerald-600">{healthyItemsCount}</p>
           <p className="text-[11px] text-muted-foreground font-medium">Above reorder threshold</p>
-        </div>
+        </button>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("low_stock")}
+          className={`surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs text-left cursor-pointer transition-all hover:border-amber-300 hover:shadow-sm ${
+            statusFilter === "low_stock" ? "ring-2 ring-amber-500/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Low Stock Alerts</p>
           <p className="text-2xl font-black text-amber-600">{lowStockItemsCount}</p>
           <p className="text-[11px] text-muted-foreground font-medium">Requires inventory reorder</p>
-        </div>
+        </button>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setStatusFilter("out_of_stock")}
+          className={`surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs text-left cursor-pointer transition-all hover:border-rose-300 hover:shadow-sm ${
+            statusFilter === "out_of_stock" ? "ring-2 ring-rose-500/30" : ""
+          }`}
+        >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Out of Stock</p>
           <p className="text-2xl font-black text-rose-600">{outOfStockItemsCount}</p>
           <p className="text-[11px] text-muted-foreground font-medium">Zero available units</p>
-        </div>
+        </button>
       </div>
 
       {/* 3. SEARCH & FILTER TOOLBAR */}

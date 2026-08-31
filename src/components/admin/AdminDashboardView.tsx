@@ -105,6 +105,19 @@ export function AdminDashboardView() {
     }
 
     loadDashboardData();
+
+    const channel = supabase
+      .channel("admin_dashboard_realtime_kpis")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadDashboardData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Compute live metric calculations
@@ -316,7 +329,7 @@ export function AdminDashboardView() {
       <div className="space-y-4">
         {/* Row 1 Primary Metrics */}
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+          <Link to="/admin/orders" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Revenue</span>
               <div className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center border border-red-500/20 shadow-2xs">
@@ -332,9 +345,9 @@ export function AdminDashboardView() {
                 <span className="text-[11px] text-slate-500 font-medium">Verified database total</span>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+          <Link to="/admin/orders" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Orders</span>
               <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
@@ -350,9 +363,9 @@ export function AdminDashboardView() {
                 <span className="text-[11px] text-slate-500 font-medium">Orders placed</span>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+          <Link to="/admin/customers" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Customers</span>
               <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
@@ -368,9 +381,9 @@ export function AdminDashboardView() {
                 <span className="text-[11px] text-slate-500 font-medium">Registered customers</span>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1">
+          <Link to="/admin/products" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Live Products</span>
               <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
@@ -386,12 +399,12 @@ export function AdminDashboardView() {
                 <span className="text-[11px] text-slate-500 font-medium">Catalog items</span>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Row 2 Secondary Operational KPIs */}
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+          <Link to={"/admin/orders?status=Pending" as never} className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Pending Orders</p>
               <p className="text-xl font-black text-slate-900 mt-0.5">{pendingOrdersCount}</p>
@@ -399,9 +412,9 @@ export function AdminDashboardView() {
             <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/60 font-extrabold text-[11px]">
               Queue
             </span>
-          </div>
+          </Link>
 
-          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+          <Link to={"/admin/inventory?status=low_stock" as never} className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Low Stock Items</p>
               <p className="text-xl font-black text-slate-900 mt-0.5">{lowStockCount}</p>
@@ -409,9 +422,9 @@ export function AdminDashboardView() {
             <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px]">
               Threshold
             </span>
-          </div>
+          </Link>
 
-          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+          <Link to="/admin/deliveries" className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Active Deliveries</p>
               <p className="text-xl font-black text-slate-900 mt-0.5">{activeDeliveriesCount}</p>
@@ -419,9 +432,9 @@ export function AdminDashboardView() {
             <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[11px]">
               En Route
             </span>
-          </div>
+          </Link>
 
-          <div className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white transition-all">
+          <Link to="/admin/analytics" className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
             <div>
               <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Average Order Value</p>
               <p className="text-xl font-black text-slate-900 mt-0.5">{gbp(averageOrderValue)}</p>
@@ -429,7 +442,7 @@ export function AdminDashboardView() {
             <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px]">
               AOV
             </span>
-          </div>
+          </Link>
         </div>
       </div>
 

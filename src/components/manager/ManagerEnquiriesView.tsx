@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   MessageSquare,
   Search,
@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Loader2,
   Filter,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,14 +45,29 @@ import { useStore } from "@/lib/store";
 import { logAdminAuditAction } from "@/lib/audit";
 
 export function ManagerEnquiriesView() {
+  const navigate = useNavigate();
+  const routerLocation = useRouterState({ select: (s) => s.location });
+
   const { user } = useStore();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("status") || "all";
+    }
+    return "all";
+  });
   const [priorityFilter, setPriorityFilter] = useState("all");
+
+  // Keep statusFilter synchronized with live router location changes
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const paramStatus = (routerLocation.search as any)?.status || params.get("status") || "all";
+    setStatusFilter(paramStatus);
+  }, [routerLocation]);
 
   // Selected Ticket Detail & Messages
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
@@ -238,8 +254,24 @@ export function ManagerEnquiriesView() {
     }
   };
 
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    navigate({
+      to: "/manager/enquiries",
+      search: (val === "all" ? {} : { status: val }) as never,
+    });
+  };
+
   const filtered = tickets.filter((t) => {
-    if (statusFilter !== "all" && t.status !== statusFilter) return false;
+    if (statusFilter !== "all") {
+      const sf = statusFilter.toLowerCase();
+      const st = (t.status || "").toLowerCase();
+      if (sf === "open") {
+        if (st !== "open") return false;
+      } else if (st !== sf) {
+        return false;
+      }
+    }
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
 
     if (searchQuery.trim()) {
@@ -254,6 +286,7 @@ export function ManagerEnquiriesView() {
     return true;
   });
 
+  const openTicketsCount = tickets.filter((t) => (t.status || "").toLowerCase() === "open").length;
   const openOrPendingCount = tickets.filter((t) => t.status !== "Resolved" && t.status !== "Closed").length;
 
   const getPriorityBadgeClass = (priority: string) => {
@@ -282,15 +315,43 @@ export function ManagerEnquiriesView() {
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
             <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
             <span>/</span>
-            <span className="text-foreground">Enquiries</span>
+            <span className="text-foreground font-bold">Enquiries</span>
+            {statusFilter !== "all" && (
+              <>
+                <span>/</span>
+                <span className="text-primary font-bold capitalize">
+                  {statusFilter === "Open" ? "Open Enquiries" : statusFilter}
+                </span>
+              </>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
             <MessageSquare className="h-7 w-7 text-primary" />
-            Customer Support & Enquiry Tickets ({openOrPendingCount})
+            Customer Support & Enquiry Tickets ({filtered.length}{statusFilter !== "all" ? ` of ${tickets.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Manage and respond to customer enquiries and support requests.
           </p>
+        </div>
+
+        {/* Quick filter pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={statusFilter === "all" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("all")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            All Enquiries ({tickets.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter.toLowerCase() === "open" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("Open")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Open Enquiries ({openTicketsCount})
+          </Button>
         </div>
       </div>
 
@@ -307,18 +368,30 @@ export function ManagerEnquiriesView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 rounded-xl text-xs font-bold h-9 border-slate-200">
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-44 rounded-xl text-xs font-bold h-9 border-slate-200">
+              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl">
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Open">Open</SelectItem>
+            <SelectContent className="rounded-2xl font-medium text-xs">
+              <SelectItem value="all">All Statuses ({tickets.length})</SelectItem>
+              <SelectItem value="Open">Open Enquiries ({openTicketsCount})</SelectItem>
               <SelectItem value="In Progress">In Progress</SelectItem>
               <SelectItem value="Waiting">Waiting</SelectItem>
               <SelectItem value="Resolved">Resolved</SelectItem>
             </SelectContent>
           </Select>
+
+          {statusFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleStatusFilterChange("all")}
+              className="rounded-full text-xs h-9 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
 
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
             <SelectTrigger className="w-36 rounded-xl text-xs font-bold h-9 border-slate-200">

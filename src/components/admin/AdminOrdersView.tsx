@@ -47,7 +47,12 @@ export function AdminOrdersView() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("status") || "all";
+    }
+    return "all";
+  });
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   const loadOrders = async () => {
@@ -69,6 +74,22 @@ export function AdminOrdersView() {
 
   useEffect(() => {
     loadOrders();
+
+    const handleLocationChange = () => {
+      const paramStatus = new URLSearchParams(window.location.search).get("status");
+      if (paramStatus) setStatusFilter(paramStatus);
+    };
+    window.addEventListener("popstate", handleLocationChange);
+
+    const channel = supabase
+      .channel("admin_orders_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadOrders())
+      .subscribe();
+
+    return () => {
+      window.removeEventListener("popstate", handleLocationChange);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const filteredOrders = orders.filter((o) => {

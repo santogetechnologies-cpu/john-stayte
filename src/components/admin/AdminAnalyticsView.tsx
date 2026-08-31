@@ -116,6 +116,18 @@ export function AdminAnalyticsView() {
 
   useEffect(() => {
     loadAnalyticsData();
+
+    const channel = supabase
+      .channel("admin_analytics_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadAnalyticsData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, () => loadAnalyticsData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadAnalyticsData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadAnalyticsData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [dateFilter, startDate, endDate]);
 
   // Aggregate daily revenue & order counts for charts
@@ -250,59 +262,59 @@ export function AdminAnalyticsView() {
 
       {/* OVERVIEW KPIS GRID (6 Cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <Link to="/admin/orders" className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs block cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase">Total Revenue</span>
             <DollarSign className="h-4 w-4 text-emerald-600" />
           </div>
           <p className="text-lg font-black tracking-tight text-foreground">{gbp(totalRevenue)}</p>
           <p className="text-[10px] text-muted-foreground truncate">Real orders in window</p>
-        </div>
+        </Link>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <Link to="/admin/orders" className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs block cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase">Total Orders</span>
             <ShoppingBag className="h-4 w-4 text-blue-600" />
           </div>
           <p className="text-lg font-black tracking-tight text-foreground">{totalOrdersCount}</p>
           <p className="text-[10px] text-muted-foreground">Period order count</p>
-        </div>
+        </Link>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <Link to="/admin/orders" className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs block cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase">Avg Order Value</span>
             <Activity className="h-4 w-4 text-indigo-600" />
           </div>
           <p className="text-lg font-black tracking-tight text-foreground">{gbp(aov)}</p>
           <p className="text-[10px] text-muted-foreground">Calculated AOV</p>
-        </div>
+        </Link>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <Link to="/admin/customers" className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs block cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase">Customers</span>
             <Users className="h-4 w-4 text-amber-600" />
           </div>
           <p className="text-lg font-black tracking-tight text-foreground">{totalCustomersCount}</p>
           <p className="text-[10px] text-muted-foreground">Registered profiles</p>
-        </div>
+        </Link>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <Link to="/admin/products" className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs block cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase">Products</span>
             <Package className="h-4 w-4 text-purple-600" />
           </div>
           <p className="text-lg font-black tracking-tight text-foreground">{totalProductsCount}</p>
           <p className="text-[10px] text-muted-foreground">Active catalog items</p>
-        </div>
+        </Link>
 
-        <div className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs">
+        <Link to="/admin/inventory" className="surface-card p-4 rounded-3xl border bg-white space-y-1 shadow-xs block cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase">Units Sold</span>
             <Boxes className="h-4 w-4 text-rose-600" />
           </div>
           <p className="text-lg font-black tracking-tight text-foreground">{totalUnitsSold}</p>
           <p className="text-[10px] text-muted-foreground">Order line items</p>
-        </div>
+        </Link>
       </div>
 
       {/* CHARTS GRID (2 COLUMNS) */}

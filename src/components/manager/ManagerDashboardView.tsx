@@ -16,6 +16,7 @@ import {
   PlusCircle,
   FileText,
   MessageSquare,
+  AlertOctagon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,18 @@ export function ManagerDashboardView() {
 
   useEffect(() => {
     loadManagerData();
+
+    const channel = supabase
+      .channel("manager_dashboard_realtime_kpis")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadManagerData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () => loadManagerData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadManagerData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => loadManagerData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Compute live calculations
@@ -163,22 +176,117 @@ export function ManagerDashboardView() {
         </div>
       </div>
 
-      {/* 2. TODAY'S OPERATIONAL SUMMARY KPIS */}
-      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-8">
+      {/* 2. TODAY'S OPERATIONAL SUMMARY KPIS (PROMINENT FROSTED GLASS CARDS) */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Orders Assigned", val: ordersAssignedCount, color: "text-blue-600 bg-blue-50 border-blue-100" },
-          { label: "Pending Approval", val: pendingApprovalCount, color: "text-amber-600 bg-amber-50 border-amber-100" },
-          { label: "Processing", val: processingCount, color: "text-purple-600 bg-purple-50 border-purple-100" },
-          { label: "Out for Delivery", val: outForDeliveryCount, color: "text-indigo-600 bg-indigo-50 border-indigo-100" },
-          { label: "Delivered Today", val: deliveredTodayCount, color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
-          { label: "Delayed Deliveries", val: delayedDeliveriesCount, color: "text-rose-600 bg-rose-50 border-rose-100" },
-          { label: "Low Stock Items", val: lowStockCount, color: "text-red-600 bg-red-50 border-red-100" },
-          { label: "Open Enquiries", val: openEnquiriesCount, color: "text-slate-700 bg-slate-100 border-slate-200" },
+          {
+            label: "Orders Assigned",
+            val: ordersAssignedCount,
+            sub: "Total depot dispatch queue",
+            tag: "All Orders",
+            icon: ShoppingBag,
+            href: "/manager/orders",
+            iconBg: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+            tagCls: "bg-blue-50 text-blue-700 border-blue-200/60",
+          },
+          {
+            label: "Pending Approval",
+            val: pendingApprovalCount,
+            sub: "Awaiting depot review",
+            tag: "Action Req",
+            icon: Clock,
+            href: "/manager/orders?status=Pending",
+            iconBg: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+            tagCls: "bg-amber-50 text-amber-700 border-amber-200/60",
+          },
+          {
+            label: "Processing",
+            val: processingCount,
+            sub: "Approved & being packed",
+            tag: "In Prep",
+            icon: PackageCheck,
+            href: "/manager/orders?status=Processing",
+            iconBg: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+            tagCls: "bg-purple-50 text-purple-700 border-purple-200/60",
+          },
+          {
+            label: "Out for Delivery",
+            val: outForDeliveryCount,
+            sub: "En-route to customers",
+            tag: "On Route",
+            icon: Truck,
+            href: "/manager/deliveries?status=out_for_delivery",
+            iconBg: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
+            tagCls: "bg-indigo-50 text-indigo-700 border-indigo-200/60",
+          },
+          {
+            label: "Delivered Today",
+            val: deliveredTodayCount,
+            sub: "Completed route drops",
+            tag: "Completed",
+            icon: CheckCircle2,
+            href: "/manager/deliveries?status=delivered",
+            iconBg: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+            tagCls: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+          },
+          {
+            label: "Delayed Deliveries",
+            val: delayedDeliveriesCount,
+            sub: "Route or weather hold",
+            tag: "Attention",
+            icon: AlertTriangle,
+            href: "/manager/deliveries?status=delayed",
+            iconBg: "bg-rose-500/10 text-rose-600 border-rose-500/20",
+            tagCls: "bg-rose-50 text-rose-700 border-rose-200/60",
+          },
+          {
+            label: "Low Stock Items",
+            val: lowStockCount,
+            sub: "Below depot threshold",
+            tag: "Inventory",
+            icon: AlertOctagon,
+            href: "/manager/inventory?status=low_stock",
+            iconBg: "bg-red-500/10 text-red-600 border-red-500/20",
+            tagCls: "bg-red-50 text-red-700 border-red-200/60",
+          },
+          {
+            label: "Open Enquiries",
+            val: openEnquiriesCount,
+            sub: "Customer support tickets",
+            tag: "Support",
+            icon: MessageSquare,
+            href: "/manager/enquiries?status=Open",
+            iconBg: "bg-slate-500/10 text-slate-700 border-slate-500/20",
+            tagCls: "bg-slate-100 text-slate-700 border-slate-200",
+          },
         ].map((kpi) => (
-          <div key={kpi.label} className={`surface-card p-3 rounded-2xl border ${kpi.color} space-y-1`}>
-            <p className="text-[10px] font-extrabold uppercase tracking-tight text-muted-foreground">{kpi.label}</p>
-            <p className="text-xl font-black text-foreground">{kpi.val}</p>
-          </div>
+          <Link
+            key={kpi.label}
+            to={kpi.href as never}
+            className="surface-card p-5 sm:p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] hover:border-primary/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 group-hover:text-foreground transition-colors">
+                {kpi.label}
+              </span>
+              <div className={`h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center border shadow-2xs transition-transform group-hover:scale-105 ${kpi.iconBg}`}>
+                <kpi.icon className="h-5 w-5" />
+              </div>
+            </div>
+            <div>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {kpi.val}
+              </p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-[10px] border ${kpi.tagCls}`}>
+                  {kpi.tag}
+                </span>
+                <span className="text-[11px] text-slate-500 font-medium truncate">
+                  {kpi.sub}
+                </span>
+              </div>
+            </div>
+          </Link>
         ))}
       </div>
 

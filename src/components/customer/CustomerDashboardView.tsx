@@ -74,6 +74,16 @@ export function CustomerDashboardView() {
     }
 
     loadDashboardData();
+
+    const channel = supabase
+      .channel("customer_dashboard_realtime_kpis")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => loadDashboardData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   // Compute metrics from REAL database rows
@@ -156,6 +166,7 @@ export function CustomerDashboardView() {
       iconBg: "bg-slate-100 text-slate-700 border border-slate-200/60",
       cardBorder: "border-slate-200/90",
       highlight: false,
+      href: "/account/orders",
     },
     {
       label: "LIFETIME SPEND",
@@ -166,6 +177,7 @@ export function CustomerDashboardView() {
       iconBg: "bg-primary/10 text-primary border border-primary/20",
       cardBorder: "border-primary/30 shadow-[0_4px_16px_rgba(227,27,35,0.06)]",
       highlight: true,
+      href: "/account/orders",
     },
     {
       label: "SAVED WISHLIST",
@@ -176,6 +188,7 @@ export function CustomerDashboardView() {
       iconBg: "bg-rose-50 text-rose-600 border border-rose-200/60",
       cardBorder: "border-slate-200/90",
       highlight: false,
+      href: "/account/wishlist",
     },
     {
       label: "SUPPORT ENQUIRIES",
@@ -186,6 +199,7 @@ export function CustomerDashboardView() {
       iconBg: "bg-amber-50 text-amber-600 border border-amber-200/60",
       cardBorder: "border-slate-200/90",
       highlight: false,
+      href: "/account/support",
     },
   ];
 
@@ -281,9 +295,10 @@ export function CustomerDashboardView() {
       {/* ============================================================ */}
       <div className="grid gap-3.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((card) => (
-          <div
+          <Link
             key={card.label}
-            className={`bg-white rounded-2xl border ${card.cardBorder} p-4 sm:p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm`}
+            to={card.href}
+            className={`bg-white rounded-2xl border ${card.cardBorder} p-4 sm:p-5 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm block cursor-pointer`}
           >
             <div className="flex items-center justify-between gap-2 mb-3">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -310,7 +325,7 @@ export function CustomerDashboardView() {
                 </p>
               </div>
             )}
-          </div>
+          </Link>
         ))}
       </div>
 

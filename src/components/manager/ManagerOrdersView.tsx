@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ShoppingBag,
   Search,
   Eye,
+  Filter,
+  X,
+  Clock,
+  PackageCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/database.types";
@@ -35,11 +39,26 @@ import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerOrdersView() {
+  const navigate = useNavigate();
+  const routerLocation = useRouterState({ select: (s) => s.location });
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("status") || "all";
+    }
+    return "all";
+  });
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Keep statusFilter synchronized with live router location changes
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const paramStatus = (routerLocation.search as any)?.status || params.get("status") || "all";
+    setStatusFilter(paramStatus);
+  }, [routerLocation]);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -60,16 +79,49 @@ export function ManagerOrdersView() {
 
   useEffect(() => {
     loadOrders();
+
+    const channel = supabase
+      .channel("manager_orders_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadOrders())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    navigate({
+      to: "/manager/orders",
+      search: (val === "all" ? {} : { status: val }) as never,
+    });
+  };
 
   const filteredOrders = orders.filter((o) => {
     const matchesSearch =
       (o.order_number || o.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
       (o.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || o.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    if (!matchesSearch) return false;
+
+    if (statusFilter === "all") return true;
+
+    const sf = statusFilter.toLowerCase();
+    const os = (o.status || "").toLowerCase();
+
+    if (sf === "processing") {
+      return os === "approved" || os === "packed" || os === "processing";
+    }
+    if (sf === "pending") {
+      return os === "pending";
+    }
+
+    return os === sf;
   });
+
+  const pendingCount = orders.filter((o) => o.status === "Pending").length;
+  const processingCount = orders.filter((o) => o.status === "Approved" || o.status === "Packed" || o.status === "Processing").length;
 
   const handleUpdateStatus = async (order: any, newStatus: OrderStatus) => {
     if (order.status === newStatus) return;
@@ -145,19 +197,55 @@ export function ManagerOrdersView() {
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
             <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
             <span>/</span>
-            <span className="text-foreground">Orders</span>
+            <span className="text-foreground font-bold">Orders</span>
+            {statusFilter !== "all" && (
+              <>
+                <span>/</span>
+                <span className="text-primary font-bold capitalize">
+                  {statusFilter}
+                </span>
+              </>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Manager Orders Operations ({orders.length})
+            Manager Orders Operations ({filteredOrders.length}{statusFilter !== "all" ? ` of ${orders.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Approve, schedule, and track cylinder orders assigned to your depot in Supabase.
           </p>
         </div>
+
+        {/* Quick status filter pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={statusFilter === "all" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("all")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            All Orders ({orders.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter.toLowerCase() === "pending" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("Pending")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Pending Approval ({pendingCount})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter.toLowerCase() === "processing" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("Processing")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Processing ({processingCount})
+          </Button>
+        </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
         <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -168,20 +256,35 @@ export function ManagerOrdersView() {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
-            <SelectValue placeholder="Status Filter" />
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl font-medium text-xs">
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Approved">Approved</SelectItem>
-            <SelectItem value="Packed">Packed</SelectItem>
-            <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-            <SelectItem value="Delivered">Delivered</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-48 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
+              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Status Filter" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl font-medium text-xs">
+              <SelectItem value="all">All Orders ({orders.length})</SelectItem>
+              <SelectItem value="Pending">Pending Approval ({pendingCount})</SelectItem>
+              <SelectItem value="Processing">Processing ({processingCount})</SelectItem>
+              <SelectItem value="Approved">Approved</SelectItem>
+              <SelectItem value="Packed">Packed</SelectItem>
+              <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+              <SelectItem value="Delivered">Delivered</SelectItem>
+              <SelectItem value="Cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {statusFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleStatusFilterChange("all")}
+              className="rounded-full text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Orders Table */}

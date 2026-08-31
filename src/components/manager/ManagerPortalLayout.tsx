@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -20,6 +20,12 @@ import {
   ExternalLink,
   LifeBuoy,
   Menu,
+  Clock,
+  Navigation,
+  CheckCircle2,
+  AlertTriangle,
+  Layers,
+  AlertOctagon,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -40,6 +46,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { ManagerGlobalSearch } from "./ManagerGlobalSearch";
 import { ManagerNotificationsPopover } from "./ManagerNotificationsPopover";
 
@@ -47,6 +54,7 @@ type NavItem = {
   title: string;
   href: string;
   icon: any;
+  badgeKey?: "pendingOrders" | "processingOrders" | "outForDelivery" | "delayedDeliveries" | "lowStock" | "openEnquiries";
 };
 
 type NavGroup = {
@@ -62,19 +70,36 @@ const managerNavGroups: NavGroup[] = [
     ],
   },
   {
-    groupLabel: "OPERATIONS",
+    groupLabel: "ORDERS & DISPATCH",
     items: [
-      { title: "My Orders", href: "/manager/orders", icon: ShoppingBag },
-      { title: "Deliveries", href: "/manager/deliveries", icon: Truck },
-      { title: "Inventory", href: "/manager/inventory", icon: PackageCheck },
+      { title: "Orders Assigned", href: "/manager/orders", icon: ShoppingBag },
+      { title: "Pending Approval", href: "/manager/orders?status=Pending", icon: Clock, badgeKey: "pendingOrders" },
+      { title: "Processing", href: "/manager/orders?status=Processing", icon: PackageCheck, badgeKey: "processingOrders" },
     ],
   },
   {
-    groupLabel: "CUSTOMERS",
+    groupLabel: "LOGISTICS & DELIVERIES",
+    items: [
+      { title: "All Deliveries", href: "/manager/deliveries", icon: Truck },
+      { title: "Out for Delivery", href: "/manager/deliveries?status=out_for_delivery", icon: Navigation, badgeKey: "outForDelivery" },
+      { title: "Delivered Today", href: "/manager/deliveries?status=delivered", icon: CheckCircle2 },
+      { title: "Delayed Deliveries", href: "/manager/deliveries?status=delayed", icon: AlertTriangle, badgeKey: "delayedDeliveries" },
+    ],
+  },
+  {
+    groupLabel: "INVENTORY & STOCK",
+    items: [
+      { title: "Depot Inventory", href: "/manager/inventory", icon: Layers },
+      { title: "Low Stock Items", href: "/manager/inventory?status=low_stock", icon: AlertOctagon, badgeKey: "lowStock" },
+    ],
+  },
+  {
+    groupLabel: "CUSTOMERS & SUPPORT",
     items: [
       { title: "Customers", href: "/manager/customers", icon: Users },
-      { title: "Enquiries", href: "/manager/enquiries", icon: HelpCircle },
-      { title: "Support", href: "/manager/support", icon: MessageSquare },
+      { title: "All Enquiries", href: "/manager/enquiries", icon: HelpCircle },
+      { title: "Open Enquiries", href: "/manager/enquiries?status=Open", icon: MessageSquare, badgeKey: "openEnquiries" },
+      { title: "Support Tickets", href: "/manager/support", icon: LifeBuoy },
     ],
   },
   {
@@ -102,6 +127,63 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Live real-time Supabase counts for sidebar KPI badges
+  const [counts, setCounts] = useState<{
+    pendingOrders?: number;
+    processingOrders?: number;
+    outForDelivery?: number;
+    delayedDeliveries?: number;
+    lowStock?: number;
+    openEnquiries?: number;
+  }>({});
+
+  const loadSidebarCounts = async () => {
+    try {
+      const [
+        { count: pendingCount },
+        { data: processingData },
+        { count: delayedCount },
+        { count: outCount },
+        { data: lowStockData },
+        { count: openEnqCount },
+      ] = await Promise.all([
+        supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
+        supabase.from("orders").select("id, status").or("status.eq.Approved,status.eq.Packed"),
+        supabase.from("delivery_assignments").select("*", { count: "exact", head: true }).eq("status", "Delayed"),
+        supabase.from("delivery_assignments").select("*", { count: "exact", head: true }).eq("status", "Out for Delivery"),
+        supabase.from("products").select("id, stock").lte("stock", 10),
+        supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "Open"),
+      ]);
+
+      setCounts({
+        pendingOrders: pendingCount || 0,
+        processingOrders: processingData?.length || 0,
+        delayedDeliveries: delayedCount || 0,
+        outForDelivery: outCount || 0,
+        lowStock: lowStockData?.length || 0,
+        openEnquiries: openEnqCount || 0,
+      });
+    } catch (e) {
+      console.error("Failed to load sidebar counts:", e);
+    }
+  };
+
+  useEffect(() => {
+    loadSidebarCounts();
+
+    const channel = supabase
+      .channel("manager_sidebar_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadSidebarCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadSidebarCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadSidebarCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => loadSidebarCounts())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Protect Manager Portal: only managers and admins are allowed
   if (!user || (user.role !== "manager" && user.role !== "admin")) {
@@ -131,6 +213,35 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
   const managerName = user.name || "Manager";
   const managerEmail = user.email || "";
 
+  const isItemActive = (href: string) => {
+    const [itemBase, itemQueryStr] = href.split("?");
+    const itemParams = new URLSearchParams(itemQueryStr || "");
+    const itemStatus = itemParams.get("status")?.toLowerCase() || null;
+
+    if (itemBase === "/manager") {
+      return currentPath === "/manager" || currentPath === "/manager/";
+    }
+
+    if (currentPath !== itemBase) {
+      return false;
+    }
+
+    // Inspect live router query search
+    const currentSearchStr = typeof window !== "undefined"
+      ? window.location.search
+      : routerState.location.searchStr || "";
+    const currentParams = new URLSearchParams(currentSearchStr);
+    const currentStatus = currentParams.get("status")?.toLowerCase() || null;
+
+    if (itemStatus) {
+      const normItem = itemStatus.replace(/_/g, " ");
+      const normCurrent = (currentStatus || "").replace(/_/g, " ");
+      return normItem === normCurrent;
+    }
+
+    return !currentStatus || currentStatus === "all";
+  };
+
   const renderNavItems = (isMobile = false) => (
     <div className="space-y-6">
       {managerNavGroups.map((group) => (
@@ -141,10 +252,8 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
             </p>
           )}
           {group.items.map((item) => {
-            const isActive =
-              item.href === "/manager"
-                ? currentPath === "/manager" || currentPath === "/manager/"
-                : currentPath.startsWith(item.href);
+            const isActive = isItemActive(item.href);
+            const badgeCount = item.badgeKey ? counts[item.badgeKey] : undefined;
 
             const linkContent = (
               <Link
@@ -162,7 +271,20 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                   }`}
                 />
                 {(!collapsed || isMobile) && (
-                  <span className="flex-1 truncate">{item.title}</span>
+                  <>
+                    <span className="flex-1 truncate">{item.title}</span>
+                    {badgeCount !== undefined && badgeCount > 0 && (
+                      <span
+                        className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          isActive
+                            ? "bg-white/25 text-white"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-800"
+                        }`}
+                      >
+                        {badgeCount}
+                      </span>
+                    )}
+                  </>
                 )}
               </Link>
             );

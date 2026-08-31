@@ -1,11 +1,25 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "@tanstack/react-router";
-import { Layers, Search, Save, Edit, AlertTriangle, CheckCircle2, XCircle, Loader2, RotateCcw } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import {
+  Layers,
+  Search,
+  AlertTriangle,
+  CheckCircle2,
+  Package,
+  Edit2,
+  Loader2,
+  Building2,
+  Filter,
+  X,
+  AlertOctagon,
+  Save,
+  RotateCcw,
+  Edit,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,15 +33,40 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerInventoryView() {
+  const navigate = useNavigate();
+  const routerLocation = useRouterState({ select: (s) => s.location });
+
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("status") || "all";
+    }
+    return "all";
+  });
+
+  // Keep statusFilter synchronized with live router location changes
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const paramStatus = (routerLocation.search as any)?.status || params.get("status") || "all";
+    setStatusFilter(paramStatus);
+  }, [routerLocation]);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
@@ -90,12 +129,19 @@ export function ManagerInventoryView() {
   useEffect(() => {
     loadInventory();
 
+    const handleLocationChange = () => {
+      const paramStatus = new URLSearchParams(window.location.search).get("status");
+      if (paramStatus) setStatusFilter(paramStatus);
+    };
+    window.addEventListener("popstate", handleLocationChange);
+
     const channel = supabase
       .channel("manager_inventory_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadInventory())
       .subscribe();
 
     return () => {
+      window.removeEventListener("popstate", handleLocationChange);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -157,15 +203,33 @@ export function ManagerInventoryView() {
   };
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return inventoryItems;
-    const q = searchQuery.toLowerCase();
-    return inventoryItems.filter(
-      (item) =>
+    return inventoryItems.filter((item) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
         item.name.toLowerCase().includes(q) ||
         item.sku.toLowerCase().includes(q) ||
-        item.category_slug.toLowerCase().includes(q)
-    );
-  }, [inventoryItems, searchQuery]);
+        item.category_slug.toLowerCase().includes(q);
+
+      if (!matchesSearch) return false;
+      if (statusFilter === "low_stock") return item.status === "low_stock";
+      if (statusFilter === "out_of_stock") return item.status === "out_of_stock";
+      if (statusFilter === "in_stock") return item.status === "in_stock";
+      return true;
+    });
+  }, [inventoryItems, searchQuery, statusFilter]);
+
+  const lowStockCount = inventoryItems.filter((i) => i.status === "low_stock").length;
+  const outOfStockCount = inventoryItems.filter((i) => i.status === "out_of_stock").length;
+  const inStockCount = inventoryItems.filter((i) => i.status === "in_stock").length;
+
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    navigate({
+      to: "/manager/inventory",
+      search: (val === "all" ? {} : { status: val }) as never,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -175,17 +239,53 @@ export function ManagerInventoryView() {
             <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
             <span>/</span>
             <span className="text-foreground font-bold">Inventory</span>
+            {statusFilter !== "all" && (
+              <>
+                <span>/</span>
+                <span className="text-primary font-bold capitalize">
+                  {statusFilter === "low_stock" ? "Low Stock Items" : statusFilter.replace(/_/g, " ")}
+                </span>
+              </>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Layers className="h-7 w-7 text-primary" /> Depot Stock Level Monitoring ({inventoryItems.length})
+            <Layers className="h-7 w-7 text-primary" /> Depot Stock Level Monitoring ({filtered.length}{statusFilter !== "all" ? ` of ${inventoryItems.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Track and adjust cylinder stock availability for Whitminster & Gloucestershire depots.
           </p>
         </div>
+
+        {/* Quick status filter pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={statusFilter === "all" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("all")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            All Stock ({inventoryItems.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "low_stock" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("low_stock")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Low Stock ({lowStockCount})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter === "out_of_stock" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("out_of_stock")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Out of Stock ({outOfStockCount})
+          </Button>
+        </div>
       </div>
 
-      <div className="surface-card p-4 rounded-3xl border bg-white flex items-center justify-between shadow-xs">
+      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
         <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -194,6 +294,32 @@ export function ManagerInventoryView() {
             placeholder="Search depot inventory by product name or SKU..."
             className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs h-9"
           />
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-52 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
+              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Stock Status" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl font-medium text-xs">
+              <SelectItem value="all">All Inventory ({inventoryItems.length})</SelectItem>
+              <SelectItem value="low_stock">Low Stock Alerts ({lowStockCount})</SelectItem>
+              <SelectItem value="out_of_stock">Out of Stock ({outOfStockCount})</SelectItem>
+              <SelectItem value="in_stock">In Stock Healthy ({inStockCount})</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {statusFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleStatusFilterChange("all")}
+              className="rounded-full text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
         </div>
       </div>
 
