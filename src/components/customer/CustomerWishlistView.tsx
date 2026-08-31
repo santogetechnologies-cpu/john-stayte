@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { cleanImageUrl } from "@/lib/utils";
 
 export function CustomerWishlistView() {
   const { wishlist, toggleWishlist, addToCart } = useStore();
@@ -196,10 +197,13 @@ export function CustomerWishlistView() {
                     className="w-full flex items-center justify-center"
                   >
                     <img
-                      src={product.image_url || "/placeholder.svg"}
+                      src={cleanImageUrl(product.image_url, product.slug)}
                       alt={product.name}
                       loading="lazy"
                       className="max-h-36 w-full object-contain group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = "/placeholder.svg";
+                      }}
                     />
                   </Link>
                 </div>

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { categories as fallbackCategories, type Category, type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
+import { cleanImageUrl } from "@/lib/utils";
 
 type Search = {
   q?: string;
@@ -84,7 +85,7 @@ function ProductsPage() {
             price: Number(p.price),
             compareAt: p.compare_at_price ? Number(p.compare_at_price) : undefined,
             stock: Number(p.stock || 0),
-            image: p.image_url || "/placeholder.svg",
+            image: cleanImageUrl(p.image_url, p.slug),
             rating: Number(p.rating || 5.0),
             reviews: Number(p.reviews_count || 0),
             featured: Boolean(p.is_featured),

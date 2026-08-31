@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import type { Product } from "@/data/catalog";
 import { gbp, useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, cleanImageUrl } from "@/lib/utils";
 
 export function ProductCard({ product }: { product: Product }) {
   const { addToCart, wishlist, toggleWishlist } = useStore();
@@ -30,10 +30,13 @@ export function ProductCard({ product }: { product: Product }) {
 
       <Link to="/products/$slug" params={{ slug: product.slug }} className="block bg-surface p-6">
         <img
-          src={product.image}
+          src={cleanImageUrl(product.image, product.slug)}
           alt={product.name}
           loading="lazy"
           className="mx-auto h-40 w-full object-contain transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = "/placeholder.svg";
+          }}
         />
       </Link>
 

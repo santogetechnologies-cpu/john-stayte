@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
 import { gbp, useCartTotals, useStore } from "@/lib/store";
+import { cleanImageUrl } from "@/lib/utils";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -162,10 +163,13 @@ function CartPage() {
                               className="h-20 w-20 sm:h-24 sm:w-24 rounded-lg bg-slate-50 border border-slate-200/70 p-2 flex items-center justify-center group overflow-hidden"
                             >
                               <img
-                                src={line.product.image || "/placeholder.svg"}
+                                src={cleanImageUrl(line.product.image, line.product.slug)}
                                 alt={line.product.name}
                                 className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
                                 loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "/placeholder.svg";
+                                }}
                               />
                             </Link>
 

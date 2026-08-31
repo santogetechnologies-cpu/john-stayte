@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" rx="16" fill="#F8FAFC"/>
+  <rect x="0.5" y="0.5" width="399" height="399" rx="15.5" stroke="#E2E8F0"/>
+  <g opacity="0.45" transform="translate(140, 130)">
+    <path d="M60 10 C35 10 20 25 20 50 L20 120 C20 135 35 145 60 145 C85 145 100 135 100 120 L100 50 C100 25 85 10 60 10 Z" stroke="#94A3B8" stroke-width="6" fill="#F1F5F9" stroke-linejoin="round"/>
+    <path d="M45 10 L45 0 C45 -5 50 -10 60 -10 C70 -10 75 -5 75 0 L75 10" stroke="#94A3B8" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <circle cx="60" cy="70" r="16" stroke="#E02424" stroke-width="4" fill="none"/>
+    <path d="M60 62 L60 78 M52 70 L68 70" stroke="#E02424" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22 65 Q60 80 98 65" stroke="#CBD5E1" stroke-width="4" fill="none"/>
+  </g>
+  <text x="200" y="295" text-anchor="middle" fill="#94A3B8" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" letter-spacing="0.05em">JOHN STAYTE SERVICES</text>
+  <text x="200" y="318" text-anchor="middle" fill="#CBD5E1" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500">Image coming soon</text>
+</svg>

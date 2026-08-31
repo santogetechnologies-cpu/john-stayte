@@ -48,7 +48,7 @@ import { ProductCard } from "@/components/site/ProductCard";
 import { Button } from "@/components/ui/button";
 import { gbp, useStore } from "@/lib/store";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, cleanImageUrl } from "@/lib/utils";
 import { stations, testimonials } from "@/data/catalog";
 import { blogArticles } from "@/data/blog";
 import hero from "@/assets/hero-delivery.jpg";
@@ -974,7 +974,7 @@ function Home() {
             price: Number(p.price),
             compareAt: p.compare_at_price ? Number(p.compare_at_price) : undefined,
             stock: Number(p.stock || 0),
-            image: p.image_url || "/placeholder.svg",
+            image: cleanImageUrl(p.image_url, p.slug),
             rating: Number(p.rating || 5.0),
             reviews: Number(p.reviews_count || 0),
             featured: Boolean(p.is_featured),
@@ -1758,10 +1758,13 @@ function Home() {
                             {/* Product Photo */}
                             <Link to="/products/$slug" params={{ slug: p.slug }} className="block w-full h-full flex items-center justify-center">
                               <img
-                                src={p.image || cylinderImg}
+                                src={cleanImageUrl(p.image, p.slug)}
                                 alt={p.name}
                                 className="w-full h-full object-contain p-2.5 sm:p-3.5 md:p-0 md:object-cover object-center group-hover:scale-105 transition-transform duration-500"
                                 loading="lazy"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = cylinderImg;
+                                }}
                               />
                             </Link>
                           </div>

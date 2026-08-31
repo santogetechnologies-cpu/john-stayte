@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { cleanImageUrl } from "@/lib/utils";
 
 const STATUS_STEPS = ["Pending", "Approved", "Packed", "Out for Delivery", "Delivered"];
 
@@ -370,8 +371,10 @@ export function CustomerOrdersView() {
             const isCancelled = o.status === "Cancelled";
             const canCancel = isCancellable(o.status);
 
-            const imageUrl =
-              firstItem?.product_info?.image_url || "/placeholder.svg";
+            const imageUrl = cleanImageUrl(
+              firstItem?.product_info?.image_url,
+              firstItem?.product_info?.slug
+            );
 
             const streetAddress = o.delivery_address?.street || o.delivery_address?.name || "";
             const postcode = o.delivery_address?.postcode || "";
@@ -415,6 +418,9 @@ export function CustomerOrdersView() {
                           src={imageUrl}
                           alt={firstItem?.product_name || "Product"}
                           className="h-full w-full object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/placeholder.svg";
+                          }}
                         />
                       ) : (
                         <Package className="h-7 w-7 text-primary/70" />
