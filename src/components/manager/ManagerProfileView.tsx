@@ -158,7 +158,7 @@ export function ManagerProfileView() {
       {loading ? (
         <div className="surface-card p-12 rounded-3xl border bg-white text-center space-y-3">
           <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
-          <p className="text-xs font-bold text-muted-foreground">Loading profile data from Supabase...</p>
+          <p className="text-xs font-bold text-muted-foreground">Loading profile details...</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -195,7 +195,7 @@ export function ManagerProfileView() {
             <div>
               <h3 className="text-sm font-black text-foreground">Personal Information</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Update your account contact details saved in Supabase.
+                Update your account contact details.
               </p>
             </div>
 

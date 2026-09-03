@@ -64,7 +64,12 @@ const CANCELLATION_REASONS = [
 ];
 
 export function CustomerOrderDetailView() {
-  const { orderId } = useParams({ strict: false }) as { orderId?: string };
+  const params = useParams({ strict: false }) as { orderId?: string };
+  const orderId =
+    params?.orderId ||
+    (typeof window !== "undefined"
+      ? window.location.pathname.split("/account/orders/")[1]?.split("/")[0]?.split("?")[0]
+      : undefined);
   const { user, addToCart } = useStore();
   const navigate = useNavigate();
 
@@ -658,9 +663,21 @@ export function CustomerOrderDetailView() {
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Sync
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="rounded-full text-xs font-bold gap-1 border-primary/20 text-primary hover:bg-primary/10 h-8"
+            >
+              <Link to="/account/deliveries" search={{ orderId: order.id } as never}>
+                <Truck className="h-3.5 w-3.5" /> Full Delivery Tracker
+              </Link>
+            </Button>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Sync
+            </div>
           </div>
         </div>
 
@@ -1142,7 +1159,7 @@ export function CustomerOrderDetailView() {
 
           <div className="text-xs text-slate-600 space-y-3">
             <p>
-              Are you sure you want to cancel this order? Allocated stock will be restored to inventory and the status will update in Supabase.
+              Are you sure you want to cancel this order? Allocated stock will be restored to inventory and your order status updated to Cancelled.
             </p>
 
             <div className="bg-slate-50 p-3 rounded-xl border font-bold text-slate-900">

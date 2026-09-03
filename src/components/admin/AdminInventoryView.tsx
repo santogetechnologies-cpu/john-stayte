@@ -103,7 +103,7 @@ export function AdminInventoryView() {
         let status: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
         if (stock === 0) {
           status = "out_of_stock";
-        } else if (stock <= threshold) {
+        } else if (stock <= 10) {
           status = "low_stock";
         }
 
@@ -292,7 +292,7 @@ export function AdminInventoryView() {
             <Layers className="h-7 w-7 text-primary" /> Inventory & Stock Control ({totalItemsCount})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Real-time catalog stock quantities, reorder alert thresholds, and depot allocations in Supabase.
+            Real-time catalog stock quantities, reorder alert thresholds, and depot allocations.
           </p>
         </div>
       </div>
@@ -308,7 +308,7 @@ export function AdminInventoryView() {
         >
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">Tracked Catalog Items</p>
           <p className="text-2xl font-black text-foreground">{totalItemsCount}</p>
-          <p className="text-[11px] text-muted-foreground font-medium">Active products in database</p>
+          <p className="text-[11px] text-muted-foreground font-medium">Active products</p>
         </button>
 
         <button
@@ -348,30 +348,29 @@ export function AdminInventoryView() {
         </button>
       </div>
 
-      {/* 3. SEARCH & FILTER TOOLBAR */}
-      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
-        <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search inventory by product name, SKU, or category..."
-            className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs h-9"
-          />
-        </div>
+      {/* 3. SEARCH & CONTROLS */}
+      <div className="surface-card p-4 rounded-3xl border bg-white space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+          <div className="relative flex-1 w-full max-w-md">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by product name, SKU, brand, or depot..."
+              className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs"
+            />
+          </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
-            <SelectTrigger className="w-40 rounded-xl text-xs font-bold h-9 border-slate-200">
-              <SelectValue placeholder="Stock Status" />
-            </SelectTrigger>
-            <SelectContent className="rounded-2xl">
-              <SelectItem value="all">All Stock Statuses</SelectItem>
-              <SelectItem value="in_stock">In Stock (Healthy)</SelectItem>
-              <SelectItem value="low_stock">Low Stock Alert</SelectItem>
-              <SelectItem value="out_of_stock">Out of Stock</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <Button
+              onClick={loadInventory}
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs font-bold gap-1.5 border-slate-200"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -379,15 +378,15 @@ export function AdminInventoryView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Querying product inventory from Supabase...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading product inventory...
           </div>
         ) : error ? (
           <div className="p-12 text-center space-y-3">
             <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
-            <h3 className="font-bold text-sm text-foreground">Database Error</h3>
+            <h3 className="font-bold text-sm text-foreground">System Notice</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
             <Button onClick={loadInventory} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
-              <RotateCcw className="h-3.5 w-3.5" /> Retry Query
+              <RotateCcw className="h-3.5 w-3.5" /> Retry
             </Button>
           </div>
         ) : filtered.length === 0 ? (
@@ -530,7 +529,7 @@ export function AdminInventoryView() {
                   disabled={saving}
                   className="rounded-full font-extrabold text-xs gap-1.5 shadow-md bg-primary hover:bg-primary/90 text-white"
                 >
-                  <Save className="h-4 w-4" /> {saving ? "Saving to Supabase..." : "Save Stock Level"}
+                  <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Stock Level"}
                 </Button>
               </div>
             </form>

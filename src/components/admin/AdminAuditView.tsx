@@ -60,7 +60,7 @@ export function AdminAuditView() {
             System Audit Trail ({logs.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Immutable system event logs recorded in Supabase database.
+            Immutable system event logs and activity history.
           </p>
         </div>
       </div>
@@ -80,7 +80,7 @@ export function AdminAuditView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading audit logs from Supabase...
+            Loading audit logs...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">

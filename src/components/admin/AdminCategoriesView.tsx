@@ -88,7 +88,7 @@ export function AdminCategoriesView() {
         image_url: data.publicUrl,
         image: data.publicUrl,
       }));
-      toast.success("Category image uploaded to Supabase Storage!");
+      toast.success("Category image uploaded!");
     } catch (err: any) {
       console.warn("Storage upload notice:", err.message);
       setEditCategory((prev: any) => ({

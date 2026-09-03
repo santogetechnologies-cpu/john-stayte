@@ -1288,7 +1288,7 @@ function BlogKnowledgeCentrePage() {
             <div className="absolute inset-y-0 left-0 w-48 bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none" />
           </div>
 
-          <div className="container-page max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 relative z-10">
             <div className="grid grid-cols-12 gap-8 items-center min-h-[520px] py-12">
 
               {/* Left Column: Content Area (Takes 6 cols out of 12) */}

@@ -350,7 +350,7 @@ function ProductsPage() {
             <div className="surface-card p-16 text-center space-y-3 rounded-3xl border border-slate-200/80 bg-white">
               <Loader2 className="mx-auto h-8 w-8 text-primary animate-spin" />
               <p className="font-bold text-sm text-muted-foreground">
-                Loading products from Supabase...
+                Loading products...
               </p>
             </div>
           ) : list.length === 0 ? (

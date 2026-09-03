@@ -120,7 +120,7 @@ export function ManagerInventoryView() {
       setInventoryItems(merged);
     } catch (err: any) {
       console.error("Failed to load manager inventory:", err);
-      setError(err.message || "Failed to query products from Supabase");
+      setError(err.message || "Failed to load inventory");
     } finally {
       setLoading(false);
     }
@@ -326,12 +326,12 @@ export function ManagerInventoryView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Fetching depot inventory from Supabase...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading depot inventory...
           </div>
         ) : error ? (
           <div className="p-12 text-center space-y-3">
             <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
-            <h3 className="font-bold text-sm text-foreground">Database Error</h3>
+            <h3 className="font-bold text-sm text-foreground">Notice</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
             <Button onClick={loadInventory} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
               <RotateCcw className="h-3.5 w-3.5" /> Retry

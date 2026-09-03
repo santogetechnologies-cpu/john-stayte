@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Menu,
   ShoppingCart,
+  Truck,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { CustomerGlobalSearch } from "./CustomerGlobalSearch";
 import { CustomerNotificationsPopover } from "./CustomerNotificationsPopover";
 
@@ -61,6 +63,50 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeDeliveriesCount, setActiveDeliveriesCount] = useState<number>(0);
+
+  // Live real-time Supabase query for customer's active deliveries badge
+  useEffect(() => {
+    async function fetchActiveDeliveriesCount() {
+      try {
+        const { data: authUser } = await supabase.auth.getUser();
+        const currentUserId = authUser?.user?.id || user?.id;
+        if (!currentUserId) return;
+
+        const { count, error } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("customer_id", currentUserId)
+          .not("status", "in", '("Delivered","Cancelled")');
+
+        if (!error && count !== null) {
+          setActiveDeliveriesCount(count);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch active deliveries count:", e);
+      }
+    }
+
+    fetchActiveDeliveriesCount();
+
+    const channel = supabase
+      .channel("customer_active_deliveries_badge")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => fetchActiveDeliveriesCount()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "delivery_assignments" },
+        () => fetchActiveDeliveriesCount()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const customerName = user?.name || "Customer Account";
   const customerEmail = user?.email || "";
@@ -74,12 +120,19 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
       groupLabel: "SHOPPING",
       items: [
         { title: "My Orders", href: "/account/orders", icon: ShoppingBag },
+        {
+          title: "Active Deliveries",
+          href: "/account/deliveries",
+          icon: Truck,
+          badge: activeDeliveriesCount > 0 ? activeDeliveriesCount : undefined,
+        },
         { title: "Wishlist", href: "/account/wishlist", icon: Heart, badge: wishlist.length > 0 ? wishlist.length : undefined },
       ],
     },
     {
       groupLabel: "ACCOUNT",
       items: [
+        { title: "Gas Application", href: "/account/application", icon: FileText },
         { title: "Invoices", href: "/account/invoices", icon: FileText },
         { title: "Addresses", href: "/account/addresses", icon: MapPin },
         { title: "Profile", href: "/account/profile", icon: User },
@@ -100,6 +153,8 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
 
   const getBreadcrumb = () => {
     if (currentPath === "/account" || currentPath === "/account/") return "Dashboard";
+    if (currentPath.includes("deliveries")) return "Active Deliveries";
+    if (currentPath.includes("tracking")) return "Delivery Tracking";
     if (currentPath.includes("orders")) return "My Orders";
     if (currentPath.includes("wishlist")) return "Wishlist";
     if (currentPath.includes("invoices")) return "Invoices";

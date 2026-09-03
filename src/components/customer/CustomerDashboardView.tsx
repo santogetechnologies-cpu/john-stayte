@@ -19,11 +19,13 @@ import {
   ChevronRight,
   Flame,
   FileText,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStore, gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
 
 export function CustomerDashboardView() {
   const { user, wishlist } = useStore();
@@ -31,6 +33,7 @@ export function CustomerDashboardView() {
 
   const [orders, setOrders] = useState<any[]>([]);
   const [ticketCount, setTicketCount] = useState<number>(0);
+  const [customerApp, setCustomerApp] = useState<GasCustomerApplication | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch real customer orders & data from Supabase
@@ -40,11 +43,18 @@ export function CustomerDashboardView() {
       try {
         const { data: authUser } = await supabase.auth.getUser();
         const currentEmail = authUser?.user?.email || user?.email;
+        const currentUid = authUser?.user?.id || user?.id;
 
-        if (!currentEmail && !authUser?.user?.id) {
+        if (!currentEmail && !currentUid) {
           setOrders([]);
           setLoading(false);
           return;
+        }
+
+        // Fetch application status
+        if (currentUid) {
+          const app = await getCustomerGasApplication(currentUid);
+          setCustomerApp(app);
         }
 
         // 1. Query Orders belonging to authenticated customer
@@ -273,8 +283,8 @@ export function CustomerDashboardView() {
               asChild
               className="rounded-xl font-extrabold text-xs shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-10 px-5 gap-2 transition-all hover:scale-[1.01]"
             >
-              <Link to="/products">
-                <Flame className="h-4 w-4" /> Order Gas & Products
+              <Link to="/order-gas">
+                <Flame className="h-4 w-4" /> Order Gas & Cylinders
               </Link>
             </Button>
             <Button
@@ -282,13 +292,75 @@ export function CustomerDashboardView() {
               variant="outline"
               className="rounded-xl font-bold text-xs border-slate-200 text-slate-700 hover:bg-slate-50 h-10 px-4"
             >
-              <Link to="/account/orders">
-                <FileText className="h-3.5 w-3.5 mr-1 text-slate-500" /> Invoices
+              <Link to="/account/application">
+                <FileText className="h-3.5 w-3.5 mr-1 text-slate-500" /> Gas Application
               </Link>
             </Button>
           </div>
         </div>
       </div>
+
+      {/* GAS CUSTOMER APPLICATION STATUS BANNER */}
+      {!customerApp || customerApp.status === "NOT_COMPLETED" ? (
+        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/70 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+              <AlertCircle className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-amber-600 text-white font-extrabold text-[9px] uppercase px-2 py-0.5">
+                  Application Required
+                </Badge>
+                <span className="text-[11px] font-bold text-amber-900">Mandatory for Gas Orders</span>
+              </div>
+              <p className="text-xs text-amber-950 font-bold leading-snug">
+                Please complete your Gas Customer Application before placing your first gas order.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            asChild
+            className="rounded-full h-9 px-5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs shrink-0 shadow-xs"
+          >
+            <Link to="/account/application">
+              Complete Application &rarr;
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-left shadow-2xs">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+              <CheckCircle2 className="h-5 w-5 stroke-[2.5]" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-700 text-white font-extrabold text-[9px] uppercase px-2 py-0.5">
+                  {customerApp.status === "APPROVED" ? "Application Approved" : "Application Submitted"}
+                </Badge>
+                <span className="text-[11px] font-medium text-emerald-800">
+                  Signed {new Date(customerApp.signed_at).toLocaleDateString("en-GB")}
+                </span>
+              </div>
+              <p className="text-xs text-emerald-950 font-bold leading-snug">
+                Your Gas Customer Application is on file. You are authorized to order gas cylinders.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-full h-9 px-4 border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-bold text-xs shrink-0 bg-white"
+          >
+            <Link to="/account/application">
+              View Application
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* ============================================================ */}
       {/* 2. KPI / ACCOUNT STATS                                      */}
@@ -423,7 +495,7 @@ export function CustomerDashboardView() {
           <div className="bg-white rounded-2xl border border-slate-200/90 p-10 text-center shadow-xs space-y-3">
             <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
             <p className="text-xs text-slate-500 font-bold">
-              Loading your live orders from Supabase...
+              Loading your recent orders...
             </p>
           </div>
         ) : orders.length === 0 ? (

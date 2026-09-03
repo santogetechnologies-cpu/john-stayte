@@ -101,7 +101,7 @@ function OffersPage() {
         <h2 className="mb-6 text-2xl font-extrabold">Special Offer Products</h2>
         {deals.length === 0 ? (
           <div className="surface-card p-12 text-center text-xs text-muted-foreground font-bold rounded-3xl border bg-white">
-            No special offers active in Supabase right now.
+            No special offers active right now.
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

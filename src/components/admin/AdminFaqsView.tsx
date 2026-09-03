@@ -177,7 +177,7 @@ export function AdminFaqsView() {
       await saveFaqsToSupabase(updatedList);
 
       await logAdminAuditAction(editingFaq ? "UPDATE_FAQ" : "CREATE_FAQ", "faqs", faqItem.q, { question: faqItem.q });
-      toast.success(editingFaq ? "FAQ updated in Supabase!" : "New FAQ added to Supabase!");
+      toast.success(editingFaq ? "FAQ updated successfully!" : "New FAQ added successfully!");
       setModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save FAQ: " + err.message);
@@ -230,7 +230,7 @@ export function AdminFaqsView() {
             <h1 className="text-2xl font-black tracking-tight text-slate-900">FAQ Management</h1>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Manage customer frequently asked questions, delivery coverage notes, and fuel advice ({faqs.length} questions active in database).
+            Manage customer frequently asked questions, delivery coverage notes, and fuel advice ({faqs.length} active questions).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -312,7 +312,7 @@ export function AdminFaqsView() {
         <DialogContent className="max-w-lg rounded-3xl p-7">
           <DialogHeader>
             <DialogTitle className="text-xl font-black tracking-tight">
-              {editingFaq ? "Edit FAQ in Supabase" : "Add FAQ Question"}
+              {editingFaq ? "Edit FAQ" : "Add FAQ Question"}
             </DialogTitle>
           </DialogHeader>
 

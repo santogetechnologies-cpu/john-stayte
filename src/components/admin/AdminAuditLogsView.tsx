@@ -101,10 +101,10 @@ export function AdminAuditLogsView() {
             <span className="text-foreground">Audit Logs</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <ShieldCheck className="h-7 w-7 text-primary" /> Immutable Security Audit Trail ({logs.length})
+            <ShieldCheck className="h-7 w-7 text-primary" /> Security Audit Trail ({logs.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Real administrative activity, product/order/offer CUD, and configuration events logged in Supabase.
+            Administrative activity, product updates, and configuration events.
           </p>
         </div>
       </div>
@@ -160,7 +160,7 @@ export function AdminAuditLogsView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Querying audit records from Supabase...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading audit records...
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-16 text-center space-y-3">

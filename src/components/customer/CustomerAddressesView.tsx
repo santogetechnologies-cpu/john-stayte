@@ -271,7 +271,7 @@ export function CustomerAddressesView() {
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
           <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
           <p className="text-xs text-slate-500 font-bold">
-            Loading your delivery addresses from Supabase...
+            Loading your delivery addresses...
           </p>
         </div>
       ) : addresses.length === 0 ? (

@@ -48,7 +48,7 @@ export function AdminBannersView() {
         .getPublicUrl(filePath);
 
       setImageUrl(data.publicUrl);
-      toast.success("Banner image uploaded to Supabase Storage!");
+      toast.success("Banner image uploaded!");
     } catch (err: any) {
       console.warn("Storage upload notice:", err.message);
       setImageUrl(URL.createObjectURL(file));
@@ -115,12 +115,12 @@ export function AdminBannersView() {
         const { error } = await supabase.from("cms_banners").update(payload).eq("id", editingBanner.id);
         if (error) throw error;
         await logAdminAuditAction("UPDATE_BANNER", "banner", editingBanner.id, { title });
-        toast.success("Banner updated in Supabase!");
+        toast.success("Banner updated successfully!");
       } else {
         const { data, error } = await supabase.from("cms_banners").insert(payload).select().single();
         if (error) throw error;
         await logAdminAuditAction("CREATE_BANNER", "banner", data.id, { title });
-        toast.success("New banner created in Supabase!");
+        toast.success("New banner created successfully!");
       }
 
       setModalOpen(false);
@@ -174,7 +174,7 @@ export function AdminBannersView() {
             <ImageIcon className="h-7 w-7 text-primary" /> Promotional Banners CMS
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage homepage promotional banners persisted in Supabase database.
+            Manage homepage promotional banners and campaign announcements.
           </p>
         </div>
 
@@ -189,13 +189,13 @@ export function AdminBannersView() {
       {/* BANNERS LIST */}
       {loading ? (
         <div className="py-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading banners from Supabase...
+          <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading banners...
         </div>
       ) : banners.length === 0 ? (
         <div className="surface-card p-12 text-center rounded-3xl border bg-white space-y-3">
           <ImageIcon className="h-10 w-10 text-slate-300 mx-auto" />
           <h3 className="font-extrabold text-base text-foreground">No Banners Found</h3>
-          <p className="text-xs text-muted-foreground">Create your first homepage promotional banner in Supabase.</p>
+          <p className="text-xs text-muted-foreground">Create your first homepage promotional banner.</p>
           <Button onClick={openCreateModal} className="rounded-full text-xs font-extrabold gap-1 mt-2">
             <Plus className="h-4 w-4" /> Create Banner
           </Button>

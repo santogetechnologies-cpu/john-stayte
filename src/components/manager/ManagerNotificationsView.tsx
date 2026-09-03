@@ -126,7 +126,7 @@ export function ManagerNotificationsView() {
 
       if (updErr) throw updErr;
 
-      toast.success("All manager notifications marked as read in database");
+      toast.success("All manager notifications marked as read");
       await loadNotifications();
     } catch (err: any) {
       toast.error("Failed to mark all as read: " + err.message);
@@ -152,7 +152,7 @@ export function ManagerNotificationsView() {
 
       if (delErr) throw delErr;
 
-      toast.success("Notification permanently deleted from database");
+      toast.success("Notification deleted successfully");
       setNotificationToDelete(null);
     } catch (err: any) {
       toast.error("Failed to delete notification: " + err.message);
@@ -177,7 +177,7 @@ export function ManagerNotificationsView() {
 
       if (delErr) throw delErr;
 
-      toast.success("All manager notifications permanently deleted from database");
+      toast.success("All manager notifications deleted successfully");
       setDeleteAllDialogOpen(false);
       await loadNotifications();
     } catch (err: any) {

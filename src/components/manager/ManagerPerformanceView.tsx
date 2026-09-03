@@ -251,7 +251,7 @@ export function ManagerPerformanceView() {
             <Award className="h-7 w-7 text-primary" /> My Performance & Operational Metrics
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Track operational throughput, order fulfillment SLAs, and daily handled trends in Supabase.
+            Track operational throughput, order fulfillment SLAs, and daily handled trends.
           </p>
         </div>
 
@@ -274,7 +274,7 @@ export function ManagerPerformanceView() {
       {loading ? (
         <div className="surface-card p-12 rounded-3xl border bg-white text-center space-y-3 shadow-xs">
           <Clock className="mx-auto h-6 w-6 text-primary animate-spin" />
-          <p className="text-xs font-bold text-muted-foreground">Querying performance data from Supabase...</p>
+          <p className="text-xs font-bold text-muted-foreground">Loading performance data...</p>
         </div>
       ) : error ? (
         <div className="p-12 text-center space-y-3 surface-card rounded-3xl border bg-white shadow-xs">
@@ -445,7 +445,7 @@ export function ManagerPerformanceView() {
             <h2 className="text-base font-black text-foreground">Operational Insights</h2>
             {totalOrdersCount === 0 ? (
               <p className="text-xs text-muted-foreground font-medium">
-                No performance insights available for this period. Insights generate automatically from live database activity.
+                No performance insights available for this period. Insights generate automatically as order activity occurs.
               </p>
             ) : (
               <div className="space-y-2 text-xs">

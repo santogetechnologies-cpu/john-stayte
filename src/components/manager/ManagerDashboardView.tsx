@@ -114,7 +114,7 @@ export function ManagerDashboardView() {
         .eq("id", orderId);
 
       if (error) throw error;
-      toast.success("Order approved in Supabase!");
+      toast.success("Order approved successfully!");
       await loadManagerData();
     } catch (err: any) {
       toast.error("Failed to approve order: " + err.message);
@@ -151,7 +151,7 @@ export function ManagerDashboardView() {
             Good morning, {user?.name || "Manager"}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Operational overview for Gloucestershire depot dispatch routes in Supabase.
+            Operational overview for Gloucestershire depot dispatch routes.
           </p>
         </div>
 
@@ -309,7 +309,7 @@ export function ManagerDashboardView() {
           <div className="overflow-hidden rounded-2xl border">
             {loading ? (
               <div className="p-8 text-center text-xs text-muted-foreground font-bold">
-                Loading orders from Supabase...
+                Loading orders...
               </div>
             ) : orders.length === 0 ? (
               <div className="p-12 text-center space-y-2 bg-slate-50/50">

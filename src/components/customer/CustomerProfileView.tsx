@@ -389,15 +389,15 @@ export function CustomerProfileView() {
 
       {loading ? (
         <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs font-bold text-muted-foreground shadow-xs flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Querying profile details from Supabase...
+          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Loading profile details...
         </div>
       ) : error ? (
         <div className="p-12 text-center space-y-3 surface-card rounded-3xl border bg-white shadow-xs">
           <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
-          <h3 className="font-bold text-sm text-foreground">Profile Query Error</h3>
+          <h3 className="font-bold text-sm text-foreground">Notice</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
           <Button onClick={loadProfile} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
-            <RotateCcw className="h-3.5 w-3.5" /> Retry Query
+            <RotateCcw className="h-3.5 w-3.5" /> Retry
           </Button>
         </div>
       ) : (

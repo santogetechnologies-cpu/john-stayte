@@ -49,6 +49,38 @@ function Checkout() {
   const [phone, setPhone] = useState("");
   const [postcode, setPostcode] = useState("");
   const [address, setAddress] = useState("");
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+
+  // Automatically load and prefill customer's saved default address from Supabase
+  useEffect(() => {
+    async function loadCustomerAddresses() {
+      try {
+        const { data: authUser } = await supabase.auth.getUser();
+        if (!authUser?.user) return;
+
+        const { data: addrs } = await supabase
+          .from("customer_addresses")
+          .select("*")
+          .eq("user_id", authUser.user.id)
+          .order("is_default", { ascending: false });
+
+        if (addrs && addrs.length > 0) {
+          setSavedAddresses(addrs);
+          const defaultAddr = addrs.find((a: any) => a.is_default) || addrs[0];
+          if (defaultAddr) {
+            setAddress(defaultAddr.street || "");
+            setPostcode(defaultAddr.postcode || "");
+            if (defaultAddr.name && (!user?.name || user.name === "Customer")) {
+              setFullName(defaultAddr.name);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load saved customer addresses:", err);
+      }
+    }
+    loadCustomerAddresses();
+  }, [user]);
 
   const applyCoupon = async () => {
     const cleanCode = coupon.trim().toUpperCase();
@@ -202,7 +234,7 @@ function Checkout() {
         .single();
 
       if (orderErr || !newOrder) {
-        throw new Error(orderErr?.message || "Failed to create order record in Supabase.");
+        throw new Error(orderErr?.message || "Failed to process your order. Please try again.");
       }
 
       createdOrderId = newOrder.id;
@@ -354,7 +386,41 @@ function Checkout() {
       <form onSubmit={place} className="container-page grid gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-5">
           <section className="surface-card p-7">
-            <h2 className="font-extrabold">Delivery details</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold">Delivery details</h2>
+              {savedAddresses.length > 0 && (
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                  Using saved address
+                </span>
+              )}
+            </div>
+
+            {savedAddresses.length > 1 && (
+              <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                <span className="text-[11px] font-bold text-slate-500 block">Select from saved addresses:</span>
+                <div className="flex flex-wrap gap-2">
+                  {savedAddresses.map((addr) => (
+                    <button
+                      key={addr.id}
+                      type="button"
+                      onClick={() => {
+                        setAddress(addr.street || "");
+                        setPostcode(addr.postcode || "");
+                        if (addr.name) setFullName(addr.name);
+                        toast.info(`Selected address: ${addr.label || addr.street}`);
+                      }}
+                      className={`px-3 py-1 text-xs font-bold rounded-full border transition-all ${
+                        address === addr.street
+                          ? "bg-primary text-white border-primary shadow-xs"
+                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {addr.label || "Address"}: {addr.street.slice(0, 24)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="fn">Full name</Label>

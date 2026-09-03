@@ -151,7 +151,7 @@ export function ManagerCustomersView() {
 
       if (error) throw error;
 
-      toast.success("Customer account created in Supabase!");
+      toast.success("Customer account created successfully!");
       setAddModal(false);
       setNewName("");
       setNewEmail("");
@@ -283,7 +283,7 @@ export function ManagerCustomersView() {
       <div className="surface-card rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading customers from Supabase...
+            Loading customers...
           </div>
         ) : filteredCustomers.length === 0 ? (
           <div className="p-16 text-center space-y-3">

@@ -1016,7 +1016,7 @@ function CategoryLandingPage() {
             <div className="surface-card p-12 text-center rounded-3xl border bg-slate-50 space-y-3">
               <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
               <p className="font-bold text-xs text-muted-foreground">
-                Loading gas products from database...
+                Loading gas products...
               </p>
             </div>
           ) : explorerList.length === 0 ? (

@@ -117,7 +117,7 @@ export function AdminCustomersView() {
             Customer Directory ({customers.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Real customer database profiles registered in Supabase.
+            Manage registered customer accounts and profiles.
           </p>
         </div>
 
@@ -143,7 +143,7 @@ export function AdminCustomersView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading customer directory from Supabase...
+            Loading customer directory...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">

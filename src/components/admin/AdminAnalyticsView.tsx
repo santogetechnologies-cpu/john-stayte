@@ -324,7 +324,7 @@ export function AdminAnalyticsView() {
           <div className="flex items-center justify-between border-b pb-3">
             <div>
               <h3 className="font-extrabold text-base text-foreground">Revenue Analytics over Time</h3>
-              <p className="text-xs text-muted-foreground">Daily gross sales graph calculated from Supabase orders.</p>
+              <p className="text-xs text-muted-foreground">Daily gross sales graph calculated from recent orders.</p>
             </div>
             <Badge className={currentTheme.badgeBg + " text-xs font-extrabold px-2.5 py-1"}>
               <currentTheme.Icon className="h-3.5 w-3.5 mr-1" /> {currentTheme.label}
@@ -375,7 +375,7 @@ export function AdminAnalyticsView() {
         <div className="surface-card p-6 rounded-3xl border bg-white space-y-4 shadow-xs">
           <div className="border-b pb-3">
             <h3 className="font-extrabold text-base text-foreground">Order Status Distribution</h3>
-            <p className="text-xs text-muted-foreground">Live breakdown of order fulfillment progression in Supabase.</p>
+            <p className="text-xs text-muted-foreground">Live breakdown of order fulfillment progression.</p>
           </div>
 
           {loading ? (
@@ -417,7 +417,7 @@ export function AdminAnalyticsView() {
           <div className="border-b pb-3 flex items-center justify-between">
             <div>
               <h3 className="font-extrabold text-base text-foreground">Catalog Product Stock Levels</h3>
-              <p className="text-xs text-muted-foreground">Real-time inventory levels from Supabase `products` table.</p>
+              <p className="text-xs text-muted-foreground">Real-time inventory levels across active products.</p>
             </div>
             <Link to="/admin/products" className="text-xs font-bold text-primary hover:underline">
               Manage Products &rarr;
@@ -457,7 +457,7 @@ export function AdminAnalyticsView() {
         <div className="surface-card p-6 rounded-3xl border bg-white space-y-4 shadow-xs">
           <div className="border-b pb-3">
             <h3 className="font-extrabold text-base text-foreground">Category Stock Distribution</h3>
-            <p className="text-xs text-muted-foreground">Total inventory units grouped by category in Supabase.</p>
+            <p className="text-xs text-muted-foreground">Total inventory units grouped by category.</p>
           </div>
 
           {loading ? (

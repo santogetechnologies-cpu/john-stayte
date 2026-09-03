@@ -132,7 +132,7 @@ export function AdminSettingsView() {
       if (err1 || err2) throw new Error((err1 || err2)?.message);
 
       await logAdminAuditAction("UPDATE_SETTINGS", "settings", "admin_config", { platformName, vatRate });
-      toast.success("System preferences saved to Supabase database!");
+      toast.success("System preferences saved successfully!");
       window.dispatchEvent(new Event("admin_modules_updated"));
       window.dispatchEvent(new Event("admin_system_settings_updated"));
     } catch (err: any) {
@@ -160,7 +160,7 @@ export function AdminSettingsView() {
             <Settings className="h-7 w-7 text-primary" /> Enterprise System Settings
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Configure persisted business rules, tax rates, delivery SLAs, and module controls in Supabase.
+            Configure persisted business rules, tax rates, delivery SLAs, and module controls.
           </p>
         </div>
 

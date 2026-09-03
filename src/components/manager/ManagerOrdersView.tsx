@@ -211,7 +211,7 @@ export function ManagerOrdersView() {
             Manager Orders Operations ({filteredOrders.length}{statusFilter !== "all" ? ` of ${orders.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Approve, schedule, and track cylinder orders assigned to your depot in Supabase.
+            Approve, schedule, and track cylinder orders assigned to your depot.
           </p>
         </div>
 
@@ -291,14 +291,14 @@ export function ManagerOrdersView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading manager orders from Supabase...
+            Loading manager orders...
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground/30" />
             <h3 className="font-bold text-sm text-foreground">No manager orders found</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Real customer orders will display here when created in Supabase.
+              Customer orders assigned to this depot will display here.
             </p>
           </div>
         ) : (

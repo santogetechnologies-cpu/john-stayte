@@ -46,9 +46,9 @@ export const ALL_EXISTING_STATIONS = [
     hours: "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
     autogas_available: true,
     maps_link: "https://maps.google.com/?q=Fromebridge+Service+Station+Whitminster",
-    services: "Autogas LPG, Cylinder Exchange, Fuel Forecourt, Convenience Store, AdBlue",
-    image: "/station.jpg",
-    image_url: "/station.jpg",
+    services: "Fuel Pumps, HGV / Large Vehicle Pumps, Car Wash, Air Pressure & Tyre Inflation, Convenience Store & Shop, Autogas LPG & Cylinder Exchange, Easy Vehicle Access, Forecourt & Customer Parking, AdBlue Dispenser",
+    image: "/fromebridge-service-station-1.jpg",
+    image_url: "/fromebridge-service-station-1.jpg",
   },
   {
     id: "st-2",
@@ -61,8 +61,8 @@ export const ALL_EXISTING_STATIONS = [
     autogas_available: true,
     maps_link: "https://maps.google.com/?q=Wild+Goose+Garage+Gloucester",
     services: "Calor Gas Exchange, BP Unleaded & Diesel, Car Wash, Shop & Coffee",
-    image: "/station-wild-goose-bp.png",
-    image_url: "/station-wild-goose-bp.png",
+    image: "/wild-goose-garage-1.jpg",
+    image_url: "/wild-goose-garage-1.jpg",
   },
   {
     id: "st-3",
@@ -74,9 +74,9 @@ export const ALL_EXISTING_STATIONS = [
     hours: "Mon–Fri 6:30–20:00 · Sat–Sun 8:00–18:00",
     autogas_available: false,
     maps_link: "https://maps.google.com/?q=Bridge+Service+Station+Frampton+on+Severn",
-    services: "Calor Gas Bottles, Gulf Fuel, Solid Fuels & Logs, Canalside Provisions",
-    image: "/station-bridge-76.png",
-    image_url: "/station-bridge-76.png",
+    services: "Texaco Supreme Fuel, NETAVOLT Rapid EV Charging, Car Wash & Jet Wash, Air Pressure & Screen Wash, Stonehouse Autoparts & Londis, Calor Gas Cylinders, Coal & Solid Fuel Logs, HGV High-Flow Pumps, Wash.ME 24/7 Laundry",
+    image: "/bridge-station-ev-totem.jpg",
+    image_url: "/bridge-station-ev-totem.jpg",
   },
 ];
 
@@ -108,7 +108,7 @@ export function AdminStationsView() {
         };
         try {
           await supabase.from("stations").insert(dbPayload);
-        } catch {}
+        } catch { }
       }
 
       await supabase.from("cms_content_blocks").upsert({
@@ -133,7 +133,7 @@ export function AdminStationsView() {
 
       let parsedBlock: any[] = [];
       if (blockData?.content) {
-        try { parsedBlock = JSON.parse(blockData.content); } catch {}
+        try { parsedBlock = JSON.parse(blockData.content); } catch { }
       }
 
       if ((!dbStations || dbStations.length === 0) && (!parsedBlock || parsedBlock.length === 0)) {
@@ -175,7 +175,7 @@ export function AdminStationsView() {
         try {
           const { error } = await supabase.from("stations").insert(dbPayload);
           if (!error) count++;
-        } catch {}
+        } catch { }
       }
 
       await supabase.from("cms_content_blocks").upsert({
@@ -307,7 +307,7 @@ export function AdminStationsView() {
         autogas_available: Boolean(editStation.autogas_available),
         image: editStation.image || editStation.image_url || "/station.jpg",
         image_url: editStation.image_url || editStation.image || "/station.jpg",
-        services: typeof editStation.services === "string" 
+        services: typeof editStation.services === "string"
           ? editStation.services.split(",").map((s: string) => s.trim()).filter(Boolean)
           : editStation.services || [],
       };
@@ -320,7 +320,7 @@ export function AdminStationsView() {
         phone: editStation.phone || "01452 741234",
         hours: editStation.hours || "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
         autogas_available: Boolean(editStation.autogas_available),
-        services: typeof editStation.services === "string" 
+        services: typeof editStation.services === "string"
           ? editStation.services.split(",").map((s: string) => s.trim()).filter(Boolean)
           : editStation.services || [],
       };
@@ -361,7 +361,7 @@ export function AdminStationsView() {
 
       try {
         await supabase.from("stations").delete().eq("name", stationName);
-      } catch {}
+      } catch { }
 
       await logAdminAuditAction("DELETE_STATION", "stations", stationName, { name: stationName });
       toast.success("Filling station removed!");

@@ -254,7 +254,7 @@ export function ManagerSettingsView() {
             <div className="surface-card p-12 rounded-3xl border bg-white text-center space-y-3">
               <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
               <p className="text-xs font-bold text-muted-foreground">
-                Loading profile settings from Supabase...
+                Loading profile settings...
               </p>
             </div>
           ) : (

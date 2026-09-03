@@ -143,7 +143,7 @@ function Services() {
   return (
     <SiteLayout>
       <div className="bg-[#fcfdfe] min-h-[85vh] py-8 sm:py-10 lg:py-12 border-b border-slate-200/60">
-        <div className="container-page max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4">
           {/* Header / Intro Section matching Reference */}
           <ScrollRevealCard delay={0}>
             <div className="space-y-2 mb-8 sm:mb-10 text-left">

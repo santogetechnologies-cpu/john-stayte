@@ -529,7 +529,7 @@ function BlogPostPage() {
           {/* Subtle Ambient Red Glow */}
           <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-red-500/[0.03] rounded-full blur-3xl pointer-events-none z-0" />
 
-          <div className="container-page max-w-7xl relative z-10">
+          <div className="container-page max-w-[88rem] relative z-10">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-14 items-center">
               
               {/* Left Column: Content (approx 45% desktop width) */}
@@ -688,7 +688,7 @@ function BlogPostPage() {
         </div>
 
         {/* Main Editorial Container */}
-        <div className="container-page max-w-7xl pt-10 sm:pt-14 pb-8 sm:pb-12">
+        <div className="container-page max-w-[88rem] pt-10 sm:pt-14 pb-8 sm:pb-12">
           <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:items-start">
             
             {/* Main Editorial Stream with High Vertical Spacing */}
@@ -1674,7 +1674,7 @@ function BlogPostPage() {
         {/* =========================================================================
             NEWSLETTER / STAY INFORMED SECTION (Directly Above Footer)
         ========================================================================= */}
-        <div className="container-page max-w-7xl pt-4 pb-12 sm:pb-16">
+        <div className="container-page max-w-[88rem] pt-4 pb-12 sm:pb-16">
           <section className="rounded-[28px] sm:rounded-[36px] border border-slate-200/90 bg-white p-7 sm:p-10 lg:p-12 space-y-5 shadow-xs text-center max-w-3xl mx-auto">
             <div className="space-y-1.5">
               <span className="text-xs font-black uppercase tracking-[0.2em] text-primary font-display">

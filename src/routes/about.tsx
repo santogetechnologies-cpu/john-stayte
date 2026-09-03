@@ -377,7 +377,7 @@ function AboutPage() {
         {/* Soft Pale-Red Ambient Radial Aura */}
         <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[400px] bg-red-500/[0.04] rounded-full blur-3xl pointer-events-none z-0" />
 
-        <div className="container-page 2xl:max-w-[1240px] relative z-10">
+        <div className="container-page relative z-10">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-14 items-center">
             {/* Left Column: Hero Content & CTAs (50-55% desktop width) */}
             <div className="lg:col-span-6 space-y-5 sm:space-y-6 text-left">
@@ -492,7 +492,7 @@ function AboutPage() {
           </svg>
         </div>
 
-        <div className="container-page 2xl:max-w-[1240px] relative z-10">
+        <div className="container-page relative z-10">
           <div className="grid grid-cols-2 lg:grid-cols-4 items-center">
             {[
               {

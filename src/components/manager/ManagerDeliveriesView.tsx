@@ -161,7 +161,7 @@ export function ManagerDeliveriesView() {
             Truck Logistics & Route Dispatch ({filtered.length}{statusFilter !== "all" ? ` of ${deliveries.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Dispatch trucks, route assignments, and driver tracking from Supabase.
+            Dispatch trucks, route assignments, and driver tracking.
           </p>
         </div>
 
@@ -243,7 +243,7 @@ export function ManagerDeliveriesView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading delivery dispatches from Supabase...
+            Loading delivery dispatches...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">

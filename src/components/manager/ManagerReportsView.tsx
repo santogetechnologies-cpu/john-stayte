@@ -71,7 +71,7 @@ export function ManagerReportsView() {
           Daily Operational Reports
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          Daily dispatch summaries, truck logs, and depot stock counts from Supabase.
+          Daily dispatch summaries, truck logs, and depot stock counts.
         </p>
       </div>
 

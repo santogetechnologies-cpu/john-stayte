@@ -100,7 +100,7 @@ export function CustomerInvoicesView() {
       setOrders(realOrders);
     } catch (err: any) {
       console.error("Invoices query error:", err);
-      setError(err.message || "Failed to query invoices from Supabase");
+      setError(err.message || "Failed to load invoices");
     } finally {
       setLoading(false);
     }
@@ -416,13 +416,13 @@ export function CustomerInvoicesView() {
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
           <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
           <p className="text-xs text-slate-500 font-bold">
-            Loading your VAT invoices from Supabase...
+            Loading your VAT invoices...
           </p>
         </div>
       ) : error ? (
         <div className="p-10 text-center space-y-3 bg-white rounded-2xl border border-slate-200/90 shadow-xs">
           <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
-          <h3 className="font-bold text-sm text-slate-900">Database Query Error</h3>
+          <h3 className="font-bold text-sm text-slate-900">Notice</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">{error}</p>
           <Button
             onClick={loadCustomerInvoices}

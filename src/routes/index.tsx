@@ -1499,7 +1499,7 @@ function Home() {
             {loadingCats ? (
               <div className="surface-card p-12 text-center text-xs font-bold text-muted-foreground rounded-3xl border bg-white">
                 <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
-                Loading categories from Supabase...
+                Loading categories...
               </div>
             ) : (
               <ScrollRevealItem variant="card" delay={150}>
@@ -1714,7 +1714,7 @@ function Home() {
             {/* Large Horizontal Product Cards Showcase with Left & Right Arrow Navigation */}
             {displayedCatalogProducts.length === 0 ? (
               <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs text-muted-foreground font-bold">
-                Loading live products from Supabase...
+                Loading products...
               </div>
             ) : (
               <div className="relative w-full max-w-[1140px] mx-auto flex items-center justify-center gap-2 sm:gap-3.5 md:gap-5">

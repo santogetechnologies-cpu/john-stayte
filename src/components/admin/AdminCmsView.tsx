@@ -258,7 +258,7 @@ export function AdminCmsView() {
       }, { onConflict: "section_key" });
 
       await logAdminAuditAction("UPDATE_HOME_CMS", "cms", "home_data", { heading: homeCms.heroHeading });
-      toast.success("Homepage content saved to Supabase!");
+      toast.success("Homepage content saved successfully!");
     } catch (err: any) {
       toast.error("Failed to save homepage CMS: " + err.message);
     } finally {
@@ -279,7 +279,7 @@ export function AdminCmsView() {
       }, { onConflict: "section_key" });
 
       await logAdminAuditAction("UPDATE_ABOUT_CMS", "cms", "about_data", { heading: aboutCms.heroHeading });
-      toast.success("About page content saved to Supabase!");
+      toast.success("About page content saved successfully!");
     } catch (err: any) {
       toast.error("Failed to save about CMS: " + err.message);
     } finally {
@@ -310,13 +310,14 @@ export function AdminCmsView() {
     if (!file) return;
     setUploadingServiceImg(true);
     try {
-      const fileName = `service-${Date.now()}.${file.name.split(".").pop()}`;
+      const fileExt = file.name.split(".").pop();
+      const fileName = `service_${Date.now()}.${fileExt}`;
       const filePath = `services/${fileName}`;
       const { error: uploadErr } = await supabase.storage.from("product-images").upload(filePath, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
       setServiceImage(data.publicUrl);
-      toast.success("Service image uploaded to Supabase Storage!");
+      toast.success("Service image uploaded!");
     } catch (err: any) {
       setServiceImage(URL.createObjectURL(file));
       toast.success("Image selected for service!");
@@ -352,7 +353,7 @@ export function AdminCmsView() {
         content: JSON.stringify(updatedList),
       }, { onConflict: "section_key" });
 
-      toast.success(editingService ? "Service updated in Supabase!" : "New service added to Supabase!");
+      toast.success(editingService ? "Service updated successfully!" : "New service added successfully!");
       setServiceModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save service: " + err.message);
@@ -374,7 +375,7 @@ export function AdminCmsView() {
         content: JSON.stringify(updatedList),
       }, { onConflict: "section_key" });
 
-      toast.success("Service removed!");
+      toast.success("Service deleted!");
     } catch (err: any) {
       toast.error("Failed to delete service: " + err.message);
     }
@@ -425,7 +426,7 @@ export function AdminCmsView() {
         content: JSON.stringify(updatedList),
       }, { onConflict: "section_key" });
 
-      toast.success(editingReview ? "Testimonial updated in Supabase!" : "New testimonial published to Supabase!");
+      toast.success(editingReview ? "Testimonial updated successfully!" : "New testimonial published successfully!");
       setReviewModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save testimonial: " + err.message);

@@ -89,7 +89,7 @@ export function AdminReportsView() {
       setOffers(offerData || []);
       setCoupons(couponData || []);
 
-      toast.success(`Report generated for ${orders.length} orders in database.`);
+      toast.success(`Report generated for ${orders.length} orders.`);
     } catch (err: any) {
       toast.error("Failed to query report data: " + err.message);
     } finally {
@@ -113,7 +113,7 @@ export function AdminReportsView() {
 
   const totalProducts = products.length;
   const totalStock = products.reduce((sum, p) => sum + Number(p.stock || 0), 0);
-  const lowStockCount = products.filter((p) => Number(p.stock || 0) <= 5 && Number(p.stock || 0) > 0).length;
+  const lowStockCount = products.filter((p) => Number(p.stock || 0) <= 10 && Number(p.stock || 0) > 0).length;
   const outOfStockCount = products.filter((p) => Number(p.stock || 0) === 0).length;
 
   const totalCustomers = customers.length;
@@ -164,7 +164,7 @@ export function AdminReportsView() {
       p.category_slug || "gas",
       p.price,
       p.stock,
-      p.stock === 0 ? "Out of Stock" : p.stock <= 5 ? "Low Stock" : "In Stock",
+      p.stock === 0 ? "Out of Stock" : p.stock <= 10 ? "Low Stock" : "In Stock",
     ]);
     downloadCsv("inventory_report.csv", headers, rows);
   };
@@ -214,7 +214,7 @@ export function AdminReportsView() {
             <BarChart3 className="h-7 w-7 text-primary" /> Reports & Export Manager
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Generate and export custom business reports calculated from live Supabase database records.
+            Generate and export custom business reports calculated from latest business records.
           </p>
         </div>
       </div>
@@ -384,7 +384,7 @@ export function AdminReportsView() {
                 <p className="text-sm font-extrabold text-foreground">{totalStock}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Low Stock (&le;5)</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">Low Stock (≤10)</p>
                 <p className="text-sm font-extrabold text-amber-600">{lowStockCount}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">

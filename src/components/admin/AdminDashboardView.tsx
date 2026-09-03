@@ -94,7 +94,7 @@ export function AdminDashboardView() {
         setOrders(dbOrders || []);
         setProducts(dbProducts || []);
         setCustomers(dbCustomers || []);
-        setInventoryAlerts(dbInventory?.filter((i: any) => i.current_stock < i.reorder_threshold) || []);
+        setInventoryAlerts((dbProducts || []).filter((p: any) => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 10));
         setDeliveries(dbDeliveries || []);
         setAuditLogs(dbLogs || []);
       } catch (err) {
@@ -127,7 +127,8 @@ export function AdminDashboardView() {
 
   const totalOrdersCount = orders.length;
   const pendingOrdersCount = orders.filter((o) => o.status === "Pending").length;
-  const lowStockCount = inventoryAlerts.length;
+  const lowStockCount = products.filter((p) => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 10).length;
+  const outOfStockCount = products.filter((p) => Number(p.stock || 0) === 0).length;
   const activeDeliveriesCount = deliveries.filter((d) => d.status === "Out for Delivery" || d.status === "Pending").length;
   const averageOrderValue = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
 
@@ -504,7 +505,7 @@ export function AdminDashboardView() {
                   {chartTheme.badgeText}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-medium">Real order total history from Supabase database</p>
+              <p className="text-xs text-slate-500 font-medium">Real order total history</p>
             </div>
             <div className="flex items-center gap-1 bg-white/80 p-1 rounded-xl border border-white/80 backdrop-blur-md">
               <Button
@@ -660,8 +661,8 @@ export function AdminDashboardView() {
                       <AlertTriangle className="h-4 w-4" />
                     </div>
                     <div className="text-xs">
-                      <p className="font-extrabold text-slate-900">Low Stock Alert: {inv.products?.name || "Product"}</p>
-                      <p className="text-slate-500 font-medium">Current Stock: {inv.current_stock} (Reorder threshold: {inv.reorder_threshold})</p>
+                      <p className="font-extrabold text-slate-900">Low Stock Alert: {inv.name || inv.products?.name || "Product"}</p>
+                      <p className="text-slate-500 font-medium">Current Stock: {inv.stock ?? inv.current_stock} units (Low Stock)</p>
                     </div>
                   </div>
                   <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0 border-red-200 text-red-700 bg-white hover:bg-red-50 shadow-2xs">

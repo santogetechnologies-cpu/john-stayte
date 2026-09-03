@@ -32,6 +32,9 @@ import {
   Mail,
   User,
   Menu,
+  Home,
+  Factory,
+  Flame,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -86,6 +89,7 @@ const adminNavGroups: NavGroup[] = [
         badgeColor: "bg-amber-100 text-amber-800 font-extrabold",
       },
       { title: "Deliveries", href: "/admin/deliveries", icon: Truck },
+      { title: "Applications", href: "/admin/applications", icon: FileText },
       {
         title: "Inventory",
         href: "/admin/inventory",
@@ -106,6 +110,14 @@ const adminNavGroups: NavGroup[] = [
       { title: "Reviews", href: "/admin/reviews", icon: Star },
       { title: "Offers", href: "/admin/offers", icon: Tag, moduleKey: "offers" },
       { title: "Coupons", href: "/admin/coupons", icon: Ticket, moduleKey: "coupons" },
+    ],
+  },
+  {
+    groupLabel: "GAS CATALOG",
+    items: [
+      { title: "Domestic LPG", href: "/admin/order-gas/domestic", icon: Home },
+      { title: "Commercial LPG", href: "/admin/order-gas/commercial", icon: Building2 },
+      { title: "Bulk LPG", href: "/admin/order-gas/bulk", icon: Factory },
     ],
   },
   {
