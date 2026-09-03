@@ -21,12 +21,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -36,7 +31,11 @@ export const Route = createFileRoute("/login")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Sign In or Register | John Stayte Services" },
-      { name: "description", content: "Sign in to your John Stayte Services account to track orders, download invoices and reorder gas." },
+      {
+        name: "description",
+        content:
+          "Sign in to your John Stayte Services account to track orders, download invoices and reorder gas.",
+      },
       { property: "og:title", content: "Sign In | John Stayte Services" },
       { property: "og:description", content: "Access your customer, manager or admin dashboard." },
     ],
@@ -181,7 +180,6 @@ function LoginPage() {
         <div className="container-page max-w-5xl w-full">
           {/* TWO-COLUMN RESPONSIVE LAYOUT */}
           <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            
             {/* LEFT COLUMN: BRAND WELCOME & VALUE PROP (5 cols) */}
             <div className="lg:col-span-5 space-y-6 w-full">
               <div>
@@ -241,7 +239,6 @@ function LoginPage() {
             {/* RIGHT COLUMN: POLISHED AUTHENTICATION CARD (7 cols) */}
             <div className="lg:col-span-7 w-full">
               <div className="surface-card p-6 sm:p-8 rounded-3xl border border-slate-200/90 bg-white shadow-xl shadow-slate-200/50 space-y-6">
-                
                 {/* CARD HEADER & SEGMENTED TABS SWITCH */}
                 <div className="space-y-4 border-b border-slate-100 pb-5">
                   <div>
@@ -345,7 +342,11 @@ function LoginPage() {
                           onClick={() => setShowSignInPassword(!showSignInPassword)}
                           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                         >
-                          {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {showSignInPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -448,7 +449,11 @@ function LoginPage() {
                             onClick={() => setShowRegPassword(!showRegPassword)}
                             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                           >
-                            {showRegPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            {showRegPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -476,13 +481,31 @@ function LoginPage() {
                     <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1.5 text-[11px]">
                       <p className="font-bold text-slate-700">Password requirements:</p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 text-slate-500 font-medium">
-                        <span className={hasMinLen ? "text-emerald-600 font-bold flex items-center gap-1" : "flex items-center gap-1"}>
+                        <span
+                          className={
+                            hasMinLen
+                              ? "text-emerald-600 font-bold flex items-center gap-1"
+                              : "flex items-center gap-1"
+                          }
+                        >
                           <CheckCircle2 className="h-3 w-3" /> Min 8 chars
                         </span>
-                        <span className={hasUppercase ? "text-emerald-600 font-bold flex items-center gap-1" : "flex items-center gap-1"}>
+                        <span
+                          className={
+                            hasUppercase
+                              ? "text-emerald-600 font-bold flex items-center gap-1"
+                              : "flex items-center gap-1"
+                          }
+                        >
                           <CheckCircle2 className="h-3 w-3" /> 1 Uppercase
                         </span>
-                        <span className={hasNumber ? "text-emerald-600 font-bold flex items-center gap-1" : "flex items-center gap-1"}>
+                        <span
+                          className={
+                            hasNumber
+                              ? "text-emerald-600 font-bold flex items-center gap-1"
+                              : "flex items-center gap-1"
+                          }
+                        >
                           <CheckCircle2 className="h-3 w-3" /> 1 Number
                         </span>
                       </div>
@@ -524,7 +547,9 @@ function LoginPage() {
       <Dialog open={forgotModal} onOpenChange={setForgotModal}>
         <DialogContent className="sm:max-w-md rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="font-display font-extrabold text-lg">Reset Password</DialogTitle>
+            <DialogTitle className="font-display font-extrabold text-lg">
+              Reset Password
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleResetPassword} className="space-y-4 pt-2 text-xs">
             <p className="text-slate-600 font-medium">

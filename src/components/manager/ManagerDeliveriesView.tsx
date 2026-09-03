@@ -66,7 +66,9 @@ export function ManagerDeliveriesView() {
 
     const channel = supabase
       .channel("manager_deliveries_realtime_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadDeliveries())
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadDeliveries(),
+      )
       .subscribe();
 
     return () => {
@@ -127,9 +129,15 @@ export function ManagerDeliveriesView() {
   });
 
   // Calculate live counts for filter tabs/badges
-  const outCount = deliveries.filter((d) => (d.status || "").toLowerCase() === "out for delivery").length;
-  const deliveredCount = deliveries.filter((d) => (d.status || "").toLowerCase() === "delivered").length;
-  const delayedCount = deliveries.filter((d) => (d.status || "").toLowerCase() === "delayed").length;
+  const outCount = deliveries.filter(
+    (d) => (d.status || "").toLowerCase() === "out for delivery",
+  ).length;
+  const deliveredCount = deliveries.filter(
+    (d) => (d.status || "").toLowerCase() === "delivered",
+  ).length;
+  const delayedCount = deliveries.filter(
+    (d) => (d.status || "").toLowerCase() === "delayed",
+  ).length;
 
   const getSelectValue = () => {
     const s = statusFilter.toLowerCase().replace(/_/g, " ");
@@ -145,7 +153,9 @@ export function ManagerDeliveriesView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Deliveries</span>
             {statusFilter !== "all" && (
@@ -158,7 +168,8 @@ export function ManagerDeliveriesView() {
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Truck Logistics & Route Dispatch ({filtered.length}{statusFilter !== "all" ? ` of ${deliveries.length}` : ""})
+            Truck Logistics & Route Dispatch ({filtered.length}
+            {statusFilter !== "all" ? ` of ${deliveries.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Dispatch trucks, route assignments, and driver tracking.
@@ -249,7 +260,9 @@ export function ManagerDeliveriesView() {
           <div className="p-16 text-center space-y-3">
             <Truck className="mx-auto h-10 w-10 text-muted-foreground/30" />
             <h3 className="font-bold text-sm text-foreground">
-              {statusFilter !== "all" ? `No deliveries matching "${statusFilter.replace(/_/g, " ")}"` : "No active delivery assignments"}
+              {statusFilter !== "all"
+                ? `No deliveries matching "${statusFilter.replace(/_/g, " ")}"`
+                : "No active delivery assignments"}
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               {statusFilter !== "all"
@@ -281,8 +294,12 @@ export function ManagerDeliveriesView() {
             <TableBody>
               {filtered.map((d) => (
                 <TableRow key={d.id} className="hover:bg-slate-50/60">
-                  <TableCell className="font-bold text-xs text-foreground">{d.driver_name}</TableCell>
-                  <TableCell className="text-xs font-semibold">{d.vehicle_identifier || "Truck"}</TableCell>
+                  <TableCell className="font-bold text-xs text-foreground">
+                    {d.driver_name}
+                  </TableCell>
+                  <TableCell className="text-xs font-semibold">
+                    {d.vehicle_identifier || "Truck"}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{d.route_area}</TableCell>
                   <TableCell>
                     <Badge
@@ -291,10 +308,10 @@ export function ManagerDeliveriesView() {
                         d.status === "Delivered"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : d.status === "Delayed"
-                          ? "bg-rose-50 text-rose-700 border-rose-200"
-                          : d.status === "Out for Delivery"
-                          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            : d.status === "Out for Delivery"
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
                       }`}
                     >
                       {d.status}

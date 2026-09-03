@@ -79,12 +79,17 @@ export function FlipkartDeliveryTracker({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders", filter: `id=eq.${order.id}` },
-        () => reloadOrderData()
+        () => reloadOrderData(),
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "delivery_assignments", filter: `order_id=eq.${order.id}` },
-        () => reloadOrderData()
+        {
+          event: "*",
+          schema: "public",
+          table: "delivery_assignments",
+          filter: `order_id=eq.${order.id}`,
+        },
+        () => reloadOrderData(),
       )
       .subscribe();
 
@@ -183,24 +188,26 @@ export function FlipkartDeliveryTracker({
     });
   };
 
-  const orderPlacedDate = order.created_at ? `${formatDate(order.created_at)}, ${formatTime(order.created_at)}` : "";
+  const orderPlacedDate = order.created_at
+    ? `${formatDate(order.created_at)}, ${formatTime(order.created_at)}`
+    : "";
   const orderApprovedDate = order.approved_at
     ? `${formatDate(order.approved_at)}, ${formatTime(order.approved_at)}`
     : currentStageIndex >= 1
-    ? "Confirmed by depot"
-    : "";
+      ? "Confirmed by depot"
+      : "";
 
   const orderPackedDate = order.packed_at
     ? `${formatDate(order.packed_at)}, ${formatTime(order.packed_at)}`
     : currentStageIndex >= 2
-    ? "Inspected & packed at Whitminster Depot"
-    : "";
+      ? "Inspected & packed at Whitminster Depot"
+      : "";
 
   const dispatchedDate = assignment?.dispatched_at
     ? `${formatDate(assignment.dispatched_at)}, ${formatTime(assignment.dispatched_at)}`
     : currentStageIndex >= 3
-    ? "En-route on vehicle"
-    : "";
+      ? "En-route on vehicle"
+      : "";
 
   const deliveredDate =
     order.delivered_at || assignment?.delivered_at
@@ -210,7 +217,9 @@ export function FlipkartDeliveryTracker({
   // Estimated delivery banner date
   const expectedDateText = assignment?.dispatched_at
     ? formatDate(assignment.dispatched_at)
-    : formatDate(new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString());
+    : formatDate(
+        new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      );
 
   const timeSlotText = assignment?.time_slot || "Morning (08:00 - 12:00)";
 
@@ -302,7 +311,8 @@ export function FlipkartDeliveryTracker({
             <h3 className="text-lg font-black text-rose-950">Order Cancelled</h3>
           </div>
           <p className="text-xs text-rose-800 leading-relaxed max-w-xl">
-            This order was cancelled. If an online payment was collected, a refund has been initiated to your original payment method.
+            This order was cancelled. If an online payment was collected, a refund has been
+            initiated to your original payment method.
           </p>
         </div>
       ) : isDelayed ? (
@@ -310,9 +320,12 @@ export function FlipkartDeliveryTracker({
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0" />
             <div>
-              <h3 className="text-base sm:text-lg font-black text-amber-950">Delivery Reschedule Notice</h3>
+              <h3 className="text-base sm:text-lg font-black text-amber-950">
+                Delivery Reschedule Notice
+              </h3>
               <p className="text-xs text-amber-800 mt-0.5">
-                {assignment?.delay_reason || "Weather or route delay hold"}. Our depot fleet manager is coordinating expedited delivery.
+                {assignment?.delay_reason || "Weather or route delay hold"}. Our depot fleet manager
+                is coordinating expedited delivery.
               </p>
             </div>
           </div>
@@ -324,7 +337,9 @@ export function FlipkartDeliveryTracker({
               <Check className="h-5 w-5 stroke-[3]" />
             </div>
             <div>
-              <h3 className="text-lg sm:text-xl font-black text-emerald-950">Delivered Successfully</h3>
+              <h3 className="text-lg sm:text-xl font-black text-emerald-950">
+                Delivered Successfully
+              </h3>
               <p className="text-xs text-emerald-800 font-medium">
                 Package delivered on {deliveredDate || "schedule"}.
               </p>
@@ -342,7 +357,8 @@ export function FlipkartDeliveryTracker({
                 {currentStageIndex === 3 ? "Arriving Today" : `Expected by ${expectedDateText}`}
               </h3>
               <p className="text-xs text-slate-300 font-medium mt-1 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-amber-400" /> Time Slot: <strong>{timeSlotText}</strong>
+                <Clock className="h-3.5 w-3.5 text-amber-400" /> Time Slot:{" "}
+                <strong>{timeSlotText}</strong>
               </p>
             </div>
 
@@ -360,7 +376,9 @@ export function FlipkartDeliveryTracker({
               </div>
               <div>
                 <p className="font-bold text-white">Driver: {assignment.driver_name}</p>
-                <p className="text-[11px] text-slate-400">Vehicle Plate: {assignment.vehicle_plate || "GL72 JSS"} • Direct Fleet</p>
+                <p className="text-[11px] text-slate-400">
+                  Vehicle Plate: {assignment.vehicle_plate || "GL72 JSS"} • Direct Fleet
+                </p>
               </div>
             </div>
           )}
@@ -383,7 +401,9 @@ export function FlipkartDeliveryTracker({
           {isCancelled ? (
             <div className="py-8 text-center space-y-3">
               <XCircle className="mx-auto h-12 w-12 text-rose-500" />
-              <p className="font-extrabold text-sm text-slate-900">Normal delivery timeline cancelled</p>
+              <p className="font-extrabold text-sm text-slate-900">
+                Normal delivery timeline cancelled
+              </p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 This shipment was stopped per customer request or order cancellation.
               </p>
@@ -409,8 +429,8 @@ export function FlipkartDeliveryTracker({
                             isCompleted
                               ? "bg-emerald-600 text-white shadow-sm ring-4 ring-emerald-50"
                               : isCurrent
-                              ? "bg-primary text-white shadow-md ring-4 ring-primary/20 scale-110"
-                              : "bg-white text-slate-300 border-2 border-slate-200"
+                                ? "bg-primary text-white shadow-md ring-4 ring-primary/20 scale-110"
+                                : "bg-white text-slate-300 border-2 border-slate-200"
                           }`}
                         >
                           {isCompleted ? (
@@ -435,8 +455,8 @@ export function FlipkartDeliveryTracker({
                               isCurrent
                                 ? "text-primary"
                                 : isCompleted
-                                ? "text-slate-900"
-                                : "text-slate-400"
+                                  ? "text-slate-900"
+                                  : "text-slate-400"
                             }`}
                           >
                             {stage.title}
@@ -460,8 +480,8 @@ export function FlipkartDeliveryTracker({
                             isCurrent
                               ? "text-slate-700 font-medium"
                               : isCompleted
-                              ? "text-slate-500"
-                              : "text-slate-400"
+                                ? "text-slate-500"
+                                : "text-slate-400"
                           }`}
                         >
                           {stage.sub}
@@ -498,7 +518,9 @@ export function FlipkartDeliveryTracker({
                 {deliveryAddress.name || order.customer_name || "Valued Customer"}
               </p>
               <p className="text-slate-600 leading-relaxed font-medium">
-                {deliveryAddress.street || order.customer_address || "Gloucestershire Delivery Address"}
+                {deliveryAddress.street ||
+                  order.customer_address ||
+                  "Gloucestershire Delivery Address"}
               </p>
               {deliveryAddress.city && <p className="text-slate-600">{deliveryAddress.city}</p>}
               <p className="font-extrabold text-slate-900 tracking-wider">
@@ -526,7 +548,9 @@ export function FlipkartDeliveryTracker({
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 font-semibold">Driver</span>
-                  <span className="font-black text-slate-900">{assignment.driver_name || "Depot Driver"}</span>
+                  <span className="font-black text-slate-900">
+                    {assignment.driver_name || "Depot Driver"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 font-semibold">Vehicle</span>
@@ -562,18 +586,30 @@ export function FlipkartDeliveryTracker({
 
             <div className="divide-y divide-slate-100 max-h-56 overflow-y-auto pr-1">
               {(order.order_items || []).map((item: any, idx: number) => (
-                <div key={item.id || idx} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                <div
+                  key={item.id || idx}
+                  className="py-2.5 flex items-center justify-between gap-3 text-xs"
+                >
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-slate-900 truncate">{item.product_name}</p>
-                    <p className="text-[11px] text-slate-400">Qty: {item.quantity} • {gbp(item.unit_price)}</p>
+                    <p className="text-[11px] text-slate-400">
+                      Qty: {item.quantity} • {gbp(item.unit_price)}
+                    </p>
                   </div>
-                  <span className="font-extrabold text-slate-800 shrink-0">{gbp(item.total_price)}</span>
+                  <span className="font-extrabold text-slate-800 shrink-0">
+                    {gbp(item.total_price)}
+                  </span>
                 </div>
               ))}
             </div>
 
             <div className="pt-2 border-t border-slate-100">
-              <Button asChild variant="outline" size="sm" className="w-full rounded-full text-xs font-bold h-9">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="w-full rounded-full text-xs font-bold h-9"
+              >
                 <Link to={`/account/orders/${order.id}` as never}>
                   View Full Invoice & Order Details <ChevronRight className="h-3.5 w-3.5 ml-1" />
                 </Link>

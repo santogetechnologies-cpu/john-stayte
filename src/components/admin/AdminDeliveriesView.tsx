@@ -29,12 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -102,7 +97,9 @@ export function AdminDeliveriesView() {
 
     const channel = supabase
       .channel("admin_deliveries_realtime_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadDeliveriesAndSlots())
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadDeliveriesAndSlots(),
+      )
       .subscribe();
 
     return () => {
@@ -113,7 +110,11 @@ export function AdminDeliveriesView() {
   const isPickup = (d: any) => {
     const notes = d.orders?.notes || "";
     const num = d.orders?.order_number || "";
-    return notes.includes("[REFILL]") || num.startsWith("CYL-REF") || (d.status || "").toLowerCase().includes("pickup");
+    return (
+      notes.includes("[REFILL]") ||
+      num.startsWith("CYL-REF") ||
+      (d.status || "").toLowerCase().includes("pickup")
+    );
   };
 
   const filtered = deliveries.filter((d) => {
@@ -183,7 +184,7 @@ export function AdminDeliveriesView() {
           content: JSON.stringify(slotConfigs),
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "section_key" }
+        { onConflict: "section_key" },
       );
 
       if (error) throw error;
@@ -211,7 +212,8 @@ export function AdminDeliveriesView() {
             <Truck className="h-7 w-7 text-primary" /> Delivery Routes & Slot Capacity Management
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage truck drivers, vehicle assignments, empty bottle pickup routes, and live slot booking capacities.
+            Manage truck drivers, vehicle assignments, empty bottle pickup routes, and live slot
+            booking capacities.
           </p>
         </div>
 
@@ -265,14 +267,14 @@ export function AdminDeliveriesView() {
                   "px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
                   activeTab === tab.id
                     ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                 )}
               >
                 <span>{tab.label}</span>
                 <span
                   className={cn(
                     "px-1.5 py-0.2 rounded-full text-[10px]",
-                    activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                    activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700",
                   )}
                 >
                   {tab.count}
@@ -301,10 +303,12 @@ export function AdminDeliveriesView() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <Sliders className="h-5 w-5 text-primary" /> Delivery & Pickup Slot Capacity Management
+                <Sliders className="h-5 w-5 text-primary" /> Delivery & Pickup Slot Capacity
+                Management
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Set maximum booking caps per time window to prevent overbooking on Gloucestershire logistics routes.
+                Set maximum booking caps per time window to prevent overbooking on Gloucestershire
+                logistics routes.
               </p>
             </div>
 
@@ -319,7 +323,10 @@ export function AdminDeliveriesView() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {slotConfigs.map((slot, index) => (
-              <div key={slot.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3.5">
+              <div
+                key={slot.id}
+                className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3.5"
+              >
                 <div className="flex items-center justify-between">
                   <span className="font-extrabold text-xs text-slate-900">{slot.slot_name}</span>
                   <label className="flex items-center gap-1.5 cursor-pointer text-[10px] font-bold text-slate-700">
@@ -338,7 +345,9 @@ export function AdminDeliveriesView() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600">Daily Max Capacity (Bookings Limit):</label>
+                  <label className="text-[11px] font-bold text-slate-600">
+                    Daily Max Capacity (Bookings Limit):
+                  </label>
                   <Input
                     type="number"
                     min="1"
@@ -383,7 +392,9 @@ export function AdminDeliveriesView() {
 
                 <div className="pt-1 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-200">
                   <span>Slot Type:</span>
-                  <Badge variant="outline" className="text-[10px] font-bold uppercase">{slot.type}</Badge>
+                  <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                    {slot.type}
+                  </Badge>
                 </div>
               </div>
             ))}
@@ -401,7 +412,8 @@ export function AdminDeliveriesView() {
               <Truck className="mx-auto h-10 w-10 text-muted-foreground/30" />
               <h3 className="font-bold text-sm text-foreground">No active route assignments</h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Assignments will appear here when drivers are dispatched for empty bottle collections or cylinder drop-offs.
+                Assignments will appear here when drivers are dispatched for empty bottle
+                collections or cylinder drop-offs.
               </p>
             </div>
           ) : (
@@ -436,20 +448,32 @@ export function AdminDeliveriesView() {
                         </TableCell>
 
                         <TableCell className="text-xs">
-                          <p className="font-extrabold text-slate-900">{d.driver_name || "Gloucestershire Driver"}</p>
-                          <p className="text-[11px] text-muted-foreground">{d.vehicle_identifier || "Fleet Van"}</p>
+                          <p className="font-extrabold text-slate-900">
+                            {d.driver_name || "Gloucestershire Driver"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {d.vehicle_identifier || "Fleet Van"}
+                          </p>
                         </TableCell>
 
                         <TableCell className="text-xs">
-                          <p className="font-semibold text-slate-800">{d.route_area || "Gloucestershire"}</p>
-                          <p className="text-[11px] text-muted-foreground">{d.time_slot || "Morning Window"}</p>
+                          <p className="font-semibold text-slate-800">
+                            {d.route_area || "Gloucestershire"}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {d.time_slot || "Morning Window"}
+                          </p>
                         </TableCell>
 
                         <TableCell className="text-xs">
                           {d.orders ? (
                             <div className="space-y-0.5">
-                              <p className="font-mono font-bold text-primary">#{d.orders.order_number || d.orders.id.slice(0, 8)}</p>
-                              <p className="text-[11px] text-slate-600 truncate max-w-xs">{d.orders.shipping_name || d.orders.guest_name}</p>
+                              <p className="font-mono font-bold text-primary">
+                                #{d.orders.order_number || d.orders.id.slice(0, 8)}
+                              </p>
+                              <p className="text-[11px] text-slate-600 truncate max-w-xs">
+                                {d.orders.shipping_name || d.orders.guest_name}
+                              </p>
                             </div>
                           ) : (
                             <span className="text-slate-400">Standalone Route</span>
@@ -457,14 +481,19 @@ export function AdminDeliveriesView() {
                         </TableCell>
 
                         <TableCell>
-                          <Select value={d.status || "Confirmed"} onValueChange={(val) => handleUpdateStatus(d.id, val)}>
+                          <Select
+                            value={d.status || "Confirmed"}
+                            onValueChange={(val) => handleUpdateStatus(d.id, val)}
+                          >
                             <SelectTrigger className="h-7 text-[10px] font-bold rounded-xl border-slate-200 w-32 bg-white">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-2xl">
                               <SelectItem value="Confirmed">Confirmed</SelectItem>
                               <SelectItem value="Pickup Scheduled">Pickup Scheduled</SelectItem>
-                              <SelectItem value="Empty Cylinder Collected">Empty Cylinder Collected</SelectItem>
+                              <SelectItem value="Empty Cylinder Collected">
+                                Empty Cylinder Collected
+                              </SelectItem>
                               <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
                               <SelectItem value="Delivered">Delivered</SelectItem>
                               <SelectItem value="Delayed">Delayed</SelectItem>
@@ -474,7 +503,12 @@ export function AdminDeliveriesView() {
 
                         <TableCell className="text-right">
                           {d.orders && (
-                            <Button asChild variant="outline" size="sm" className="h-7 rounded-full text-[10px] font-bold">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-full text-[10px] font-bold"
+                            >
                               <Link to="/admin/orders">View Order</Link>
                             </Button>
                           )}
@@ -526,10 +560,19 @@ export function AdminDeliveriesView() {
               />
             </div>
             <div className="pt-2 flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                className="rounded-full text-xs font-bold"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={creating} className="rounded-full font-bold text-xs gap-1.5 shadow-md">
+              <Button
+                type="submit"
+                disabled={creating}
+                className="rounded-full font-bold text-xs gap-1.5 shadow-md"
+              >
                 <Save className="h-4 w-4" /> {creating ? "Saving..." : "Create Assignment"}
               </Button>
             </div>

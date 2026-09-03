@@ -1,14 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Users,
-  Search,
-  Mail,
-  Phone,
-  Eye,
-  User,
-  Plus,
-} from "lucide-react";
+import { Users, Search, Mail, Phone, Eye, User, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 
@@ -109,7 +96,9 @@ export function AdminCustomersView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Customers</span>
           </div>
@@ -121,7 +110,10 @@ export function AdminCustomersView() {
           </p>
         </div>
 
-        <Button onClick={() => setModalOpen(true)} className="rounded-full font-bold text-xs gap-1.5 shadow-md shrink-0">
+        <Button
+          onClick={() => setModalOpen(true)}
+          className="rounded-full font-bold text-xs gap-1.5 shadow-md shrink-0"
+        >
           <Plus className="h-4 w-4" /> Add Customer Account
         </Button>
       </div>
@@ -172,8 +164,12 @@ export function AdminCustomersView() {
                         {(c.full_name || "C").charAt(0)}
                       </div>
                       <div>
-                        <p className="font-extrabold text-foreground">{c.full_name || "Customer"}</p>
-                        <p className="text-[11px] text-muted-foreground font-normal">{c.id.slice(0, 8)}</p>
+                        <p className="font-extrabold text-foreground">
+                          {c.full_name || "Customer"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground font-normal">
+                          {c.id.slice(0, 8)}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
@@ -182,7 +178,10 @@ export function AdminCustomersView() {
                     {new Date(c.created_at).toLocaleDateString("en-GB")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]"
+                    >
                       {c.status || "Active"}
                     </Badge>
                   </TableCell>
@@ -233,7 +232,12 @@ export function AdminCustomersView() {
               />
             </div>
             <div className="pt-2 flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                className="rounded-full text-xs font-bold"
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={creating} className="rounded-full font-bold text-xs">

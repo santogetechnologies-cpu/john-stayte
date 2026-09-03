@@ -99,12 +99,17 @@ export function MeeshoDeliveryTracker({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders", filter: `id=eq.${order.id}` },
-        () => reloadOrderData()
+        () => reloadOrderData(),
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "delivery_assignments", filter: `order_id=eq.${order.id}` },
-        () => reloadOrderData()
+        {
+          event: "*",
+          schema: "public",
+          table: "delivery_assignments",
+          filter: `order_id=eq.${order.id}`,
+        },
+        () => reloadOrderData(),
       )
       .subscribe();
 
@@ -179,12 +184,38 @@ export function MeeshoDeliveryTracker({
   // 6: Delivered
   const getRefillStageIndex = () => {
     if (isCancelled) return -1;
-    if (orderStatus.includes("delivered") || assignmentStatus.includes("delivered") || orderStatus.includes("completed")) return 6;
-    if (orderStatus.includes("out for delivery") || assignmentStatus.includes("out for delivery")) return 5;
-    if (orderStatus.includes("refill completed") || orderStatus.includes("refill in progress") || orderStatus.includes("refilling")) return 4;
-    if (orderStatus.includes("empty cylinder verified") || orderStatus.includes("empty_verified") || orderStatus.includes("verified")) return 3;
-    if (orderStatus.includes("empty cylinder collected") || orderStatus.includes("empty_collected") || orderStatus.includes("collected")) return 2;
-    if (orderStatus.includes("pickup scheduled") || orderStatus.includes("pickup assigned") || assignmentStatus.includes("pickup")) return 1;
+    if (
+      orderStatus.includes("delivered") ||
+      assignmentStatus.includes("delivered") ||
+      orderStatus.includes("completed")
+    )
+      return 6;
+    if (orderStatus.includes("out for delivery") || assignmentStatus.includes("out for delivery"))
+      return 5;
+    if (
+      orderStatus.includes("refill completed") ||
+      orderStatus.includes("refill in progress") ||
+      orderStatus.includes("refilling")
+    )
+      return 4;
+    if (
+      orderStatus.includes("empty cylinder verified") ||
+      orderStatus.includes("empty_verified") ||
+      orderStatus.includes("verified")
+    )
+      return 3;
+    if (
+      orderStatus.includes("empty cylinder collected") ||
+      orderStatus.includes("empty_collected") ||
+      orderStatus.includes("collected")
+    )
+      return 2;
+    if (
+      orderStatus.includes("pickup scheduled") ||
+      orderStatus.includes("pickup assigned") ||
+      assignmentStatus.includes("pickup")
+    )
+      return 1;
     return 0; // Refill Requested
   };
 
@@ -207,7 +238,10 @@ export function MeeshoDeliveryTracker({
 
   // Primary ordered item
   const firstItem = (order.order_items || [])[0];
-  const itemsCount = (order.order_items || []).reduce((acc: number, i: any) => acc + (i.quantity || 1), 0);
+  const itemsCount = (order.order_items || []).reduce(
+    (acc: number, i: any) => acc + (i.quantity || 1),
+    0,
+  );
   const productName = firstItem?.name || firstItem?.product_name || "Gas Cylinder Supply";
   const productImage = cleanImageUrl(productInfo?.image_url, productInfo?.slug);
 
@@ -216,26 +250,26 @@ export function MeeshoDeliveryTracker({
     typeof order.shipping_address === "string"
       ? order.shipping_address
       : typeof order.delivery_address === "string"
-      ? order.delivery_address
-      : order.shipping_address?.street || order.delivery_address?.street || "Gloucestershire";
+        ? order.delivery_address
+        : order.shipping_address?.street || order.delivery_address?.street || "Gloucestershire";
 
   // Timestamps
   const placedTime = order.created_at ? formatDateTime(order.created_at) : "";
   const confirmedTime = order.approved_at
     ? formatDateTime(order.approved_at)
     : currentStageIndex >= 1
-    ? "Confirmed"
-    : "";
+      ? "Confirmed"
+      : "";
   const packedTime = order.packed_at
     ? formatDateTime(order.packed_at)
     : currentStageIndex >= 2
-    ? "Packed at Depot"
-    : "";
+      ? "Packed at Depot"
+      : "";
   const dispatchedTime = assignment?.dispatched_at
     ? formatDateTime(assignment.dispatched_at)
     : currentStageIndex >= 3
-    ? "Out for Delivery"
-    : "";
+      ? "Out for Delivery"
+      : "";
   const deliveredTime =
     order.delivered_at || assignment?.delivered_at
       ? formatDateTime(order.delivered_at || assignment?.delivered_at)
@@ -243,7 +277,9 @@ export function MeeshoDeliveryTracker({
 
   const expectedDate = assignment?.dispatched_at
     ? formatDate(assignment.dispatched_at)
-    : formatDate(new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString());
+    : formatDate(
+        new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      );
   const timeSlot = assignment?.time_slot || "Morning (08:00 - 12:00)";
 
   // Dynamic Timeline Steps based on order type
@@ -368,7 +404,8 @@ export function MeeshoDeliveryTracker({
                 (+{itemsCount - (firstItem?.quantity || 1)} more item)
               </span>
             )}
-            {" • "}Total: <strong className="text-slate-900 font-bold">{gbp(order.total || 0)}</strong>
+            {" • "}Total:{" "}
+            <strong className="text-slate-900 font-bold">{gbp(order.total || 0)}</strong>
           </p>
           <p className="text-[11px] text-slate-400 font-medium">
             Ordered on {formatDate(order.created_at)}
@@ -382,7 +419,9 @@ export function MeeshoDeliveryTracker({
           <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
           <div>
             <p className="font-bold text-rose-950">Order Cancelled</p>
-            <p className="text-[11px] text-rose-700">This order was cancelled and will not be delivered.</p>
+            <p className="text-[11px] text-rose-700">
+              This order was cancelled and will not be delivered.
+            </p>
           </div>
         </div>
       ) : isDelayed ? (
@@ -454,8 +493,8 @@ export function MeeshoDeliveryTracker({
                         isCompleted
                           ? "bg-emerald-600 text-white ring-2 ring-emerald-100"
                           : isCurrent
-                          ? "bg-emerald-600 text-white ring-4 ring-emerald-100 scale-105"
-                          : "bg-white text-slate-300 border border-slate-300"
+                            ? "bg-emerald-600 text-white ring-4 ring-emerald-100 scale-105"
+                            : "bg-white text-slate-300 border border-slate-300"
                       }`}
                     >
                       {isCompleted ? (
@@ -476,23 +515,19 @@ export function MeeshoDeliveryTracker({
                           isCurrent
                             ? "text-emerald-700"
                             : isCompleted
-                            ? "text-slate-900"
-                            : "text-slate-400"
+                              ? "text-slate-900"
+                              : "text-slate-400"
                         }`}
                       >
                         {step.title}
                       </p>
                       {step.time && (
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {step.time}
-                        </span>
+                        <span className="text-[10px] font-mono text-slate-400">{step.time}</span>
                       )}
                     </div>
 
                     {isCurrent && (
-                      <p className="text-[11px] text-slate-600 font-medium">
-                        {step.activeNote}
-                      </p>
+                      <p className="text-[11px] text-slate-600 font-medium">{step.activeNote}</p>
                     )}
                   </div>
                 </div>
@@ -509,11 +544,14 @@ export function MeeshoDeliveryTracker({
         </div>
         <p className="text-slate-800 font-medium leading-relaxed">
           {deliveryAddress.name || order.customer_name || "Customer"},{" "}
-          {deliveryAddress.street || order.customer_address || "Gloucestershire"}, {deliveryAddress.postcode || ""}
+          {deliveryAddress.street || order.customer_address || "Gloucestershire"},{" "}
+          {deliveryAddress.postcode || ""}
         </p>
         {assignment?.driver_name && (
           <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-600">
-            <span>Driver: <strong className="text-slate-800">{assignment.driver_name}</strong></span>
+            <span>
+              Driver: <strong className="text-slate-800">{assignment.driver_name}</strong>
+            </span>
             <span className="font-mono">Vehicle: {assignment.vehicle_plate || "GL72 JSS"}</span>
           </div>
         )}

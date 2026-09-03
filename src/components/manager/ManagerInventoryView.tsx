@@ -92,7 +92,8 @@ export function ManagerInventoryView() {
         const stock = Number(prod.stock || 0);
         const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 5);
         const depot = invMeta?.depot_location || "Gloucestershire Depot (Whitminster)";
-        const sku = prod.specs?.sku || prod.slug?.toUpperCase() || `SKU-${prod.id.slice(0, 6).toUpperCase()}`;
+        const sku =
+          prod.specs?.sku || prod.slug?.toUpperCase() || `SKU-${prod.id.slice(0, 6).toUpperCase()}`;
 
         let status: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
         if (stock === 0) {
@@ -137,7 +138,9 @@ export function ManagerInventoryView() {
 
     const channel = supabase
       .channel("manager_inventory_realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadInventory())
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
+        loadInventory(),
+      )
       .subscribe();
 
     return () => {
@@ -181,14 +184,9 @@ export function ManagerInventoryView() {
       };
 
       if (selectedProduct.inventory_id) {
-        await supabase
-          .from("inventory")
-          .update(invPayload)
-          .eq("id", selectedProduct.inventory_id);
+        await supabase.from("inventory").update(invPayload).eq("id", selectedProduct.inventory_id);
       } else {
-        await supabase
-          .from("inventory")
-          .insert([invPayload]);
+        await supabase.from("inventory").insert([invPayload]);
       }
 
       toast.success(`Depot stock for ${selectedProduct.name} updated to ${newStock} units!`);
@@ -236,20 +234,26 @@ export function ManagerInventoryView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Inventory</span>
             {statusFilter !== "all" && (
               <>
                 <span>/</span>
                 <span className="text-primary font-bold capitalize">
-                  {statusFilter === "low_stock" ? "Low Stock Items" : statusFilter.replace(/_/g, " ")}
+                  {statusFilter === "low_stock"
+                    ? "Low Stock Items"
+                    : statusFilter.replace(/_/g, " ")}
                 </span>
               </>
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Layers className="h-7 w-7 text-primary" /> Depot Stock Level Monitoring ({filtered.length}{statusFilter !== "all" ? ` of ${inventoryItems.length}` : ""})
+            <Layers className="h-7 w-7 text-primary" /> Depot Stock Level Monitoring (
+            {filtered.length}
+            {statusFilter !== "all" ? ` of ${inventoryItems.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Track and adjust cylinder stock availability for Whitminster & Gloucestershire depots.
@@ -333,14 +337,21 @@ export function ManagerInventoryView() {
             <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
             <h3 className="font-bold text-sm text-foreground">Notice</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
-            <Button onClick={loadInventory} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
+            <Button
+              onClick={loadInventory}
+              size="sm"
+              variant="outline"
+              className="rounded-full text-xs font-bold gap-1.5 mt-2"
+            >
               <RotateCcw className="h-3.5 w-3.5" /> Retry
             </Button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <Layers className="mx-auto h-12 w-12 text-slate-300" />
-            <h3 className="font-extrabold text-base text-foreground">No depot inventory records found</h3>
+            <h3 className="font-extrabold text-base text-foreground">
+              No depot inventory records found
+            </h3>
           </div>
         ) : (
           <Table>
@@ -362,17 +373,29 @@ export function ManagerInventoryView() {
                     <p className="font-extrabold text-foreground">{item.name}</p>
                     <p className="text-[10px] text-muted-foreground">{gbp(item.price)}</p>
                   </TableCell>
-                  <TableCell className="font-mono text-xs font-semibold text-slate-700">{item.sku}</TableCell>
+                  <TableCell className="font-mono text-xs font-semibold text-slate-700">
+                    {item.sku}
+                  </TableCell>
                   <TableCell className="font-black text-sm">{item.stock} units</TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-semibold">&le; {item.reorder_threshold} units</TableCell>
-                  <TableCell className="text-xs font-medium text-slate-700">{item.depot_location}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground font-semibold">
+                    &le; {item.reorder_threshold} units
+                  </TableCell>
+                  <TableCell className="text-xs font-medium text-slate-700">
+                    {item.depot_location}
+                  </TableCell>
                   <TableCell>
                     {item.status === "out_of_stock" ? (
-                      <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px] font-extrabold">Out of Stock</Badge>
+                      <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[10px] font-extrabold">
+                        Out of Stock
+                      </Badge>
                     ) : item.status === "low_stock" ? (
-                      <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-[10px] font-extrabold">Low Stock Alert</Badge>
+                      <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-[10px] font-extrabold">
+                        Low Stock Alert
+                      </Badge>
                     ) : (
-                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">In Stock (Healthy)</Badge>
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px] font-extrabold">
+                        In Stock (Healthy)
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
@@ -415,7 +438,12 @@ export function ManagerInventoryView() {
               </div>
 
               <div className="pt-3 flex justify-end gap-2 border-t">
-                <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setModalOpen(false)}
+                  className="rounded-full text-xs font-bold"
+                >
                   Cancel
                 </Button>
                 <Button

@@ -1,13 +1,8 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type UserRole = "customer" | "manager" | "admin";
-export type OrderStatus = "Pending" | "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled";
+export type OrderStatus =
+  "Pending" | "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled";
 export type TicketPriority = "Low" | "Medium" | "High" | "Urgent";
 export type TicketStatus = "Open" | "In Progress" | "Waiting" | "Resolved";
 
@@ -478,7 +473,7 @@ export interface Database {
             isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       order_status_history: {
@@ -519,7 +514,7 @@ export interface Database {
             isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       notifications: {
@@ -671,7 +666,7 @@ export interface Database {
             isOneToOne: false;
             referencedRelation: "support_tickets";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       invoices: {
@@ -990,7 +985,7 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: {};
+    Views: Record<string, never>;
     Functions: {
       cancel_customer_order: {
         Args: {
@@ -1004,7 +999,7 @@ export interface Database {
         };
       };
     };
-    Enums: {};
-    CompositeTypes: {};
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }

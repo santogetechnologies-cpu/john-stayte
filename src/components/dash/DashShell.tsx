@@ -9,7 +9,12 @@ import { cn } from "@/lib/utils";
 
 export function StatusPill({ status }: { status: OrderStatus }) {
   return (
-    <span className={cn("inline-block whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-bold", statusColor[status])}>
+    <span
+      className={cn(
+        "inline-block whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-bold",
+        statusColor[status],
+      )}
+    >
       {status}
     </span>
   );
@@ -47,7 +52,9 @@ export function DashShell({
           <p className="mt-2 text-sm text-muted-foreground">
             This dashboard is for {role} accounts. Use the demo {role} login to continue.
           </p>
-          <Button asChild className="mt-6 rounded-full"><Link to="/login">Go to sign in</Link></Button>
+          <Button asChild className="mt-6 rounded-full">
+            <Link to="/login">Go to sign in</Link>
+          </Button>
         </div>
       </div>
     );
@@ -58,15 +65,32 @@ export function DashShell({
       <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-xl">
         <div className="container-page grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3">
           <Link to="/" className="flex min-w-0 items-center gap-3">
-            <img src={logo} alt="JSS" className="h-9 w-9 shrink-0 rounded-lg" width={36} height={36} />
+            <img
+              src={logo}
+              alt="JSS"
+              className="h-9 w-9 shrink-0 rounded-lg"
+              width={36}
+              height={36}
+            />
             <span className="min-w-0">
-              <span className="block truncate font-display text-sm font-extrabold">JSS {role.toUpperCase()} PORTAL</span>
+              <span className="block truncate font-display text-sm font-extrabold">
+                JSS {role.toUpperCase()} PORTAL
+              </span>
               <span className="block truncate text-xs text-muted-foreground">{user.name}</span>
             </span>
           </Link>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden rounded-full sm:inline-flex"><Link to="/">View site</Link></Button>
-            <Button variant="outline" className="rounded-full" onClick={() => { logout(); navigate({ to: "/" }); }}>
+            <Button asChild variant="ghost" className="hidden rounded-full sm:inline-flex">
+              <Link to="/">View site</Link>
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => {
+                logout();
+                navigate({ to: "/" });
+              }}
+            >
               <LogOut className="mr-1.5 h-4 w-4" /> Sign out
             </Button>
           </div>

@@ -31,7 +31,9 @@ import { supabase } from "@/lib/supabase";
 
 export function AdminReportsView() {
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState<"today" | "7days" | "30days" | "month" | "custom">("30days");
+  const [dateRange, setDateRange] = useState<"today" | "7days" | "30days" | "month" | "custom">(
+    "30days",
+  );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -76,7 +78,12 @@ export function AdminReportsView() {
         { data: offerData },
         { data: couponData },
       ] = await Promise.all([
-        supabase.from("orders").select("*").gte("created_at", start.toISOString()).lte("created_at", end.toISOString()).order("created_at", { ascending: false }),
+        supabase
+          .from("orders")
+          .select("*")
+          .gte("created_at", start.toISOString())
+          .lte("created_at", end.toISOString())
+          .order("created_at", { ascending: false }),
         supabase.from("products").select("*"),
         supabase.from("profiles").select("*").eq("role", "customer"),
         supabase.from("offers").select("*"),
@@ -108,12 +115,16 @@ export function AdminReportsView() {
   const aov = totalOrders > 0 ? grossSales / totalOrders : 0;
 
   const completedOrders = orders.filter((o) => o.status === "Delivered").length;
-  const pendingOrders = orders.filter((o) => o.status === "Pending" || o.status === "Approved" || o.status === "Packed").length;
+  const pendingOrders = orders.filter(
+    (o) => o.status === "Pending" || o.status === "Approved" || o.status === "Packed",
+  ).length;
   const cancelledOrders = orders.filter((o) => o.status === "Cancelled").length;
 
   const totalProducts = products.length;
   const totalStock = products.reduce((sum, p) => sum + Number(p.stock || 0), 0);
-  const lowStockCount = products.filter((p) => Number(p.stock || 0) <= 10 && Number(p.stock || 0) > 0).length;
+  const lowStockCount = products.filter(
+    (p) => Number(p.stock || 0) <= 10 && Number(p.stock || 0) > 0,
+  ).length;
   const outOfStockCount = products.filter((p) => Number(p.stock || 0) === 0).length;
 
   const totalCustomers = customers.length;
@@ -129,7 +140,10 @@ export function AdminReportsView() {
     }
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((e) => e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(","))].join("\n");
+      [
+        headers.join(","),
+        ...rows.map((e) => e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")),
+      ].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -142,7 +156,16 @@ export function AdminReportsView() {
 
   // Export Specific Reports to CSV
   const handleExportSalesReport = () => {
-    const headers = ["Order Number", "Date", "Customer Name", "Email", "Status", "Subtotal (£)", "Shipping (£)", "Total (£)"];
+    const headers = [
+      "Order Number",
+      "Date",
+      "Customer Name",
+      "Email",
+      "Status",
+      "Subtotal (£)",
+      "Shipping (£)",
+      "Total (£)",
+    ];
     const rows = orders.map((o) => [
       o.order_number || o.id,
       new Date(o.created_at).toLocaleDateString("en-GB"),
@@ -206,7 +229,9 @@ export function AdminReportsView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Reports</span>
           </div>
@@ -263,7 +288,11 @@ export function AdminReportsView() {
           disabled={loading}
           className="rounded-full text-xs font-extrabold gap-1.5 shadow-md bg-primary hover:bg-primary/90 text-white shrink-0"
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
           Generate Report
         </Button>
       </div>
@@ -283,7 +312,9 @@ export function AdminReportsView() {
             </div>
             <div>
               <h3 className="font-extrabold text-base text-foreground">Sales & Revenue Report</h3>
-              <p className="text-xs text-muted-foreground">Order volume, gross sales, net sales, and AOV.</p>
+              <p className="text-xs text-muted-foreground">
+                Order volume, gross sales, net sales, and AOV.
+              </p>
             </div>
 
             <div className="pt-2 grid grid-cols-2 gap-2 text-xs">
@@ -292,7 +323,9 @@ export function AdminReportsView() {
                 <p className="text-sm font-extrabold text-foreground">{gbp(grossSales)}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Total Orders</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Total Orders
+                </p>
                 <p className="text-sm font-extrabold text-foreground">{totalOrders}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
@@ -331,7 +364,9 @@ export function AdminReportsView() {
             </div>
             <div>
               <h3 className="font-extrabold text-base text-foreground">VAT / Financial Report</h3>
-              <p className="text-xs text-muted-foreground">Standard 20% VAT and reduced domestic fuel VAT breakdown.</p>
+              <p className="text-xs text-muted-foreground">
+                Standard 20% VAT and reduced domestic fuel VAT breakdown.
+              </p>
             </div>
 
             <div className="pt-2 space-y-2 text-xs">
@@ -371,12 +406,16 @@ export function AdminReportsView() {
             </div>
             <div>
               <h3 className="font-extrabold text-base text-foreground">Inventory & Stock Report</h3>
-              <p className="text-xs text-muted-foreground">Product catalog levels, low stock alerts, and out of stock items.</p>
+              <p className="text-xs text-muted-foreground">
+                Product catalog levels, low stock alerts, and out of stock items.
+              </p>
             </div>
 
             <div className="pt-2 grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Total Products</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Total Products
+                </p>
                 <p className="text-sm font-extrabold text-foreground">{totalProducts}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
@@ -384,11 +423,15 @@ export function AdminReportsView() {
                 <p className="text-sm font-extrabold text-foreground">{totalStock}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Low Stock (≤10)</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Low Stock (≤10)
+                </p>
                 <p className="text-sm font-extrabold text-amber-600">{lowStockCount}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Out of Stock</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Out of Stock
+                </p>
                 <p className="text-sm font-extrabold text-red-600">{outOfStockCount}</p>
               </div>
             </div>
@@ -419,16 +462,22 @@ export function AdminReportsView() {
             </div>
             <div>
               <h3 className="font-extrabold text-base text-foreground">Customer Accounts Report</h3>
-              <p className="text-xs text-muted-foreground">Registered customer profiles, active purchasers, and order frequency.</p>
+              <p className="text-xs text-muted-foreground">
+                Registered customer profiles, active purchasers, and order frequency.
+              </p>
             </div>
 
             <div className="pt-2 grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Total Registered</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Total Registered
+                </p>
                 <p className="text-sm font-extrabold text-foreground">{totalCustomers}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Active Buyers</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Active Buyers
+                </p>
                 <p className="text-sm font-extrabold text-emerald-700">{activeCustomers}</p>
               </div>
             </div>
@@ -458,8 +507,12 @@ export function AdminReportsView() {
               </Badge>
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-foreground">Delivery & Logistics Report</h3>
-              <p className="text-xs text-muted-foreground">Fulfillment status breakdown for regional Whitminster deliveries.</p>
+              <h3 className="font-extrabold text-base text-foreground">
+                Delivery & Logistics Report
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Fulfillment status breakdown for regional Whitminster deliveries.
+              </p>
             </div>
 
             <div className="pt-2 grid grid-cols-3 gap-2 text-xs">
@@ -502,17 +555,25 @@ export function AdminReportsView() {
               </Badge>
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-foreground">Promotions & Offers Report</h3>
-              <p className="text-xs text-muted-foreground">Active special deals, promotional banners, and coupon codes.</p>
+              <h3 className="font-extrabold text-base text-foreground">
+                Promotions & Offers Report
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Active special deals, promotional banners, and coupon codes.
+              </p>
             </div>
 
             <div className="pt-2 grid grid-cols-2 gap-2 text-xs">
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Active Deals</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Active Deals
+                </p>
                 <p className="text-sm font-extrabold text-foreground">{activeOffersCount}</p>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Active Coupons</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Active Coupons
+                </p>
                 <p className="text-sm font-extrabold text-foreground">{activeCouponsCount}</p>
               </div>
             </div>

@@ -62,7 +62,10 @@ export function ManagerDashboardView() {
         { data: dbDeliveries },
         { data: dbTickets },
       ] = await Promise.all([
-        supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }),
+        supabase
+          .from("orders")
+          .select("*, order_items(*)")
+          .order("created_at", { ascending: false }),
         supabase.from("inventory").select("*, products(*)"),
         supabase.from("delivery_assignments").select("*"),
         supabase.from("support_tickets").select("*"),
@@ -84,10 +87,18 @@ export function ManagerDashboardView() {
 
     const channel = supabase
       .channel("manager_dashboard_realtime_kpis")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadManagerData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () => loadManagerData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadManagerData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => loadManagerData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadManagerData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () =>
+        loadManagerData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadManagerData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
+        loadManagerData(),
+      )
       .subscribe();
 
     return () => {
@@ -98,12 +109,16 @@ export function ManagerDashboardView() {
   // Compute live calculations
   const ordersAssignedCount = orders.length;
   const pendingApprovalCount = orders.filter((o) => o.status === "Pending").length;
-  const processingCount = orders.filter((o) => o.status === "Approved" || o.status === "Packed").length;
+  const processingCount = orders.filter(
+    (o) => o.status === "Approved" || o.status === "Packed",
+  ).length;
   const outForDeliveryCount = deliveries.filter((d) => d.status === "Out for Delivery").length;
   const deliveredTodayCount = orders.filter((o) => o.status === "Delivered").length;
   const delayedDeliveriesCount = deliveries.filter((d) => d.status === "Delayed").length;
   const lowStockCount = inventory.filter((i) => i.current_stock < i.reorder_threshold).length;
-  const openEnquiriesCount = tickets.filter((t) => t.status === "Open" || t.status === "In Progress").length;
+  const openEnquiriesCount = tickets.filter(
+    (t) => t.status === "Open" || t.status === "In Progress",
+  ).length;
 
   const handleApprove = async (orderId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -126,7 +141,12 @@ export function ManagerDashboardView() {
       return toast.error("No manager dispatch data available to export.");
     }
     const headers = "Order Number,Customer Name,Customer Email,Status,Total,Date\n";
-    const rows = orders.map((o) => `"${o.order_number || o.id}","${o.customer_name || ''}","${o.customer_email || ''}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString('en-GB')}"`).join("\n");
+    const rows = orders
+      .map(
+        (o) =>
+          `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_email || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"`,
+      )
+      .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -143,7 +163,9 @@ export function ManagerDashboardView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
             <span className="text-foreground">Dashboard</span>
           </div>
@@ -170,7 +192,11 @@ export function ManagerDashboardView() {
             </Select>
           </div>
 
-          <Button onClick={handleExportReport} variant="outline" className="h-10 rounded-full text-xs font-bold gap-2 bg-white shadow-2xs border-slate-200 hover:bg-slate-50">
+          <Button
+            onClick={handleExportReport}
+            variant="outline"
+            className="h-10 rounded-full text-xs font-bold gap-2 bg-white shadow-2xs border-slate-200 hover:bg-slate-50"
+          >
             <Download className="h-3.5 w-3.5" /> Export Report
           </Button>
         </div>
@@ -269,7 +295,9 @@ export function ManagerDashboardView() {
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 group-hover:text-foreground transition-colors">
                 {kpi.label}
               </span>
-              <div className={`h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center border shadow-2xs transition-transform group-hover:scale-105 ${kpi.iconBg}`}>
+              <div
+                className={`h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center border shadow-2xs transition-transform group-hover:scale-105 ${kpi.iconBg}`}
+              >
                 <kpi.icon className="h-5 w-5" />
               </div>
             </div>
@@ -278,12 +306,12 @@ export function ManagerDashboardView() {
                 {kpi.val}
               </p>
               <div className="flex items-center gap-1.5 mt-2">
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-[10px] border ${kpi.tagCls}`}>
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-[10px] border ${kpi.tagCls}`}
+                >
                   {kpi.tag}
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium truncate">
-                  {kpi.sub}
-                </span>
+                <span className="text-[11px] text-slate-500 font-medium truncate">{kpi.sub}</span>
               </div>
             </div>
           </Link>
@@ -296,10 +324,19 @@ export function ManagerDashboardView() {
         <div className="lg:col-span-2 surface-card p-6 rounded-3xl border bg-white space-y-4">
           <div className="flex items-center justify-between border-b pb-4">
             <div>
-              <h2 className="text-base font-black text-foreground">Today's Dispatch & Orders Queue</h2>
-              <p className="text-xs text-muted-foreground">Real orders assigned to depot dispatch</p>
+              <h2 className="text-base font-black text-foreground">
+                Today's Dispatch & Orders Queue
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Real orders assigned to depot dispatch
+              </p>
             </div>
-            <Button asChild variant="ghost" size="sm" className="rounded-full text-xs font-bold gap-1 text-primary hover:bg-primary/10">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="rounded-full text-xs font-bold gap-1 text-primary hover:bg-primary/10"
+            >
               <Link to="/manager/orders">
                 View All Orders ({orders.length}) <ChevronRight className="h-3.5 w-3.5" />
               </Link>
@@ -315,7 +352,9 @@ export function ManagerDashboardView() {
               <div className="p-12 text-center space-y-2 bg-slate-50/50">
                 <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground/30" />
                 <p className="text-xs font-bold text-foreground">No orders found</p>
-                <p className="text-[11px] text-muted-foreground">No assigned orders are in the dispatch queue.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  No assigned orders are in the dispatch queue.
+                </p>
               </div>
             ) : (
               <Table>
@@ -342,7 +381,9 @@ export function ManagerDashboardView() {
                         <p className="font-bold text-foreground">{o.customer_name}</p>
                         <p className="text-[11px] text-muted-foreground">{o.customer_email}</p>
                       </TableCell>
-                      <TableCell className="font-extrabold text-xs text-foreground">{gbp(Number(o.total))}</TableCell>
+                      <TableCell className="font-extrabold text-xs text-foreground">
+                        {gbp(Number(o.total))}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -350,8 +391,8 @@ export function ManagerDashboardView() {
                             o.status === "Approved"
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : o.status === "Pending"
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
+                                ? "bg-amber-50 text-amber-700 border-amber-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200"
                           }`}
                         >
                           {o.status}
@@ -367,7 +408,11 @@ export function ManagerDashboardView() {
                             Approve
                           </Button>
                         ) : (
-                          <Button size="sm" variant="ghost" className="rounded-full text-[11px] font-bold h-7 px-3 text-muted-foreground">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="rounded-full text-[11px] font-bold h-7 px-3 text-muted-foreground"
+                          >
                             Details
                           </Button>
                         )}
@@ -386,22 +431,56 @@ export function ManagerDashboardView() {
             <h2 className="text-base font-black text-foreground">Manager Quick Actions</h2>
             <div className="grid grid-cols-2 gap-2.5">
               {[
-                { label: "Orders Queue", href: "/manager/orders", icon: ShoppingBag, color: "text-blue-600 bg-blue-50" },
-                { label: "Truck Dispatch", href: "/manager/deliveries", icon: Truck, color: "text-purple-600 bg-purple-50" },
-                { label: "Stock Control", href: "/manager/inventory", icon: PackageCheck, color: "text-amber-600 bg-amber-50" },
-                { label: "Customer List", href: "/manager/customers", icon: Users, color: "text-emerald-600 bg-emerald-50" },
-                { label: "Support Tickets", href: "/manager/enquiries", icon: MessageSquare, color: "text-rose-600 bg-rose-50" },
-                { label: "Performance", href: "/manager/performance", icon: Activity, color: "text-slate-600 bg-slate-100" },
+                {
+                  label: "Orders Queue",
+                  href: "/manager/orders",
+                  icon: ShoppingBag,
+                  color: "text-blue-600 bg-blue-50",
+                },
+                {
+                  label: "Truck Dispatch",
+                  href: "/manager/deliveries",
+                  icon: Truck,
+                  color: "text-purple-600 bg-purple-50",
+                },
+                {
+                  label: "Stock Control",
+                  href: "/manager/inventory",
+                  icon: PackageCheck,
+                  color: "text-amber-600 bg-amber-50",
+                },
+                {
+                  label: "Customer List",
+                  href: "/manager/customers",
+                  icon: Users,
+                  color: "text-emerald-600 bg-emerald-50",
+                },
+                {
+                  label: "Support Tickets",
+                  href: "/manager/enquiries",
+                  icon: MessageSquare,
+                  color: "text-rose-600 bg-rose-50",
+                },
+                {
+                  label: "Performance",
+                  href: "/manager/performance",
+                  icon: Activity,
+                  color: "text-slate-600 bg-slate-100",
+                },
               ].map((item) => (
                 <Link
                   key={item.label}
                   to={item.href as never}
                   className="p-3.5 rounded-2xl border bg-background hover:bg-slate-50 hover:border-primary/40 transition-all flex flex-col items-center justify-center text-center group"
                 >
-                  <div className={`p-2.5 rounded-xl ${item.color} group-hover:scale-110 transition-transform mb-1.5`}>
+                  <div
+                    className={`p-2.5 rounded-xl ${item.color} group-hover:scale-110 transition-transform mb-1.5`}
+                  >
                     <item.icon className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{item.label}</span>
+                  <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                    {item.label}
+                  </span>
                 </Link>
               ))}
             </div>
@@ -411,28 +490,50 @@ export function ManagerDashboardView() {
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
-                <h2 className="text-sm font-black text-foreground">Inventory Alerts ({lowStockCount})</h2>
+                <h2 className="text-sm font-black text-foreground">
+                  Inventory Alerts ({lowStockCount})
+                </h2>
               </div>
-              <Button asChild variant="ghost" size="sm" className="h-7 text-[11px] font-bold text-primary">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="h-7 text-[11px] font-bold text-primary"
+              >
                 <Link to="/manager/inventory">Manage</Link>
               </Button>
             </div>
 
             {lowStockCount === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">No low stock alerts in inventory.</p>
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No low stock alerts in inventory.
+              </p>
             ) : (
               <div className="space-y-2">
-                {inventory.filter((i) => i.current_stock < i.reorder_threshold).slice(0, 3).map((inv) => (
-                  <div key={inv.id} className="p-3 rounded-xl border bg-red-50/30 flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-foreground">{inv.products?.name || "Product"}</p>
-                      <p className="text-[10px] text-muted-foreground">Stock: {inv.current_stock} (Min: {inv.reorder_threshold})</p>
+                {inventory
+                  .filter((i) => i.current_stock < i.reorder_threshold)
+                  .slice(0, 3)
+                  .map((inv) => (
+                    <div
+                      key={inv.id}
+                      className="p-3 rounded-xl border bg-red-50/30 flex items-center justify-between text-xs"
+                    >
+                      <div>
+                        <p className="font-bold text-foreground">
+                          {inv.products?.name || "Product"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Stock: {inv.current_stock} (Min: {inv.reorder_threshold})
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="bg-red-100 text-red-700 border-red-200 text-[10px] font-bold"
+                      >
+                        Reorder
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className="bg-red-100 text-red-700 border-red-200 text-[10px] font-bold">
-                      Reorder
-                    </Badge>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -448,7 +549,9 @@ export function ManagerDashboardView() {
                 <h3 className="font-black text-lg">
                   Order #{selectedOrder.order_number || selectedOrder.id.slice(0, 8)}
                 </h3>
-                <p className="text-muted-foreground">Placed on {new Date(selectedOrder.created_at).toLocaleString("en-GB")}</p>
+                <p className="text-muted-foreground">
+                  Placed on {new Date(selectedOrder.created_at).toLocaleString("en-GB")}
+                </p>
               </div>
 
               <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
@@ -461,7 +564,9 @@ export function ManagerDashboardView() {
                 <p className="font-bold text-foreground">Items</p>
                 {selectedOrder.order_items?.map((item: any) => (
                   <div key={item.id} className="flex justify-between">
-                    <span>{item.product_name} x {item.quantity}</span>
+                    <span>
+                      {item.product_name} x {item.quantity}
+                    </span>
                     <span className="font-bold">{gbp(Number(item.total_price))}</span>
                   </div>
                 ))}

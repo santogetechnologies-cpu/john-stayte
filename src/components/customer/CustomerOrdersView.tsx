@@ -29,12 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl, cn } from "@/lib/utils";
@@ -373,7 +368,7 @@ export function CustomerOrdersView() {
 
             const imageUrl = cleanImageUrl(
               firstItem?.product_info?.image_url,
-              firstItem?.product_info?.slug
+              firstItem?.product_info?.slug,
             );
 
             const streetAddress = o.delivery_address?.street || o.delivery_address?.name || "";
@@ -415,7 +410,9 @@ export function CustomerOrdersView() {
                       </Badge>
                     )}
                     <span className="text-slate-300">•</span>
-                    <span className="text-muted-foreground font-medium">Placed {formattedDate}</span>
+                    <span className="text-muted-foreground font-medium">
+                      Placed {formattedDate}
+                    </span>
                     <span className="text-slate-300">•</span>
                     <span className="font-black text-foreground">{gbp(Number(o.total))}</span>
                   </div>
@@ -453,7 +450,8 @@ export function CustomerOrdersView() {
 
                       {firstItem && (
                         <p className="text-xs text-muted-foreground font-semibold mt-0.5">
-                          Quantity: {firstItem.quantity} × {gbp(Number(firstItem.unit_price || firstItem.price || 0))}
+                          Quantity: {firstItem.quantity} ×{" "}
+                          {gbp(Number(firstItem.unit_price || firstItem.price || 0))}
                         </p>
                       )}
 
@@ -473,11 +471,17 @@ export function CustomerOrdersView() {
                   <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
                     <div className="flex items-center gap-2">
                       {isCancelled ? (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-bold text-[11px] px-3 py-1">
+                        <Badge
+                          variant="outline"
+                          className="bg-red-50 text-red-700 border-red-200 font-bold text-[11px] px-3 py-1"
+                        >
                           <XCircle className="mr-1 h-3.5 w-3.5" /> Cancelled
                         </Badge>
                       ) : o.status === "Delivered" || o.status === "Completed" ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[11px] px-3 py-1">
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[11px] px-3 py-1"
+                        >
                           <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Delivered
                         </Badge>
                       ) : (
@@ -488,10 +492,10 @@ export function CustomerOrdersView() {
                             o.status?.includes("Verified") || o.status?.includes("Collected")
                               ? "bg-purple-50 text-purple-700 border-purple-200"
                               : o.status === "Out for Delivery"
-                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                              : o.status === "Packed" || o.status?.includes("Refill")
-                              ? "bg-amber-50 text-amber-700 border-amber-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                : o.status === "Packed" || o.status?.includes("Refill")
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-blue-50 text-blue-700 border-blue-200",
                           )}
                         >
                           <Clock className="mr-1 h-3.5 w-3.5" /> {o.status}
@@ -565,13 +569,15 @@ export function CustomerOrdersView() {
           <DialogContent className="max-w-md rounded-3xl p-6 bg-white space-y-4">
             <DialogHeader>
               <DialogTitle className="text-lg font-black flex items-center gap-2 text-red-600">
-                <AlertTriangle className="h-5 w-5" /> Cancel Order #{orderToCancel.order_number || orderToCancel.id.slice(0, 8)}?
+                <AlertTriangle className="h-5 w-5" /> Cancel Order #
+                {orderToCancel.order_number || orderToCancel.id.slice(0, 8)}?
               </DialogTitle>
             </DialogHeader>
 
             <div className="text-xs text-muted-foreground space-y-3">
               <p>
-                Are you sure you want to cancel this order? Stock will be released and your order status updated to Cancelled.
+                Are you sure you want to cancel this order? Stock will be released and your order
+                status updated to Cancelled.
               </p>
 
               <div className="bg-slate-50 p-3 rounded-2xl border text-foreground font-bold">

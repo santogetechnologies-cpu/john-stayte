@@ -24,15 +24,7 @@ import {
   CheckCircle2,
   Download,
   Calendar,
-  ChevronRight,
-  ArrowUpRight,
-  ShieldAlert,
-  Sparkles,
   PlusCircle,
-  Tag,
-  UserPlus,
-  Ticket,
-  Image as ImageIcon,
   BarChart2,
   DollarSign,
   Activity,
@@ -40,11 +32,9 @@ import {
   Building2,
   BarChart3,
   PackageCheck,
-  FileCode,
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -56,6 +46,49 @@ import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
+interface AdminOrder {
+  id: string;
+  order_number?: string;
+  status: string;
+  total: number | string;
+  customer_name?: string;
+  customer_email?: string;
+  created_at: string;
+}
+
+interface AdminProduct {
+  id: string;
+  name: string;
+  price?: number | string;
+  stock?: number | string;
+  current_stock?: number | string;
+  category_slug?: string;
+  products?: { name?: string };
+}
+
+interface AdminCustomer {
+  id: string;
+  email?: string;
+  full_name?: string | null;
+  role?: string;
+}
+
+interface AdminDelivery {
+  id: string;
+  status: string;
+  order_id?: string | null;
+}
+
+interface AdminAuditLog {
+  id: string;
+  action?: string;
+  created_at: string;
+  details?: unknown;
+  target_table?: string;
+  entity_type?: string;
+  actor_email?: string;
+}
+
 export function AdminDashboardView() {
   const { user } = useStore();
   const [dateRange, setDateRange] = useState("30d");
@@ -64,12 +97,12 @@ export function AdminDashboardView() {
   const [loading, setLoading] = useState(true);
 
   // Live Supabase DB state
-  const [orders, setOrders] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
-  const [deliveries, setDeliveries] = useState<any[]>([]);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [customers, setCustomers] = useState<AdminCustomer[]>([]);
+  const [inventoryAlerts, setInventoryAlerts] = useState<AdminProduct[]>([]);
+  const [deliveries, setDeliveries] = useState<AdminDelivery[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -88,13 +121,19 @@ export function AdminDashboardView() {
           supabase.from("profiles").select("*").eq("role", "customer"),
           supabase.from("inventory").select("*, products(*)"),
           supabase.from("delivery_assignments").select("*"),
-          supabase.from("audit_logs").select("*").order("created_at", { ascending: false }).limit(10),
+          supabase
+            .from("audit_logs")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(10),
         ]);
 
         setOrders(dbOrders || []);
         setProducts(dbProducts || []);
         setCustomers(dbCustomers || []);
-        setInventoryAlerts((dbProducts || []).filter((p: any) => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 10));
+        setInventoryAlerts(
+          ((dbProducts || []) as AdminProduct[]).filter((p) => Number(p.stock || 0) <= 10),
+        );
         setDeliveries(dbDeliveries || []);
         setAuditLogs(dbLogs || []);
       } catch (err) {
@@ -108,11 +147,21 @@ export function AdminDashboardView() {
 
     const channel = supabase
       .channel("admin_dashboard_realtime_kpis")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadDashboardData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadDashboardData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () => loadDashboardData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadDashboardData())
-      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadDashboardData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
+        loadDashboardData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () =>
+        loadDashboardData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadDashboardData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () =>
+        loadDashboardData(),
+      )
       .subscribe();
 
     return () => {
@@ -127,27 +176,38 @@ export function AdminDashboardView() {
 
   const totalOrdersCount = orders.length;
   const pendingOrdersCount = orders.filter((o) => o.status === "Pending").length;
-  const lowStockCount = products.filter((p) => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 10).length;
+  const lowStockCount = products.filter(
+    (p) => Number(p.stock || 0) > 0 && Number(p.stock || 0) <= 10,
+  ).length;
   const outOfStockCount = products.filter((p) => Number(p.stock || 0) === 0).length;
-  const activeDeliveriesCount = deliveries.filter((d) => d.status === "Out for Delivery" || d.status === "Pending").length;
+  const activeDeliveriesCount = deliveries.filter(
+    (d) => d.status === "Out for Delivery" || d.status === "Pending",
+  ).length;
   const averageOrderValue = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
 
   // Chart data calculations from real orders
-  const chartData = orders.length > 0
-    ? orders.slice(0, 12).reverse().map((o) => ({
-        month: new Date(o.created_at).toLocaleDateString("en-GB", { month: "short", day: "numeric" }),
-        revenue: Number(o.total || 0),
-        orders: 1,
-        aov: Number(o.total || 0),
-      }))
-    : [
-        { month: "Jan", revenue: 0, orders: 0, aov: 0 },
-        { month: "Feb", revenue: 0, orders: 0, aov: 0 },
-        { month: "Mar", revenue: 0, orders: 0, aov: 0 },
-        { month: "Apr", revenue: 0, orders: 0, aov: 0 },
-        { month: "May", revenue: 0, orders: 0, aov: 0 },
-        { month: "Jun", revenue: 0, orders: 0, aov: 0 },
-      ];
+  const chartData =
+    orders.length > 0
+      ? orders
+          .slice(0, 12)
+          .reverse()
+          .map((o) => ({
+            month: new Date(o.created_at).toLocaleDateString("en-GB", {
+              month: "short",
+              day: "numeric",
+            }),
+            revenue: Number(o.total || 0),
+            orders: 1,
+            aov: Number(o.total || 0),
+          }))
+      : [
+          { month: "Jan", revenue: 0, orders: 0, aov: 0 },
+          { month: "Feb", revenue: 0, orders: 0, aov: 0 },
+          { month: "Mar", revenue: 0, orders: 0, aov: 0 },
+          { month: "Apr", revenue: 0, orders: 0, aov: 0 },
+          { month: "May", revenue: 0, orders: 0, aov: 0 },
+          { month: "Jun", revenue: 0, orders: 0, aov: 0 },
+        ];
 
   // Dynamic trend calculation based on actual Supabase values
   const metricValues = chartData.map((d) => Number(d[analyticsMetric] || 0));
@@ -156,7 +216,8 @@ export function AdminDashboardView() {
   if (metricValues.length >= 2) {
     const mid = Math.floor(metricValues.length / 2);
     const firstHalfAvg = metricValues.slice(0, mid).reduce((sum, v) => sum + v, 0) / (mid || 1);
-    const secondHalfAvg = metricValues.slice(mid).reduce((sum, v) => sum + v, 0) / ((metricValues.length - mid) || 1);
+    const secondHalfAvg =
+      metricValues.slice(mid).reduce((sum, v) => sum + v, 0) / (metricValues.length - mid || 1);
 
     if (secondHalfAvg > firstHalfAvg * 1.01) {
       trend = "positive";
@@ -191,24 +252,30 @@ export function AdminDashboardView() {
     },
   }[trend];
 
-  const categoryData = products.length > 0
-    ? Array.from(new Set(products.map((p) => p.category_slug || "General"))).map((cat) => {
-        const catProds = products.filter((p) => (p.category_slug || "General") === cat);
-        return {
-          name: cat.replace("-", " ").toUpperCase(),
-          revenue: catProds.reduce((sum, p) => sum + Number(p.price || 0), 0),
-          orders: catProds.length,
-          units: catProds.reduce((sum, p) => sum + Number(p.stock || 0), 0),
-        };
-      })
-    : [{ name: "No Categories", revenue: 0, orders: 0, units: 0 }];
+  const categoryData =
+    products.length > 0
+      ? Array.from(new Set(products.map((p) => p.category_slug || "General"))).map((cat) => {
+          const catProds = products.filter((p) => (p.category_slug || "General") === cat);
+          return {
+            name: cat.replace("-", " ").toUpperCase(),
+            revenue: catProds.reduce((sum, p) => sum + Number(p.price || 0), 0),
+            orders: catProds.length,
+            units: catProds.reduce((sum, p) => sum + Number(p.stock || 0), 0),
+          };
+        })
+      : [{ name: "No Categories", revenue: 0, orders: 0, units: 0 }];
 
   const handleExportReport = () => {
     if (orders.length === 0) {
       return toast.error("No order data available to export.");
     }
     const headers = "Order Number,Customer Name,Customer Email,Status,Total,Date\n";
-    const rows = orders.map((o) => `"${o.order_number || o.id}","${o.customer_name || ''}","${o.customer_email || ''}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString('en-GB')}"`).join("\n");
+    const rows = orders
+      .map(
+        (o) =>
+          `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_email || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"`,
+      )
+      .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -221,7 +288,8 @@ export function AdminDashboardView() {
 
   // Dynamic greeting based on current hour
   const currentHour = new Date().getHours();
-  const greetingTime = currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
+  const greetingTime =
+    currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
 
   // Enterprise Modules for the NIZA-style 4-column module grid
   const MODULE_CARDS = [
@@ -330,33 +398,49 @@ export function AdminDashboardView() {
       <div className="space-y-4">
         {/* Row 1 Primary Metrics */}
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <Link to="/admin/orders" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
+          <Link
+            to="/admin/orders"
+            className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Revenue</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Total Revenue
+              </span>
               <div className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center border border-red-500/20 shadow-2xs">
                 <DollarSign className="h-5 w-5" />
               </div>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{gbp(totalRevenue)}</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {gbp(totalRevenue)}
+              </p>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-700 border border-red-500/20 font-extrabold text-[10px]">
                   <TrendingUp className="h-3 w-3" /> Live
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium">Verified database total</span>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  Verified database total
+                </span>
               </div>
             </div>
           </Link>
 
-          <Link to="/admin/orders" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
+          <Link
+            to="/admin/orders"
+            className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Orders</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Total Orders
+              </span>
               <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
                 <ShoppingBag className="h-5 w-5" />
               </div>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{totalOrdersCount}</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {totalOrdersCount}
+              </p>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px]">
                   {pendingOrdersCount} Pending
@@ -366,15 +450,22 @@ export function AdminDashboardView() {
             </div>
           </Link>
 
-          <Link to="/admin/customers" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
+          <Link
+            to="/admin/customers"
+            className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Customers</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Customers
+              </span>
               <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
                 <Users className="h-5 w-5" />
               </div>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{customers.length}</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {customers.length}
+              </p>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px]">
                   {customers.length} Accounts
@@ -384,15 +475,22 @@ export function AdminDashboardView() {
             </div>
           </Link>
 
-          <Link to="/admin/products" className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer">
+          <Link
+            to="/admin/products"
+            className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer"
+          >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Live Products</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                Live Products
+              </span>
               <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
                 <Package className="h-5 w-5" />
               </div>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{products.length}</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {products.length}
+              </p>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 border border-amber-500/20 font-extrabold text-[10px]">
                   {lowStockCount} Low Stock
@@ -404,43 +502,177 @@ export function AdminDashboardView() {
         </div>
 
         {/* Row 2 Secondary Operational KPIs */}
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-          <Link to={"/admin/orders?status=Pending" as never} className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          <Link
+            to={"/admin/orders?status=Pending" as never}
+            className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer"
+          >
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Pending Orders</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{pendingOrdersCount}</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                Pending Orders
+              </p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+                {pendingOrdersCount}
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium truncate block mt-0.5">
+                Awaiting fulfillment
+              </p>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/60 font-extrabold text-[11px]">
+            <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200/60 font-extrabold text-[11px] shrink-0">
               Queue
             </span>
           </Link>
 
-          <Link to={"/admin/inventory?status=low_stock" as never} className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
+          {/* Low Stock Items Card (Warning State) */}
+          <Link
+            to={"/admin/inventory?status=low_stock" as never}
+            className={cn(
+              "surface-card p-4 sm:p-5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer relative overflow-hidden",
+              lowStockCount > 0
+                ? "border-amber-400/90 bg-amber-500/10 backdrop-blur-md warning-alert-pulse shadow-xs hover:border-amber-500 hover:shadow-md hover:shadow-amber-500/15"
+                : "border-white/80 bg-white/60 backdrop-blur-md shadow-2xs hover:border-white hover:shadow-xs",
+            )}
+          >
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Low Stock Items</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{lowStockCount}</p>
+              <div className="flex items-center gap-1.5">
+                {lowStockCount > 0 && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                )}
+                <p
+                  className={cn(
+                    "text-[10px] font-extrabold uppercase tracking-wider",
+                    lowStockCount > 0 ? "text-amber-900" : "text-slate-400",
+                  )}
+                >
+                  Low Stock Items
+                </p>
+              </div>
+              <p
+                className={cn(
+                  "text-2xl sm:text-3xl font-black tracking-tight mt-0.5",
+                  lowStockCount > 0 ? "text-amber-700" : "text-slate-900",
+                )}
+              >
+                {lowStockCount}
+              </p>
+              <p
+                className={cn(
+                  "text-[10px] font-semibold mt-0.5 truncate",
+                  lowStockCount > 0 ? "text-amber-800/80" : "text-slate-400",
+                )}
+              >
+                {lowStockCount > 0 ? "Stock ≤ 10 units" : "Optimal levels"}
+              </p>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px]">
-              Threshold
-            </span>
+            {lowStockCount > 0 ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-black text-[11px] shrink-0 shadow-2xs">
+                Warning
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60 font-extrabold text-[11px] shrink-0">
+                Optimal
+              </span>
+            )}
           </Link>
 
-          <Link to="/admin/deliveries" className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
+          {/* Out of Stock Card (Highest / Critical State) */}
+          <Link
+            to={"/admin/inventory?status=out_of_stock" as never}
+            className={cn(
+              "surface-card p-4 sm:p-5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer relative overflow-hidden",
+              outOfStockCount > 0
+                ? "border-red-500 bg-red-500/15 backdrop-blur-md critical-alert-pulse shadow-md hover:border-red-600 hover:shadow-lg hover:shadow-red-600/25"
+                : "border-white/80 bg-white/60 backdrop-blur-md shadow-2xs hover:border-white hover:shadow-xs",
+            )}
+          >
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Active Deliveries</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{activeDeliveriesCount}</p>
+              <div className="flex items-center gap-1.5">
+                {outOfStockCount > 0 && (
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-90"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-600"></span>
+                  </span>
+                )}
+                <p
+                  className={cn(
+                    "text-[10px] font-black uppercase tracking-wider",
+                    outOfStockCount > 0 ? "text-red-800" : "text-slate-400",
+                  )}
+                >
+                  OUT OF STOCK
+                </p>
+              </div>
+              <p
+                className={cn(
+                  "text-2xl sm:text-3xl font-black tracking-tight mt-0.5",
+                  outOfStockCount > 0 ? "text-red-600" : "text-slate-900",
+                )}
+              >
+                {outOfStockCount}
+              </p>
+              <p
+                className={cn(
+                  "text-[10px] font-bold mt-0.5 truncate",
+                  outOfStockCount > 0 ? "text-red-700" : "text-slate-400",
+                )}
+              >
+                {outOfStockCount > 0 ? "Products requiring attention" : "No stockouts"}
+              </p>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[11px]">
+            {outOfStockCount > 0 ? (
+              <span className="relative flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-[11px] shadow-sm shadow-red-600/40 border border-red-500 shrink-0">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                Critical
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200/60 font-extrabold text-[11px] shrink-0">
+                Normal
+              </span>
+            )}
+          </Link>
+
+          <Link
+            to="/admin/deliveries"
+            className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer"
+          >
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                Active Deliveries
+              </p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+                {activeDeliveriesCount}
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium truncate block mt-0.5">
+                Dispatched en route
+              </p>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[11px] shrink-0">
               En Route
             </span>
           </Link>
 
-          <Link to="/admin/analytics" className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer">
+          <Link
+            to="/admin/analytics"
+            className="surface-card p-4 sm:p-5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md flex items-center justify-between shadow-2xs hover:border-white hover:shadow-xs transition-all cursor-pointer"
+          >
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Average Order Value</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{gbp(averageOrderValue)}</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                Average Order Value
+              </p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-0.5">
+                {gbp(averageOrderValue)}
+              </p>
+              <p className="text-[10px] text-slate-400 font-medium truncate block mt-0.5">
+                Per settled order
+              </p>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px]">
+            <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200/60 font-extrabold text-[11px] shrink-0">
               AOV
             </span>
           </Link>
@@ -454,7 +686,9 @@ export function AdminDashboardView() {
             <h2 className="text-xl font-black text-slate-900 tracking-tight">Enterprise Modules</h2>
             <p className="text-xs text-slate-500 font-semibold">Select a module to get started</p>
           </div>
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest hidden sm:inline">8 Active Modules</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest hidden sm:inline">
+            8 Active Modules
+          </span>
         </div>
 
         <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -483,9 +717,7 @@ export function AdminDashboardView() {
                   <h3 className="font-extrabold text-slate-900 text-lg group-hover:text-red-600 transition-colors">
                     {module.title}
                   </h3>
-                  <p className="text-xs text-slate-500 font-semibold mt-1">
-                    {module.subtitle}
-                  </p>
+                  <p className="text-xs text-slate-500 font-semibold mt-1">{module.subtitle}</p>
                 </div>
               </Link>
             );
@@ -501,7 +733,9 @@ export function AdminDashboardView() {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-black text-slate-900">Revenue Analytics</h2>
-                <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${chartTheme.badgeBg}`}>
+                <span
+                  className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${chartTheme.badgeBg}`}
+                >
                   {chartTheme.badgeText}
                 </span>
               </div>
@@ -512,7 +746,11 @@ export function AdminDashboardView() {
                 size="sm"
                 variant={analyticsMetric === "revenue" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("revenue")}
-                className={cn("h-7 text-[11px] font-bold rounded-lg px-3", analyticsMetric === "revenue" && "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs")}
+                className={cn(
+                  "h-7 text-[11px] font-bold rounded-lg px-3",
+                  analyticsMetric === "revenue" &&
+                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                )}
               >
                 Revenue
               </Button>
@@ -520,7 +758,11 @@ export function AdminDashboardView() {
                 size="sm"
                 variant={analyticsMetric === "orders" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("orders")}
-                className={cn("h-7 text-[11px] font-bold rounded-lg px-3", analyticsMetric === "orders" && "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs")}
+                className={cn(
+                  "h-7 text-[11px] font-bold rounded-lg px-3",
+                  analyticsMetric === "orders" &&
+                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                )}
               >
                 Orders
               </Button>
@@ -528,7 +770,11 @@ export function AdminDashboardView() {
                 size="sm"
                 variant={analyticsMetric === "aov" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("aov")}
-                className={cn("h-7 text-[11px] font-bold rounded-lg px-3", analyticsMetric === "aov" && "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs")}
+                className={cn(
+                  "h-7 text-[11px] font-bold rounded-lg px-3",
+                  analyticsMetric === "aov" &&
+                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                )}
               >
                 AOV
               </Button>
@@ -540,7 +786,9 @@ export function AdminDashboardView() {
               <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
                 <BarChart2 className="h-8 w-8 text-slate-300" />
                 <p className="text-xs font-bold text-slate-700">No order data yet</p>
-                <p className="text-[11px] text-slate-500">Revenue analytics will update when orders are created.</p>
+                <p className="text-[11px] text-slate-500">
+                  Revenue analytics will update when orders are created.
+                </p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -552,8 +800,17 @@ export function AdminDashboardView() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#ffffff",
@@ -562,9 +819,19 @@ export function AdminDashboardView() {
                       fontSize: "12px",
                       boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
                     }}
-                    formatter={(val: any) => [analyticsMetric === "orders" ? val : gbp(val), analyticsMetric.toUpperCase()]}
+                    formatter={(val: number | string) => [
+                      analyticsMetric === "orders" ? val : gbp(Number(val || 0)),
+                      analyticsMetric.toUpperCase(),
+                    ]}
                   />
-                  <Area type="monotone" dataKey={analyticsMetric} stroke="#dc2626" strokeWidth={3} fillOpacity={1} fill="url(#colorMetricRed)" />
+                  <Area
+                    type="monotone"
+                    dataKey={analyticsMetric}
+                    stroke="#dc2626"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorMetricRed)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -581,13 +848,23 @@ export function AdminDashboardView() {
             <div className="flex items-center gap-1 bg-white/80 p-1 rounded-xl border border-white/80 backdrop-blur-md">
               <button
                 onClick={() => setCategoryMetric("revenue")}
-                className={cn("text-[10px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer", categoryMetric === "revenue" ? "bg-white text-slate-900 shadow-2xs font-extrabold" : "text-slate-500")}
+                className={cn(
+                  "text-[10px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer",
+                  categoryMetric === "revenue"
+                    ? "bg-white text-slate-900 shadow-2xs font-extrabold"
+                    : "text-slate-500",
+                )}
               >
                 Price
               </button>
               <button
                 onClick={() => setCategoryMetric("units")}
-                className={cn("text-[10px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer", categoryMetric === "units" ? "bg-white text-slate-900 shadow-2xs font-extrabold" : "text-slate-500")}
+                className={cn(
+                  "text-[10px] font-bold px-2 py-1 rounded-lg transition-colors cursor-pointer",
+                  categoryMetric === "units"
+                    ? "bg-white text-slate-900 shadow-2xs font-extrabold"
+                    : "text-slate-500",
+                )}
               >
                 Stock
               </button>
@@ -603,10 +880,26 @@ export function AdminDashboardView() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
+                <BarChart
+                  data={categoryData}
+                  layout="vertical"
+                  margin={{ top: 0, right: 10, left: 10, bottom: 0 }}
+                >
                   <XAxis type="number" hide />
-                  <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#475569" }} width={80} />
-                  <Tooltip formatter={(val: any) => [categoryMetric === "revenue" ? gbp(val) : val, categoryMetric.toUpperCase()]} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 10, fill: "#475569" }}
+                    width={80}
+                  />
+                  <Tooltip
+                    formatter={(val: number | string) => [
+                      categoryMetric === "revenue" ? gbp(Number(val || 0)) : val,
+                      categoryMetric.toUpperCase(),
+                    ]}
+                  />
                   <Bar dataKey={categoryMetric} fill="#dc2626" radius={[0, 8, 8, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
@@ -625,51 +918,110 @@ export function AdminDashboardView() {
               <h2 className="text-base font-black text-slate-900">Attention Required</h2>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/20 font-extrabold text-xs">
-              {pendingOrdersCount + lowStockCount} Actions Needed
+              {pendingOrdersCount + lowStockCount + outOfStockCount} Actions Needed
             </span>
           </div>
 
-          {pendingOrdersCount === 0 && lowStockCount === 0 ? (
+          {pendingOrdersCount === 0 && lowStockCount === 0 && outOfStockCount === 0 ? (
             <div className="p-8 text-center space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
               <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
               <p className="text-xs font-bold text-slate-900">No attention items</p>
-              <p className="text-[11px] text-slate-500">All orders and inventory levels are healthy.</p>
+              <p className="text-[11px] text-slate-500">
+                All orders and inventory levels are healthy.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {orders.filter((o) => o.status === "Pending").slice(0, 3).map((o) => (
-                <div key={o.id} className="p-4 rounded-2xl border border-white/80 bg-white/80 flex items-center justify-between gap-4 shadow-2xs">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 font-bold">
-                      <Clock className="h-4 w-4" />
+              {orders
+                .filter((o) => o.status === "Pending")
+                .slice(0, 3)
+                .map((o) => (
+                  <div
+                    key={o.id}
+                    className="p-4 rounded-2xl border border-white/80 bg-white/80 flex items-center justify-between gap-4 shadow-2xs"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 font-bold">
+                        <Clock className="h-4 w-4" />
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-extrabold text-slate-900">
+                          Order #{o.order_number || o.id.slice(0, 8)} awaiting fulfillment
+                        </p>
+                        <p className="text-slate-500 font-medium">
+                          {o.customer_name} · Total {gbp(Number(o.total || 0))}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-xs">
-                      <p className="font-extrabold text-slate-900">Order #{o.order_number || o.id.slice(0, 8)} awaiting fulfillment</p>
-                      <p className="text-slate-500 font-medium">{o.customer_name} · Total {gbp(o.total)}</p>
-                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full text-xs font-bold shrink-0 border-white/80 bg-white hover:bg-slate-50 shadow-2xs"
+                    >
+                      <Link to="/admin/orders">Review</Link>
+                    </Button>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0 border-white/80 bg-white hover:bg-slate-50 shadow-2xs">
-                    <Link to="/admin/orders">Review</Link>
-                  </Button>
-                </div>
-              ))}
+                ))}
 
-              {inventoryAlerts.slice(0, 2).map((inv) => (
-                <div key={inv.id} className="p-4 rounded-2xl border border-red-200/70 bg-red-50/40 flex items-center justify-between gap-4 shadow-2xs">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-red-100 text-red-700">
-                      <AlertTriangle className="h-4 w-4" />
+              {inventoryAlerts.slice(0, 3).map((inv) => {
+                const isOutOfStock = Number(inv.stock ?? inv.current_stock ?? 0) === 0;
+                return (
+                  <div
+                    key={inv.id}
+                    className={cn(
+                      "p-4 rounded-2xl flex items-center justify-between gap-4 shadow-2xs",
+                      isOutOfStock
+                        ? "border border-red-300/80 bg-red-50/60"
+                        : "border border-amber-200/70 bg-amber-50/40",
+                    )}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          "p-2.5 rounded-xl",
+                          isOutOfStock ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800",
+                        )}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </div>
+                      <div className="text-xs">
+                        <p className="font-extrabold text-slate-900">
+                          {isOutOfStock
+                            ? `Out of Stock: ${inv.name || inv.products?.name || "Product"}`
+                            : `Low Stock Alert: ${inv.name || inv.products?.name || "Product"}`}
+                        </p>
+                        <p className="text-slate-500 font-medium">
+                          {isOutOfStock
+                            ? "Current Stock: 0 units (Requires urgent restock)"
+                            : `Current Stock: ${inv.stock ?? inv.current_stock} units (Low Stock)`}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-xs">
-                      <p className="font-extrabold text-slate-900">Low Stock Alert: {inv.name || inv.products?.name || "Product"}</p>
-                      <p className="text-slate-500 font-medium">Current Stock: {inv.stock ?? inv.current_stock} units (Low Stock)</p>
-                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className={cn(
+                        "rounded-full text-xs font-bold shrink-0 shadow-2xs",
+                        isOutOfStock
+                          ? "border-red-200 text-red-700 bg-white hover:bg-red-50"
+                          : "border-amber-200 text-amber-800 bg-white hover:bg-amber-50",
+                      )}
+                    >
+                      <Link
+                        to={
+                          isOutOfStock
+                            ? ("/admin/inventory?status=out_of_stock" as never)
+                            : ("/admin/inventory?status=low_stock" as never)
+                        }
+                      >
+                        Reorder
+                      </Link>
+                    </Button>
                   </div>
-                  <Button asChild size="sm" variant="outline" className="rounded-full text-xs font-bold shrink-0 border-red-200 text-red-700 bg-white hover:bg-red-50 shadow-2xs">
-                    <Link to="/admin/inventory">Reorder</Link>
-                  </Button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -678,36 +1030,67 @@ export function AdminDashboardView() {
         <div className="surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
           <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
             <h2 className="text-base font-black text-slate-900">Recent Audit Logs</h2>
-            <Button asChild variant="ghost" size="sm" className="h-7 text-xs font-bold text-red-600 hover:text-red-700 p-0">
-              <Link to="/admin/audit">View All <ArrowRight className="ml-1 h-3 w-3" /></Link>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs font-bold text-red-600 hover:text-red-700 p-0"
+            >
+              <Link to="/admin/audit">
+                View All <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
             </Button>
           </div>
 
           <div className="space-y-3">
             {auditLogs.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">No recent audit log activity.</p>
+              <p className="text-xs text-slate-500 text-center py-6">
+                No recent audit log activity.
+              </p>
             ) : (
-              auditLogs.slice(0, 5).map((log) => (
-                <div key={log.id} className="p-3 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md space-y-1 shadow-2xs">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-extrabold text-slate-900 truncate max-w-[140px]">{log.action || "System Action"}</span>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {new Date(log.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+              auditLogs.slice(0, 5).map((log) => {
+                const getDetailsSummary = (d: unknown): string => {
+                  if (typeof d === "string" && d.trim()) return d;
+                  if (d && typeof d === "object") {
+                    const obj = d as Record<string, unknown>;
+                    if (typeof obj.message === "string") return obj.message;
+                    if (typeof obj.description === "string") return obj.description;
+                    try {
+                      return JSON.stringify(obj);
+                    } catch {
+                      return "Audit details";
+                    }
+                  }
+                  if (typeof log.target_table === "string" && log.target_table)
+                    return log.target_table;
+                  if (typeof log.entity_type === "string" && log.entity_type)
+                    return log.entity_type;
+                  if (log.actor_email) return `By ${log.actor_email}`;
+                  return "System event";
+                };
+
+                return (
+                  <div
+                    key={log.id}
+                    className="p-3 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md space-y-1 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-extrabold text-slate-900 truncate max-w-[140px]">
+                        {log.action || "System Action"}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {new Date(log.created_at).toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium truncate">
+                      {getDetailsSummary(log.details)}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-medium truncate">
-                    {typeof log.details === "string" && log.details.trim()
-                      ? log.details
-                      : log.details && typeof log.details === "object" && Object.keys(log.details).length > 0
-                      ? (log.details.message || log.details.description || JSON.stringify(log.details))
-                      : (typeof log.target_table === "string" && log.target_table
-                      ? log.target_table
-                      : (typeof log.entity_type === "string" && log.entity_type
-                      ? log.entity_type
-                      : (log.actor_email ? `By ${log.actor_email}` : "System event")))}
-                  </p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

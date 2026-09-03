@@ -74,7 +74,8 @@ export function FeaturedSafetyGuide() {
 
             {/* Description */}
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-lg">
-              Simple, practical guidance for safer LPG storage, handling and everyday use across domestic and commercial settings.
+              Simple, practical guidance for safer LPG storage, handling and everyday use across
+              domestic and commercial settings.
             </p>
 
             {/* Two-Column Safety Checklist */}
@@ -106,7 +107,9 @@ export function FeaturedSafetyGuide() {
               <span>READ SAFETY GUIDE</span>
               <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform stroke-[2.5]" />
             </span>
-            <span className="text-xs sm:text-sm text-slate-400 font-semibold hidden sm:inline font-display">100% Free UK Guidance</span>
+            <span className="text-xs sm:text-sm text-slate-400 font-semibold hidden sm:inline font-display">
+              100% Free UK Guidance
+            </span>
           </div>
         </div>
       </Link>

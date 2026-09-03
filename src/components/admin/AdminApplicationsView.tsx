@@ -10,14 +10,12 @@ import {
   Building2,
   MapPin,
   PenTool,
-  ShieldCheck,
   RefreshCw,
   Loader2,
   Calendar,
   AlertTriangle,
   Flame,
-  Save,
-  Sliders,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +35,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -67,13 +67,20 @@ export function AdminApplicationsView() {
   const [adminNotes, setAdminNotes] = useState("");
   const [updating, setUpdating] = useState(false);
 
+  // Approval & Rejection Confirmation Dialogs
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+
   const loadApplications = async () => {
     setLoading(true);
     try {
       const data = await getAllGasCustomerApplications();
       setApplications(data);
-    } catch (err: any) {
-      toast.error("Failed to load customer applications: " + err.message);
+    } catch (err: unknown) {
+      toast.error(
+        "Failed to load customer applications: " + (err instanceof Error ? err.message : "Error"),
+      );
     } finally {
       setLoading(false);
     }
@@ -84,7 +91,17 @@ export function AdminApplicationsView() {
 
     const channel = supabase
       .channel("admin_applications_realtime_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "gas_customer_applications" }, () => loadApplications())
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () =>
+        loadApplications(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gas_customer_applications" },
+        () => loadApplications(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "cms_content_blocks" }, () =>
+        loadApplications(),
+      )
       .subscribe();
 
     return () => {
@@ -111,26 +128,64 @@ export function AdminApplicationsView() {
   const handleOpenDetails = (app: GasCustomerApplication) => {
     setSelectedApp(app);
     setAdminNotes(app.admin_notes || "");
+    setRejectionReason(app.admin_notes || "");
     setModalOpen(true);
   };
 
-  const handleUpdateStatus = async (newStatus: ApplicationStatus) => {
+  const handleConfirmApprove = async () => {
     if (!selectedApp) return;
     setUpdating(true);
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
+
       await updateGasApplicationStatus({
         applicationId: selectedApp.id,
         customerId: selectedApp.customer_id,
-        status: newStatus,
+        status: "APPROVED",
         adminNotes: adminNotes.trim(),
-        reviewedBy: "Admin Staff",
+        reviewedBy: adminName,
       });
 
-      toast.success(`Application marked as ${newStatus}!`);
+      toast.success(`Application for ${selectedApp.full_name} approved successfully!`);
+      setApproveModalOpen(false);
       setModalOpen(false);
       await loadApplications();
-    } catch (err: any) {
-      toast.error("Failed to update application: " + err.message);
+    } catch (err: unknown) {
+      toast.error(
+        "Failed to approve application: " + (err instanceof Error ? err.message : "Error"),
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedApp) return;
+    setUpdating(true);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
+
+      const finalReason =
+        rejectionReason.trim() || adminNotes.trim() || "Application details require verification.";
+
+      await updateGasApplicationStatus({
+        applicationId: selectedApp.id,
+        customerId: selectedApp.customer_id,
+        status: "REJECTED",
+        adminNotes: finalReason,
+        reviewedBy: adminName,
+      });
+
+      toast.success(`Application for ${selectedApp.full_name} rejected.`);
+      setRejectModalOpen(false);
+      setModalOpen(false);
+      await loadApplications();
+    } catch (err: unknown) {
+      toast.error(
+        "Failed to reject application: " + (err instanceof Error ? err.message : "Error"),
+      );
     } finally {
       setUpdating(false);
     }
@@ -142,15 +197,19 @@ export function AdminApplicationsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Gas Customer Applications</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <FileText className="h-7 w-7 text-primary" /> Gas Customer Applications ({applications.length})
+            <FileText className="h-7 w-7 text-primary" /> Gas Customer Applications (
+            {applications.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Review customer onboarding forms, gas usage classifications, and verify submitted digital signatures.
+            Review customer onboarding forms, gas usage classifications, and verify submitted
+            digital signatures.
           </p>
         </div>
 
@@ -159,7 +218,7 @@ export function AdminApplicationsView() {
             variant="outline"
             size="sm"
             onClick={loadApplications}
-            className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white"
+            className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white cursor-pointer"
           >
             <RefreshCw className={cn("h-3.5 w-3.5", loading ? "animate-spin text-primary" : "")} />
             <span>Sync Live DB</span>
@@ -197,14 +256,16 @@ export function AdminApplicationsView() {
                   "px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
                   statusFilter === tab.id
                     ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                 )}
               >
                 <span>{tab.label}</span>
                 <span
                   className={cn(
                     "px-1.5 py-0.2 rounded-full text-[10px]",
-                    statusFilter === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                    statusFilter === tab.id
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-200 text-slate-700",
                   )}
                 >
                   {tab.count}
@@ -243,46 +304,89 @@ export function AdminApplicationsView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs text-left">
         {loading ? (
           <div className="p-16 text-center text-xs text-muted-foreground font-bold">
-            <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
-            Loading customer applications...
+            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
+            Loading customer applications from database...
           </div>
         ) : filteredApplications.length === 0 ? (
-          <div className="p-16 text-center space-y-3">
-            <FileText className="mx-auto h-10 w-10 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">No customer applications found</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              New registered customers who submit their Gas Customer Application will appear here with their digital signatures.
+          <div className="p-16 text-center text-muted-foreground space-y-2">
+            <FileText className="h-10 w-10 mx-auto text-slate-300 stroke-[1.5]" />
+            <p className="font-extrabold text-slate-900 text-sm">No customer applications found</p>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              New registered customers who submit their Gas Customer Application will appear here
+              with their digital signatures.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/80">
+              <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="font-bold text-xs">Customer Name</TableHead>
-                  <TableHead className="font-bold text-xs">Contact & Location</TableHead>
-                  <TableHead className="font-bold text-xs">Usage & Business</TableHead>
-                  <TableHead className="font-bold text-xs">Signed Date</TableHead>
-                  <TableHead className="font-bold text-xs">Digital Signature</TableHead>
-                  <TableHead className="font-bold text-xs">Status</TableHead>
-                  <TableHead className="font-bold text-xs text-right">Actions</TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Application ID
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Customer Name
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Contact Details
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Address
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Usage Type
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Submitted Date
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Digital Signature
+                  </TableHead>
+                  <TableHead className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Status
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="divide-y divide-slate-100">
                 {filteredApplications.map((app) => (
-                  <TableRow key={app.id} className="hover:bg-slate-50/60">
-                    <TableCell className="text-xs">
-                      <p className="font-extrabold text-slate-900">{app.full_name}</p>
-                      <p className="text-[11px] text-muted-foreground font-mono">ID: {app.customer_id.slice(0, 8)}</p>
+                  <TableRow key={app.id} className="hover:bg-slate-50/80 transition-colors">
+                    <TableCell className="font-mono font-bold text-xs text-slate-900">
+                      #{app.id}
+                    </TableCell>
+
+                    <TableCell>
+                      <span className="font-black text-xs text-slate-900 block">
+                        {app.full_name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        UID: {app.customer_id.slice(0, 8)}...
+                      </span>
                     </TableCell>
 
                     <TableCell className="text-xs">
-                      <p className="font-semibold text-slate-800">{app.phone}</p>
-                      <p className="text-[11px] text-muted-foreground">{app.city} ({app.postcode})</p>
+                      <p className="font-medium text-slate-900">{app.email}</p>
+                      <p className="text-[11px] text-slate-500 font-medium">{app.phone}</p>
+                    </TableCell>
+
+                    <TableCell className="text-xs text-slate-700 max-w-xs truncate">
+                      <p className="font-bold truncate">{app.street_address}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {app.city} ({app.postcode})
+                      </p>
                     </TableCell>
 
                     <TableCell className="text-xs">
-                      <Badge className={cn("font-bold text-[10px] uppercase", app.usage_type === "DOMESTIC" ? "bg-red-50 text-red-700 border-red-200" : "bg-blue-50 text-blue-700 border-blue-200")}>
+                      <Badge
+                        className={cn(
+                          "font-bold text-[10px] uppercase",
+                          app.usage_type === "DOMESTIC"
+                            ? "bg-red-50 text-red-700 border-red-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200",
+                        )}
+                      >
                         {app.usage_type}
                       </Badge>
                       {app.business_name && (
@@ -321,11 +425,15 @@ export function AdminApplicationsView() {
                           app.status === "APPROVED"
                             ? "bg-emerald-600 text-white"
                             : app.status === "REJECTED"
-                            ? "bg-red-600 text-white"
-                            : "bg-amber-500 text-white"
+                              ? "bg-red-600 text-white"
+                              : "bg-amber-500 text-white",
                         )}
                       >
-                        {app.status}
+                        {app.status === "APPROVED"
+                          ? "Approved"
+                          : app.status === "REJECTED"
+                            ? "Rejected"
+                            : "Pending Review"}
                       </Badge>
                     </TableCell>
 
@@ -333,7 +441,7 @@ export function AdminApplicationsView() {
                       <Button
                         size="sm"
                         onClick={() => handleOpenDetails(app)}
-                        className="rounded-full text-[11px] font-bold h-7 px-3"
+                        className="rounded-full text-[11px] font-bold h-7 px-3 bg-slate-900 hover:bg-primary text-white transition-colors cursor-pointer"
                       >
                         Review Form
                       </Button>
@@ -346,17 +454,30 @@ export function AdminApplicationsView() {
         )}
       </div>
 
-      {/* 4. Details Dialog */}
+      {/* 4. Details Modal */}
       {selectedApp && (
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="max-w-2xl rounded-3xl p-6 bg-white space-y-5 max-h-[90vh] overflow-y-auto text-left">
             <DialogHeader>
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <DialogTitle className="text-xl font-black text-slate-900">
+                <DialogTitle className="text-xl font-black text-slate-900 font-display">
                   Gas Customer Application Review
                 </DialogTitle>
-                <Badge className={cn("text-xs font-black uppercase", selectedApp.status === "APPROVED" ? "bg-emerald-600 text-white" : "bg-amber-500 text-white")}>
-                  {selectedApp.status}
+                <Badge
+                  className={cn(
+                    "text-xs font-black uppercase px-2.5 py-0.5",
+                    selectedApp.status === "APPROVED"
+                      ? "bg-emerald-600 text-white"
+                      : selectedApp.status === "REJECTED"
+                        ? "bg-rose-600 text-white"
+                        : "bg-amber-500 text-white",
+                  )}
+                >
+                  {selectedApp.status === "APPROVED"
+                    ? "Approved"
+                    : selectedApp.status === "REJECTED"
+                      ? "Rejected"
+                      : "Pending Review"}
                 </Badge>
               </div>
             </DialogHeader>
@@ -369,24 +490,28 @@ export function AdminApplicationsView() {
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-slate-500">Full Name:</span>
+                    <span className="text-slate-500 font-medium">Full Name:</span>
                     <p className="font-extrabold text-slate-900">{selectedApp.full_name}</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">Email Address:</span>
+                    <span className="text-slate-500 font-medium">Email Address:</span>
                     <p className="font-extrabold text-slate-900">{selectedApp.email}</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">Phone:</span>
+                    <span className="text-slate-500 font-medium">Phone:</span>
                     <p className="font-extrabold text-slate-900">{selectedApp.phone}</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">Date of Birth:</span>
-                    <p className="font-extrabold text-slate-900">{selectedApp.date_of_birth || "Not provided"}</p>
+                    <span className="text-slate-500 font-medium">Date of Birth:</span>
+                    <p className="font-extrabold text-slate-900">
+                      {selectedApp.date_of_birth || "Not provided"}
+                    </p>
                   </div>
                   <div className="col-span-2">
-                    <span className="text-slate-500">Street Address:</span>
-                    <p className="font-extrabold text-slate-900">{selectedApp.street_address}, {selectedApp.city} {selectedApp.postcode}</p>
+                    <span className="text-slate-500 font-medium">Registered Street Address:</span>
+                    <p className="font-extrabold text-slate-900">
+                      {selectedApp.street_address}, {selectedApp.city} {selectedApp.postcode}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -398,26 +523,32 @@ export function AdminApplicationsView() {
                 </h4>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <span className="text-slate-500">Usage Type:</span>
+                    <span className="text-slate-500 font-medium">Usage Type:</span>
                     <p className="font-extrabold text-slate-900">{selectedApp.usage_type} LPG</p>
                   </div>
                   <div>
-                    <span className="text-slate-500">Existing Cylinder Status:</span>
-                    <p className="font-extrabold text-slate-900">{selectedApp.existing_cylinder_status}</p>
+                    <span className="text-slate-500 font-medium">Existing Cylinder Status:</span>
+                    <p className="font-extrabold text-slate-900">
+                      {selectedApp.existing_cylinder_status}
+                    </p>
                   </div>
                   {selectedApp.business_name && (
                     <>
                       <div className="col-span-2 pt-2 border-t border-slate-200">
                         <span className="text-blue-700 font-bold">Registered Business Name:</span>
-                        <p className="font-black text-slate-900 text-sm">{selectedApp.business_name}</p>
+                        <p className="font-black text-slate-900 text-sm">
+                          {selectedApp.business_name}
+                        </p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Trade Sector:</span>
+                        <span className="text-slate-500 font-medium">Trade Sector:</span>
                         <p className="font-extrabold text-slate-900">{selectedApp.business_type}</p>
                       </div>
                       <div>
-                        <span className="text-slate-500">Accounts Contact:</span>
-                        <p className="font-extrabold text-slate-900">{selectedApp.business_contact || "N/A"}</p>
+                        <span className="text-slate-500 font-medium">Accounts Contact:</span>
+                        <p className="font-extrabold text-slate-900">
+                          {selectedApp.business_contact || "N/A"}
+                        </p>
                       </div>
                     </>
                   )}
@@ -428,7 +559,8 @@ export function AdminApplicationsView() {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="font-black uppercase tracking-wider text-slate-700 text-[10px] flex items-center gap-1.5">
-                    <PenTool className="h-3.5 w-3.5 text-primary" /> Customer Digital Signature (Signed Record)
+                    <PenTool className="h-3.5 w-3.5 text-primary" /> Customer Digital Signature
+                    (Signed Record)
                   </h4>
                   <span className="text-[10px] text-slate-400 font-mono">
                     Signed: {new Date(selectedApp.signed_at).toLocaleString("en-GB")}
@@ -450,7 +582,7 @@ export function AdminApplicationsView() {
 
               {/* Admin Review Notes */}
               <div className="space-y-1">
-                <label className="font-bold text-slate-700">Staff Review Notes</label>
+                <label className="font-bold text-slate-700 text-xs">Staff Review Notes</label>
                 <Textarea
                   rows={2}
                   value={adminNotes}
@@ -460,44 +592,163 @@ export function AdminApplicationsView() {
                 />
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Controls */}
               <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setModalOpen(false)}
-                  className="w-full sm:w-auto rounded-full"
+                  className="w-full sm:w-auto rounded-full text-xs font-bold"
                 >
                   Close
                 </Button>
 
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={updating}
-                    onClick={() => handleUpdateStatus("REJECTED")}
-                    className="flex-1 sm:flex-none rounded-full text-red-600 border-red-200 hover:bg-red-50 text-xs font-bold"
-                  >
-                    <XCircle className="h-4 w-4 mr-1" /> Reject
-                  </Button>
+                  {selectedApp.status === "APPROVED" ? (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs">
+                      <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3]" />
+                      Application Approved
+                    </div>
+                  ) : selectedApp.status === "REJECTED" ? (
+                    <div className="flex items-center gap-2">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 font-bold text-xs">
+                        <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                        Application Rejected
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => setApproveModalOpen(true)}
+                        className="rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer"
+                      >
+                        Re-Approve
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={updating}
+                        onClick={() => setRejectModalOpen(true)}
+                        className="flex-1 sm:flex-none rounded-full text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 text-xs font-bold cursor-pointer"
+                      >
+                        <XCircle className="h-3.5 w-3.5 mr-1" /> Reject Application
+                      </Button>
 
-                  <Button
-                    type="button"
-                    disabled={updating}
-                    onClick={() => handleUpdateStatus("APPROVED")}
-                    className="flex-1 sm:flex-none rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md"
-                  >
-                    {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
-                    Approve Application
-                  </Button>
+                      <Button
+                        type="button"
+                        disabled={updating}
+                        onClick={() => setApproveModalOpen(true)}
+                        className="flex-1 sm:flex-none rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs cursor-pointer"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Approve Application
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </DialogContent>
         </Dialog>
       )}
+
+      {/* 5. APPROVE CONFIRMATION DIALOG */}
+      <Dialog open={approveModalOpen} onOpenChange={setApproveModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200 shadow-xl text-left">
+          <DialogHeader className="space-y-2.5">
+            <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
+              <CheckCircle2 className="h-5 w-5 stroke-[2.5]" />
+            </div>
+            <DialogTitle className="font-display font-extrabold text-lg text-slate-900">
+              Approve gas customer application?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
+              This will approve{" "}
+              <span className="font-bold text-slate-800">{selectedApp?.full_name}</span>'s
+              application. They will receive an instant notification and be authorized to place
+              cylinder orders.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex sm:justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={updating}
+              onClick={() => setApproveModalOpen(false)}
+              className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-4 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={updating}
+              onClick={handleConfirmApprove}
+              className="rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 gap-1.5 cursor-pointer shadow-xs shadow-emerald-200"
+            >
+              {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Confirm Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 6. REJECT CONFIRMATION DIALOG */}
+      <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200 shadow-xl text-left">
+          <DialogHeader className="space-y-2.5">
+            <div className="h-10 w-10 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <DialogTitle className="font-display font-extrabold text-lg text-slate-900">
+              Reject gas customer application?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
+              Please provide a reason so{" "}
+              <span className="font-bold text-slate-800">{selectedApp?.full_name}</span> can review
+              and update their application.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-1 py-2">
+            <label className="text-xs font-bold text-slate-700">Rejection Reason</label>
+            <Textarea
+              rows={3}
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="e.g. Incomplete site address or trade registration documentation required..."
+              className="rounded-xl text-xs"
+            />
+          </div>
+
+          <DialogFooter className="flex sm:justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={updating}
+              onClick={() => setRejectModalOpen(false)}
+              className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-4 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={updating}
+              onClick={handleConfirmReject}
+              className="rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white h-9 px-4 gap-1.5 cursor-pointer shadow-xs shadow-rose-200"
+            >
+              {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Confirm Rejection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

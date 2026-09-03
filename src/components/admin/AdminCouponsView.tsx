@@ -25,12 +25,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -125,11 +120,7 @@ export function AdminCouponsView() {
         expires_at: endDate ? new Date(endDate).toISOString() : null,
       };
 
-      const { data, error } = await supabase
-        .from("coupons")
-        .insert(payload)
-        .select()
-        .single();
+      const { data, error } = await supabase.from("coupons").insert(payload).select().single();
 
       if (error) throw error;
 
@@ -182,10 +173,7 @@ export function AdminCouponsView() {
         expires_at: endDate ? new Date(endDate).toISOString() : null,
       };
 
-      const { error } = await supabase
-        .from("coupons")
-        .update(payload)
-        .eq("id", selectedCoupon.id);
+      const { error } = await supabase.from("coupons").update(payload).eq("id", selectedCoupon.id);
 
       if (error) throw error;
 
@@ -213,7 +201,12 @@ export function AdminCouponsView() {
 
       if (error) throw error;
 
-      await logAdminAuditAction(newActive ? "ENABLE_COUPON" : "DISABLE_COUPON", "coupons", coupon.id, { code: coupon.code });
+      await logAdminAuditAction(
+        newActive ? "ENABLE_COUPON" : "DISABLE_COUPON",
+        "coupons",
+        coupon.id,
+        { code: coupon.code },
+      );
       setCoupons(coupons.map((c) => (c.id === coupon.id ? { ...c, is_active: newActive } : c)));
       toast.success(`Coupon "${coupon.code}" ${newActive ? "enabled" : "disabled"}`);
     } catch (err: any) {
@@ -271,7 +264,8 @@ export function AdminCouponsView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" /> Loading coupons from Supabase...
+            <Loader2 className="h-4 w-4 animate-spin text-primary" /> Loading coupons from
+            Supabase...
           </div>
         ) : coupons.length === 0 ? (
           <div className="p-16 text-center space-y-4">
@@ -329,7 +323,9 @@ export function AdminCouponsView() {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs font-extrabold text-emerald-700">
-                      {c.discount_type === "percentage" ? `${c.discount_value}% OFF` : `${gbp(c.discount_value)} OFF`}
+                      {c.discount_type === "percentage"
+                        ? `${c.discount_value}% OFF`
+                        : `${gbp(c.discount_value)} OFF`}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       <span>Min {gbp(c.min_order_amount || 0)}</span>
@@ -338,8 +334,12 @@ export function AdminCouponsView() {
                       </span>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {c.starts_at ? new Date(c.starts_at).toLocaleDateString("en-GB") : "Immediate"}
-                      {c.expires_at ? ` - ${new Date(c.expires_at).toLocaleDateString("en-GB")}` : " (No Expire)"}
+                      {c.starts_at
+                        ? new Date(c.starts_at).toLocaleDateString("en-GB")
+                        : "Immediate"}
+                      {c.expires_at
+                        ? ` - ${new Date(c.expires_at).toLocaleDateString("en-GB")}`
+                        : " (No Expire)"}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -348,13 +348,19 @@ export function AdminCouponsView() {
                           !c.is_active
                             ? "bg-slate-100 text-slate-600 border-slate-200"
                             : isExpired
-                            ? "bg-red-50 text-red-700 border-red-200"
-                            : isScheduled
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : isScheduled
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
                         }`}
                       >
-                        {!c.is_active ? "Disabled" : isExpired ? "Expired" : isScheduled ? "Scheduled" : "Active"}
+                        {!c.is_active
+                          ? "Disabled"
+                          : isExpired
+                            ? "Expired"
+                            : isScheduled
+                              ? "Scheduled"
+                              : "Active"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -438,7 +444,10 @@ export function AdminCouponsView() {
                   Discount Type *
                 </Label>
                 <Select value={discountType} onValueChange={(val: any) => setDiscountType(val)}>
-                  <SelectTrigger id="discount-type" className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200">
+                  <SelectTrigger
+                    id="discount-type"
+                    className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl">
@@ -559,8 +568,14 @@ export function AdminCouponsView() {
                 <Label htmlFor="is-active" className="font-bold text-slate-700">
                   Status *
                 </Label>
-                <Select value={isActive ? "active" : "disabled"} onValueChange={(val) => setIsActive(val === "active")}>
-                  <SelectTrigger id="is-active" className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200">
+                <Select
+                  value={isActive ? "active" : "disabled"}
+                  onValueChange={(val) => setIsActive(val === "active")}
+                >
+                  <SelectTrigger
+                    id="is-active"
+                    className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl">
@@ -628,7 +643,10 @@ export function AdminCouponsView() {
                   Discount Type
                 </Label>
                 <Select value={discountType} onValueChange={(val: any) => setDiscountType(val)}>
-                  <SelectTrigger id="edit-discount-type" className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200">
+                  <SelectTrigger
+                    id="edit-discount-type"
+                    className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl">
@@ -673,8 +691,14 @@ export function AdminCouponsView() {
                 <Label htmlFor="edit-is-active" className="font-bold text-slate-700">
                   Status
                 </Label>
-                <Select value={isActive ? "active" : "disabled"} onValueChange={(val) => setIsActive(val === "active")}>
-                  <SelectTrigger id="edit-is-active" className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200">
+                <Select
+                  value={isActive ? "active" : "disabled"}
+                  onValueChange={(val) => setIsActive(val === "active")}
+                >
+                  <SelectTrigger
+                    id="edit-is-active"
+                    className="mt-1.5 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-2xl">

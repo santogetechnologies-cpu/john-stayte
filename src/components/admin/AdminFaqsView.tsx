@@ -7,12 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 
@@ -121,9 +116,7 @@ export function AdminFaqsView() {
         content: JSON.stringify(updatedList),
       };
 
-      await supabase
-        .from("cms_content_blocks")
-        .upsert(payload, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(payload, { onConflict: "section_key" });
     } catch (err) {
       console.warn("FAQ sync notice:", err);
     }
@@ -168,7 +161,9 @@ export function AdminFaqsView() {
       let updatedList: any[] = [];
       if (editingFaq) {
         const oldQ = (editingFaq.q || editingFaq.question || "").toLowerCase();
-        updatedList = faqs.map((f) => ((f.q || f.question || "").toLowerCase() === oldQ ? faqItem : f));
+        updatedList = faqs.map((f) =>
+          (f.q || f.question || "").toLowerCase() === oldQ ? faqItem : f,
+        );
       } else {
         updatedList = [...faqs, faqItem];
       }
@@ -176,7 +171,9 @@ export function AdminFaqsView() {
       setFaqs(updatedList);
       await saveFaqsToSupabase(updatedList);
 
-      await logAdminAuditAction(editingFaq ? "UPDATE_FAQ" : "CREATE_FAQ", "faqs", faqItem.q, { question: faqItem.q });
+      await logAdminAuditAction(editingFaq ? "UPDATE_FAQ" : "CREATE_FAQ", "faqs", faqItem.q, {
+        question: faqItem.q,
+      });
       toast.success(editingFaq ? "FAQ updated successfully!" : "New FAQ added successfully!");
       setModalOpen(false);
     } catch (err: any) {
@@ -205,12 +202,14 @@ export function AdminFaqsView() {
   };
 
   const handleDeleteFaq = async (f: any) => {
-    const currentQ = (f.q || f.question || "");
+    const currentQ = f.q || f.question || "";
     if (!confirm(`Are you sure you want to delete FAQ "${currentQ}"?`)) return;
 
     try {
       const qLower = currentQ.toLowerCase();
-      const updatedList = faqs.filter((item) => (item.q || item.question || "").toLowerCase() !== qLower);
+      const updatedList = faqs.filter(
+        (item) => (item.q || item.question || "").toLowerCase() !== qLower,
+      );
       setFaqs(updatedList);
       await saveFaqsToSupabase(updatedList);
 
@@ -230,11 +229,15 @@ export function AdminFaqsView() {
             <h1 className="text-2xl font-black tracking-tight text-slate-900">FAQ Management</h1>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Manage customer frequently asked questions, delivery coverage notes, and fuel advice ({faqs.length} active questions).
+            Manage customer frequently asked questions, delivery coverage notes, and fuel advice (
+            {faqs.length} active questions).
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={openCreateModal} className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs">
+          <Button
+            onClick={openCreateModal}
+            className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
+          >
             <Plus className="h-4 w-4" /> Add FAQ
           </Button>
         </div>
@@ -262,10 +265,14 @@ export function AdminFaqsView() {
                   <tr key={i} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-5 py-4 max-w-md">
                       <p className="font-bold text-slate-900">
-                        {typeof (f.q || f.question) === "string" ? (f.q || f.question) : String(f.q || f.question || "")}
+                        {typeof (f.q || f.question) === "string"
+                          ? f.q || f.question
+                          : String(f.q || f.question || "")}
                       </p>
                       <p className="text-slate-500 text-[11px] line-clamp-2 mt-1 leading-relaxed">
-                        {typeof (f.a || f.answer) === "string" ? (f.a || f.answer) : String(f.a || f.answer || "")}
+                        {typeof (f.a || f.answer) === "string"
+                          ? f.a || f.answer
+                          : String(f.a || f.answer || "")}
                       </p>
                     </td>
                     <td className="px-5 py-4">
@@ -285,16 +292,28 @@ export function AdminFaqsView() {
                             : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200"
                         }`}
                       >
-                        <span className={`h-1.5 w-1.5 rounded-full ${f.is_active !== false ? "bg-emerald-500" : "bg-slate-400"}`} />
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${f.is_active !== false ? "bg-emerald-500" : "bg-slate-400"}`}
+                        />
                         {f.is_active !== false ? "Active" : "Hidden"}
                       </button>
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEditModal(f)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(f)}
+                          className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
+                        >
                           <Edit3 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteFaq(f)} className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteFaq(f)}
+                          className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -366,10 +385,18 @@ export function AdminFaqsView() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
-            <Button variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+            <Button
+              variant="ghost"
+              onClick={() => setModalOpen(false)}
+              className="rounded-full text-xs font-bold"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveFaq} disabled={saving} className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+            <Button
+              onClick={handleSaveFaq}
+              disabled={saving}
+              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+            >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {editingFaq ? "Save Changes" : "Create FAQ"}
             </Button>

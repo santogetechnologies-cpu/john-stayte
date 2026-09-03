@@ -19,12 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -71,7 +66,9 @@ export function ManagerProfileView() {
           .single();
 
         if (profile) {
-          setFullName(profile.full_name || authUser.user.user_metadata?.full_name || user?.name || "");
+          setFullName(
+            profile.full_name || authUser.user.user_metadata?.full_name || user?.name || "",
+          );
           setPhone(profile.phone || "07700 900123");
         } else {
           setFullName(user?.name || "");
@@ -173,12 +170,19 @@ export function ManagerProfileView() {
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-black text-foreground">{fullName || "Manager Account"}</h2>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                    <h2 className="text-lg font-black text-foreground">
+                      {fullName || "Manager Account"}
+                    </h2>
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"
+                    >
                       Active
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground font-semibold mt-0.5">{email || "manager@jss.com"}</p>
+                  <p className="text-xs text-muted-foreground font-semibold mt-0.5">
+                    {email || "manager@jss.com"}
+                  </p>
                   <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-2">
                     <span className="font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
                       Operations Manager
@@ -270,15 +274,23 @@ export function ManagerProfileView() {
               <h3 className="text-sm font-black text-foreground">Account Details</h3>
               <div className="space-y-3 text-xs">
                 <div>
-                  <p className="text-muted-foreground font-bold uppercase text-[10px]">Account User ID</p>
-                  <p className="font-mono text-[11px] text-foreground font-semibold mt-0.5 truncate">{userId || "N/A"}</p>
+                  <p className="text-muted-foreground font-bold uppercase text-[10px]">
+                    Account User ID
+                  </p>
+                  <p className="font-mono text-[11px] text-foreground font-semibold mt-0.5 truncate">
+                    {userId || "N/A"}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground font-bold uppercase text-[10px]">Database Role</p>
+                  <p className="text-muted-foreground font-bold uppercase text-[10px]">
+                    Database Role
+                  </p>
                   <p className="font-semibold text-foreground mt-0.5">manager</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground font-bold uppercase text-[10px]">Authentication Method</p>
+                  <p className="text-muted-foreground font-bold uppercase text-[10px]">
+                    Authentication Method
+                  </p>
                   <p className="font-semibold text-foreground mt-0.5">Supabase Auth (JWT)</p>
                 </div>
               </div>
@@ -286,7 +298,9 @@ export function ManagerProfileView() {
 
             <div className="surface-card p-6 rounded-3xl border border-slate-200/80 bg-white space-y-4 shadow-2xs">
               <h3 className="text-sm font-black text-foreground">Account Security</h3>
-              <p className="text-xs text-muted-foreground">Keep your manager account credentials protected.</p>
+              <p className="text-xs text-muted-foreground">
+                Keep your manager account credentials protected.
+              </p>
 
               <div className="pt-2 space-y-2">
                 <Button

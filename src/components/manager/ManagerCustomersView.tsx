@@ -1,14 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Users,
-  Search,
-  UserPlus,
-  Eye,
-  ShoppingBag,
-  RotateCcw,
-  Calendar,
-} from "lucide-react";
+import { Users, Search, UserPlus, Eye, ShoppingBag, RotateCcw, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,18 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -95,12 +77,12 @@ export function ManagerCustomersView() {
   const activeCustomers = customers.filter((c) => (c.status || "Active") === "Active").length;
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const newCustomers = customers.filter(
-    (c) => new Date(c.created_at || 0) >= thirtyDaysAgo,
-  ).length;
+  const newCustomers = customers.filter((c) => new Date(c.created_at || 0) >= thirtyDaysAgo).length;
 
   const customerEmailsWithOpenOrders = new Set(
-    orders.filter((o) => o.status === "Pending" || o.status === "Approved").map((o) => o.customer_email),
+    orders
+      .filter((o) => o.status === "Pending" || o.status === "Approved")
+      .map((o) => o.customer_email),
   );
   const customersWithOpenOrdersCount = customers.filter((c) =>
     customerEmailsWithOpenOrders.has(c.email),
@@ -114,7 +96,8 @@ export function ManagerCustomersView() {
       const matchesSearch = nameMatch || emailMatch;
 
       const status = c.status || "Active";
-      const matchesStatus = statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesStatus =
+        statusFilter === "all" || status.toLowerCase() === statusFilter.toLowerCase();
 
       return matchesSearch && matchesStatus;
     });
@@ -292,7 +275,11 @@ export function ManagerCustomersView() {
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               Customer accounts will appear here when they register or are added by admin.
             </p>
-            <Button onClick={() => setAddModal(true)} size="sm" className="rounded-full font-bold text-xs gap-1.5 mt-2">
+            <Button
+              onClick={() => setAddModal(true)}
+              size="sm"
+              className="rounded-full font-bold text-xs gap-1.5 mt-2"
+            >
               <UserPlus className="h-3.5 w-3.5" /> Add Customer
             </Button>
           </div>
@@ -318,8 +305,12 @@ export function ManagerCustomersView() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-extrabold text-foreground">{c.full_name || "Customer"}</p>
-                        <p className="text-[11px] text-muted-foreground font-normal">{c.id.slice(0, 8)}</p>
+                        <p className="font-extrabold text-foreground">
+                          {c.full_name || "Customer"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground font-normal">
+                          {c.id.slice(0, 8)}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
@@ -328,7 +319,10 @@ export function ManagerCustomersView() {
                     {new Date(c.created_at).toLocaleDateString("en-GB")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]"
+                    >
                       {c.status || "Active"}
                     </Badge>
                   </TableCell>
@@ -373,23 +367,36 @@ export function ManagerCustomersView() {
               <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-2">
                 <p className="font-bold text-foreground">Contact Information</p>
                 <p className="text-muted-foreground">Email: {selectedCustomer.email}</p>
-                <p className="text-muted-foreground">Phone: {selectedCustomer.phone || "Not specified"}</p>
+                <p className="text-muted-foreground">
+                  Phone: {selectedCustomer.phone || "Not specified"}
+                </p>
                 <p className="text-muted-foreground">
                   Registered: {new Date(selectedCustomer.created_at).toLocaleDateString("en-GB")}
                 </p>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-foreground">Order History ({selectedCustomerOrders.length})</h4>
+                <h4 className="font-bold text-foreground">
+                  Order History ({selectedCustomerOrders.length})
+                </h4>
                 {selectedCustomerOrders.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No orders placed by this customer yet.</p>
+                  <p className="text-xs text-muted-foreground">
+                    No orders placed by this customer yet.
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {selectedCustomerOrders.map((o) => (
-                      <div key={o.id} className="p-3 rounded-2xl border bg-white flex justify-between items-center text-xs">
+                      <div
+                        key={o.id}
+                        className="p-3 rounded-2xl border bg-white flex justify-between items-center text-xs"
+                      >
                         <div>
-                          <p className="font-bold text-foreground">Order #{o.order_number || o.id.slice(0, 8)}</p>
-                          <p className="text-[10px] text-muted-foreground">{new Date(o.created_at).toLocaleDateString("en-GB")}</p>
+                          <p className="font-bold text-foreground">
+                            Order #{o.order_number || o.id.slice(0, 8)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(o.created_at).toLocaleDateString("en-GB")}
+                          </p>
                         </div>
                         <div className="text-right">
                           <p className="font-black text-foreground">{gbp(Number(o.total))}</p>

@@ -7,8 +7,10 @@ const supabaseUrl =
   "https://wttchknauwvbfjatdscc.supabase.co";
 
 const supabaseKey =
-  (typeof import.meta !== "undefined" && (import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY)) ||
-  (typeof process !== "undefined" && (process.env?.VITE_SUPABASE_PUBLISHABLE_KEY || process.env?.VITE_SUPABASE_ANON_KEY)) ||
+  (typeof import.meta !== "undefined" &&
+    (import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env?.VITE_SUPABASE_ANON_KEY)) ||
+  (typeof process !== "undefined" &&
+    (process.env?.VITE_SUPABASE_PUBLISHABLE_KEY || process.env?.VITE_SUPABASE_ANON_KEY)) ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
 
 export const supabase = createClient<Database>(
@@ -33,7 +35,9 @@ export async function testSupabaseConnection(): Promise<{
 }> {
   try {
     // Probe test: query profiles schema or auth state
-    const { data, error } = await supabase.from("profiles").select("id", { count: "exact", head: true });
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true });
 
     if (error) {
       // 42P01: Table does not exist yet (schema pending application)
@@ -41,7 +45,8 @@ export async function testSupabaseConnection(): Promise<{
       if (error.code === "42P01") {
         return {
           connected: true,
-          message: "Supabase endpoint connected successfully (Database schema migrations pending application).",
+          message:
+            "Supabase endpoint connected successfully (Database schema migrations pending application).",
         };
       }
       return {

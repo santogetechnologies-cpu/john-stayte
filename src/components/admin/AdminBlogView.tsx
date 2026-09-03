@@ -1,18 +1,22 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { BookOpen, Plus, Edit3, Trash2, Loader2, Upload, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import {
+  BookOpen,
+  Plus,
+  Edit3,
+  Trash2,
+  Loader2,
+  Upload,
+  Image as ImageIcon,
+  CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 
@@ -22,8 +26,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Gas Cylinder Safety Measures",
     slug: "safe-cylinder-storage",
     category: "Safety",
-    excerpt: "Essential UK safety rules for storing propane, butane and patio gas cylinders safely outdoors, upright and well-ventilated.",
-    content: "Safe storage of LPG cylinders helps protect your home, family and neighbours. Follow our 5-step leak protocol, upright positioning rules, and emergency guidelines.\n\nKey Rules:\n1. Keep cylinders upright at all times\n2. Store cylinders outdoors in a well-ventilated area\n3. Keep cylinders away from flames, sparks and heat sources\n4. Never store cylinders in enclosed living spaces\n5. Check hoses, regulators and connections regularly",
+    excerpt:
+      "Essential UK safety rules for storing propane, butane and patio gas cylinders safely outdoors, upright and well-ventilated.",
+    content:
+      "Safe storage of LPG cylinders helps protect your home, family and neighbours. Follow our 5-step leak protocol, upright positioning rules, and emergency guidelines.\n\nKey Rules:\n1. Keep cylinders upright at all times\n2. Store cylinders outdoors in a well-ventilated area\n3. Keep cylinders away from flames, sparks and heat sources\n4. Never store cylinders in enclosed living spaces\n5. Check hoses, regulators and connections regularly",
     image_url: "/safety_storage_v3.jpg",
     author_name: "John Stayte Safety Team",
     is_published: true,
@@ -34,8 +40,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Propane vs Butane: Which Cylinder Do You Need?",
     slug: "propane-vs-butane",
     category: "Guides",
-    excerpt: "Understand the key differences between red propane and blue butane cylinders, including boiling points, operating temperatures and ideal appliances.",
-    content: "Choosing between red propane and blue butane is one of the most common questions our customers ask. While both are clean-burning LPG fuels, their distinct chemical properties dictate where and when each should be used.\n\nPropane (Red / Green Patio Gas) operates down to -42°C and is ideal for all-weather outdoor use, central heating and barbecues.\nButane (Blue) boils at -0.5°C and is purpose-engineered for indoor cabinet heaters and indoor cookers.",
+    excerpt:
+      "Understand the key differences between red propane and blue butane cylinders, including boiling points, operating temperatures and ideal appliances.",
+    content:
+      "Choosing between red propane and blue butane is one of the most common questions our customers ask. While both are clean-burning LPG fuels, their distinct chemical properties dictate where and when each should be used.\n\nPropane (Red / Green Patio Gas) operates down to -42°C and is ideal for all-weather outdoor use, central heating and barbecues.\nButane (Blue) boils at -0.5°C and is purpose-engineered for indoor cabinet heaters and indoor cookers.",
     image_url: "/guide-propane-vs-butane.jpg",
     author_name: "John Stayte Technical Team",
     is_published: true,
@@ -46,8 +54,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Smokeless Fuel Rules & Ready to Burn Regulations for 2026",
     slug: "smokeless-fuel-rules",
     category: "Regulations",
-    excerpt: "What the latest UK domestic fuel regulations mean for your open fire, multi-fuel stove, log burner and smoke control areas in Gloucestershire.",
-    content: "Since the introduction of Defra Ready to Burn legislation, domestic heating fuel regulations in the UK have prioritized air quality. Understand compliant fuels, smoke control areas, and optimal stove burning.",
+    excerpt:
+      "What the latest UK domestic fuel regulations mean for your open fire, multi-fuel stove, log burner and smoke control areas in Gloucestershire.",
+    content:
+      "Since the introduction of Defra Ready to Burn legislation, domestic heating fuel regulations in the UK have prioritized air quality. Understand compliant fuels, smoke control areas, and optimal stove burning.",
     image_url: "/guide-smokeless-fuel.jpg",
     author_name: "John Stayte Solid Fuel Specialists",
     is_published: true,
@@ -58,8 +68,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Getting the Best From Your First BBQ Burn & Grate Seasoning",
     slug: "bbq-first-burn",
     category: "Tips",
-    excerpt: "How to season porcelain and cast iron grates, set up direct and indirect heat zones, and achieve consistent temperature on Char-Broil gas barbecues.",
-    content: "Unboxing a brand-new gas barbecue is exciting, but jumping straight into cooking without proper pre-commissioning is a missed opportunity. Learn how to burn off manufacturing oils, season cast-iron cooking grids, and master TRU-Infrared cooking.",
+    excerpt:
+      "How to season porcelain and cast iron grates, set up direct and indirect heat zones, and achieve consistent temperature on Char-Broil gas barbecues.",
+    content:
+      "Unboxing a brand-new gas barbecue is exciting, but jumping straight into cooking without proper pre-commissioning is a missed opportunity. Learn how to burn off manufacturing oils, season cast-iron cooking grids, and master TRU-Infrared cooking.",
     image_url: "/char_broil_professionalpro3_1.jpg",
     author_name: "John Stayte Outdoor Living Team",
     is_published: true,
@@ -70,8 +82,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Think You Have a Gas Leak? Immediate Action Protocol",
     slug: "gas-leak-guide",
     category: "Emergency",
-    excerpt: "5 immediate actions if you smell gas or suspect an LPG leak: isolate valve, extinguish naked flames, do not operate light switches, open windows, and evacuate.",
-    content: "If you detect the distinctive rotten-egg odorant of LPG: 1. Do NOT turn electrical switches ON or OFF. 2. Extinguish all naked flames immediately. 3. Turn off the cylinder valve handwheel clockwise. 4. Open doors and windows wide. 5. Evacuate immediately and call our emergency line on 01452 741234.",
+    excerpt:
+      "5 immediate actions if you smell gas or suspect an LPG leak: isolate valve, extinguish naked flames, do not operate light switches, open windows, and evacuate.",
+    content:
+      "If you detect the distinctive rotten-egg odorant of LPG: 1. Do NOT turn electrical switches ON or OFF. 2. Extinguish all naked flames immediately. 3. Turn off the cylinder valve handwheel clockwise. 4. Open doors and windows wide. 5. Evacuate immediately and call our emergency line on 01452 741234.",
     image_url: "/gas-cylinder-safety-measures.jpg",
     author_name: "John Stayte Emergency Response",
     is_published: true,
@@ -82,8 +96,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "LPG Gas Fire Emergency Action Protocol",
     slug: "gas-fire-guide",
     category: "Emergency",
-    excerpt: "Critical actions during an active gas fire: do not attempt to extinguish if gas supply cannot be isolated; evacuate 100m+ and call 999 immediately.",
-    content: "If a gas flame is burning from a cylinder connection: Only isolate the valve if you can reach it without risk of burns. If the valve cannot be safely turned off, evacuate everyone to at least 100 metres and dial 999 immediately. Never extinguish a gas fire if the gas is still escaping.",
+    excerpt:
+      "Critical actions during an active gas fire: do not attempt to extinguish if gas supply cannot be isolated; evacuate 100m+ and call 999 immediately.",
+    content:
+      "If a gas flame is burning from a cylinder connection: Only isolate the valve if you can reach it without risk of burns. If the valve cannot be safely turned off, evacuate everyone to at least 100 metres and dial 999 immediately. Never extinguish a gas fire if the gas is still escaping.",
     image_url: "/safety_fire_flame.jpg",
     author_name: "John Stayte Emergency Response",
     is_published: true,
@@ -94,8 +110,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Cylinder Leaking? Outdoor Safety Procedure",
     slug: "cylinder-leaking-guide",
     category: "Safety",
-    excerpt: "How to handle a leaking or venting gas cylinder outdoors, check connections with soapy water, and arrange safe collection.",
-    content: "If you suspect an outdoor bottle is leaking: Apply soapy water solution around the valve spindle and regulator joint. Growing bubbles indicate an active leak. Move cylinder to a well-ventilated open area clear of drains, cellars and ignition sources, and contact our certified delivery team.",
+    excerpt:
+      "How to handle a leaking or venting gas cylinder outdoors, check connections with soapy water, and arrange safe collection.",
+    content:
+      "If you suspect an outdoor bottle is leaking: Apply soapy water solution around the valve spindle and regulator joint. Growing bubbles indicate an active leak. Move cylinder to a well-ventilated open area clear of drains, cellars and ignition sources, and contact our certified delivery team.",
     image_url: "/safety_leaking_cylinder_valve.jpg",
     author_name: "John Stayte Safety Team",
     is_published: true,
@@ -106,8 +124,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Damaged or Dented Cylinder Inspection Guide",
     slug: "damaged-cylinder-guide",
     category: "Safety",
-    excerpt: "Visual inspection criteria for gas bottles: deep dents, gouges, heavy corrosion, fire damage, and bent shroud collars.",
-    content: "Never connect or operate a gas cylinder showing signs of severe rust, deep gouges, bulges, fire scorching, or damaged valve threads. Exchange damaged cylinders at our Fromebridge depot or request replacement delivery.",
+    excerpt:
+      "Visual inspection criteria for gas bottles: deep dents, gouges, heavy corrosion, fire damage, and bent shroud collars.",
+    content:
+      "Never connect or operate a gas cylinder showing signs of severe rust, deep gouges, bulges, fire scorching, or damaged valve threads. Exchange damaged cylinders at our Fromebridge depot or request replacement delivery.",
     image_url: "/safety_damaged_vs_good_cylinder.png",
     author_name: "John Stayte Safety Team",
     is_published: true,
@@ -118,8 +138,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "LPG Cylinders Exposed to Radiant Heat & Fire",
     slug: "heat-exposure-guide",
     category: "Safety",
-    excerpt: "Risks of cylinder overpressurisation from bonfires, heat lamps, and direct flame exposure; safety relief valve operations.",
-    content: "Cylinders are equipped with pressure relief valves that vent gas vapour when exposed to extreme heat. Keep all gas bottles at least 3 metres away from barbecue grills, bonfires, space heaters, and radiant heat sources.",
+    excerpt:
+      "Risks of cylinder overpressurisation from bonfires, heat lamps, and direct flame exposure; safety relief valve operations.",
+    content:
+      "Cylinders are equipped with pressure relief valves that vent gas vapour when exposed to extreme heat. Keep all gas bottles at least 3 metres away from barbecue grills, bonfires, space heaters, and radiant heat sources.",
     image_url: "/safety_away_from_flames_v3.jpg",
     author_name: "John Stayte Technical Team",
     is_published: true,
@@ -130,8 +152,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Carbon Monoxide (CO) Safety & Appliance Warning Signs",
     slug: "carbon-monoxide-guide",
     category: "Safety",
-    excerpt: "The silent killer: installing audible EN 50291 CO alarms, recognising symptoms of carbon monoxide poisoning, and appliance flue ventilation.",
-    content: "Carbon monoxide is a colourless, odourless, tasteless toxic gas produced by incomplete combustion. Always install certified digital CO alarms in rooms with gas appliances, ensure adequate permanent ventilation, and book annual gas servicing.",
+    excerpt:
+      "The silent killer: installing audible EN 50291 CO alarms, recognising symptoms of carbon monoxide poisoning, and appliance flue ventilation.",
+    content:
+      "Carbon monoxide is a colourless, odourless, tasteless toxic gas produced by incomplete combustion. Always install certified digital CO alarms in rooms with gas appliances, ensure adequate permanent ventilation, and book annual gas servicing.",
     image_url: "/safety_co_alarm.jpg",
     author_name: "John Stayte Safety Team",
     is_published: true,
@@ -142,8 +166,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Unsafe Appliance & Yellow Flame Detection",
     slug: "unsafe-appliance-guide",
     category: "Guides",
-    excerpt: "Why clean LPG appliances burn crisp blue: warning signs of yellow or lazy flames, heavy soot accumulation, and burner blockage.",
-    content: "A healthy LPG flame is crisp and blue with a distinct inner cone. Yellow, floppy, lazy flames or heavy black soot on cooking pots indicate burner airflow obstruction or incorrect gas pressure requiring immediate technician attention.",
+    excerpt:
+      "Why clean LPG appliances burn crisp blue: warning signs of yellow or lazy flames, heavy soot accumulation, and burner blockage.",
+    content:
+      "A healthy LPG flame is crisp and blue with a distinct inner cone. Yellow, floppy, lazy flames or heavy black soot on cooking pots indicate burner airflow obstruction or incorrect gas pressure requiring immediate technician attention.",
     image_url: "/safety_gas_hob.jpg",
     author_name: "John Stayte Technical Team",
     is_published: true,
@@ -154,8 +180,10 @@ export const ALL_EXISTING_BLOG_POSTS = [
     title: "Emergency Decision Flow Infographic Guide",
     slug: "decision-flow-guide",
     category: "Emergency",
-    excerpt: "Follow the visual flowchart to immediately identify the safest course of action during gas emergencies, cylinder issues, and suspected leaks.",
-    content: "Our step-by-step decision framework helps you quickly determine whether an issue requires immediate isolation, natural ventilation, calling emergency services, or scheduling cylinder exchange.",
+    excerpt:
+      "Follow the visual flowchart to immediately identify the safest course of action during gas emergencies, cylinder issues, and suspected leaks.",
+    content:
+      "Our step-by-step decision framework helps you quickly determine whether an issue requires immediate isolation, natural ventilation, calling emergency services, or scheduling cylinder exchange.",
     image_url: "/guidance_emergency_help.jpg",
     author_name: "John Stayte Safety Team",
     is_published: true,
@@ -200,11 +228,14 @@ export function AdminBlogView() {
         } catch {}
       }
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "blog_posts_data",
-        title: "Articles & Safety Guides Directory",
-        content: JSON.stringify(ALL_EXISTING_BLOG_POSTS),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "blog_posts_data",
+          title: "Articles & Safety Guides Directory",
+          content: JSON.stringify(ALL_EXISTING_BLOG_POSTS),
+        },
+        { onConflict: "section_key" },
+      );
 
       setPosts(ALL_EXISTING_BLOG_POSTS);
     } catch (e) {
@@ -217,12 +248,18 @@ export function AdminBlogView() {
     try {
       const [{ data: dbPosts }, { data: blockData }] = await Promise.all([
         supabase.from("cms_blog_posts").select("*").order("created_at", { ascending: false }),
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "blog_posts_data").maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "blog_posts_data")
+          .maybeSingle(),
       ]);
 
       let parsedBlock: any[] = [];
       if (blockData?.content) {
-        try { parsedBlock = JSON.parse(blockData.content); } catch {}
+        try {
+          parsedBlock = JSON.parse(blockData.content);
+        } catch {}
       }
 
       if ((!dbPosts || dbPosts.length === 0) && (!parsedBlock || parsedBlock.length === 0)) {
@@ -230,7 +267,8 @@ export function AdminBlogView() {
       } else {
         const postMap = new Map<string, any>();
         ALL_EXISTING_BLOG_POSTS.forEach((p) => postMap.set(p.slug, p));
-        if (Array.isArray(parsedBlock)) parsedBlock.forEach((p) => postMap.set(p.slug, { ...postMap.get(p.slug), ...p }));
+        if (Array.isArray(parsedBlock))
+          parsedBlock.forEach((p) => postMap.set(p.slug, { ...postMap.get(p.slug), ...p }));
         if (Array.isArray(dbPosts) && dbPosts.length > 0) {
           dbPosts.forEach((p) => postMap.set(p.slug, { ...postMap.get(p.slug), ...p }));
         }
@@ -260,19 +298,28 @@ export function AdminBlogView() {
           is_published: a.is_published !== false,
         };
         try {
-          const { error } = await supabase.from("cms_blog_posts").upsert(dbPayload, { onConflict: "slug" });
+          const { error } = await supabase
+            .from("cms_blog_posts")
+            .upsert(dbPayload, { onConflict: "slug" });
           if (!error) count++;
         } catch {}
       }
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "blog_posts_data",
-        title: "Articles & Safety Guides Directory",
-        content: JSON.stringify(ALL_EXISTING_BLOG_POSTS),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "blog_posts_data",
+          title: "Articles & Safety Guides Directory",
+          content: JSON.stringify(ALL_EXISTING_BLOG_POSTS),
+        },
+        { onConflict: "section_key" },
+      );
 
-      await logAdminAuditAction("MIGRATE_BLOG_POSTS", "blog", "migration", { count: ALL_EXISTING_BLOG_POSTS.length });
-      toast.success(`Migrated all ${ALL_EXISTING_BLOG_POSTS.length} articles into Supabase database!`);
+      await logAdminAuditAction("MIGRATE_BLOG_POSTS", "blog", "migration", {
+        count: ALL_EXISTING_BLOG_POSTS.length,
+      });
+      toast.success(
+        `Migrated all ${ALL_EXISTING_BLOG_POSTS.length} articles into Supabase database!`,
+      );
       await loadPosts();
     } catch (err: any) {
       toast.error("Articles migration error: " + err.message);
@@ -313,7 +360,12 @@ export function AdminBlogView() {
 
   const generateSlug = (val: string) => {
     setTitle(val);
-    setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+    setSlug(
+      val
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, ""),
+    );
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,13 +403,16 @@ export function AdminBlogView() {
   const persistPostsUpdate = async (updatedPostsList: any[]) => {
     try {
       window.dispatchEvent(new CustomEvent("cms_blog_updated", { detail: updatedPostsList }));
-      
+
       // Save to Supabase cms_content_blocks (blog_posts_data)
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "blog_posts_data",
-        title: "Migrated Blog and Safety Guides",
-        content: JSON.stringify(updatedPostsList),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "blog_posts_data",
+          title: "Migrated Blog and Safety Guides",
+          content: JSON.stringify(updatedPostsList),
+        },
+        { onConflict: "section_key" },
+      );
     } catch (err) {
       console.warn("CMS content block sync notice:", err);
     }
@@ -410,8 +465,15 @@ export function AdminBlogView() {
       setPosts(updatedList);
       await persistPostsUpdate(updatedList);
 
-      await logAdminAuditAction(editingPost ? "UPDATE_BLOG_POST" : "CREATE_BLOG_POST", "blog", payload.slug, { title });
-      toast.success(editingPost ? "Blog post updated in Supabase!" : "New blog post published in Supabase!");
+      await logAdminAuditAction(
+        editingPost ? "UPDATE_BLOG_POST" : "CREATE_BLOG_POST",
+        "blog",
+        payload.slug,
+        { title },
+      );
+      toast.success(
+        editingPost ? "Blog post updated in Supabase!" : "New blog post published in Supabase!",
+      );
 
       setModalOpen(false);
     } catch (err: any) {
@@ -424,15 +486,24 @@ export function AdminBlogView() {
   const togglePublishedStatus = async (p: any) => {
     try {
       const updatedStatus = !p.is_published;
-      const updatedList = posts.map((item) => (item.slug === p.slug ? { ...item, is_published: updatedStatus } : item));
+      const updatedList = posts.map((item) =>
+        item.slug === p.slug ? { ...item, is_published: updatedStatus } : item,
+      );
       setPosts(updatedList);
       await persistPostsUpdate(updatedList);
 
       try {
-        await supabase.from("cms_blog_posts").update({ is_published: updatedStatus }).eq("slug", p.slug);
+        await supabase
+          .from("cms_blog_posts")
+          .update({ is_published: updatedStatus })
+          .eq("slug", p.slug);
       } catch {}
 
-      await logAdminAuditAction(updatedStatus ? "PUBLISH_BLOG_POST" : "UNPUBLISH_BLOG_POST", "blog", p.slug);
+      await logAdminAuditAction(
+        updatedStatus ? "PUBLISH_BLOG_POST" : "UNPUBLISH_BLOG_POST",
+        "blog",
+        p.slug,
+      );
       toast.success(`Post "${p.title}" ${updatedStatus ? "published" : "moved to draft"}!`);
     } catch (err: any) {
       toast.error("Failed to update status: " + err.message);
@@ -463,10 +534,13 @@ export function AdminBlogView() {
         <div>
           <div className="flex items-center gap-2">
             <BookOpen className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Blog & Safety Guides CMS</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              Blog & Safety Guides CMS
+            </h1>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Manage live educational articles, emergency gas guides, safety protocols, and regulations ({posts.length} articles active in database).
+            Manage live educational articles, emergency gas guides, safety protocols, and
+            regulations ({posts.length} articles active in database).
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -478,11 +552,18 @@ export function AdminBlogView() {
               size="sm"
               className="rounded-full font-bold text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
             >
-              {migrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {migrating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
               Migrate Legacy Articles ({ALL_EXISTING_BLOG_POSTS.length - posts.length} articles)
             </Button>
           )}
-          <Button onClick={openCreateModal} className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs">
+          <Button
+            onClick={openCreateModal}
+            className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
+          >
             <Plus className="h-4 w-4" /> New Article
           </Button>
         </div>
@@ -512,7 +593,11 @@ export function AdminBlogView() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         {p.image_url ? (
-                          <img src={p.image_url} alt="" className="h-10 w-14 rounded-lg object-cover bg-slate-100 border border-slate-200" />
+                          <img
+                            src={p.image_url}
+                            alt=""
+                            className="h-10 w-14 rounded-lg object-cover bg-slate-100 border border-slate-200"
+                          />
                         ) : (
                           <div className="h-10 w-14 rounded-lg bg-slate-100 border border-slate-200 grid place-items-center text-slate-400">
                             <ImageIcon className="h-4 w-4" />
@@ -529,7 +614,9 @@ export function AdminBlogView() {
                         {p.category || "Safety"}
                       </span>
                     </td>
-                    <td className="px-5 py-4 text-slate-600">{p.author_name || "John Stayte Team"}</td>
+                    <td className="px-5 py-4 text-slate-600">
+                      {p.author_name || "John Stayte Team"}
+                    </td>
                     <td className="px-5 py-4">
                       <button
                         onClick={() => togglePublishedStatus(p)}
@@ -539,19 +626,33 @@ export function AdminBlogView() {
                             : "bg-amber-50 text-amber-700 border border-amber-200/60 hover:bg-amber-100"
                         }`}
                       >
-                        <span className={`h-1.5 w-1.5 rounded-full ${p.is_published !== false ? "bg-emerald-500" : "bg-amber-500"}`} />
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${p.is_published !== false ? "bg-emerald-500" : "bg-amber-500"}`}
+                        />
                         {p.is_published !== false ? "Published" : "Draft"}
                       </button>
                     </td>
                     <td className="px-5 py-4 text-slate-400 text-[11px]">
-                      {p.created_at ? new Date(p.created_at).toLocaleDateString("en-GB") : "Current"}
+                      {p.created_at
+                        ? new Date(p.created_at).toLocaleDateString("en-GB")
+                        : "Current"}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEditModal(p)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(p)}
+                          className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
+                        >
                           <Edit3 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeletePost(p.slug, p.title)} className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeletePost(p.slug, p.title)}
+                          className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -637,9 +738,18 @@ export function AdminBlogView() {
                   className="rounded-xl text-xs flex-1"
                 />
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                   <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition-colors">
-                    {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {uploadingImage ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
                     Upload
                   </span>
                 </label>
@@ -671,10 +781,18 @@ export function AdminBlogView() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
-            <Button variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+            <Button
+              variant="ghost"
+              onClick={() => setModalOpen(false)}
+              className="rounded-full text-xs font-bold"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSavePost} disabled={saving} className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+            <Button
+              onClick={handleSavePost}
+              disabled={saving}
+              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+            >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {editingPost ? "Save Changes" : "Publish Article"}
             </Button>

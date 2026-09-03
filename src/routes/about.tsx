@@ -42,7 +42,10 @@ export const Route = createFileRoute("/about")({
         content:
           "Family-run since 1972 — the history, mission and team behind John Stayte Services gas, fuel, outdoor living and filling stations across Gloucestershire.",
       },
-      { property: "og:title", content: "About John Stayte Services — Keeping Gloucestershire Moving Since 1972" },
+      {
+        property: "og:title",
+        content: "About John Stayte Services — Keeping Gloucestershire Moving Since 1972",
+      },
       {
         property: "og:description",
         content:
@@ -70,7 +73,10 @@ function Reveal({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setIsVisible(true);
       return;
     }
@@ -99,7 +105,7 @@ function Reveal({
         {
           threshold: variant === "card" ? 0.08 : 0.12,
           rootMargin: "0px 0px -50px 0px",
-        }
+        },
       );
 
       observer.observe(el);
@@ -173,7 +179,10 @@ const TimelineMilestoneRow = memo(function TimelineMilestoneRow({
   const isLeft = milestone.side === "left";
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setIsVisible(true);
       return;
     }
@@ -192,7 +201,7 @@ const TimelineMilestoneRow = memo(function TimelineMilestoneRow({
             }
           }
         },
-        { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+        { threshold: 0.1, rootMargin: "0px 0px -40px 0px" },
       );
 
       observer.observe(el);
@@ -393,28 +402,20 @@ function AboutPage() {
               <div>
                 <Reveal immediate delay={100} variant="heading">
                   <span className="text-4xl sm:text-5xl lg:text-[48px] xl:text-[54px] font-black text-slate-900 tracking-tight leading-[1.04] font-display block">
-                    {aboutData?.heroHeading ? (
-                      aboutData.heroHeading.includes("MOVING SINCE") ? (
-                        aboutData.heroHeading.split("MOVING SINCE")[0].trim()
-                      ) : (
-                        "KEEPING GLOUCESTERSHIRE"
-                      )
-                    ) : (
-                      "KEEPING GLOUCESTERSHIRE"
-                    )}
+                    {aboutData?.heroHeading
+                      ? aboutData.heroHeading.includes("MOVING SINCE")
+                        ? aboutData.heroHeading.split("MOVING SINCE")[0].trim()
+                        : "KEEPING GLOUCESTERSHIRE"
+                      : "KEEPING GLOUCESTERSHIRE"}
                   </span>
                 </Reveal>
                 <Reveal immediate delay={180} variant="heading">
                   <span className="text-4xl sm:text-5xl lg:text-[48px] xl:text-[54px] font-black text-primary tracking-tight leading-[1.04] font-display block">
-                    {aboutData?.heroHeading ? (
-                      aboutData.heroHeading.includes("MOVING SINCE") ? (
-                        "MOVING SINCE " + aboutData.heroHeading.split("MOVING SINCE")[1].trim()
-                      ) : (
-                        "MOVING SINCE 1972"
-                      )
-                    ) : (
-                      "MOVING SINCE 1972"
-                    )}
+                    {aboutData?.heroHeading
+                      ? aboutData.heroHeading.includes("MOVING SINCE")
+                        ? "MOVING SINCE " + aboutData.heroHeading.split("MOVING SINCE")[1].trim()
+                        : "MOVING SINCE 1972"
+                      : "MOVING SINCE 1972"}
                   </span>
                 </Reveal>
                 <Reveal immediate delay={240}>
@@ -520,10 +521,11 @@ function AboutPage() {
               return (
                 <Reveal key={item.title} variant="card" delay={idx * 80}>
                   <div
-                    className={`flex items-center gap-2.5 sm:gap-3 lg:gap-3.5 p-2.5 sm:p-3 lg:p-3.5 group/benefit transition-all ${idx % 2 === 1 ? "border-l border-slate-200/80" : ""
-                      } ${idx >= 2 ? "border-t border-slate-200/80 lg:border-t-0" : ""
-                      } ${idx > 0 ? "lg:border-l lg:border-slate-200/80" : ""
-                      }`}
+                    className={`flex items-center gap-2.5 sm:gap-3 lg:gap-3.5 p-2.5 sm:p-3 lg:p-3.5 group/benefit transition-all ${
+                      idx % 2 === 1 ? "border-l border-slate-200/80" : ""
+                    } ${idx >= 2 ? "border-t border-slate-200/80 lg:border-t-0" : ""} ${
+                      idx > 0 ? "lg:border-l lg:border-slate-200/80" : ""
+                    }`}
                   >
                     {/* Large Soft Circular Icon Background */}
                     <div className="h-11 w-11 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-white shadow-[0_3px_14px_rgba(0,0,0,0.05)] border border-slate-100/90 flex items-center justify-center text-primary shrink-0 transition-transform duration-300 group-hover/benefit:scale-105">
@@ -552,7 +554,10 @@ function AboutPage() {
       {/* =========================================================================
           3. OUR STORY — ORIGINS & HERITAGE (Cinematic Video Feature)
       ========================================================================= */}
-      <section id="our-story" className="pt-8 pb-14 sm:pt-10 sm:pb-16 lg:pt-12 lg:pb-20 bg-white border-b border-slate-200/60 relative overflow-hidden">
+      <section
+        id="our-story"
+        className="pt-8 pb-14 sm:pt-10 sm:pb-16 lg:pt-12 lg:pb-20 bg-white border-b border-slate-200/60 relative overflow-hidden"
+      >
         <div className="container-page relative z-10">
           <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 xl:gap-16 items-center">
             {/* Left Column: Existing Cinematic Hero Video (48-50% desktop width, Sharp 90-degree Rectangle) */}
@@ -593,7 +598,8 @@ function AboutPage() {
               {/* Headline */}
               <Reveal delay={80} variant="heading">
                 <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[45px] font-black text-slate-900 tracking-tight leading-[1.12] font-display">
-                  Rooted in Whitminster.<br />
+                  Rooted in Whitminster.
+                  <br />
                   Built for <span className="text-primary">Gloucestershire.</span>
                 </h2>
                 {/* Short Red Divider Line */}
@@ -604,16 +610,31 @@ function AboutPage() {
               <Reveal delay={160}>
                 <div className="space-y-3.5 text-slate-700 text-[13.5px] sm:text-[14.5px] lg:text-[15px] leading-[1.65] font-normal">
                   <p>
-                    John Stayte Services began in 1972 as a roadside service station and workshop in the heart of Whitminster. Founded with a simple, enduring standard — deliver what local people need, on time, with fair pricing and honest advice — the business quickly became an indispensable fixture for local motorists, farmers, and village households.
+                    John Stayte Services began in 1972 as a roadside service station and workshop in
+                    the heart of Whitminster. Founded with a simple, enduring standard — deliver
+                    what local people need, on time, with fair pricing and honest advice — the
+                    business quickly became an indispensable fixture for local motorists, farmers,
+                    and village households.
                   </p>
                   <p>
-                    Over five decades, Gloucestershire has grown and transformed, and our capabilities have expanded alongside it. What started as a single village garage evolved into an authorized Calor Gas regional stockist, solid fuel merchant, pet nutrition supplier, and the operator of three bustling filling station forecourts across Fromebridge, Cambridge, and Frampton on Severn.
+                    Over five decades, Gloucestershire has grown and transformed, and our
+                    capabilities have expanded alongside it. What started as a single village garage
+                    evolved into an authorized Calor Gas regional stockist, solid fuel merchant, pet
+                    nutrition supplier, and the operator of three bustling filling station
+                    forecourts across Fromebridge, Cambridge, and Frampton on Severn.
                   </p>
                   <p>
-                    As the region's reliance on off-grid heating and bottled LPG expanded, we developed a dedicated distribution fleet engineered to navigate narrow country lanes, rural hamlets, and farm tracks. We established certified cylinder depots to guarantee a steady, dependable fuel supply in every season.
+                    As the region's reliance on off-grid heating and bottled LPG expanded, we
+                    developed a dedicated distribution fleet engineered to navigate narrow country
+                    lanes, rural hamlets, and farm tracks. We established certified cylinder depots
+                    to guarantee a steady, dependable fuel supply in every season.
                   </p>
                   <p>
-                    Today, the third generation of the Stayte family works side-by-side with our dedicated drivers, depot staff, and customer support advisors. While our catalogue and delivery radius have broadened, we remain steadfast to our founding values: neighbourly dependability, genuine local knowledge, and an unwavering commitment to Gloucestershire.
+                    Today, the third generation of the Stayte family works side-by-side with our
+                    dedicated drivers, depot staff, and customer support advisors. While our
+                    catalogue and delivery radius have broadened, we remain steadfast to our
+                    founding values: neighbourly dependability, genuine local knowledge, and an
+                    unwavering commitment to Gloucestershire.
                   </p>
                 </div>
               </Reveal>
@@ -647,7 +668,8 @@ function AboutPage() {
             </Reveal>
             <Reveal delay={150}>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl mx-auto">
-                Key milestones in our evolution from a single village garage to Gloucestershire's trusted fuel partner.
+                Key milestones in our evolution from a single village garage to Gloucestershire's
+                trusted fuel partner.
               </p>
             </Reveal>
           </div>
@@ -719,7 +741,8 @@ function AboutPage() {
             </Reveal>
             <Reveal delay={150}>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl mx-auto font-normal">
-                Everything you need for heating, outdoor living, rural work, and transport from one trusted local team.
+                Everything you need for heating, outdoor living, rural work, and transport from one
+                trusted local team.
               </p>
             </Reveal>
           </div>
@@ -838,7 +861,8 @@ function AboutPage() {
             </Reveal>
             <Reveal delay={150}>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl mx-auto font-normal">
-                We combine the reliability of a modern regional distributor with the personal care of an independent family business.
+                We combine the reliability of a modern regional distributor with the personal care
+                of an independent family business.
               </p>
             </Reveal>
           </div>
@@ -888,8 +912,9 @@ function AboutPage() {
               return (
                 <Reveal key={b.title} variant="card" delay={idx * 110} className="h-full">
                   <div
-                    className={`bg-white rounded-[14px] sm:rounded-[16px] border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col ${isImageLeft ? "md:flex-row" : "md:flex-row-reverse"
-                      } h-full group`}
+                    className={`bg-white rounded-[14px] sm:rounded-[16px] border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col ${
+                      isImageLeft ? "md:flex-row" : "md:flex-row-reverse"
+                    } h-full group`}
                   >
                     {/* Sharp-Cornered Square/Portrait Photography (Approx 45% Desktop Width) */}
                     <div className="w-full md:w-[45%] h-52 sm:h-60 md:h-auto overflow-hidden bg-slate-100 shrink-0 relative">
@@ -969,15 +994,17 @@ function AboutPage() {
 
               <Reveal delay={160}>
                 <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                  Our distribution vehicles operate daily delivery routes across Gloucestershire, serving towns, rural
-                  villages, and isolated properties within a 40-mile radius.
+                  Our distribution vehicles operate daily delivery routes across Gloucestershire,
+                  serving towns, rural villages, and isolated properties within a 40-mile radius.
                 </p>
               </Reveal>
 
               {/* Service Areas Pill Grid */}
               <Reveal delay={220}>
                 <div className="space-y-2.5">
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Regular Delivery Areas</p>
+                  <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+                    Regular Delivery Areas
+                  </p>
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {[
                       "Gloucester",
@@ -1035,7 +1062,9 @@ function AboutPage() {
                   <div className="absolute bottom-3.5 left-3.5 right-3.5 sm:bottom-4 sm:left-4 sm:right-4 bg-white/95 backdrop-blur-md rounded-full px-4 py-2.5 sm:py-3 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.1)] flex items-center justify-between text-xs sm:text-[13px]">
                     <div className="flex items-center gap-2.5">
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-                      <span className="font-extrabold text-slate-800">Daily Delivery Fleet Active</span>
+                      <span className="font-extrabold text-slate-800">
+                        Daily Delivery Fleet Active
+                      </span>
                     </div>
                     <span className="text-primary font-black tracking-wide">40-Mile Radius</span>
                   </div>
@@ -1072,8 +1101,9 @@ function AboutPage() {
                 </Reveal>
                 <Reveal delay={160}>
                   <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal max-w-lg">
-                    Unlike generic couriers, our dedicated delivery drivers are certified hazardous goods specialists who understand
-                    the unique access needs of countryside driveways, farms, and residential gardens.
+                    Unlike generic couriers, our dedicated delivery drivers are certified hazardous
+                    goods specialists who understand the unique access needs of countryside
+                    driveways, farms, and residential gardens.
                   </p>
                 </Reveal>
               </div>
@@ -1087,7 +1117,8 @@ function AboutPage() {
                       <span>Local routes. Reliable delivery.</span>
                     </h4>
                     <p className="text-xs sm:text-[13px] text-slate-500 font-normal leading-relaxed pl-3.5">
-                      Our drivers know the roads, villages and rural properties across the area, helping every delivery arrive safely and efficiently.
+                      Our drivers know the roads, villages and rural properties across the area,
+                      helping every delivery arrive safely and efficiently.
                     </p>
                   </div>
 
@@ -1097,7 +1128,8 @@ function AboutPage() {
                       <span>Built around your needs.</span>
                     </h4>
                     <p className="text-xs sm:text-[13px] text-slate-500 font-normal leading-relaxed pl-3.5">
-                      From planned deliveries to urgent top-ups, our team is focused on dependable service and straightforward communication.
+                      From planned deliveries to urgent top-ups, our team is focused on dependable
+                      service and straightforward communication.
                     </p>
                   </div>
                 </div>
@@ -1184,7 +1216,8 @@ function AboutPage() {
             </Reveal>
             <Reveal delay={160}>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                Visit any of our Gloucestershire service stations for road fuels, Autogas LPG, bottle exchange, and convenience groceries.
+                Visit any of our Gloucestershire service stations for road fuels, Autogas LPG,
+                bottle exchange, and convenience groceries.
               </p>
             </Reveal>
           </div>
@@ -1255,7 +1288,9 @@ function AboutPage() {
                       <div className="p-3.5 sm:p-5 lg:p-6 space-y-3 sm:space-y-4">
                         {/* Station Icon & Title Row */}
                         <div className="flex items-center gap-2 sm:gap-3">
-                          <div className={`h-7 w-7 sm:h-9 sm:w-9 rounded-lg ${style.badgeBg} ${style.badgeText} flex items-center justify-center shrink-0 border ${style.badgeBorder}`}>
+                          <div
+                            className={`h-7 w-7 sm:h-9 sm:w-9 rounded-lg ${style.badgeBg} ${style.badgeText} flex items-center justify-center shrink-0 border ${style.badgeBorder}`}
+                          >
                             <MapPin className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 stroke-[2]" />
                           </div>
                           <h3 className="text-xs sm:text-base lg:text-lg font-extrabold text-slate-900 tracking-tight leading-snug">
@@ -1315,8 +1350,10 @@ function AboutPage() {
                 </Reveal>
                 <Reveal delay={80} variant="heading">
                   <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-slate-900 tracking-tight leading-[1.08] font-display">
-                    Local service.<br />
-                    Honest advice.<br />
+                    Local service.
+                    <br />
+                    Honest advice.
+                    <br />
                     <span className="text-primary">Dependable delivery.</span>
                   </h2>
                 </Reveal>
@@ -1324,8 +1361,9 @@ function AboutPage() {
 
               <Reveal delay={160}>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                  Since 1972, our commitment has stayed constant: providing Gloucestershire with honest pricing, certified
-                  energy supply, and personal support that large national call centres cannot match.
+                  Since 1972, our commitment has stayed constant: providing Gloucestershire with
+                  honest pricing, certified energy supply, and personal support that large national
+                  call centres cannot match.
                 </p>
               </Reveal>
 
@@ -1356,9 +1394,7 @@ function AboutPage() {
                   const IconComponent = p.icon;
                   return (
                     <Reveal key={p.title} variant="card" delay={200 + idx * 60}>
-                      <div
-                        className="text-center space-y-1.5 p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 shadow-2xs hover:bg-white hover:border-slate-200 transition-all duration-200 h-full flex flex-col justify-between"
-                      >
+                      <div className="text-center space-y-1.5 p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 shadow-2xs hover:bg-white hover:border-slate-200 transition-all duration-200 h-full flex flex-col justify-between">
                         <div className="h-8 w-8 sm:h-9 sm:w-9 mx-auto rounded-full bg-red-50 text-primary border border-red-100/90 flex items-center justify-center shadow-2xs">
                           <IconComponent className="h-4 w-4 stroke-[2]" />
                         </div>
@@ -1472,7 +1508,8 @@ function AboutPage() {
               </Reveal>
               <Reveal delay={150}>
                 <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed max-w-2xl">
-                  Speak with our Gloucestershire customer support team today or order online for prompt doorstep delivery.
+                  Speak with our Gloucestershire customer support team today or order online for
+                  prompt doorstep delivery.
                 </p>
               </Reveal>
             </div>

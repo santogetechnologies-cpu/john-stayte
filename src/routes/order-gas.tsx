@@ -34,12 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -54,10 +49,7 @@ import {
   validateAndCalculateOrderTotal,
   SlotConfig,
 } from "@/lib/cylinder-service";
-import {
-  getCustomerGasApplication,
-  GasCustomerApplication,
-} from "@/lib/application-service";
+import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
 import { GasCustomerApplicationForm } from "@/components/customer/GasCustomerApplicationForm";
 
 export const Route = createFileRoute("/order-gas")({
@@ -251,7 +243,11 @@ export function OrderGasPage() {
 
   // Pricing calculation
   const isNew = orderType === "NEW_CYLINDER";
-  const gasPriceUnit = selectedProduct ? (isNew ? selectedProduct.price : selectedProduct.refill_price) : 0;
+  const gasPriceUnit = selectedProduct
+    ? isNew
+      ? selectedProduct.price
+      : selectedProduct.refill_price
+    : 0;
   const depositUnit = isNew && selectedProduct ? selectedProduct.deposit_price : 0;
   const gasTotal = gasPriceUnit * quantity;
   const depositTotal = depositUnit * quantity;
@@ -383,7 +379,10 @@ export function OrderGasPage() {
         deliveryDate,
         deliveryTimeSlot: selectedDeliverySlot,
         returnMethod: orderType === "REFILL_EXCHANGE" ? returnMethod : undefined,
-        pickupAddress: returnMethod === "SCHEDULED_PICKUP" ? (pickupAddress.trim() || deliveryAddress.trim()) : undefined,
+        pickupAddress:
+          returnMethod === "SCHEDULED_PICKUP"
+            ? pickupAddress.trim() || deliveryAddress.trim()
+            : undefined,
         pickupDate: returnMethod === "SCHEDULED_PICKUP" ? pickupDate : undefined,
         pickupTimeSlot: returnMethod === "SCHEDULED_PICKUP" ? selectedPickupSlot : undefined,
         cylinderTag: cylinderTag.trim() || undefined,
@@ -417,7 +416,6 @@ export function OrderGasPage() {
     <SiteLayout>
       <div className="bg-[#fcfdfe] min-h-[85vh] py-8 sm:py-10 lg:py-14 border-b border-slate-200/60">
         <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 space-y-8">
-          
           {/* Page Header */}
           <div className="space-y-3 text-left">
             <div className="inline-flex items-center gap-2 rounded-full border border-red-200/90 bg-red-50/80 px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red-600 shadow-2xs backdrop-blur-xs">
@@ -428,7 +426,8 @@ export function OrderGasPage() {
               Order Gas Cylinders & Refills
             </h1>
             <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl">
-              Order domestic heating, commercial appliances, and bulk forecourt LPG supplies across Gloucestershire.
+              Order domestic heating, commercial appliances, and bulk forecourt LPG supplies across
+              Gloucestershire.
             </p>
           </div>
 
@@ -438,8 +437,14 @@ export function OrderGasPage() {
               <ol className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {[
                   { title: "1. Usage Type", desc: usageType ? usageType : "Select Usage" },
-                  { title: "2. Gas & Cylinder", desc: selectedProduct ? selectedProduct.name.slice(0, 18) + "..." : "Pick Size" },
-                  { title: "3. New / Refill", desc: orderType === "NEW_CYLINDER" ? "New Purchase" : "Refill Exchange" },
+                  {
+                    title: "2. Gas & Cylinder",
+                    desc: selectedProduct ? selectedProduct.name.slice(0, 18) + "..." : "Pick Size",
+                  },
+                  {
+                    title: "3. New / Refill",
+                    desc: orderType === "NEW_CYLINDER" ? "New Purchase" : "Refill Exchange",
+                  },
                   { title: "4. Schedule & Address", desc: "Delivery Slot" },
                   { title: "5. Review & Pay", desc: "Order Total" },
                 ].map((s, idx) => {
@@ -458,8 +463,8 @@ export function OrderGasPage() {
                           isActive
                             ? "border-primary bg-primary text-white shadow-md"
                             : isComplete
-                            ? "border-slate-300 bg-white text-slate-900 hover:border-slate-400 shadow-2xs cursor-pointer"
-                            : "border-slate-200/80 bg-slate-50 text-slate-400 cursor-not-allowed"
+                              ? "border-slate-300 bg-white text-slate-900 hover:border-slate-400 shadow-2xs cursor-pointer"
+                              : "border-slate-200/80 bg-slate-50 text-slate-400 cursor-not-allowed",
                         )}
                       >
                         <span
@@ -468,15 +473,24 @@ export function OrderGasPage() {
                             isActive
                               ? "bg-white/20 text-white"
                               : isComplete
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                              : "bg-slate-200/70 text-slate-500"
+                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                : "bg-slate-200/70 text-slate-500",
                           )}
                         >
-                          {isComplete ? <Check className="h-3 w-3 stroke-[3]" /> : <span>{idx + 1}</span>}
+                          {isComplete ? (
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          ) : (
+                            <span>{idx + 1}</span>
+                          )}
                         </span>
                         <div className="min-w-0">
                           <p className="truncate leading-tight font-extrabold">{s.title}</p>
-                          <p className={cn("text-[10px] font-normal truncate", isActive ? "text-white/80" : "text-slate-500")}>
+                          <p
+                            className={cn(
+                              "text-[10px] font-normal truncate",
+                              isActive ? "text-white/80" : "text-slate-500",
+                            )}
+                          >
                             {s.desc}
                           </p>
                         </div>
@@ -498,7 +512,8 @@ export function OrderGasPage() {
                   What are you ordering gas for?
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500">
-                  Select your primary application below to view verified Calor products and fast delivery slots.
+                  Select your primary application below to view verified Calor products and fast
+                  delivery slots.
                 </p>
               </div>
 
@@ -595,12 +610,13 @@ export function OrderGasPage() {
                       {usageType === "DOMESTIC"
                         ? "Domestic LPG"
                         : usageType === "COMMERCIAL"
-                        ? "Commercial LPG"
-                        : "Bulk LPG & Tanks"}
+                          ? "Commercial LPG"
+                          : "Bulk LPG & Tanks"}
                     </Badge>
                     {products.length > 0 && (
                       <span className="text-xs text-slate-400 font-bold">
-                        ({products.length} {products.length === 1 ? "Product" : "Products"} Available)
+                        ({products.length} {products.length === 1 ? "Product" : "Products"}{" "}
+                        Available)
                       </span>
                     )}
                   </div>
@@ -622,7 +638,9 @@ export function OrderGasPage() {
                     >
                       -
                     </Button>
-                    <span className="w-8 text-center font-black text-sm text-slate-900">{quantity}</span>
+                    <span className="w-8 text-center font-black text-sm text-slate-900">
+                      {quantity}
+                    </span>
                     <Button
                       type="button"
                       variant="ghost"
@@ -645,8 +663,12 @@ export function OrderGasPage() {
                 <div className="py-16 text-center space-y-4">
                   <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
                   <div className="space-y-1">
-                    <p className="text-base font-bold text-slate-800">We couldn’t load the available gas products.</p>
-                    <p className="text-xs text-slate-500">Please check your connection and try again.</p>
+                    <p className="text-base font-bold text-slate-800">
+                      We couldn’t load the available gas products.
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Please check your connection and try again.
+                    </p>
                   </div>
                   <Button
                     type="button"
@@ -659,14 +681,19 @@ export function OrderGasPage() {
               ) : products.length === 0 ? (
                 <div className="py-16 text-center space-y-3">
                   <AlertCircle className="mx-auto h-8 w-8 text-amber-500" />
-                  <p className="text-base font-bold text-slate-800">No products are currently available</p>
-                  <p className="text-xs text-slate-500">Please try another gas type or contact us for assistance.</p>
+                  <p className="text-base font-bold text-slate-800">
+                    No products are currently available
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Please try another gas type or contact us for assistance.
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                   {products.map((p) => {
                     const isSelected = selectedProductId === p.id;
-                    const productImage = p.image_url || p.images?.[0] || "/calor-cylinders-studio.jpg";
+                    const productImage =
+                      p.image_url || p.images?.[0] || "/calor-cylinders-studio.jpg";
                     return (
                       <div
                         key={p.id}
@@ -676,7 +703,9 @@ export function OrderGasPage() {
                         }}
                         className={cn(
                           "rounded-3xl border bg-white overflow-hidden shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left relative group cursor-pointer",
-                          isSelected ? "border-primary ring-2 ring-primary/20 shadow-md" : "border-slate-200/80"
+                          isSelected
+                            ? "border-primary ring-2 ring-primary/20 shadow-md"
+                            : "border-slate-200/80",
                         )}
                       >
                         {/* Top Image Section with OFFER & Heart */}
@@ -719,7 +748,9 @@ export function OrderGasPage() {
 
                             {/* Cylinder Size / Subcategory */}
                             <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                              <span className="font-bold text-slate-700">{p.cylinder_size || p.gas_type}</span>
+                              <span className="font-bold text-slate-700">
+                                {p.cylinder_size || p.gas_type}
+                              </span>
                               {p.subcategory && <span>• {p.subcategory}</span>}
                             </div>
                           </div>
@@ -790,7 +821,8 @@ export function OrderGasPage() {
                   How would you like to order?
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Select whether you need a brand-new bottle or are exchanging an empty Calor cylinder.
+                  Select whether you need a brand-new bottle or are exchanging an empty Calor
+                  cylinder.
                 </p>
               </div>
 
@@ -803,21 +835,27 @@ export function OrderGasPage() {
                     "p-6 rounded-3xl border text-left transition-all cursor-pointer space-y-4",
                     orderType === "NEW_CYLINDER"
                       ? "border-primary ring-2 ring-primary/20 bg-red-50/20 shadow-md"
-                      : "border-slate-200/90 bg-white hover:border-slate-300"
+                      : "border-slate-200/90 bg-white hover:border-slate-300",
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                       <PackagePlus className="h-6 w-6" />
                     </div>
-                    <Badge className="bg-blue-600 text-white font-extrabold text-[10px]">NEW PURCHASE</Badge>
+                    <Badge className="bg-blue-600 text-white font-extrabold text-[10px]">
+                      NEW PURCHASE
+                    </Badge>
                   </div>
 
                   <div className="space-y-1">
                     <h3 className="text-lg font-black text-slate-900">Option 1: New Cylinder</h3>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Select this if you do not have an empty Calor bottle to return. A refundable cylinder security deposit of{" "}
-                      <strong className="text-slate-900 font-bold">{gbp(selectedProduct.deposit_price)}</strong> will be added.
+                      Select this if you do not have an empty Calor bottle to return. A refundable
+                      cylinder security deposit of{" "}
+                      <strong className="text-slate-900 font-bold">
+                        {gbp(selectedProduct.deposit_price)}
+                      </strong>{" "}
+                      will be added.
                     </p>
                   </div>
 
@@ -841,20 +879,25 @@ export function OrderGasPage() {
                     "p-6 rounded-3xl border text-left transition-all cursor-pointer space-y-4",
                     orderType === "REFILL_EXCHANGE"
                       ? "border-primary ring-2 ring-primary/20 bg-red-50/20 shadow-md"
-                      : "border-slate-200/90 bg-white hover:border-slate-300"
+                      : "border-slate-200/90 bg-white hover:border-slate-300",
                   )}
                 >
                   <div className="flex items-center justify-between">
                     <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
                       <RotateCcw className="h-6 w-6" />
                     </div>
-                    <Badge className="bg-emerald-600 text-white font-extrabold text-[10px]">REFILL EXCHANGE</Badge>
+                    <Badge className="bg-emerald-600 text-white font-extrabold text-[10px]">
+                      REFILL EXCHANGE
+                    </Badge>
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="text-lg font-black text-slate-900">Option 2: Refill / Exchange</h3>
+                    <h3 className="text-lg font-black text-slate-900">
+                      Option 2: Refill / Exchange
+                    </h3>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Return your empty cylinder when receiving your refill. Zero cylinder deposit charge applies.
+                      Return your empty cylinder when receiving your refill. Zero cylinder deposit
+                      charge applies.
                     </p>
                   </div>
 
@@ -879,7 +922,9 @@ export function OrderGasPage() {
                     <div className="space-y-1 text-xs text-amber-900">
                       <p className="font-extrabold text-sm">Empty Cylinder Return Requirement:</p>
                       <p className="leading-relaxed">
-                        Return your empty cylinder when receiving your refill. An empty bottle of equivalent group/size must be available for collection before your refilled bottle is completed.
+                        Return your empty cylinder when receiving your refill. An empty bottle of
+                        equivalent group/size must be available for collection before your refilled
+                        bottle is completed.
                       </p>
                     </div>
                   </div>
@@ -910,7 +955,7 @@ export function OrderGasPage() {
                           "p-3 rounded-xl border text-xs font-extrabold text-left transition-all cursor-pointer",
                           returnMethod === "RETURN_ON_DELIVERY"
                             ? "border-primary bg-white text-primary ring-1 ring-primary"
-                            : "border-slate-200 bg-white/70 text-slate-700"
+                            : "border-slate-200 bg-white/70 text-slate-700",
                         )}
                       >
                         🚚 A. Return during delivery drop-off
@@ -923,7 +968,7 @@ export function OrderGasPage() {
                           "p-3 rounded-xl border text-xs font-extrabold text-left transition-all cursor-pointer",
                           returnMethod === "SCHEDULED_PICKUP"
                             ? "border-primary bg-white text-primary ring-1 ring-primary"
-                            : "border-slate-200 bg-white/70 text-slate-700"
+                            : "border-slate-200 bg-white/70 text-slate-700",
                         )}
                       >
                         📅 B. Schedule a separate pickup
@@ -980,7 +1025,9 @@ export function OrderGasPage() {
                   {/* Saved addresses from Customer Account */}
                   {savedAddresses.length > 0 && (
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-bold text-slate-700">Choose from Saved Addresses:</Label>
+                      <Label className="text-xs font-bold text-slate-700">
+                        Choose from Saved Addresses:
+                      </Label>
                       <select
                         value={selectedAddressId}
                         onChange={(e) => {
@@ -989,7 +1036,9 @@ export function OrderGasPage() {
                           if (val !== "custom") {
                             const found = savedAddresses.find((a) => a.id === val);
                             if (found) {
-                              setDeliveryAddress(`${found.street}, ${found.city} ${found.postcode}`);
+                              setDeliveryAddress(
+                                `${found.street}, ${found.city} ${found.postcode}`,
+                              );
                               if (found.name) setCustomerName(found.name);
                             }
                           }
@@ -1007,7 +1056,9 @@ export function OrderGasPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-700">Recipient Full Name *</Label>
+                    <Label className="text-xs font-bold text-slate-700">
+                      Recipient Full Name *
+                    </Label>
                     <Input
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
@@ -1017,7 +1068,9 @@ export function OrderGasPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-700">Contact Telephone Number *</Label>
+                    <Label className="text-xs font-bold text-slate-700">
+                      Contact Telephone Number *
+                    </Label>
                     <Input
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
@@ -1027,7 +1080,9 @@ export function OrderGasPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-700">Delivery Street Address & Postcode *</Label>
+                    <Label className="text-xs font-bold text-slate-700">
+                      Delivery Street Address & Postcode *
+                    </Label>
                     <Textarea
                       rows={3}
                       value={deliveryAddress}
@@ -1045,7 +1100,9 @@ export function OrderGasPage() {
                   </h3>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-700">Preferred Delivery Date *</Label>
+                    <Label className="text-xs font-bold text-slate-700">
+                      Preferred Delivery Date *
+                    </Label>
                     <Input
                       type="date"
                       value={deliveryDate}
@@ -1056,7 +1113,9 @@ export function OrderGasPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-700">Available Delivery Time Slot *</Label>
+                    <Label className="text-xs font-bold text-slate-700">
+                      Available Delivery Time Slot *
+                    </Label>
                     <div className="space-y-2">
                       {availableDeliverySlots.map(({ slot, available, remainingCapacity }) => (
                         <label
@@ -1066,8 +1125,8 @@ export function OrderGasPage() {
                             !available
                               ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
                               : selectedDeliverySlot === slot.slot_name
-                              ? "border-primary bg-red-50/40 text-slate-900 ring-1 ring-primary"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                                ? "border-primary bg-red-50/40 text-slate-900 ring-1 ring-primary"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-slate-300",
                           )}
                         >
                           <div className="flex items-center gap-2.5">
@@ -1081,7 +1140,14 @@ export function OrderGasPage() {
                             />
                             <span>{slot.slot_name}</span>
                           </div>
-                          <span className={cn("text-[10px] font-extrabold px-2 py-0.5 rounded-full", available ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600")}>
+                          <span
+                            className={cn(
+                              "text-[10px] font-extrabold px-2 py-0.5 rounded-full",
+                              available
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-red-50 text-red-600",
+                            )}
+                          >
                             {available ? `${remainingCapacity} slots open` : "Fully Booked"}
                           </span>
                         </label>
@@ -1096,7 +1162,9 @@ export function OrderGasPage() {
                         <Truck className="h-4 w-4 text-amber-600" /> Empty Cylinder Pickup Schedule:
                       </p>
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-bold text-slate-700">Pickup Date *</Label>
+                        <Label className="text-[11px] font-bold text-slate-700">
+                          Pickup Date *
+                        </Label>
                         <Input
                           type="date"
                           value={pickupDate}
@@ -1106,7 +1174,9 @@ export function OrderGasPage() {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-[11px] font-bold text-slate-700">Pickup Time Window</Label>
+                        <Label className="text-[11px] font-bold text-slate-700">
+                          Pickup Time Window
+                        </Label>
                         <select
                           value={selectedPickupSlot}
                           onChange={(e) => setSelectedPickupSlot(e.target.value)}
@@ -1123,7 +1193,9 @@ export function OrderGasPage() {
                   )}
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-700">Driver Delivery Instructions (Optional)</Label>
+                    <Label className="text-xs font-bold text-slate-700">
+                      Driver Delivery Instructions (Optional)
+                    </Label>
                     <Input
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
@@ -1175,10 +1247,17 @@ export function OrderGasPage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 space-y-4 text-left">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                   <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Application</span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Application
+                    </span>
                     <p className="text-base font-black text-slate-900">{usageType} LPG Order</p>
                   </div>
-                  <Badge className={cn("text-xs font-extrabold px-3 py-1", isNew ? "bg-blue-600 text-white" : "bg-emerald-600 text-white")}>
+                  <Badge
+                    className={cn(
+                      "text-xs font-extrabold px-3 py-1",
+                      isNew ? "bg-blue-600 text-white" : "bg-emerald-600 text-white",
+                    )}
+                  >
                     {isNew ? "NEW CYLINDER" : "REFILL EXCHANGE"}
                   </Badge>
                 </div>
@@ -1194,7 +1273,9 @@ export function OrderGasPage() {
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium">Recipient:</span>
-                    <p className="font-extrabold text-slate-900">{customerName} ({customerPhone})</p>
+                    <p className="font-extrabold text-slate-900">
+                      {customerName} ({customerPhone})
+                    </p>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium">Delivery Destination:</span>
@@ -1202,20 +1283,26 @@ export function OrderGasPage() {
                   </div>
                   <div className="sm:col-span-2">
                     <span className="text-slate-500 font-medium">Delivery Slot:</span>
-                    <p className="font-extrabold text-slate-900">{deliveryDate} ({selectedDeliverySlot})</p>
+                    <p className="font-extrabold text-slate-900">
+                      {deliveryDate} ({selectedDeliverySlot})
+                    </p>
                   </div>
                 </div>
 
                 {/* Price Itemization */}
                 <div className="border-t border-slate-200 pt-4 space-y-2 text-xs sm:text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-600">Gas Refill Charge ({quantity}x {gbp(gasPriceUnit)}):</span>
+                    <span className="text-slate-600">
+                      Gas Refill Charge ({quantity}x {gbp(gasPriceUnit)}):
+                    </span>
                     <span className="font-extrabold text-slate-900">{gbp(gasTotal)}</span>
                   </div>
 
                   {isNew ? (
                     <div className="flex items-center justify-between text-blue-700 font-semibold bg-blue-50/80 p-2 rounded-xl border border-blue-100">
-                      <span>Cylinder Security Deposit ({quantity}x {gbp(depositUnit)}):</span>
+                      <span>
+                        Cylinder Security Deposit ({quantity}x {gbp(depositUnit)}):
+                      </span>
                       <span className="font-black">{gbp(depositTotal)}</span>
                     </div>
                   ) : (
@@ -1227,7 +1314,9 @@ export function OrderGasPage() {
 
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Gloucestershire Forecourt Delivery:</span>
-                    <span className="font-bold text-emerald-600">{deliveryFee === 0 ? "FREE" : gbp(deliveryFee)}</span>
+                    <span className="font-bold text-emerald-600">
+                      {deliveryFee === 0 ? "FREE" : gbp(deliveryFee)}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base sm:text-lg font-black">
@@ -1239,11 +1328,21 @@ export function OrderGasPage() {
 
               {/* Payment Method Selector */}
               <div className="space-y-2 text-left">
-                <Label className="text-xs font-extrabold uppercase tracking-wider text-slate-700">Payment Option</Label>
+                <Label className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
+                  Payment Option
+                </Label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { id: "Credit / Debit Card (Online)", label: "Credit / Debit Card", icon: CreditCard },
-                    { id: "Pay On Delivery / Collection", label: "Pay On Delivery / Collection", icon: Banknote },
+                    {
+                      id: "Credit / Debit Card (Online)",
+                      label: "Credit / Debit Card",
+                      icon: CreditCard,
+                    },
+                    {
+                      id: "Pay On Delivery / Collection",
+                      label: "Pay On Delivery / Collection",
+                      icon: Banknote,
+                    },
                   ].map((method) => (
                     <button
                       key={method.id}
@@ -1253,10 +1352,15 @@ export function OrderGasPage() {
                         "flex items-center gap-3 p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                         paymentMethod === method.id
                           ? "border-primary bg-red-50/30 text-slate-900 ring-2 ring-primary/20"
-                          : "border-slate-200 bg-white hover:border-slate-300 text-slate-600"
+                          : "border-slate-200 bg-white hover:border-slate-300 text-slate-600",
                       )}
                     >
-                      <method.icon className={cn("h-4 w-4", paymentMethod === method.id ? "text-primary" : "text-slate-400")} />
+                      <method.icon
+                        className={cn(
+                          "h-4 w-4",
+                          paymentMethod === method.id ? "text-primary" : "text-slate-400",
+                        )}
+                      />
                       <span>{method.label}</span>
                     </button>
                   ))}
@@ -1270,7 +1374,8 @@ export function OrderGasPage() {
                   <div className="space-y-1 text-xs text-blue-900">
                     <p className="font-extrabold">Customer Account Sign-In Required</p>
                     <p className="text-blue-700">
-                      To ensure real-time tracking, warranty protection, and invoice persistence, please sign in or register to complete this order.
+                      To ensure real-time tracking, warranty protection, and invoice persistence,
+                      please sign in or register to complete this order.
                     </p>
                   </div>
                 </div>
@@ -1332,30 +1437,44 @@ export function OrderGasPage() {
                   Order #{completedOrder.orderNumber}
                 </h2>
                 <p className="text-sm text-slate-600 max-w-md mx-auto">
-                  Your order for <strong className="text-slate-900">{completedOrder.quantity}x {completedOrder.product.name}</strong> has been secured in our system.
+                  Your order for{" "}
+                  <strong className="text-slate-900">
+                    {completedOrder.quantity}x {completedOrder.product.name}
+                  </strong>{" "}
+                  has been secured in our system.
                 </p>
               </div>
 
               <div className="rounded-2xl bg-slate-50 border border-slate-200 p-5 text-left space-y-2.5 text-xs sm:text-sm">
                 <div className="flex justify-between border-b border-slate-200 pb-2">
                   <span className="text-slate-500">Application:</span>
-                  <span className="font-extrabold text-slate-900">{completedOrder.usageType} LPG</span>
+                  <span className="font-extrabold text-slate-900">
+                    {completedOrder.usageType} LPG
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-200 pb-2">
                   <span className="text-slate-500">Order Type:</span>
-                  <span className="font-bold text-slate-900">{completedOrder.orderType.replace(/_/g, " ")}</span>
+                  <span className="font-bold text-slate-900">
+                    {completedOrder.orderType.replace(/_/g, " ")}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-200 pb-2">
                   <span className="text-slate-500">Delivery Window:</span>
-                  <span className="font-bold text-slate-900">{completedOrder.deliveryDate} ({completedOrder.deliveryTimeSlot})</span>
+                  <span className="font-bold text-slate-900">
+                    {completedOrder.deliveryDate} ({completedOrder.deliveryTimeSlot})
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-200 pb-2">
                   <span className="text-slate-500">Total Paid/Amount:</span>
-                  <span className="font-black text-primary text-base">{gbp(completedOrder.total)}</span>
+                  <span className="font-black text-primary text-base">
+                    {gbp(completedOrder.total)}
+                  </span>
                 </div>
                 <div className="flex justify-between pt-1">
                   <span className="text-slate-500">Payment Status:</span>
-                  <span className="font-extrabold text-emerald-700">{completedOrder.paymentStatus}</span>
+                  <span className="font-extrabold text-emerald-700">
+                    {completedOrder.paymentStatus}
+                  </span>
                 </div>
               </div>
 
@@ -1383,7 +1502,6 @@ export function OrderGasPage() {
               </div>
             </div>
           )}
-
         </div>
       </div>
 
@@ -1399,7 +1517,8 @@ export function OrderGasPage() {
               Complete Your Gas Customer Application
             </DialogTitle>
             <p className="text-xs sm:text-sm text-slate-500 text-left">
-              To comply with UK Gas Safety and Pressure Systems regulations, please complete and digitally sign your customer application once before placing your first gas order.
+              To comply with UK Gas Safety and Pressure Systems regulations, please complete and
+              digitally sign your customer application once before placing your first gas order.
             </p>
           </DialogHeader>
 
@@ -1410,7 +1529,9 @@ export function OrderGasPage() {
               onSuccess={(savedApp) => {
                 setCustomerApp(savedApp);
                 setShowApplicationModal(false);
-                toast.success("Gas Customer Application verified and saved! Continuing with your order...");
+                toast.success(
+                  "Gas Customer Application verified and saved! Continuing with your order...",
+                );
                 if (step === 2) {
                   setStep(3); // Proceed to Delivery/Schedule
                 } else if (step === 4) {
@@ -1448,7 +1569,9 @@ export function OrderGasPage() {
                   {/* Main Large Image */}
                   <div className="relative aspect-square w-full flex items-center justify-center p-4 bg-white rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden my-auto">
                     <img
-                      src={detailActiveImg || detailProduct.image_url || "/calor-cylinders-studio.jpg"}
+                      src={
+                        detailActiveImg || detailProduct.image_url || "/calor-cylinders-studio.jpg"
+                      }
                       alt={detailProduct.name}
                       className="max-h-64 sm:max-h-72 w-auto object-contain transition-transform duration-300 hover:scale-105"
                     />
@@ -1466,10 +1589,14 @@ export function OrderGasPage() {
                             "h-14 w-14 rounded-xl border-2 p-1 bg-white shrink-0 transition-all cursor-pointer",
                             (detailActiveImg || detailProduct.image_url) === img
                               ? "border-primary shadow-xs scale-105"
-                              : "border-slate-200/80 hover:border-slate-300 opacity-70 hover:opacity-100"
+                              : "border-slate-200/80 hover:border-slate-300 opacity-70 hover:opacity-100",
                           )}
                         >
-                          <img src={img} alt={`Thumbnail ${idx + 1}`} className="h-full w-full object-contain" />
+                          <img
+                            src={img}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="h-full w-full object-contain"
+                          />
                         </button>
                       ))}
                     </div>
@@ -1507,11 +1634,17 @@ export function OrderGasPage() {
                       </div>
                       <span className="text-xs font-semibold text-slate-400">inc. VAT</span>
                       {detailProduct.stock > 0 ? (
-                        <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-[11px]">
+                        <Badge
+                          variant="outline"
+                          className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-[11px]"
+                        >
                           In Stock for Fast Delivery
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200 font-extrabold text-[11px]">
+                        <Badge
+                          variant="outline"
+                          className="ml-auto bg-amber-50 text-amber-700 border-amber-200 font-extrabold text-[11px]"
+                        >
                           Available to Order
                         </Badge>
                       )}
@@ -1576,7 +1709,9 @@ export function OrderGasPage() {
                         >
                           -
                         </Button>
-                        <span className="w-8 text-center font-black text-sm text-slate-900">{quantity}</span>
+                        <span className="w-8 text-center font-black text-sm text-slate-900">
+                          {quantity}
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"

@@ -31,18 +31,23 @@ export function ManagerReportsView() {
 
   const handleDownloadReport = (title: string) => {
     toast.success(`Generating manager report: ${title}`);
-    let csvContent = "Report Title: " + title + "\nGenerated Date: " + new Date().toLocaleDateString("en-GB") + "\n\n";
+    let csvContent =
+      "Report Title: " +
+      title +
+      "\nGenerated Date: " +
+      new Date().toLocaleDateString("en-GB") +
+      "\n\n";
 
     if (title.includes("Dispatch")) {
       csvContent += "Order Number,Customer Name,Status,Total (£),Date\n";
       orders.forEach((o) => {
-        csvContent += `"${o.order_number || o.id}","${o.customer_name || ''}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString('en-GB')}"\n`;
+        csvContent += `"${o.order_number || o.id}","${o.customer_name || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"\n`;
       });
     } else if (title.includes("Inventory")) {
       csvContent += "Product Name,Current Stock,Reorder Threshold,Depot Location,Status\n";
       inventory.forEach((i) => {
         const status = i.current_stock < i.reorder_threshold ? "Reorder Needed" : "Stock Healthy";
-        csvContent += `"${i.products?.name || 'Product'}",${i.current_stock},${i.reorder_threshold},"${i.depot_location || 'Whitminster'}","${status}"\n`;
+        csvContent += `"${i.products?.name || "Product"}",${i.current_stock},${i.reorder_threshold},"${i.depot_location || "Whitminster"}","${status}"\n`;
       });
     } else {
       csvContent += "Metric,Value,Description\n";
@@ -63,7 +68,9 @@ export function ManagerReportsView() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-          <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+          <Link to="/manager" className="hover:text-primary transition-colors">
+            Manager
+          </Link>
           <span>/</span>
           <span className="text-foreground">Reports</span>
         </div>
@@ -83,9 +90,21 @@ export function ManagerReportsView() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            { title: "Daily Dispatch Summary", desc: "Cylinder orders shipped, pending drops, and delivery completion rate.", date: "Today" },
-            { title: "Depot Inventory Reorder Report", desc: "Current gas cylinder stock levels vs minimum reorder thresholds.", date: "Today" },
-            { title: "Driver Log & On-Time Performance", desc: "Route completion stats for regional delivery drivers.", date: "This Week" },
+            {
+              title: "Daily Dispatch Summary",
+              desc: "Cylinder orders shipped, pending drops, and delivery completion rate.",
+              date: "Today",
+            },
+            {
+              title: "Depot Inventory Reorder Report",
+              desc: "Current gas cylinder stock levels vs minimum reorder thresholds.",
+              date: "Today",
+            },
+            {
+              title: "Driver Log & On-Time Performance",
+              desc: "Route completion stats for regional delivery drivers.",
+              date: "This Week",
+            },
           ].map((r) => (
             <div key={r.title} className="surface-card p-5 space-y-3 flex flex-col justify-between">
               <div>

@@ -69,9 +69,24 @@ const GAS_TYPE_OPTIONS = [
 ];
 
 const USAGE_TYPES = [
-  { value: "DOMESTIC", label: "Domestic LPG", icon: Home, color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { value: "COMMERCIAL", label: "Commercial LPG", icon: Building2, color: "bg-amber-50 text-amber-700 border-amber-200" },
-  { value: "BULK", label: "Bulk LPG", icon: Factory, color: "bg-purple-50 text-purple-700 border-purple-200" },
+  {
+    value: "DOMESTIC",
+    label: "Domestic LPG",
+    icon: Home,
+    color: "bg-blue-50 text-blue-700 border-blue-200",
+  },
+  {
+    value: "COMMERCIAL",
+    label: "Commercial LPG",
+    icon: Building2,
+    color: "bg-amber-50 text-amber-700 border-amber-200",
+  },
+  {
+    value: "BULK",
+    label: "Bulk LPG",
+    icon: Factory,
+    color: "bg-purple-50 text-purple-700 border-purple-200",
+  },
 ];
 
 export interface AdminProductsViewProps {
@@ -128,10 +143,15 @@ export function AdminProductsView({
   const loadProductsAndCategories = async () => {
     setLoading(true);
     try {
-      const [{ data: prodData, error: prodErr }, { data: catData, error: catErr }] = await Promise.all([
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
-        supabase.from("categories").select("*").eq("is_active", true).order("display_order", { ascending: true }),
-      ]);
+      const [{ data: prodData, error: prodErr }, { data: catData, error: catErr }] =
+        await Promise.all([
+          supabase.from("products").select("*").order("created_at", { ascending: false }),
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("is_active", true)
+            .order("display_order", { ascending: true }),
+        ]);
 
       if (prodErr) throw prodErr;
       if (catErr) throw catErr;
@@ -183,7 +203,10 @@ export function AdminProductsView({
         const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
         if (!error) count++;
       }
-      const { data: refreshed } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+      const { data: refreshed } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (refreshed) setProducts(refreshed);
       toast.success(`Synced ${count} gas catalog products!`);
     } catch (e: any) {
@@ -210,8 +233,10 @@ export function AdminProductsView({
   const filteredProducts = useMemo(() => {
     let result = products.filter((p) => {
       const specs = p.specs && typeof p.specs === "object" ? p.specs : {};
-      const productUsage = specs.usage_type || (p.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC");
-      const productGasType = specs.gas_type || (p.name.toLowerCase().includes("butane") ? "Butane" : "Propane");
+      const productUsage =
+        specs.usage_type || (p.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC");
+      const productGasType =
+        specs.gas_type || (p.name.toLowerCase().includes("butane") ? "Butane" : "Propane");
       const isActive = p.is_active !== false && specs.is_active !== false;
 
       const matchesSearch =
@@ -221,7 +246,8 @@ export function AdminProductsView({
         (p.description || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesUsage = usageFilter === "all" || productUsage === usageFilter;
-      const matchesGasType = gasTypeFilter === "all" || productGasType.toLowerCase() === gasTypeFilter.toLowerCase();
+      const matchesGasType =
+        gasTypeFilter === "all" || productGasType.toLowerCase() === gasTypeFilter.toLowerCase();
       const matchesCategory = categoryFilter === "all" || p.category_slug === categoryFilter;
 
       let matchesStatus = true;
@@ -233,11 +259,20 @@ export function AdminProductsView({
       if (stockFilter === "low-stock") matchesStock = p.stock > 0 && p.stock <= 10;
       if (stockFilter === "out-of-stock") matchesStock = p.stock === 0;
 
-      return matchesSearch && matchesUsage && matchesGasType && matchesCategory && matchesStatus && matchesStock;
+      return (
+        matchesSearch &&
+        matchesUsage &&
+        matchesGasType &&
+        matchesCategory &&
+        matchesStatus &&
+        matchesStock
+      );
     });
 
     if (sortOrder === "newest") {
-      result.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+      result.sort(
+        (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
+      );
     } else if (sortOrder === "name-asc") {
       result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     } else if (sortOrder === "price-asc") {
@@ -249,7 +284,16 @@ export function AdminProductsView({
     }
 
     return result;
-  }, [products, searchQuery, usageFilter, gasTypeFilter, statusFilter, stockFilter, categoryFilter, sortOrder]);
+  }, [
+    products,
+    searchQuery,
+    usageFilter,
+    gasTypeFilter,
+    statusFilter,
+    stockFilter,
+    categoryFilter,
+    sortOrder,
+  ]);
 
   // Open Form for New Product
   const handleOpenNew = () => {
@@ -262,20 +306,24 @@ export function AdminProductsView({
       slug: `gas-${Date.now()}`,
       brand: isBulk ? "Stayte Bulk LPG" : "Calor",
       category_slug: isBulk ? "bulk-gas" : "bottled-gas",
-      subcategory: isBulk ? "Bulk Tank Supply" : isCommercial ? "Commercial Propane" : "Propane Cylinders",
+      subcategory: isBulk
+        ? "Bulk Tank Supply"
+        : isCommercial
+          ? "Commercial Propane"
+          : "Propane Cylinders",
       price: isBulk ? 780.0 : isCommercial ? 94.0 : 45.0,
       stock: 25,
       image_url: isBulk
         ? "/own_vehicle_fleet_truck_1787408938768.jpg"
         : isCommercial
-        ? "/safety_storage_v2.jpg"
-        : "/domestic_kitchen_cylinder.jpg",
+          ? "/safety_storage_v2.jpg"
+          : "/domestic_kitchen_cylinder.jpg",
       images: [
         isBulk
           ? "/own_vehicle_fleet_truck_1787408938768.jpg"
           : isCommercial
-          ? "/safety_storage_v2.jpg"
-          : "/domestic_kitchen_cylinder.jpg",
+            ? "/safety_storage_v2.jpg"
+            : "/domestic_kitchen_cylinder.jpg",
       ],
       description: "",
       usage_type: defaultUsage,
@@ -292,21 +340,31 @@ export function AdminProductsView({
             "Telemetry tank monitoring & automatic top-ups available",
           ]
         : isCommercial
-        ? [
-            "Standard POL screw fitting (Female 5/8 inch LH)",
-            "Heavy-duty commercial propane for continuous commercial kitchens & heating",
-            "Direct Stayte commercial supply and site delivery",
-          ]
-        : [
-            "Standard POL screw fitting (Female 5/8 inch LH)",
-            "High-performance domestic heating & cooking",
-            "Direct Stayte forecourt & home delivery",
-          ],
+          ? [
+              "Standard POL screw fitting (Female 5/8 inch LH)",
+              "Heavy-duty commercial propane for continuous commercial kitchens & heating",
+              "Direct Stayte commercial supply and site delivery",
+            ]
+          : [
+              "Standard POL screw fitting (Female 5/8 inch LH)",
+              "High-performance domestic heating & cooking",
+              "Direct Stayte forecourt & home delivery",
+            ],
       suitable_for: isBulk
-        ? ["Poultry & Livestock Rearing", "Crop & Grain Drying", "Commercial Glasshouses", "Large Rural Estates"]
+        ? [
+            "Poultry & Livestock Rearing",
+            "Crop & Grain Drying",
+            "Commercial Glasshouses",
+            "Large Rural Estates",
+          ]
         : isCommercial
-        ? ["Commercial Kitchens & Hospitality", "Hotels & Restaurants", "Holiday Parks", "Workshops"]
-        : ["Home Central Heating", "Gas Cookers", "Space Heaters"],
+          ? [
+              "Commercial Kitchens & Hospitality",
+              "Hotels & Restaurants",
+              "Holiday Parks",
+              "Workshops",
+            ]
+          : ["Home Central Heating", "Gas Cookers", "Space Heaters"],
     });
     setNewFeatureInput("");
     setNewSuitableInput("");
@@ -318,33 +376,37 @@ export function AdminProductsView({
   // Open Form for Edit Product
   const handleOpenEdit = (prod: any) => {
     const specs = prod.specs && typeof prod.specs === "object" ? prod.specs : {};
-    const rawImages = Array.isArray(specs.images) && specs.images.length > 0
-      ? specs.images
-      : Array.isArray(prod.images) && prod.images.length > 0
-      ? prod.images
-      : prod.image_url
-      ? [prod.image_url]
-      : [];
+    const rawImages =
+      Array.isArray(specs.images) && specs.images.length > 0
+        ? specs.images
+        : Array.isArray(prod.images) && prod.images.length > 0
+          ? prod.images
+          : prod.image_url
+            ? [prod.image_url]
+            : [];
 
-    const features = Array.isArray(prod.features) && prod.features.length > 0
-      ? prod.features
-      : Array.isArray(specs.features) && specs.features.length > 0
-      ? specs.features
-      : [];
+    const features =
+      Array.isArray(prod.features) && prod.features.length > 0
+        ? prod.features
+        : Array.isArray(specs.features) && specs.features.length > 0
+          ? specs.features
+          : [];
 
-    const suitableFor = Array.isArray(prod.suitable_for) && prod.suitable_for.length > 0
-      ? prod.suitable_for
-      : Array.isArray(specs.suitable_for) && specs.suitable_for.length > 0
-      ? specs.suitable_for
-      : Array.isArray(specs.applications) && specs.applications.length > 0
-      ? specs.applications
-      : [];
+    const suitableFor =
+      Array.isArray(prod.suitable_for) && prod.suitable_for.length > 0
+        ? prod.suitable_for
+        : Array.isArray(specs.suitable_for) && specs.suitable_for.length > 0
+          ? specs.suitable_for
+          : Array.isArray(specs.applications) && specs.applications.length > 0
+            ? specs.applications
+            : [];
 
     setEditProduct({
       ...prod,
       usage_type: specs.usage_type || (prod.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC"),
-      gas_type: specs.gas_type || (prod.name.toLowerCase().includes("butane") ? "Butane" : "Propane"),
-      cylinder_size: specs.cylinder_size || (prod.name.match(/\d+(\.\d+)?kg/i)?.[0] || "13kg"),
+      gas_type:
+        specs.gas_type || (prod.name.toLowerCase().includes("butane") ? "Butane" : "Propane"),
+      cylinder_size: specs.cylinder_size || prod.name.match(/\d+(\.\d+)?kg/i)?.[0] || "13kg",
       deposit_price: Number(specs.deposit_price ?? 39.99),
       refill_price: Number(specs.refill_price ?? prod.price ?? 45.0),
       delivery_charge: Number(specs.delivery_charge ?? 0),
@@ -378,10 +440,12 @@ export function AdminProductsView({
       if (error) throw error;
 
       setProducts((prev) =>
-        prev.map((p) => (p.id === prod.id ? { ...p, is_active: newActive, specs } : p))
+        prev.map((p) => (p.id === prod.id ? { ...p, is_active: newActive, specs } : p)),
       );
       toast.success(`${prod.name} is now ${newActive ? "Active" : "Inactive"}`);
-      await logAdminAuditAction("TOGGLE_STATUS_PRODUCT", "products", prod.id, { active: newActive });
+      await logAdminAuditAction("TOGGLE_STATUS_PRODUCT", "products", prod.id, {
+        active: newActive,
+      });
     } catch (err: any) {
       toast.error("Failed to update status: " + err.message);
     }
@@ -462,9 +526,10 @@ export function AdminProductsView({
     try {
       const selectedCategoryObj = categories.find((c) => c.slug === editProduct.category_slug);
 
-      const imagesArray = Array.isArray(editProduct.images) && editProduct.images.length > 0
-        ? editProduct.images
-        : [editProduct.image_url];
+      const imagesArray =
+        Array.isArray(editProduct.images) && editProduct.images.length > 0
+          ? editProduct.images
+          : [editProduct.image_url];
 
       const specsPayload = {
         usage_type: editProduct.usage_type,
@@ -481,7 +546,8 @@ export function AdminProductsView({
       };
 
       if (isNew) {
-        const slug = editProduct.slug?.trim() || editProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const slug =
+          editProduct.slug?.trim() || editProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
         const { error } = await supabase.from("products").insert([
           {
@@ -500,7 +566,9 @@ export function AdminProductsView({
         ]);
 
         if (error) throw error;
-        await logAdminAuditAction("CREATE_PRODUCT", "products", editProduct.name, { price: editProduct.price });
+        await logAdminAuditAction("CREATE_PRODUCT", "products", editProduct.name, {
+          price: editProduct.price,
+        });
         toast.success(`Product "${editProduct.name}" created successfully!`);
       } else {
         const { error } = await supabase
@@ -521,7 +589,9 @@ export function AdminProductsView({
           .eq("id", editProduct.id);
 
         if (error) throw error;
-        await logAdminAuditAction("UPDATE_PRODUCT", "products", editProduct.id, { name: editProduct.name });
+        await logAdminAuditAction("UPDATE_PRODUCT", "products", editProduct.id, {
+          name: editProduct.name,
+        });
         toast.success(`Product "${editProduct.name}" updated successfully!`);
       }
 
@@ -542,7 +612,9 @@ export function AdminProductsView({
     try {
       const { error } = await supabase.from("products").delete().eq("id", deleteProductTarget.id);
       if (error) throw error;
-      await logAdminAuditAction("DELETE_PRODUCT", "products", deleteProductTarget.id, { name: deleteProductTarget.name });
+      await logAdminAuditAction("DELETE_PRODUCT", "products", deleteProductTarget.id, {
+        name: deleteProductTarget.name,
+      });
       toast.success(`Product "${deleteProductTarget.name}" deleted successfully.`);
       setDeleteProductTarget(null);
       await loadProductsAndCategories();
@@ -559,13 +631,17 @@ export function AdminProductsView({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             {lockedUsageType ? (
               <>
                 <span className="text-slate-400">Order Gas</span>
                 <span>/</span>
-                <span className="text-foreground font-bold">{viewTitle || `${lockedUsageType} LPG`}</span>
+                <span className="text-foreground font-bold">
+                  {viewTitle || `${lockedUsageType} LPG`}
+                </span>
               </>
             ) : (
               <span className="text-foreground font-bold">Products & Gas Catalog</span>
@@ -575,7 +651,8 @@ export function AdminProductsView({
             {viewTitle || "Product Management"}
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {viewDescription || "Create, update, and manage all gas cylinders, bulk supplies, pricing, features, and stock."}
+            {viewDescription ||
+              "Create, update, and manage all gas cylinders, bulk supplies, pricing, features, and stock."}
           </p>
         </div>
 
@@ -587,7 +664,11 @@ export function AdminProductsView({
             size="sm"
             className="rounded-full font-bold text-xs gap-1.5 border-slate-200 hover:bg-slate-50"
           >
-            {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+            {syncing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCcw className="h-3.5 w-3.5" />
+            )}
             Sync Standard Catalog
           </Button>
 
@@ -601,10 +682,10 @@ export function AdminProductsView({
               {lockedUsageType === "DOMESTIC"
                 ? "Add Domestic Product"
                 : lockedUsageType === "COMMERCIAL"
-                ? "Add Commercial Product"
-                : lockedUsageType === "BULK"
-                ? "Add Bulk Product"
-                : "Add Gas Product"}
+                  ? "Add Commercial Product"
+                  : lockedUsageType === "BULK"
+                    ? "Add Bulk Product"
+                    : "Add Gas Product"}
             </span>
           </Button>
         </div>
@@ -699,7 +780,9 @@ export function AdminProductsView({
               <SelectContent>
                 <SelectItem value="all">All Gas Types</SelectItem>
                 {GAS_TYPE_OPTIONS.map((g) => (
-                  <SelectItem key={g} value={g}>{g}</SelectItem>
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -767,9 +850,12 @@ export function AdminProductsView({
             <TableBody>
               {filteredProducts.map((p) => {
                 const specs = p.specs && typeof p.specs === "object" ? p.specs : {};
-                const usage = specs.usage_type || (p.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC");
-                const gasType = specs.gas_type || (p.name.toLowerCase().includes("butane") ? "Butane" : "Propane");
-                const size = specs.cylinder_size || (p.name.match(/\d+(\.\d+)?kg/i)?.[0] || "—");
+                const usage =
+                  specs.usage_type || (p.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC");
+                const gasType =
+                  specs.gas_type ||
+                  (p.name.toLowerCase().includes("butane") ? "Butane" : "Propane");
+                const size = specs.cylinder_size || p.name.match(/\d+(\.\d+)?kg/i)?.[0] || "—";
                 const isActive = p.is_active !== false && specs.is_active !== false;
                 const usageConfig = USAGE_TYPES.find((u) => u.value === usage) || USAGE_TYPES[0];
                 const UsageIcon = usageConfig.icon;
@@ -803,14 +889,18 @@ export function AdminProductsView({
                           )}
                         </div>
                         <p className="text-xs font-bold text-foreground leading-snug">{p.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono truncate max-w-xs">{p.slug}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono truncate max-w-xs">
+                          {p.slug}
+                        </p>
                       </div>
                     </TableCell>
 
                     {/* Usage & Gas */}
                     <TableCell>
                       <div className="space-y-1">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${usageConfig.color}`}>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${usageConfig.color}`}
+                        >
                           <UsageIcon className="h-3 w-3" />
                           <span>{usageConfig.label}</span>
                         </span>
@@ -848,8 +938,8 @@ export function AdminProductsView({
                           p.stock > 10
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : p.stock > 0
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-red-50 text-red-700 border-red-200"
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : "bg-red-50 text-red-700 border-red-200"
                         }`}
                       >
                         {p.stock > 0 ? `${p.stock} in stock` : "Out of stock"}
@@ -921,7 +1011,8 @@ export function AdminProductsView({
                 {isNew ? "Add New Gas Product" : `Edit Product: ${editProduct.name || ""}`}
               </DialogTitle>
               <p className="text-xs text-slate-500">
-                All fields save directly to the real Supabase database and sync live with the customer Order Gas page.
+                All fields save directly to the real Supabase database and sync live with the
+                customer Order Gas page.
               </p>
             </DialogHeader>
 
@@ -989,7 +1080,9 @@ export function AdminProductsView({
                     <label className="font-bold text-slate-800">Subcategory / Range</label>
                     <Input
                       value={editProduct.subcategory || ""}
-                      onChange={(e) => setEditProduct({ ...editProduct, subcategory: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, subcategory: e.target.value })
+                      }
                       placeholder="e.g. Propane Cylinders / Patio Gas / Commercial FLT"
                       className="rounded-xl h-10 text-xs bg-white"
                     />
@@ -1035,7 +1128,9 @@ export function AdminProductsView({
                       </SelectTrigger>
                       <SelectContent>
                         {GAS_TYPE_OPTIONS.map((g) => (
-                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                          <SelectItem key={g} value={g}>
+                            {g}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1047,7 +1142,9 @@ export function AdminProductsView({
                     <Input
                       required
                       value={editProduct.cylinder_size || "13kg"}
-                      onChange={(e) => setEditProduct({ ...editProduct, cylinder_size: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, cylinder_size: e.target.value })
+                      }
                       placeholder="e.g. 13kg / 47kg / 15kg / 1,000L Vessel"
                       className="rounded-xl h-10 text-xs bg-white"
                     />
@@ -1070,7 +1167,9 @@ export function AdminProductsView({
                       step="0.01"
                       required
                       value={editProduct.price || 0}
-                      onChange={(e) => setEditProduct({ ...editProduct, price: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, price: parseFloat(e.target.value) || 0 })
+                      }
                       className="rounded-xl h-10 text-xs bg-white font-bold"
                     />
                   </div>
@@ -1081,7 +1180,12 @@ export function AdminProductsView({
                       type="number"
                       step="0.01"
                       value={editProduct.refill_price || 0}
-                      onChange={(e) => setEditProduct({ ...editProduct, refill_price: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          refill_price: parseFloat(e.target.value) || 0,
+                        })
+                      }
                       className="rounded-xl h-10 text-xs bg-white"
                     />
                   </div>
@@ -1092,7 +1196,12 @@ export function AdminProductsView({
                       type="number"
                       step="0.01"
                       value={editProduct.deposit_price || 0}
-                      onChange={(e) => setEditProduct({ ...editProduct, deposit_price: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setEditProduct({
+                          ...editProduct,
+                          deposit_price: parseFloat(e.target.value) || 0,
+                        })
+                      }
                       className="rounded-xl h-10 text-xs bg-white"
                     />
                   </div>
@@ -1103,7 +1212,9 @@ export function AdminProductsView({
                       type="number"
                       required
                       value={editProduct.stock || 0}
-                      onChange={(e) => setEditProduct({ ...editProduct, stock: parseInt(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, stock: parseInt(e.target.value) || 0 })
+                      }
                       className="rounded-xl h-10 text-xs bg-white"
                     />
                   </div>
@@ -1114,7 +1225,9 @@ export function AdminProductsView({
                     <input
                       type="checkbox"
                       checked={editProduct.is_active !== false}
-                      onChange={(e) => setEditProduct({ ...editProduct, is_active: e.target.checked })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, is_active: e.target.checked })
+                      }
                       className="h-4 w-4 rounded text-primary"
                     />
                     <span>Active in Order Gas & Store</span>
@@ -1135,7 +1248,9 @@ export function AdminProductsView({
                     required
                     rows={3}
                     value={editProduct.description || ""}
-                    onChange={(e) => setEditProduct({ ...editProduct, description: e.target.value })}
+                    onChange={(e) =>
+                      setEditProduct({ ...editProduct, description: e.target.value })
+                    }
                     placeholder="Describe the cylinder's applications, fitting type, safety compliance, and gas characteristics..."
                     className="rounded-xl text-xs bg-white leading-relaxed"
                   />
@@ -1143,7 +1258,9 @@ export function AdminProductsView({
 
                 {/* Key Features (Dynamic Repeatable List) */}
                 <div className="space-y-2 pt-2">
-                  <label className="font-bold text-slate-800 block">Key Features (Bullet points in modal)</label>
+                  <label className="font-bold text-slate-800 block">
+                    Key Features (Bullet points in modal)
+                  </label>
                   <div className="flex gap-2">
                     <Input
                       value={newFeatureInput}
@@ -1184,7 +1301,10 @@ export function AdminProductsView({
                   {editProduct.features && editProduct.features.length > 0 && (
                     <ul className="space-y-1.5 pt-1">
                       {editProduct.features.map((f: string, idx: number) => (
-                        <li key={idx} className="flex items-center justify-between bg-white rounded-lg p-2 border border-slate-200 text-xs">
+                        <li
+                          key={idx}
+                          className="flex items-center justify-between bg-white rounded-lg p-2 border border-slate-200 text-xs"
+                        >
                           <span className="flex items-center gap-1.5 text-slate-700">
                             <Check className="h-3 w-3 text-emerald-600 shrink-0" />
                             {f}
@@ -1194,7 +1314,9 @@ export function AdminProductsView({
                             onClick={() =>
                               setEditProduct({
                                 ...editProduct,
-                                features: editProduct.features.filter((_: any, i: number) => i !== idx),
+                                features: editProduct.features.filter(
+                                  (_: any, i: number) => i !== idx,
+                                ),
                               })
                             }
                             className="text-slate-400 hover:text-red-500 transition-colors p-0.5 cursor-pointer"
@@ -1209,7 +1331,9 @@ export function AdminProductsView({
 
                 {/* Suitable For / Recommended Uses (Dynamic Repeatable List) */}
                 <div className="space-y-2 pt-2">
-                  <label className="font-bold text-slate-800 block">Suitable For / Recommended Uses (Tags in modal)</label>
+                  <label className="font-bold text-slate-800 block">
+                    Suitable For / Recommended Uses (Tags in modal)
+                  </label>
                   <div className="flex gap-2">
                     <Input
                       value={newSuitableInput}
@@ -1222,7 +1346,10 @@ export function AdminProductsView({
                           if (newSuitableInput.trim()) {
                             setEditProduct({
                               ...editProduct,
-                              suitable_for: [...(editProduct.suitable_for || []), newSuitableInput.trim()],
+                              suitable_for: [
+                                ...(editProduct.suitable_for || []),
+                                newSuitableInput.trim(),
+                              ],
                             });
                             setNewSuitableInput("");
                           }
@@ -1236,7 +1363,10 @@ export function AdminProductsView({
                         if (newSuitableInput.trim()) {
                           setEditProduct({
                             ...editProduct,
-                            suitable_for: [...(editProduct.suitable_for || []), newSuitableInput.trim()],
+                            suitable_for: [
+                              ...(editProduct.suitable_for || []),
+                              newSuitableInput.trim(),
+                            ],
                           });
                           setNewSuitableInput("");
                         }
@@ -1261,7 +1391,9 @@ export function AdminProductsView({
                             onClick={() =>
                               setEditProduct({
                                 ...editProduct,
-                                suitable_for: editProduct.suitable_for.filter((_: any, i: number) => i !== idx),
+                                suitable_for: editProduct.suitable_for.filter(
+                                  (_: any, i: number) => i !== idx,
+                                ),
                               })
                             }
                             className="text-slate-400 hover:text-red-500 cursor-pointer"
@@ -1289,7 +1421,9 @@ export function AdminProductsView({
                     <Input
                       required
                       value={editProduct.image_url || ""}
-                      onChange={(e) => setEditProduct({ ...editProduct, image_url: e.target.value })}
+                      onChange={(e) =>
+                        setEditProduct({ ...editProduct, image_url: e.target.value })
+                      }
                       placeholder="e.g. /domestic_kitchen_cylinder.jpg"
                       className="rounded-xl h-10 text-xs bg-white font-mono"
                     />
@@ -1301,7 +1435,11 @@ export function AdminProductsView({
                         className="rounded-xl h-10 text-xs gap-1.5 font-bold"
                         onClick={() => document.getElementById("main-image-upload")?.click()}
                       >
-                        {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        {uploadingImage ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5" />
+                        )}
                         Upload
                       </Button>
                       <input
@@ -1327,7 +1465,9 @@ export function AdminProductsView({
                       />
                       <div className="text-[11px] text-slate-600 font-medium">
                         <p className="font-bold text-slate-800">Primary Product Photo</p>
-                        <p className="text-slate-400 font-mono text-[10px]">{editProduct.image_url}</p>
+                        <p className="text-slate-400 font-mono text-[10px]">
+                          {editProduct.image_url}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1335,7 +1475,9 @@ export function AdminProductsView({
 
                 {/* Gallery Images */}
                 <div className="space-y-2 pt-2 border-t border-slate-200">
-                  <label className="font-bold text-slate-800 block">Additional Gallery Images</label>
+                  <label className="font-bold text-slate-800 block">
+                    Additional Gallery Images
+                  </label>
                   <div className="flex gap-2">
                     <Input
                       value={newGalleryImgInput}
@@ -1387,7 +1529,11 @@ export function AdminProductsView({
                           key={idx}
                           className="relative group h-16 w-16 rounded-xl border-2 bg-white p-1 overflow-hidden"
                         >
-                          <img src={img} alt={`Gallery ${idx + 1}`} className="h-full w-full object-contain" />
+                          <img
+                            src={img}
+                            alt={`Gallery ${idx + 1}`}
+                            className="h-full w-full object-contain"
+                          />
                           <button
                             type="button"
                             onClick={() =>
@@ -1422,7 +1568,11 @@ export function AdminProductsView({
                   disabled={saving}
                   className="rounded-full px-8 font-extrabold text-xs bg-[#c8102e] hover:bg-[#a50d24] text-white shadow-md gap-1.5"
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                   <span>{isNew ? "Create Product" : "Save Product Updates"}</span>
                 </Button>
               </DialogFooter>
@@ -1432,7 +1582,10 @@ export function AdminProductsView({
       )}
 
       {/* 6. DELETE CONFIRMATION DIALOG */}
-      <Dialog open={!!deleteProductTarget} onOpenChange={(open) => !open && setDeleteProductTarget(null)}>
+      <Dialog
+        open={!!deleteProductTarget}
+        onOpenChange={(open) => !open && setDeleteProductTarget(null)}
+      >
         <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white space-y-4">
           <DialogHeader>
             <DialogTitle className="font-black text-lg text-slate-900 flex items-center gap-2">
@@ -1445,10 +1598,12 @@ export function AdminProductsView({
             <div className="space-y-3 text-xs text-slate-600">
               <p>
                 Are you sure you want to permanently delete{" "}
-                <strong className="text-slate-900">{deleteProductTarget.name}</strong> from the catalog?
+                <strong className="text-slate-900">{deleteProductTarget.name}</strong> from the
+                catalog?
               </p>
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800">
-                <strong>Warning:</strong> This action cannot be undone. The product will no longer appear on the customer Order Gas page or store catalog.
+                <strong>Warning:</strong> This action cannot be undone. The product will no longer
+                appear on the customer Order Gas page or store catalog.
               </div>
             </div>
           )}
@@ -1469,7 +1624,11 @@ export function AdminProductsView({
               onClick={handleConfirmDelete}
               className="rounded-full px-5 text-xs font-extrabold bg-rose-600 hover:bg-rose-700 text-white shadow-md"
             >
-              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              {deleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
               <span>Confirm Delete</span>
             </Button>
           </DialogFooter>

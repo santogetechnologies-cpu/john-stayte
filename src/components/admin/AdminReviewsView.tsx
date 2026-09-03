@@ -92,10 +92,8 @@ export function AdminReviewsView() {
     // Supabase Realtime subscription on public.reviews
     const channel = supabase
       .channel("admin_reviews_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reviews" },
-        () => loadReviews()
+      .on("postgres_changes", { event: "*", schema: "public", table: "reviews" }, () =>
+        loadReviews(),
       )
       .subscribe();
 
@@ -112,8 +110,7 @@ export function AdminReviewsView() {
         (r.comment || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (r.product?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesRating =
-        ratingFilter === "all" ? true : r.rating === parseInt(ratingFilter, 10);
+      const matchesRating = ratingFilter === "all" ? true : r.rating === parseInt(ratingFilter, 10);
 
       return matchesSearch && matchesRating;
     });
@@ -134,10 +131,7 @@ export function AdminReviewsView() {
     if (!selectedReview) return;
     setActionLoading(true);
     try {
-      const { error } = await supabase
-        .from("reviews")
-        .delete()
-        .eq("id", selectedReview.id);
+      const { error } = await supabase.from("reviews").delete().eq("id", selectedReview.id);
 
       if (error) throw error;
 
@@ -165,7 +159,9 @@ export function AdminReviewsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Reviews</span>
           </div>
@@ -173,7 +169,8 @@ export function AdminReviewsView() {
             <Star className="h-7 w-7 text-amber-500 fill-amber-500" /> Customer Product Reviews
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Moderate, review and audit all customer product ratings and reviews submitted across the storefront.
+            Moderate, review and audit all customer product ratings and reviews submitted across the
+            storefront.
           </p>
         </div>
       </div>
@@ -181,13 +178,17 @@ export function AdminReviewsView() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Reviews</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Total Reviews
+          </p>
           <p className="text-3xl font-black text-slate-900">{stats.total}</p>
           <p className="text-[11px] text-muted-foreground">Submitted by verified customers</p>
         </div>
 
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Average Rating</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Average Rating
+          </p>
           <div className="flex items-center gap-2">
             <p className="text-3xl font-black text-slate-900">{stats.avg}</p>
             <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
@@ -196,13 +197,17 @@ export function AdminReviewsView() {
         </div>
 
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">5-Star Reviews</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            5-Star Reviews
+          </p>
           <p className="text-3xl font-black text-emerald-600">{stats.fiveStar}</p>
           <p className="text-[11px] text-muted-foreground">Top customer satisfaction</p>
         </div>
 
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Attention Needed (1-2★)</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Attention Needed (1-2★)
+          </p>
           <p className="text-3xl font-black text-red-600">{stats.lowStar}</p>
           <p className="text-[11px] text-muted-foreground">Low ratings requiring review</p>
         </div>
@@ -273,8 +278,12 @@ export function AdminReviewsView() {
                         {(r.user_name || "C").charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-extrabold text-foreground">{r.user_name || "Customer"}</p>
-                        <p className="text-[10px] text-muted-foreground font-normal">ID: {r.id.slice(0, 8)}</p>
+                        <p className="font-extrabold text-foreground">
+                          {r.user_name || "Customer"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground font-normal">
+                          ID: {r.id.slice(0, 8)}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
@@ -286,11 +295,17 @@ export function AdminReviewsView() {
                         target="_blank"
                         className="flex items-center gap-1.5 hover:text-primary transition-colors group"
                       >
-                        <span className="truncate max-w-[180px]">{typeof r.product.name === "string" ? r.product.name : String(r.product.name || "")}</span>
+                        <span className="truncate max-w-[180px]">
+                          {typeof r.product.name === "string"
+                            ? r.product.name
+                            : String(r.product.name || "")}
+                        </span>
                         <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary shrink-0" />
                       </Link>
                     ) : (
-                      <span className="text-muted-foreground">Product #{r.product_id.slice(0, 8)}</span>
+                      <span className="text-muted-foreground">
+                        Product #{r.product_id.slice(0, 8)}
+                      </span>
                     )}
                   </TableCell>
 
@@ -312,7 +327,9 @@ export function AdminReviewsView() {
 
                   <TableCell className="text-xs text-slate-600 max-w-xs">
                     <p className="line-clamp-2 leading-relaxed">
-                      {r.comment || <span className="italic text-muted-foreground">No written comment</span>}
+                      {r.comment || (
+                        <span className="italic text-muted-foreground">No written comment</span>
+                      )}
                     </p>
                   </TableCell>
 
@@ -353,7 +370,8 @@ export function AdminReviewsView() {
             </DialogTitle>
             <DialogDescription className="text-xs">
               Are you sure you want to permanently remove this review by{" "}
-              <strong className="text-foreground">{selectedReview?.user_name}</strong>? This action cannot be undone.
+              <strong className="text-foreground">{selectedReview?.user_name}</strong>? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
 
@@ -366,13 +384,21 @@ export function AdminReviewsView() {
                     <Star
                       key={i}
                       className={`h-3 w-3 ${
-                        i < selectedReview.rating ? "text-amber-500 fill-amber-500" : "text-slate-200"
+                        i < selectedReview.rating
+                          ? "text-amber-500 fill-amber-500"
+                          : "text-slate-200"
                       }`}
                     />
                   ))}
                 </span>
               </div>
-              <p className="text-slate-700 italic">"{typeof selectedReview.comment === "string" ? selectedReview.comment : String(selectedReview.comment || "")}"</p>
+              <p className="text-slate-700 italic">
+                "
+                {typeof selectedReview.comment === "string"
+                  ? selectedReview.comment
+                  : String(selectedReview.comment || "")}
+                "
+              </p>
             </div>
           )}
 

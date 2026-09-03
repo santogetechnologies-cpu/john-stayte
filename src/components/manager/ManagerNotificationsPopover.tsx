@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Check, ShoppingBag, Truck, Package, MessageSquare, ArrowRight } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
@@ -35,10 +31,8 @@ export function ManagerNotificationsPopover() {
 
     const notifsChannel = supabase
       .channel("manager_popover_notifications_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => loadNotifications()
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () =>
+        loadNotifications(),
       )
       .subscribe();
 
@@ -66,7 +60,7 @@ export function ManagerNotificationsPopover() {
     const isUnread = !item.is_read && !item.read;
     if (isUnread) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, is_read: true, read: true } : n))
+        prev.map((n) => (n.id === item.id ? { ...n, is_read: true, read: true } : n)),
       );
       try {
         await supabase
@@ -101,12 +95,18 @@ export function ManagerNotificationsPopover() {
           <span className="sr-only">Notifications</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 sm:w-96 p-0 rounded-2xl border bg-card shadow-xl overflow-hidden">
+      <PopoverContent
+        align="end"
+        className="w-80 sm:w-96 p-0 rounded-2xl border bg-card shadow-xl overflow-hidden"
+      >
         <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/20">
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm">Notifications</h4>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="rounded-full px-2 text-[10px] bg-primary/10 text-primary font-bold">
+              <Badge
+                variant="secondary"
+                className="rounded-full px-2 text-[10px] bg-primary/10 text-primary font-bold"
+              >
                 {unreadCount} new
               </Badge>
             )}
@@ -148,10 +148,14 @@ export function ManagerNotificationsPopover() {
                   </div>
                   <div className="space-y-0.5 flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <p className={`text-xs truncate ${isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}>
+                      <p
+                        className={`text-xs truncate ${isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}
+                      >
                         {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
                       </p>
-                      {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
+                      {isUnread && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      )}
                     </div>
                     <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
                       {typeof n.message === "string" ? n.message : String(n.message || "")}

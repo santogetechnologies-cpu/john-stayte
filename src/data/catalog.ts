@@ -98,7 +98,8 @@ export const products: Product[] = [
     featured: true,
     offer: false,
     image: cylinder,
-    description: "Ideal for residential heating, light commercial catering, and space heaters across Gloucestershire. Uses a standard POL screw fitting.",
+    description:
+      "Ideal for residential heating, light commercial catering, and space heaters across Gloucestershire. Uses a standard POL screw fitting.",
     specs: {
       capacity: "19kg",
       tare_weight: "18.5kg",
@@ -123,7 +124,8 @@ export const products: Product[] = [
     featured: true,
     offer: true,
     image: cylinder,
-    description: "The largest cylinder in the Calor range, designed for whole-home central heating, commercial kitchens, holiday parks, and agricultural grain dryers.",
+    description:
+      "The largest cylinder in the Calor range, designed for whole-home central heating, commercial kitchens, holiday parks, and agricultural grain dryers.",
     specs: {
       capacity: "47kg",
       tare_weight: "34kg",
@@ -148,7 +150,8 @@ export const products: Product[] = [
     featured: false,
     offer: false,
     image: cylinder,
-    description: "The classic blue Calor butane bottle, purpose-engineered for indoor portable cabinet room heaters and indoor gas cookers.",
+    description:
+      "The classic blue Calor butane bottle, purpose-engineered for indoor portable cabinet room heaters and indoor gas cookers.",
     specs: {
       capacity: "13kg",
       tare_weight: "14kg",
@@ -173,7 +176,8 @@ export const products: Product[] = [
     featured: true,
     offer: false,
     image: cylinder,
-    description: "Equipped with Calor's built-in Gas Trac indicator so you never run out unexpectedly during summer barbecues or patio heater evenings.",
+    description:
+      "Equipped with Calor's built-in Gas Trac indicator so you never run out unexpectedly during summer barbecues or patio heater evenings.",
     specs: {
       capacity: "13kg",
       tare_weight: "15.2kg",
@@ -198,7 +202,8 @@ export const products: Product[] = [
     featured: false,
     offer: false,
     image: cylinder,
-    description: "The most popular European camping cylinder size. Lightweight, portable and readily exchangeable across the UK and Continental Europe.",
+    description:
+      "The most popular European camping cylinder size. Lightweight, portable and readily exchangeable across the UK and Continental Europe.",
     specs: {
       capacity: "2.72kg Butane",
       tare_weight: "3.7kg",
@@ -223,7 +228,8 @@ export const products: Product[] = [
     featured: true,
     offer: true,
     image: coalLogs,
-    description: "HETAS and Defra approved Ready to Burn smokeless fuel. Produces a consistent, long-lasting high heat output with minimal ash residue.",
+    description:
+      "HETAS and Defra approved Ready to Burn smokeless fuel. Produces a consistent, long-lasting high heat output with minimal ash residue.",
     specs: {
       weight: "25kg",
       fuel_type: "Manufactured Smokeless Ovals",
@@ -246,7 +252,8 @@ export const products: Product[] = [
     featured: true,
     offer: false,
     image: coalLogs,
-    description: "Premium British kiln-dried ash logs with guaranteed moisture content below 18%. Delivers maximum heat efficiency and clean burning glass on log burners.",
+    description:
+      "Premium British kiln-dried ash logs with guaranteed moisture content below 18%. Delivers maximum heat efficiency and clean burning glass on log burners.",
     specs: {
       log_length: "25cm (10 inches)",
       moisture_content: "< 18% Guaranteed",
@@ -269,7 +276,8 @@ export const products: Product[] = [
     featured: false,
     offer: false,
     image: baits,
-    description: "The UK's most successful carp bait formulation. Three active protein fractions deliver an instant feeding trigger all year round.",
+    description:
+      "The UK's most successful carp bait formulation. Three active protein fractions deliver an instant feeding trigger all year round.",
     specs: {
       weight: "1kg",
       size: "15mm",
@@ -292,7 +300,8 @@ export const products: Product[] = [
     featured: true,
     offer: true,
     image: bbqPro3,
-    description: "Equipped with patented TRU-Infrared cooking technology that distributes heat evenly across cast iron grates, keeping steaks and chicken up to 50% juicier.",
+    description:
+      "Equipped with patented TRU-Infrared cooking technology that distributes heat evenly across cast iron grates, keeping steaks and chicken up to 50% juicier.",
     specs: {
       burners: "3 High-Performance Stainless Steel Burners + Side Sear Station",
       grate_material: "Porcelain-Enameled Cast Iron",
@@ -315,7 +324,8 @@ export const products: Product[] = [
     featured: true,
     offer: false,
     image: heater,
-    description: "Compact mobile room heater on castor wheels with 3 heat settings, piezo ignition, oxygen depletion sensor (ODS) and flame failure safety cut-off.",
+    description:
+      "Compact mobile room heater on castor wheels with 3 heat settings, piezo ignition, oxygen depletion sensor (ODS) and flame failure safety cut-off.",
     specs: {
       max_heat_output: "4.2 kW (3 Heat Settings: 1.4kW / 2.8kW / 4.2kW)",
       fuel_type: "13kg or 15kg Butane Cylinder (21mm Clip-on)",
@@ -350,9 +360,17 @@ export const stations = [
 ];
 
 export const services = [
-  { title: "Gas Delivery", desc: "Next-day cylinder delivery across Gloucestershire.", icon: "Truck" },
+  {
+    title: "Gas Delivery",
+    desc: "Next-day cylinder delivery across Gloucestershire.",
+    icon: "Truck",
+  },
   { title: "Bulk Supply", desc: "Scheduled bulk LPG for farms and estates.", icon: "Container" },
-  { title: "Commercial Gas", desc: "Pub, hospitality and catering gas contracts.", icon: "Building2" },
+  {
+    title: "Commercial Gas",
+    desc: "Pub, hospitality and catering gas contracts.",
+    icon: "Building2",
+  },
   { title: "Domestic Supply", desc: "Home heating, cooking and patio gas.", icon: "Home" },
   { title: "Cylinder Exchange", desc: "Swap empties at any of our stations.", icon: "RefreshCw" },
   { title: "Emergency Delivery", desc: "Same-day emergency runs when you run dry.", icon: "Siren" },
@@ -390,14 +408,38 @@ export const blogPosts = [
 ];
 
 export const faqs = [
-  { q: "Do you deliver to my area?", a: "We cover Gloucestershire and surrounding counties within a 40-mile radius of Whitminster." },
-  { q: "How fast is delivery?", a: "Orders placed before 2pm are usually delivered next working day." },
-  { q: "Can I exchange an empty cylinder?", a: "Yes — bring your empty to any of our three filling stations or swap on the doorstep." },
-  { q: "Do you offer trade accounts?", a: "We do. Contact our team for commercial pricing and scheduled bulk supply." },
+  {
+    q: "Do you deliver to my area?",
+    a: "We cover Gloucestershire and surrounding counties within a 40-mile radius of Whitminster.",
+  },
+  {
+    q: "How fast is delivery?",
+    a: "Orders placed before 2pm are usually delivered next working day.",
+  },
+  {
+    q: "Can I exchange an empty cylinder?",
+    a: "Yes — bring your empty to any of our three filling stations or swap on the doorstep.",
+  },
+  {
+    q: "Do you offer trade accounts?",
+    a: "We do. Contact our team for commercial pricing and scheduled bulk supply.",
+  },
 ];
 
 export const testimonials = [
-  { name: "Sarah H.", role: "Frampton on Severn", quote: "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless." },
-  { name: "The Bell Inn", role: "Pub customer", quote: "Our cellar gas has never run out since switching to JSS. The scheduling is spot on." },
-  { name: "Mark T.", role: "Smallholding, Cam", quote: "Coal, logs and animal feed in one delivery. Saves me two trips a week." },
+  {
+    name: "Sarah H.",
+    role: "Frampton on Severn",
+    quote: "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless.",
+  },
+  {
+    name: "The Bell Inn",
+    role: "Pub customer",
+    quote: "Our cellar gas has never run out since switching to JSS. The scheduling is spot on.",
+  },
+  {
+    name: "Mark T.",
+    role: "Smallholding, Cam",
+    quote: "Coal, logs and animal feed in one delivery. Saves me two trips a week.",
+  },
 ];

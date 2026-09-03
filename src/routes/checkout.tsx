@@ -16,7 +16,10 @@ export const Route = createFileRoute("/checkout")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Checkout | John Stayte Services" },
-      { name: "description", content: "Secure checkout for gas, fuel and appliance orders with account verification." },
+      {
+        name: "description",
+        content: "Secure checkout for gas, fuel and appliance orders with account verification.",
+      },
       { property: "og:title", content: "Checkout | John Stayte Services" },
       { property: "og:description", content: "Complete your John Stayte Services order." },
     ],
@@ -104,7 +107,9 @@ function Checkout() {
 
       // Check min order amount
       if (dbCoupon.min_order_amount && subtotal < Number(dbCoupon.min_order_amount)) {
-        return toast.error(`Minimum order total of ${gbp(Number(dbCoupon.min_order_amount))} required for this coupon.`);
+        return toast.error(
+          `Minimum order total of ${gbp(Number(dbCoupon.min_order_amount))} required for this coupon.`,
+        );
       }
 
       // Check expiration
@@ -148,7 +153,9 @@ function Checkout() {
     }
 
     if (settings?.minOrderValue && subtotal < settings.minOrderValue) {
-      return toast.error(`A minimum order value of ${gbp(settings.minOrderValue)} is required to place an order.`);
+      return toast.error(
+        `A minimum order value of ${gbp(settings.minOrderValue)} is required to place an order.`,
+      );
     }
 
     if (!fullName || !email || !address || !postcode) {
@@ -190,7 +197,7 @@ function Checkout() {
           throw new Error(
             currentStock === 0
               ? `'${dbProduct.name}' is currently out of stock. Please update your basket.`
-              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`
+              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`,
           );
         }
 
@@ -382,8 +389,14 @@ function Checkout() {
 
   return (
     <SiteLayout>
-      <PageHero eyebrow="Checkout" title={user ? `Checkout, ${user.name.split(" ")[0]}` : "Guest checkout"} />
-      <form onSubmit={place} className="container-page grid gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <PageHero
+        eyebrow="Checkout"
+        title={user ? `Checkout, ${user.name.split(" ")[0]}` : "Guest checkout"}
+      />
+      <form
+        onSubmit={place}
+        className="container-page grid gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_380px]"
+      >
         <div className="space-y-5">
           <section className="surface-card p-7">
             <div className="flex items-center justify-between">
@@ -397,7 +410,9 @@ function Checkout() {
 
             {savedAddresses.length > 1 && (
               <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 block">Select from saved addresses:</span>
+                <span className="text-[11px] font-bold text-slate-500 block">
+                  Select from saved addresses:
+                </span>
                 <div className="flex flex-wrap gap-2">
                   {savedAddresses.map((addr) => (
                     <button
@@ -424,35 +439,90 @@ function Checkout() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="fn">Full name</Label>
-                <Input id="fn" required maxLength={100} value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-full" />
+                <Input
+                  id="fn"
+                  required
+                  maxLength={100}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="mt-1.5 rounded-full"
+                />
               </div>
               <div>
                 <Label htmlFor="em">Email</Label>
-                <Input id="em" type="email" required maxLength={255} value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 rounded-full" />
+                <Input
+                  id="em"
+                  type="email"
+                  required
+                  maxLength={255}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1.5 rounded-full"
+                />
               </div>
               <div>
                 <Label htmlFor="ph">Phone</Label>
-                <Input id="ph" required maxLength={20} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07700 900123" className="mt-1.5 rounded-full" />
+                <Input
+                  id="ph"
+                  required
+                  maxLength={20}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="07700 900123"
+                  className="mt-1.5 rounded-full"
+                />
               </div>
               <div>
                 <Label htmlFor="pc">Postcode</Label>
-                <Input id="pc" required maxLength={10} value={postcode} onChange={(e) => setPostcode(e.target.value)} placeholder="GL2 7LZ" className="mt-1.5 rounded-full" />
+                <Input
+                  id="pc"
+                  required
+                  maxLength={10}
+                  value={postcode}
+                  onChange={(e) => setPostcode(e.target.value)}
+                  placeholder="GL2 7LZ"
+                  className="mt-1.5 rounded-full"
+                />
               </div>
             </div>
             <div className="mt-4">
               <Label htmlFor="ad">Address</Label>
-              <Textarea id="ad" required maxLength={300} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address & town..." className="mt-1.5 rounded-2xl" />
+              <Textarea
+                id="ad"
+                required
+                maxLength={300}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Street address & town..."
+                className="mt-1.5 rounded-2xl"
+              />
             </div>
           </section>
 
           <section className="surface-card p-7">
             <h2 className="font-extrabold">Payment details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2"><Label htmlFor="cn">Card number</Label><Input id="cn" placeholder="4242 4242 4242 4242" maxLength={19} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="ex">Expiry</Label><Input id="ex" placeholder="12/29" maxLength={5} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="cv">CVC</Label><Input id="cv" placeholder="123" maxLength={4} className="mt-1.5 rounded-full" /></div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="cn">Card number</Label>
+                <Input
+                  id="cn"
+                  placeholder="4242 4242 4242 4242"
+                  maxLength={19}
+                  className="mt-1.5 rounded-full"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ex">Expiry</Label>
+                <Input id="ex" placeholder="12/29" maxLength={5} className="mt-1.5 rounded-full" />
+              </div>
+              <div>
+                <Label htmlFor="cv">CVC</Label>
+                <Input id="cv" placeholder="123" maxLength={4} className="mt-1.5 rounded-full" />
+              </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Payment details encrypted. Order will be confirmed upon submission.</p>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Payment details encrypted. Order will be confirmed upon submission.
+            </p>
           </section>
         </div>
 
@@ -464,25 +534,63 @@ function Checkout() {
             <ul className="mt-4 space-y-2 text-sm">
               {lines.map((l) => (
                 <li key={l.slug} className="flex justify-between gap-3">
-                  <span className="min-w-0 truncate text-muted-foreground">{l.qty} × {l.product.name}</span>
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    {l.qty} × {l.product.name}
+                  </span>
                   <span className="font-semibold">{gbp(l.product.price * l.qty)}</span>
                 </li>
               ))}
             </ul>
           )}
           <div className="mt-4 flex gap-2">
-            <Input value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="Coupon code" maxLength={20} className="rounded-full" />
-            <Button type="button" variant="outline" className="rounded-full" onClick={applyCoupon}>Apply</Button>
+            <Input
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value)}
+              placeholder="Coupon code"
+              maxLength={20}
+              className="rounded-full"
+            />
+            <Button type="button" variant="outline" className="rounded-full" onClick={applyCoupon}>
+              Apply
+            </Button>
           </div>
           <dl className="mt-4 space-y-2 border-t pt-4 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{gbp(subtotal)}</dd></div>
-            {discount > 0 && <div className="flex justify-between text-primary"><dt>Discount</dt><dd>−{gbp(discount)}</dd></div>}
-            <div className="flex justify-between"><dt className="text-muted-foreground">Delivery</dt><dd>{shipping === 0 ? "Free" : gbp(shipping)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted-foreground">VAT (20%)</dt><dd>{gbp(vat)}</dd></div>
-            <div className="flex justify-between border-t pt-2 text-base font-extrabold"><dt>Total</dt><dd>{gbp(Math.max(0, total - discount))}</dd></div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Subtotal</dt>
+              <dd>{gbp(subtotal)}</dd>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-primary">
+                <dt>Discount</dt>
+                <dd>−{gbp(discount)}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Delivery</dt>
+              <dd>{shipping === 0 ? "Free" : gbp(shipping)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">VAT (20%)</dt>
+              <dd>{gbp(vat)}</dd>
+            </div>
+            <div className="flex justify-between border-t pt-2 text-base font-extrabold">
+              <dt>Total</dt>
+              <dd>{gbp(Math.max(0, total - discount))}</dd>
+            </div>
           </dl>
-          <Button type="submit" size="lg" disabled={submitting || cartLoading || lines.length === 0} className="mt-6 w-full rounded-full gap-2">
-            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order...</> : "Place order"}
+          <Button
+            type="submit"
+            size="lg"
+            disabled={submitting || cartLoading || lines.length === 0}
+            className="mt-6 w-full rounded-full gap-2"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Placing Order...
+              </>
+            ) : (
+              "Place order"
+            )}
           </Button>
         </aside>
       </form>

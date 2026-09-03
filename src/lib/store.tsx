@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
@@ -11,7 +19,12 @@ export type CartLine = { slug: string; qty: number };
 type Store = {
   user: User | null;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: User }>;
-  register: (name: string, email: string, password: string, role?: Role) => Promise<{ ok: boolean; error?: string; user?: User }>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    role?: Role,
+  ) => Promise<{ ok: boolean; error?: string; user?: User }>;
   logout: () => Promise<void>;
   cart: CartLine[];
   addToCart: (slug: string, qty?: number) => void;
@@ -36,7 +49,12 @@ function usePersisted<T>(key: string, initial: T) {
           parsed = parsed
             .filter((i) => i && typeof i === "object")
             .map((i) => ({
-              slug: typeof i.slug === "string" ? i.slug : (typeof i.slug === "object" && i.slug?.slug ? String(i.slug.slug) : ""),
+              slug:
+                typeof i.slug === "string"
+                  ? i.slug
+                  : typeof i.slug === "object" && i.slug?.slug
+                    ? String(i.slug.slug)
+                    : "",
               qty: typeof i.qty === "number" && i.qty > 0 ? i.qty : 1,
             }))
             .filter((i) => i.slug && i.slug.length > 0);
@@ -222,77 +240,83 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [syncWishlistWithDb]);
 
-  const login: Store["login"] = useCallback(async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+  const login: Store["login"] = useCallback(
+    async (email, password) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
 
-      if (error) {
-        return { ok: false, error: error.message };
+        if (error) {
+          return { ok: false, error: error.message };
+        }
+
+        if (data.user?.id) {
+          const uid = data.user.id;
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", uid)
+            .single();
+
+          const u: User = {
+            id: uid,
+            name: profile?.full_name || data.user.email?.split("@")[0] || "Customer",
+            email: data.user.email || email,
+            role: (profile?.role as Role) || "customer",
+          };
+          setUser(u);
+          syncWishlistWithDb(uid);
+          return { ok: true, user: u };
+        }
+
+        return { ok: false, error: "Sign in failed" };
+      } catch (err: any) {
+        return { ok: false, error: err?.message || "Authentication failed" };
       }
+    },
+    [syncWishlistWithDb],
+  );
 
-      if (data.user?.id) {
-        const uid = data.user.id;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", uid)
-          .single();
-
-        const u: User = {
-          id: uid,
-          name: profile?.full_name || data.user.email?.split("@")[0] || "Customer",
-          email: data.user.email || email,
-          role: (profile?.role as Role) || "customer",
-        };
-        setUser(u);
-        syncWishlistWithDb(uid);
-        return { ok: true, user: u };
-      }
-
-      return { ok: false, error: "Sign in failed" };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || "Authentication failed" };
-    }
-  }, [syncWishlistWithDb]);
-
-  const register: Store["register"] = useCallback(async (name, email, password, role = "customer") => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            full_name: name,
-            role: role,
+  const register: Store["register"] = useCallback(
+    async (name, email, password, role = "customer") => {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              full_name: name,
+              role: role,
+            },
           },
-        },
-      });
+        });
 
-      if (error) {
-        return { ok: false, error: error.message };
+        if (error) {
+          return { ok: false, error: error.message };
+        }
+
+        if (data.user?.id) {
+          const uid = data.user.id;
+          const u: User = {
+            id: uid,
+            name,
+            email,
+            role,
+          };
+          setUser(u);
+          syncWishlistWithDb(uid);
+          return { ok: true, user: u };
+        }
+
+        return { ok: false, error: "Registration failed" };
+      } catch (err: any) {
+        return { ok: false, error: err?.message || "Registration error" };
       }
-
-      if (data.user?.id) {
-        const uid = data.user.id;
-        const u: User = {
-          id: uid,
-          name,
-          email,
-          role,
-        };
-        setUser(u);
-        syncWishlistWithDb(uid);
-        return { ok: true, user: u };
-      }
-
-      return { ok: false, error: "Registration failed" };
-    } catch (err: any) {
-      return { ok: false, error: err?.message || "Registration error" };
-    }
-  }, [syncWishlistWithDb]);
+    },
+    [syncWishlistWithDb],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -307,100 +331,105 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  const toggleWishlist = useCallback(async (slug: string) => {
-    if (!slug) return;
+  const toggleWishlist = useCallback(
+    async (slug: string) => {
+      if (!slug) return;
 
-    // 1. Optimistic UI update for immediate feedback
-    setWishlist((current) => {
-      const exists = current.includes(slug);
-      return exists ? current.filter((s) => s !== slug) : [...current, slug];
-    });
+      // 1. Optimistic UI update for immediate feedback
+      setWishlist((current) => {
+        const exists = current.includes(slug);
+        return exists ? current.filter((s) => s !== slug) : [...current, slug];
+      });
 
-    // 2. Obtain current user ID directly from state or live session
-    let effectiveUserId: string | null = user?.id || null;
-    if (!effectiveUserId) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        effectiveUserId = session.user.id;
-      }
-    }
-
-    if (!effectiveUserId) {
-      // Unauthenticated guest user: store in localStorage
-      try {
-        const raw = localStorage.getItem("jss.wishlist");
-        const current = raw ? (JSON.parse(raw) as string[]) : [];
-        const next = current.includes(slug) ? current.filter((s) => s !== slug) : [...current, slug];
-        localStorage.setItem("jss.wishlist", JSON.stringify(next));
-      } catch {}
-      return;
-    }
-
-    // 3. Authenticated user: persist to Supabase wishlists + wishlist_items
-    try {
-      // Get or create user's wishlist container row
-      const { data: wList } = await supabase
-        .from("wishlists")
-        .select("id")
-        .eq("user_id", effectiveUserId);
-
-      let wid: string | null = null;
-      if (wList && wList.length > 0) {
-        wid = wList[0].id;
-      } else {
-        const { data: newWishlist } = await supabase
-          .from("wishlists")
-          .insert({ user_id: effectiveUserId })
-          .select("id");
-        if (newWishlist && newWishlist.length > 0) {
-          wid = newWishlist[0].id;
+      // 2. Obtain current user ID directly from state or live session
+      let effectiveUserId: string | null = user?.id || null;
+      if (!effectiveUserId) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          effectiveUserId = session.user.id;
         }
       }
 
-      if (!wid) {
-        console.error("Failed to obtain wishlist ID for user:", effectiveUserId);
+      if (!effectiveUserId) {
+        // Unauthenticated guest user: store in localStorage
+        try {
+          const raw = localStorage.getItem("jss.wishlist");
+          const current = raw ? (JSON.parse(raw) as string[]) : [];
+          const next = current.includes(slug)
+            ? current.filter((s) => s !== slug)
+            : [...current, slug];
+          localStorage.setItem("jss.wishlist", JSON.stringify(next));
+        } catch {}
         return;
       }
 
-      // Resolve product ID by slug
-      const { data: prod } = await supabase
-        .from("products")
-        .select("id")
-        .eq("slug", slug)
-        .maybeSingle();
+      // 3. Authenticated user: persist to Supabase wishlists + wishlist_items
+      try {
+        // Get or create user's wishlist container row
+        const { data: wList } = await supabase
+          .from("wishlists")
+          .select("id")
+          .eq("user_id", effectiveUserId);
 
-      if (!prod?.id) {
-        console.error("Product slug not found in DB:", slug);
-        return;
-      }
+        let wid: string | null = null;
+        if (wList && wList.length > 0) {
+          wid = wList[0].id;
+        } else {
+          const { data: newWishlist } = await supabase
+            .from("wishlists")
+            .insert({ user_id: effectiveUserId })
+            .select("id");
+          if (newWishlist && newWishlist.length > 0) {
+            wid = newWishlist[0].id;
+          }
+        }
 
-      // Check if item already exists in wishlist_items
-      const { data: existingItems } = await supabase
-        .from("wishlist_items")
-        .select("id")
-        .eq("wishlist_id", wid)
-        .eq("product_id", prod.id);
+        if (!wid) {
+          console.error("Failed to obtain wishlist ID for user:", effectiveUserId);
+          return;
+        }
 
-      if (existingItems && existingItems.length > 0) {
-        // Remove from DB
-        await supabase
+        // Resolve product ID by slug
+        const { data: prod } = await supabase
+          .from("products")
+          .select("id")
+          .eq("slug", slug)
+          .maybeSingle();
+
+        if (!prod?.id) {
+          console.error("Product slug not found in DB:", slug);
+          return;
+        }
+
+        // Check if item already exists in wishlist_items
+        const { data: existingItems } = await supabase
           .from("wishlist_items")
-          .delete()
+          .select("id")
           .eq("wishlist_id", wid)
           .eq("product_id", prod.id);
-      } else {
-        // Add to DB
-        await supabase
-          .from("wishlist_items")
-          .insert({
+
+        if (existingItems && existingItems.length > 0) {
+          // Remove from DB
+          await supabase
+            .from("wishlist_items")
+            .delete()
+            .eq("wishlist_id", wid)
+            .eq("product_id", prod.id);
+        } else {
+          // Add to DB
+          await supabase.from("wishlist_items").insert({
             wishlist_id: wid,
             product_id: prod.id,
           });
+        }
+      } catch (err) {
+        console.error("Failed to toggle wishlist in Supabase:", err);
       }
-    } catch (err) {
-      console.error("Failed to toggle wishlist in Supabase:", err);
-    }
-  }, [user?.id]);
+    },
+    [user?.id],
+  );
 
   const value = useMemo<Store>(
     () => ({
@@ -433,7 +462,6 @@ export function useStore() {
   if (!ctx) throw new Error("useStore must be used within StoreProvider");
   return ctx;
 }
-
 
 export const gbp = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
@@ -503,10 +531,8 @@ export function useCartTotals() {
 
     const channel = supabase
       .channel("cart_system_settings_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "cms_content_blocks" },
-        () => loadSettings()
+      .on("postgres_changes", { event: "*", schema: "public", table: "cms_content_blocks" }, () =>
+        loadSettings(),
       )
       .subscribe();
 
@@ -530,10 +556,7 @@ export function useCartTotals() {
 
       try {
         const slugs = cart.map((c) => c.slug);
-        const { data: dbProducts } = await supabase
-          .from("products")
-          .select("*")
-          .in("slug", slugs);
+        const { data: dbProducts } = await supabase.from("products").select("*").in("slug", slugs);
 
         if (!isMounted) return;
 
@@ -556,7 +579,10 @@ export function useCartTotals() {
               featured: Boolean(p.is_featured),
               offer: Boolean(p.is_offer),
               description: p.description || "",
-              specs: p.specs && typeof p.specs === "object" && !Array.isArray(p.specs) ? (p.specs as Record<string, string>) : {},
+              specs:
+                p.specs && typeof p.specs === "object" && !Array.isArray(p.specs)
+                  ? (p.specs as Record<string, string>)
+                  : {},
             });
           }
         }
@@ -598,13 +624,13 @@ export function useCartTotals() {
     [liveLines],
   );
   const shipping = useMemo(
-    () => (subtotal === 0 || subtotal >= settings.freeDeliveryThreshold ? 0 : settings.defaultShippingFee),
+    () =>
+      subtotal === 0 || subtotal >= settings.freeDeliveryThreshold
+        ? 0
+        : settings.defaultShippingFee,
     [subtotal, settings.freeDeliveryThreshold, settings.defaultShippingFee],
   );
-  const vat = useMemo(
-    () => subtotal * (settings.vatRate / 100),
-    [subtotal, settings.vatRate]
-  );
+  const vat = useMemo(() => subtotal * (settings.vatRate / 100), [subtotal, settings.vatRate]);
   const total = useMemo(() => subtotal + shipping + vat, [subtotal, shipping, vat]);
 
   return { lines: liveLines, subtotal, shipping, vat, total, loading, settings };

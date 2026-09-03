@@ -45,26 +45,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import {
-  REFILL_STATUS_STEPS,
-  RefillStatusKey,
-  advanceRefillStatus,
-} from "@/lib/cylinder-service";
+import { REFILL_STATUS_STEPS, RefillStatusKey, advanceRefillStatus } from "@/lib/cylinder-service";
 
 export function AdminOrdersView() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -108,8 +94,12 @@ export function AdminOrdersView() {
     const channel = supabase
       .channel("admin_orders_realtime_sync")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadOrders())
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_status_history" }, () => loadOrders())
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadOrders())
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_status_history" }, () =>
+        loadOrders(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadOrders(),
+      )
       .subscribe();
 
     return () => {
@@ -121,11 +111,19 @@ export function AdminOrdersView() {
     if (o.notes?.includes("[NEW_CYLINDER]") || o.order_number?.startsWith("CYL-NEW")) {
       return "NEW_CYLINDER";
     }
-    if (o.notes?.includes("[REFILL]") || o.notes?.includes("[REFILL_EXCHANGE]") || o.order_number?.startsWith("CYL-REF") || o.status?.includes("Refill")) {
+    if (
+      o.notes?.includes("[REFILL]") ||
+      o.notes?.includes("[REFILL_EXCHANGE]") ||
+      o.order_number?.startsWith("CYL-REF") ||
+      o.status?.includes("Refill")
+    ) {
       return "REFILL";
     }
     const hasCylinderItem = (o.order_items || []).some(
-      (i: any) => i.name?.toLowerCase().includes("cylinder") || i.name?.toLowerCase().includes("propane") || i.name?.toLowerCase().includes("butane")
+      (i: any) =>
+        i.name?.toLowerCase().includes("cylinder") ||
+        i.name?.toLowerCase().includes("propane") ||
+        i.name?.toLowerCase().includes("butane"),
     );
     if (hasCylinderItem) return "NEW_CYLINDER";
     return "STANDARD";
@@ -146,9 +144,13 @@ export function AdminOrdersView() {
 
     const matchesSearch =
       (o.order_number || o.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (o.shipping_name || o.customer_name || o.guest_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.shipping_name || o.customer_name || o.guest_name || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
       (o.shipping_phone || o.guest_phone || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (o.shipping_address || o.delivery_address || "").toLowerCase().includes(searchQuery.toLowerCase());
+      (o.shipping_address || o.delivery_address || "")
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || o.status === statusFilter;
     return matchesTab && matchesUsage && matchesSearch && matchesStatus;
@@ -228,10 +230,12 @@ export function AdminOrdersView() {
             <span className="text-foreground">Orders & Cylinder Operations</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <ShoppingBag className="h-7 w-7 text-primary" /> Live Orders & Refill Operations ({orders.length})
+            <ShoppingBag className="h-7 w-7 text-primary" /> Live Orders & Refill Operations (
+            {orders.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Manage new gas cylinder deliveries, empty cylinder pickup exchanges, and general orders in real-time.
+            Manage new gas cylinder deliveries, empty cylinder pickup exchanges, and general orders
+            in real-time.
           </p>
         </div>
 
@@ -257,7 +261,6 @@ export function AdminOrdersView() {
       {/* 2. Tabs & Filters */}
       <div className="surface-card p-4 rounded-3xl border bg-white shadow-xs space-y-3">
         <div className="flex flex-col lg:flex-row gap-3 items-center justify-between">
-          
           {/* Order Type Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto w-full lg:w-auto pb-1">
             {[
@@ -286,14 +289,14 @@ export function AdminOrdersView() {
                   "px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
                   activeTab === tab.id
                     ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                 )}
               >
                 <span>{tab.label}</span>
                 <span
                   className={cn(
                     "px-1.5 py-0.2 rounded-full text-[10px]",
-                    activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                    activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700",
                   )}
                 >
                   {tab.count}
@@ -435,7 +438,9 @@ export function AdminOrdersView() {
                           {firstItem?.name || firstItem?.product_name || "Gas Supply Order"}
                         </div>
                         <div className="text-[11px] text-muted-foreground truncate">
-                          {items.length > 1 ? `${items.length} items (${firstItem?.quantity || 1}x ${firstItem?.name})` : `Qty: ${firstItem?.quantity || 1}`}
+                          {items.length > 1
+                            ? `${items.length} items (${firstItem?.quantity || 1}x ${firstItem?.name})`
+                            : `Qty: ${firstItem?.quantity || 1}`}
                         </div>
                       </TableCell>
 
@@ -460,19 +465,22 @@ export function AdminOrdersView() {
                               o.status?.includes("Delivered") || o.status?.includes("Completed")
                                 ? "bg-emerald-600 text-white"
                                 : o.status?.includes("Empty Cylinder Verified")
-                                ? "bg-blue-600 text-white"
-                                : o.status?.includes("Collected")
-                                ? "bg-purple-600 text-white"
-                                : o.status?.includes("Pickup")
-                                ? "bg-amber-500 text-white"
-                                : "bg-slate-800 text-white"
+                                  ? "bg-blue-600 text-white"
+                                  : o.status?.includes("Collected")
+                                    ? "bg-purple-600 text-white"
+                                    : o.status?.includes("Pickup")
+                                      ? "bg-amber-500 text-white"
+                                      : "bg-slate-800 text-white",
                             )}
                           >
                             <span>{o.status || "Refill Requested"}</span>
                             <ChevronRight className="h-3 w-3" />
                           </Badge>
                         ) : (
-                          <Select value={o.status || "Processing"} onValueChange={(val) => handleUpdateStatus(o, val)}>
+                          <Select
+                            value={o.status || "Processing"}
+                            onValueChange={(val) => handleUpdateStatus(o, val)}
+                          >
                             <SelectTrigger className="h-7 text-[10px] font-bold rounded-xl border-slate-200 w-32 bg-white">
                               <SelectValue />
                             </SelectTrigger>
@@ -546,11 +554,15 @@ export function AdminOrdersView() {
               <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-slate-700">
                 <div>
                   <span className="text-slate-400 font-bold block">Customer:</span>
-                  <p className="font-extrabold text-slate-900">{managingRefillOrder.shipping_name || managingRefillOrder.guest_name}</p>
+                  <p className="font-extrabold text-slate-900">
+                    {managingRefillOrder.shipping_name || managingRefillOrder.guest_name}
+                  </p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block">Phone:</span>
-                  <p className="font-extrabold text-slate-900">{managingRefillOrder.shipping_phone || "—"}</p>
+                  <p className="font-extrabold text-slate-900">
+                    {managingRefillOrder.shipping_phone || "—"}
+                  </p>
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block">Current Status:</span>
@@ -558,7 +570,9 @@ export function AdminOrdersView() {
                 </div>
                 <div>
                   <span className="text-slate-400 font-bold block">Total Amount:</span>
-                  <p className="font-extrabold text-slate-900">{gbp(Number(managingRefillOrder.total))}</p>
+                  <p className="font-extrabold text-slate-900">
+                    {gbp(Number(managingRefillOrder.total))}
+                  </p>
                 </div>
               </div>
 
@@ -577,14 +591,18 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("PICKUP_SCHEDULED")}
                     className={cn(
                       "justify-start h-auto p-3 rounded-2xl border text-left font-extrabold text-xs transition-all",
-                      managingRefillOrder.status === "Pickup Scheduled" ? "border-primary bg-red-50 text-primary ring-1 ring-primary" : "border-slate-200"
+                      managingRefillOrder.status === "Pickup Scheduled"
+                        ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
+                        : "border-slate-200",
                     )}
                   >
                     <div>
                       <p className="flex items-center gap-1.5 font-bold">
                         <Truck className="h-3.5 w-3.5 text-primary" /> 1. Schedule Empty Pickup
                       </p>
-                      <p className="text-[10px] text-slate-500 font-normal">Assign pickup route & driver</p>
+                      <p className="text-[10px] text-slate-500 font-normal">
+                        Assign pickup route & driver
+                      </p>
                     </div>
                   </Button>
 
@@ -596,14 +614,19 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("EMPTY_COLLECTED")}
                     className={cn(
                       "justify-start h-auto p-3 rounded-2xl border text-left font-extrabold text-xs transition-all",
-                      managingRefillOrder.status === "Empty Cylinder Collected" ? "border-primary bg-red-50 text-primary ring-1 ring-primary" : "border-slate-200"
+                      managingRefillOrder.status === "Empty Cylinder Collected"
+                        ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
+                        : "border-slate-200",
                     )}
                   >
                     <div>
                       <p className="flex items-center gap-1.5 font-bold">
-                        <CheckCircle className="h-3.5 w-3.5 text-purple-600" /> 2. Mark Empty Collected
+                        <CheckCircle className="h-3.5 w-3.5 text-purple-600" /> 2. Mark Empty
+                        Collected
                       </p>
-                      <p className="text-[10px] text-slate-500 font-normal">Driver collected empty bottle</p>
+                      <p className="text-[10px] text-slate-500 font-normal">
+                        Driver collected empty bottle
+                      </p>
                     </div>
                   </Button>
 
@@ -615,14 +638,19 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("EMPTY_VERIFIED")}
                     className={cn(
                       "justify-start h-auto p-3 rounded-2xl border text-left font-extrabold text-xs transition-all",
-                      managingRefillOrder.status === "Empty Cylinder Verified" ? "border-primary bg-red-50 text-primary ring-1 ring-primary" : "border-slate-200"
+                      managingRefillOrder.status === "Empty Cylinder Verified"
+                        ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
+                        : "border-slate-200",
                     )}
                   >
                     <div>
                       <p className="flex items-center gap-1.5 font-bold">
-                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> 3. Verify Empty Cylinder
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" /> 3. Verify Empty
+                        Cylinder
                       </p>
-                      <p className="text-[10px] text-slate-500 font-normal">Depot safety inspection passed</p>
+                      <p className="text-[10px] text-slate-500 font-normal">
+                        Depot safety inspection passed
+                      </p>
                     </div>
                   </Button>
 
@@ -634,14 +662,18 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("REFILL_IN_PROGRESS")}
                     className={cn(
                       "justify-start h-auto p-3 rounded-2xl border text-left font-extrabold text-xs transition-all",
-                      managingRefillOrder.status === "Refill In Progress" ? "border-primary bg-red-50 text-primary ring-1 ring-primary" : "border-slate-200"
+                      managingRefillOrder.status === "Refill In Progress"
+                        ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
+                        : "border-slate-200",
                     )}
                   >
                     <div>
                       <p className="flex items-center gap-1.5 font-bold">
                         <Flame className="h-3.5 w-3.5 text-amber-600" /> 4. Start Refill Processing
                       </p>
-                      <p className="text-[10px] text-slate-500 font-normal">Bottle being refilled at plant</p>
+                      <p className="text-[10px] text-slate-500 font-normal">
+                        Bottle being refilled at plant
+                      </p>
                     </div>
                   </Button>
 
@@ -653,14 +685,18 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("REFILL_COMPLETED")}
                     className={cn(
                       "justify-start h-auto p-3 rounded-2xl border text-left font-extrabold text-xs transition-all",
-                      managingRefillOrder.status === "Refill Completed" ? "border-primary bg-red-50 text-primary ring-1 ring-primary" : "border-slate-200"
+                      managingRefillOrder.status === "Refill Completed"
+                        ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
+                        : "border-slate-200",
                     )}
                   >
                     <div>
                       <p className="flex items-center gap-1.5 font-bold">
                         <Check className="h-3.5 w-3.5 text-emerald-600" /> 5. Mark Refill Completed
                       </p>
-                      <p className="text-[10px] text-slate-500 font-normal">Sealed & loaded for delivery</p>
+                      <p className="text-[10px] text-slate-500 font-normal">
+                        Sealed & loaded for delivery
+                      </p>
                     </div>
                   </Button>
 
@@ -672,14 +708,18 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("OUT_FOR_DELIVERY")}
                     className={cn(
                       "justify-start h-auto p-3 rounded-2xl border text-left font-extrabold text-xs transition-all",
-                      managingRefillOrder.status === "Out for Delivery" ? "border-primary bg-red-50 text-primary ring-1 ring-primary" : "border-slate-200"
+                      managingRefillOrder.status === "Out for Delivery"
+                        ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
+                        : "border-slate-200",
                     )}
                   >
                     <div>
                       <p className="flex items-center gap-1.5 font-bold">
                         <Truck className="h-3.5 w-3.5 text-blue-600" /> 6. Out for Delivery
                       </p>
-                      <p className="text-[10px] text-slate-500 font-normal">Dispatched on delivery vehicle</p>
+                      <p className="text-[10px] text-slate-500 font-normal">
+                        Dispatched on delivery vehicle
+                      </p>
                     </div>
                   </Button>
 
@@ -690,14 +730,17 @@ export function AdminOrdersView() {
                     onClick={() => handleRefillAction("COMPLETED")}
                     className="sm:col-span-2 justify-center h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md"
                   >
-                    <CheckCircle className="h-4 w-4 mr-1.5" /> 7. Mark Delivered & Complete Refill Order
+                    <CheckCircle className="h-4 w-4 mr-1.5" /> 7. Mark Delivered & Complete Refill
+                    Order
                   </Button>
                 </div>
               </div>
 
               {/* Note input */}
               <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <Label className="text-xs font-bold text-slate-700">Audit / Logistics Notes (Optional)</Label>
+                <Label className="text-xs font-bold text-slate-700">
+                  Audit / Logistics Notes (Optional)
+                </Label>
                 <Input
                   value={actionNotes}
                   onChange={(e) => setActionNotes(e.target.value)}
@@ -727,22 +770,40 @@ export function AdminOrdersView() {
               <div className="space-y-1.5 p-4 rounded-2xl bg-slate-50 border border-slate-200">
                 <span className="font-bold text-slate-400 block">Customer Information</span>
                 <p className="text-sm font-extrabold text-slate-900">
-                  {selectedOrder.shipping_name || selectedOrder.guest_name || selectedOrder.customer_name || "Guest Customer"}
+                  {selectedOrder.shipping_name ||
+                    selectedOrder.guest_name ||
+                    selectedOrder.customer_name ||
+                    "Guest Customer"}
                 </p>
-                <p className="text-slate-600">{selectedOrder.shipping_phone || selectedOrder.guest_phone || "No phone provided"}</p>
-                <p className="text-slate-600">{selectedOrder.shipping_address || selectedOrder.delivery_address || "No address provided"}</p>
+                <p className="text-slate-600">
+                  {selectedOrder.shipping_phone || selectedOrder.guest_phone || "No phone provided"}
+                </p>
+                <p className="text-slate-600">
+                  {selectedOrder.shipping_address ||
+                    selectedOrder.delivery_address ||
+                    "No address provided"}
+                </p>
               </div>
 
               <div className="space-y-2">
-                <span className="font-bold text-slate-400 uppercase tracking-wider block">Line Items</span>
+                <span className="font-bold text-slate-400 uppercase tracking-wider block">
+                  Line Items
+                </span>
                 <div className="space-y-2">
                   {(selectedOrder.order_items || []).map((item: any, idx: number) => (
-                    <div key={idx} className="p-3 rounded-xl border border-slate-200 flex justify-between items-center bg-white">
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl border border-slate-200 flex justify-between items-center bg-white"
+                    >
                       <div>
-                        <p className="font-extrabold text-slate-900">{item.name || item.product_name}</p>
+                        <p className="font-extrabold text-slate-900">
+                          {item.name || item.product_name}
+                        </p>
                         <p className="text-[11px] text-slate-500">Qty: {item.quantity}</p>
                       </div>
-                      <span className="font-bold text-slate-900">{gbp(Number(item.total || item.price * item.quantity))}</span>
+                      <span className="font-bold text-slate-900">
+                        {gbp(Number(item.total || item.price * item.quantity))}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -751,7 +812,9 @@ export function AdminOrdersView() {
               <div className="border-t border-slate-200 pt-3 space-y-1 text-sm font-bold">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Total Amount:</span>
-                  <span className="font-black text-primary text-base">{gbp(Number(selectedOrder.total))}</span>
+                  <span className="font-black text-primary text-base">
+                    {gbp(Number(selectedOrder.total))}
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Payment:</span>

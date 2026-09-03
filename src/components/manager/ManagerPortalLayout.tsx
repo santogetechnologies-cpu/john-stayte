@@ -38,23 +38,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { ManagerGlobalSearch } from "./ManagerGlobalSearch";
 import { ManagerNotificationsPopover } from "./ManagerNotificationsPopover";
 
+import type { LucideIcon } from "lucide-react";
+
 type NavItem = {
   title: string;
   href: string;
-  icon: any;
-  badgeKey?: "pendingOrders" | "processingOrders" | "outForDelivery" | "delayedDeliveries" | "lowStock" | "openEnquiries";
+  icon: LucideIcon | React.ElementType;
+  badgeKey?:
+    | "pendingOrders"
+    | "processingOrders"
+    | "outForDelivery"
+    | "delayedDeliveries"
+    | "lowStock"
+    | "openEnquiries";
 };
 
 type NavGroup = {
@@ -65,32 +68,59 @@ type NavGroup = {
 const managerNavGroups: NavGroup[] = [
   {
     groupLabel: "OVERVIEW",
-    items: [
-      { title: "Dashboard", href: "/manager", icon: LayoutDashboard },
-    ],
+    items: [{ title: "Dashboard", href: "/manager", icon: LayoutDashboard }],
   },
   {
     groupLabel: "ORDERS & DISPATCH",
     items: [
       { title: "Orders Assigned", href: "/manager/orders", icon: ShoppingBag },
-      { title: "Pending Approval", href: "/manager/orders?status=Pending", icon: Clock, badgeKey: "pendingOrders" },
-      { title: "Processing", href: "/manager/orders?status=Processing", icon: PackageCheck, badgeKey: "processingOrders" },
+      {
+        title: "Pending Approval",
+        href: "/manager/orders?status=Pending",
+        icon: Clock,
+        badgeKey: "pendingOrders",
+      },
+      {
+        title: "Processing",
+        href: "/manager/orders?status=Processing",
+        icon: PackageCheck,
+        badgeKey: "processingOrders",
+      },
     ],
   },
   {
     groupLabel: "LOGISTICS & DELIVERIES",
     items: [
       { title: "All Deliveries", href: "/manager/deliveries", icon: Truck },
-      { title: "Out for Delivery", href: "/manager/deliveries?status=out_for_delivery", icon: Navigation, badgeKey: "outForDelivery" },
-      { title: "Delivered Today", href: "/manager/deliveries?status=delivered", icon: CheckCircle2 },
-      { title: "Delayed Deliveries", href: "/manager/deliveries?status=delayed", icon: AlertTriangle, badgeKey: "delayedDeliveries" },
+      {
+        title: "Out for Delivery",
+        href: "/manager/deliveries?status=out_for_delivery",
+        icon: Navigation,
+        badgeKey: "outForDelivery",
+      },
+      {
+        title: "Delivered Today",
+        href: "/manager/deliveries?status=delivered",
+        icon: CheckCircle2,
+      },
+      {
+        title: "Delayed Deliveries",
+        href: "/manager/deliveries?status=delayed",
+        icon: AlertTriangle,
+        badgeKey: "delayedDeliveries",
+      },
     ],
   },
   {
     groupLabel: "INVENTORY & STOCK",
     items: [
       { title: "Depot Inventory", href: "/manager/inventory", icon: Layers },
-      { title: "Low Stock Items", href: "/manager/inventory?status=low_stock", icon: AlertOctagon, badgeKey: "lowStock" },
+      {
+        title: "Low Stock Items",
+        href: "/manager/inventory?status=low_stock",
+        icon: AlertOctagon,
+        badgeKey: "lowStock",
+      },
     ],
   },
   {
@@ -98,7 +128,12 @@ const managerNavGroups: NavGroup[] = [
     items: [
       { title: "Customers", href: "/manager/customers", icon: Users },
       { title: "All Enquiries", href: "/manager/enquiries", icon: HelpCircle },
-      { title: "Open Enquiries", href: "/manager/enquiries?status=Open", icon: MessageSquare, badgeKey: "openEnquiries" },
+      {
+        title: "Open Enquiries",
+        href: "/manager/enquiries?status=Open",
+        icon: MessageSquare,
+        badgeKey: "openEnquiries",
+      },
       { title: "Support Tickets", href: "/manager/support", icon: LifeBuoy },
     ],
   },
@@ -150,10 +185,19 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
       ] = await Promise.all([
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
         supabase.from("orders").select("id, status").or("status.eq.Approved,status.eq.Packed"),
-        supabase.from("delivery_assignments").select("*", { count: "exact", head: true }).eq("status", "Delayed"),
-        supabase.from("delivery_assignments").select("*", { count: "exact", head: true }).eq("status", "Out for Delivery"),
+        supabase
+          .from("delivery_assignments")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "Delayed"),
+        supabase
+          .from("delivery_assignments")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "Out for Delivery"),
         supabase.from("products").select("id, stock").lte("stock", 10),
-        supabase.from("support_tickets").select("*", { count: "exact", head: true }).eq("status", "Open"),
+        supabase
+          .from("support_tickets")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "Open"),
       ]);
 
       setCounts({
@@ -174,10 +218,18 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
 
     const channel = supabase
       .channel("manager_sidebar_realtime_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadSidebarCounts())
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () => loadSidebarCounts())
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => loadSidebarCounts())
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => loadSidebarCounts())
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadSidebarCounts(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadSidebarCounts(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
+        loadSidebarCounts(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
+        loadSidebarCounts(),
+      )
       .subscribe();
 
     return () => {
@@ -195,7 +247,8 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
             Manager Access Required
           </h1>
           <p className="mt-2 text-xs text-slate-600 leading-relaxed">
-            Please sign in using an Operations Manager or Administrator account to access the Manager Operations Portal.
+            Please sign in using an Operations Manager or Administrator account to access the
+            Manager Operations Portal.
           </p>
           <Button
             asChild
@@ -227,9 +280,8 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
     }
 
     // Inspect live router query search
-    const currentSearchStr = typeof window !== "undefined"
-      ? window.location.search
-      : routerState.location.searchStr || "";
+    const currentSearchStr =
+      typeof window !== "undefined" ? window.location.search : routerState.location.searchStr || "";
     const currentParams = new URLSearchParams(currentSearchStr);
     const currentStatus = currentParams.get("status")?.toLowerCase() || null;
 
@@ -267,7 +319,9 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
               >
                 <item.icon
                   className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
-                    isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
+                    isActive
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground group-hover:text-foreground"
                   }`}
                 />
                 {(!collapsed || isMobile) && (
@@ -432,7 +486,10 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5 shadow-xl border bg-white">
+            <DropdownMenuContent
+              align="end"
+              className="w-56 rounded-2xl p-1.5 shadow-xl border bg-white"
+            >
               <DropdownMenuLabel className="p-2">
                 <p className="text-xs font-bold text-foreground">{managerName}</p>
                 <p className="text-[11px] text-muted-foreground truncate">{managerEmail}</p>
@@ -444,12 +501,19 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/manager/settings" className="flex items-center gap-2 text-xs font-medium">
+                <Link
+                  to="/manager/settings"
+                  className="flex items-center gap-2 text-xs font-medium"
+                >
                   <Settings className="h-4 w-4 text-muted-foreground" /> Manager Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/" target="_blank" className="flex items-center gap-2 text-xs font-medium">
+                <Link
+                  to="/"
+                  target="_blank"
+                  className="flex items-center gap-2 text-xs font-medium"
+                >
                   <ExternalLink className="h-4 w-4 text-muted-foreground" /> View Customer Site
                 </Link>
               </DropdownMenuItem>
@@ -481,19 +545,23 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
             className="absolute -right-3 top-6 z-30 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-all hover:scale-110"
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            )}
           </button>
 
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-6">
-            {renderNavItems(false)}
-          </div>
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-6">{renderNavItems(false)}</div>
 
           {!collapsed && (
             <div className="p-3.5 border-t border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
                 <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-foreground truncate">Fromebridge Station</p>
+                  <p className="text-[11px] font-bold text-foreground truncate">
+                    Fromebridge Station
+                  </p>
                   <p className="text-[10px] text-muted-foreground truncate">Depot Ops Active</p>
                 </div>
               </div>
@@ -503,9 +571,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
 
         {/* MAIN CONTENT AREA */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8 animate-rise">
-            {children}
-          </div>
+          <div className="max-w-7xl mx-auto space-y-8 animate-rise">{children}</div>
         </main>
       </div>
     </div>

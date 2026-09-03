@@ -67,56 +67,28 @@ export interface ApplicationSubmitPayload {
  * Fetches the gas customer application for an authenticated customer from the database.
  */
 export async function getCustomerGasApplication(
-  customerId: string
+  customerId: string,
 ): Promise<GasCustomerApplication | null> {
   if (!customerId) return null;
 
   try {
-    // 1. Try fetching from gas_customer_applications table
-    const { data, error } = await (supabase.from("gas_customer_applications" as any) as any)
-      .select("*")
-      .eq("customer_id", customerId)
+    // 1. Primary: Fetch from customer's profile record in Supabase
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("notification_prefs")
+      .eq("id", customerId)
       .maybeSingle();
 
-    if (!error && data) {
-      return {
-        id: data.id,
-        customer_id: data.customer_id,
-        full_name: data.full_name,
-        email: data.email,
-        phone: data.phone,
-        date_of_birth: data.date_of_birth || null,
-        street_address: data.street_address,
-        city: data.city,
-        postcode: data.postcode,
-        delivery_address: data.delivery_address || `${data.street_address}, ${data.city} ${data.postcode}`,
-        billing_address: data.billing_address || null,
-        preferred_contact_method: data.preferred_contact_method || null,
-        usage_type: data.usage_type || "DOMESTIC",
-        business_name: data.business_name || null,
-        business_type: data.business_type || null,
-        business_address: data.business_address || null,
-        business_contact: data.business_contact || null,
-        existing_cylinder_status: data.existing_cylinder_status || null,
-        cylinder_type: data.cylinder_type || null,
-        cylinder_size: data.cylinder_size || null,
-        order_requirement: data.order_requirement || null,
-        declaration_accepted: Boolean(data.declaration_accepted),
-        signature_data: data.signature_data,
-        signed_at: data.signed_at || data.created_at,
-        status: (data.status as ApplicationStatus) || "SUBMITTED",
-        admin_notes: data.admin_notes || null,
-        reviewed_by: data.reviewed_by || null,
-        reviewed_at: data.reviewed_at || null,
-        created_at: data.created_at,
-        updated_at: data.updated_at || data.created_at,
-      };
+    const appFromProf = (prof?.notification_prefs as Record<string, unknown> | null)
+      ?.gas_application;
+    if (appFromProf && typeof appFromProf === "object" && "id" in appFromProf) {
+      return appFromProf as GasCustomerApplication;
     }
   } catch (e) {
-    // Fallback query if table schema is pending
+    console.warn("Could not query application from profile:", e);
   }
 
-  // 2. Fallback check from persistent cms_content_blocks container
+  // 2. Fallback: cms_content_blocks container
   try {
     const sectionKey = `gas_app_${customerId}`;
     const { data: block } = await supabase
@@ -130,7 +102,7 @@ export async function getCustomerGasApplication(
       return parsed as GasCustomerApplication;
     }
   } catch (e) {
-    // No fallback found
+    // Non-critical
   }
 
   return null;
@@ -140,7 +112,7 @@ export async function getCustomerGasApplication(
  * Submits a new or updated Gas Customer Application with full validation and digital signature.
  */
 export async function submitGasCustomerApplication(
-  payload: ApplicationSubmitPayload
+  payload: ApplicationSubmitPayload,
 ): Promise<GasCustomerApplication> {
   const {
     customerId,
@@ -171,12 +143,15 @@ export async function submitGasCustomerApplication(
   if (!customerId) throw new Error("Authentication required: customer ID is missing.");
   if (!fullName?.trim()) throw new Error("Full name is required.");
   if (!email?.trim() || !email.includes("@")) throw new Error("A valid email address is required.");
-  if (!phone?.trim() || phone.trim().length < 7) throw new Error("A valid contact telephone number is required.");
+  if (!phone?.trim() || phone.trim().length < 7)
+    throw new Error("A valid contact telephone number is required.");
   if (!streetAddress?.trim()) throw new Error("Street address is required.");
   if (!postcode?.trim()) throw new Error("Postcode is required.");
   if (!declarationAccepted) throw new Error("You must confirm and accept the declaration terms.");
   if (!signatureData || signatureData.length < 50) {
-    throw new Error("A valid digital signature is mandatory to submit your Gas Customer Application.");
+    throw new Error(
+      "A valid digital signature is mandatory to submit your Gas Customer Application.",
+    );
   }
 
   if ((usageType === "COMMERCIAL" || usageType === "BULK") && !businessName?.trim()) {
@@ -204,7 +179,8 @@ export async function submitGasCustomerApplication(
     business_type: businessType?.trim() || null,
     business_address: businessAddress?.trim() || null,
     business_contact: businessContact?.trim() || null,
-    existing_cylinder_status: existingCylinderStatus?.trim() || "New Customer (No Cylinders)",
+    existing_cylinder_status:
+      existingCylinderStatus?.trim() || "New Customer (No Existing Cylinders)",
     cylinder_type: cylinderType?.trim() || null,
     cylinder_size: cylinderSize?.trim() || null,
     order_requirement: orderRequirement?.trim() || null,
@@ -219,58 +195,51 @@ export async function submitGasCustomerApplication(
     updated_at: now,
   };
 
-  // 1. Save to gas_customer_applications table if available
+  // 1. Primary write: Update Customer's profile record in Supabase
   try {
-    await (supabase.from("gas_customer_applications" as any) as any).upsert(
-      {
-        id: appId,
-        customer_id: customerId,
-        full_name: applicationRecord.full_name,
-        email: applicationRecord.email,
-        phone: applicationRecord.phone,
-        date_of_birth: applicationRecord.date_of_birth,
-        street_address: applicationRecord.street_address,
-        city: applicationRecord.city,
-        postcode: applicationRecord.postcode,
-        delivery_address: applicationRecord.delivery_address,
-        billing_address: applicationRecord.billing_address,
-        preferred_contact_method: applicationRecord.preferred_contact_method,
-        usage_type: applicationRecord.usage_type,
-        business_name: applicationRecord.business_name,
-        business_type: applicationRecord.business_type,
-        business_address: applicationRecord.business_address,
-        business_contact: applicationRecord.business_contact,
-        existing_cylinder_status: applicationRecord.existing_cylinder_status,
-        cylinder_type: applicationRecord.cylinder_type,
-        cylinder_size: applicationRecord.cylinder_size,
-        order_requirement: applicationRecord.order_requirement,
-        declaration_accepted: true,
-        signature_data: applicationRecord.signature_data,
-        signed_at: applicationRecord.signed_at,
-        status: "SUBMITTED",
+    const { data: currentProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", customerId)
+      .maybeSingle();
+
+    const existingPrefs =
+      (currentProfile?.notification_prefs as Record<string, unknown> | null) || {};
+    await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        notification_prefs: {
+          ...existingPrefs,
+          gas_application: applicationRecord,
+        } as unknown as Record<string, string>,
         updated_at: now,
-      },
-      { onConflict: "customer_id" }
-    );
-  } catch (e) {
-    // If table not present yet, continue to persistent fallback block
+      })
+      .eq("id", customerId);
+  } catch (err) {
+    console.error("Failed to update profile with application:", err);
   }
 
-  // 2. Persist in cms_content_blocks for complete reliability
-  const sectionKey = `gas_app_${customerId}`;
-  await supabase.from("cms_content_blocks").upsert(
-    {
-      section_key: sectionKey,
-      title: `Gas Application: ${fullName} (${usageType})`,
-      content: JSON.stringify(applicationRecord),
-      updated_at: now,
-    },
-    { onConflict: "section_key" }
-  );
-
-  // 3. Update customer_addresses with the primary address
+  // 2. Persist in cms_content_blocks container if accessible
   try {
-    await (supabase.from("customer_addresses") as any).upsert(
+    const sectionKey = `gas_app_${customerId}`;
+    await supabase.from("cms_content_blocks").upsert(
+      {
+        section_key: sectionKey,
+        title: `Gas Application: ${fullName} (${usageType})`,
+        content: JSON.stringify(applicationRecord),
+        updated_at: now,
+      },
+      { onConflict: "section_key" },
+    );
+  } catch (e) {
+    // Non-critical
+  }
+
+  // 3. Update customer_addresses with primary address
+  try {
+    await supabase.from("customer_addresses").upsert(
       {
         user_id: customerId,
         label: "Primary Delivery Address",
@@ -280,32 +249,41 @@ export async function submitGasCustomerApplication(
         postcode: postcode.trim().toUpperCase(),
         is_default: true,
       },
-      { onConflict: "user_id,street,postcode" }
+      { onConflict: "user_id,street,postcode" },
     );
   } catch (e) {
     // Non-critical
   }
 
   // 4. Create staff & customer notifications
-  await (supabase.from("notifications") as any).insert([
-    {
-      title: `New Gas Customer Application: ${fullName}`,
-      message: `${fullName} submitted a ${usageType} LPG customer application with digital signature.`,
-      type: "application",
-      link: `/admin/applications`,
-    },
-  ]);
+  try {
+    await supabase.from("notifications").insert([
+      {
+        user_id: customerId,
+        title: `New Gas Customer Application: ${fullName}`,
+        message: `${fullName} submitted a ${usageType} LPG customer application with digital signature.`,
+        category: "Account",
+        is_read: false,
+      },
+    ]);
+  } catch (e) {
+    // Non-critical
+  }
 
-  await supabase.from("customer_notifications").insert([
-    {
-      user_id: customerId,
-      title: "Gas Customer Application Submitted",
-      message:
-        "Your gas customer application has been successfully saved. You may now proceed to order gas cylinders and refills.",
-      category: "Account",
-      is_read: false,
-    },
-  ]);
+  try {
+    await supabase.from("customer_notifications").insert([
+      {
+        user_id: customerId,
+        title: "Gas Customer Application Submitted",
+        message:
+          "Your gas customer application has been successfully registered. You may now proceed to order gas cylinders.",
+        category: "Account",
+        is_read: false,
+      },
+    ]);
+  } catch (e) {
+    // Non-critical
+  }
 
   return applicationRecord;
 }
@@ -316,50 +294,28 @@ export async function submitGasCustomerApplication(
 export async function getAllGasCustomerApplications(): Promise<GasCustomerApplication[]> {
   const applications: GasCustomerApplication[] = [];
 
-  // 1. Query from gas_customer_applications table
+  // 1. Primary: Query all customer profiles from Supabase
   try {
-    const { data } = await (supabase.from("gas_customer_applications" as any) as any)
+    const { data: profs, error: profErr } = await supabase
+      .from("profiles")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (data && data.length > 0) {
-      for (const d of data) {
-        applications.push({
-          id: d.id,
-          customer_id: d.customer_id,
-          full_name: d.full_name,
-          email: d.email,
-          phone: d.phone,
-          date_of_birth: d.date_of_birth,
-          street_address: d.street_address,
-          city: d.city,
-          postcode: d.postcode,
-          delivery_address: d.delivery_address,
-          billing_address: d.billing_address,
-          preferred_contact_method: d.preferred_contact_method,
-          usage_type: d.usage_type || "DOMESTIC",
-          business_name: d.business_name,
-          business_type: d.business_type,
-          business_address: d.business_address,
-          business_contact: d.business_contact,
-          existing_cylinder_status: d.existing_cylinder_status,
-          cylinder_type: d.cylinder_type,
-          cylinder_size: d.cylinder_size,
-          order_requirement: d.order_requirement,
-          declaration_accepted: d.declaration_accepted,
-          signature_data: d.signature_data,
-          signed_at: d.signed_at || d.created_at,
-          status: (d.status as ApplicationStatus) || "SUBMITTED",
-          admin_notes: d.admin_notes,
-          reviewed_by: d.reviewed_by,
-          reviewed_at: d.reviewed_at,
-          created_at: d.created_at,
-          updated_at: d.updated_at,
-        });
+    if (!profErr && profs && profs.length > 0) {
+      for (const p of profs) {
+        const app = (p.notification_prefs as Record<string, unknown> | null)?.gas_application;
+        if (
+          app &&
+          typeof app === "object" &&
+          "id" in app &&
+          !applications.some((a) => a.customer_id === (app as GasCustomerApplication).customer_id)
+        ) {
+          applications.push(app as GasCustomerApplication);
+        }
       }
     }
   } catch (e) {
-    // Fallback
+    console.warn("Could not query applications from profiles:", e);
   }
 
   // 2. Query from cms_content_blocks container
@@ -382,11 +338,11 @@ export async function getAllGasCustomerApplications(): Promise<GasCustomerApplic
       }
     }
   } catch (e) {
-    // ignore
+    // Non-critical
   }
 
   return applications.sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 }
 
@@ -400,62 +356,106 @@ export async function updateGasApplicationStatus(params: {
   adminNotes?: string;
   reviewedBy?: string;
 }) {
-  const { applicationId, customerId, status, adminNotes = "", reviewedBy = "Admin" } = params;
+  const { customerId, status, adminNotes = "", reviewedBy = "Admin" } = params;
   const now = new Date().toISOString();
 
-  // 1. Update in table
+  // 1. Primary: Update in customer's profile
   try {
-    await (supabase.from("gas_customer_applications" as any) as any)
-      .update({
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("notification_prefs")
+      .eq("id", customerId)
+      .maybeSingle();
+
+    if (prof) {
+      const existingPrefs = (prof.notification_prefs as Record<string, unknown> | null) || {};
+      const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
+      const updatedApp = {
+        ...existingApp,
         status,
         admin_notes: adminNotes,
         reviewed_by: reviewedBy,
         reviewed_at: now,
         updated_at: now,
-      })
-      .eq("customer_id", customerId);
-  } catch (e) {
-    // ignore
-  }
+      };
 
-  // 2. Update in cms_content_blocks fallback
-  const sectionKey = `gas_app_${customerId}`;
-  const { data: existing } = await supabase
-    .from("cms_content_blocks")
-    .select("content")
-    .eq("section_key", sectionKey)
-    .maybeSingle();
-
-  if (existing?.content) {
-    try {
-      const parsed = JSON.parse(existing.content);
-      parsed.status = status;
-      parsed.admin_notes = adminNotes;
-      parsed.reviewed_by = reviewedBy;
-      parsed.reviewed_at = now;
-      parsed.updated_at = now;
-
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: sectionKey,
-        title: `Gas Application: ${parsed.full_name} (${parsed.usage_type})`,
-        content: JSON.stringify(parsed),
-        updated_at: now,
-      });
-    } catch (e) {
-      // ignore
+      await supabase
+        .from("profiles")
+        .update({
+          notification_prefs: {
+            ...existingPrefs,
+            gas_application: updatedApp,
+          } as unknown as Record<string, string>,
+          updated_at: now,
+        })
+        .eq("id", customerId);
     }
+  } catch (e) {
+    console.error("Failed to update application in profile:", e);
   }
 
-  // 3. Customer notification
-  await supabase.from("customer_notifications").insert([
-    {
-      user_id: customerId,
-      title: `Gas Application ${status === "APPROVED" ? "Approved" : status === "REJECTED" ? "Update Required" : "Status Updated"}`,
-      message: `Your gas customer application has been marked as ${status} by John Stayte Services.`,
-      category: "Account",
-      is_read: false,
-    },
-  ]);
+  // 2. Secondary: Update in cms_content_blocks container
+  try {
+    const sectionKey = `gas_app_${customerId}`;
+    const { data: existing } = await supabase
+      .from("cms_content_blocks")
+      .select("content")
+      .eq("section_key", sectionKey)
+      .maybeSingle();
+
+    if (existing?.content) {
+      try {
+        const parsed = JSON.parse(existing.content);
+        parsed.status = status;
+        parsed.admin_notes = adminNotes;
+        parsed.reviewed_by = reviewedBy;
+        parsed.reviewed_at = now;
+        parsed.updated_at = now;
+
+        await supabase.from("cms_content_blocks").upsert({
+          section_key: sectionKey,
+          title: `Gas Application: ${parsed.full_name} (${parsed.usage_type})`,
+          content: JSON.stringify(parsed),
+          updated_at: now,
+        });
+      } catch (e) {
+        // ignore
+      }
+    }
+  } catch (e) {
+    // Non-critical
+  }
+
+  // 3. Notify customer of status change
+  try {
+    const notifTitle =
+      status === "APPROVED"
+        ? "Gas Application Approved"
+        : status === "REJECTED"
+          ? "Gas Application Rejected"
+          : "Gas Application Status Updated";
+
+    const notifMessage =
+      status === "APPROVED"
+        ? "Your gas application has been approved. You can now place gas orders."
+        : status === "REJECTED"
+          ? adminNotes
+            ? `Your gas application has been rejected. Reason: ${adminNotes}`
+            : "Your gas application has been rejected. Please review and update your application details."
+          : `Your gas customer application has been marked as ${status} by John Stayte Services.`;
+
+    await supabase.from("customer_notifications").insert([
+      {
+        user_id: customerId,
+        title: notifTitle,
+        message: notifMessage,
+        category: "Account",
+        is_read: false,
+      },
+    ]);
+  } catch (e) {
+    // Non-critical
+  }
 
   return { success: true, status };
 }

@@ -26,10 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import {
-  submitGasCustomerApplication,
-  GasCustomerApplication,
-} from "@/lib/application-service";
+import { submitGasCustomerApplication, GasCustomerApplication } from "@/lib/application-service";
 
 interface GasCustomerApplicationFormProps {
   initialUsage?: "DOMESTIC" | "COMMERCIAL" | "BULK";
@@ -69,7 +66,9 @@ export function GasCustomerApplicationForm({
   const [businessContact, setBusinessContact] = useState("");
 
   // Section 4: Cylinder Info
-  const [existingCylinderStatus, setExistingCylinderStatus] = useState("New Customer (No Existing Cylinders)");
+  const [existingCylinderStatus, setExistingCylinderStatus] = useState(
+    "New Customer (No Existing Cylinders)",
+  );
   const [cylinderType, setCylinderType] = useState("Propane (Red)");
   const [cylinderSize, setCylinderSize] = useState("13kg");
   const [orderRequirement, setOrderRequirement] = useState("New Cylinder + Gas Purchase");
@@ -110,7 +109,9 @@ export function GasCustomerApplicationForm({
   }, []);
 
   // Canvas drawing helper functions
-  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const getCoordinates = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -129,7 +130,9 @@ export function GasCustomerApplicationForm({
     }
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const startDrawing = (
+    e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -177,10 +180,13 @@ export function GasCustomerApplicationForm({
     }
 
     if (!fullName.trim()) return toast.error("Please enter your full name.");
-    if (!email.trim() || !email.includes("@")) return toast.error("Please enter a valid email address.");
-    if (!phone.trim() || phone.trim().length < 7) return toast.error("Please enter a valid phone number.");
+    if (!email.trim() || !email.includes("@"))
+      return toast.error("Please enter a valid email address.");
+    if (!phone.trim() || phone.trim().length < 7)
+      return toast.error("Please enter a valid phone number.");
     if (!streetAddress.trim()) return toast.error("Please enter your street address.");
-    if (!postcode.trim() || postcode.trim().length < 4) return toast.error("Please enter a valid UK postcode.");
+    if (!postcode.trim() || postcode.trim().length < 4)
+      return toast.error("Please enter a valid UK postcode.");
 
     if ((usageType === "COMMERCIAL" || usageType === "BULK") && !businessName.trim()) {
       return toast.error("Please enter your registered business or trade name.");
@@ -240,7 +246,7 @@ export function GasCustomerApplicationForm({
       onSubmit={handleSubmit}
       className={cn(
         "rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 space-y-8 text-left shadow-sm",
-        embedded ? "border-0 p-0 shadow-none" : ""
+        embedded ? "border-0 p-0 shadow-none" : "",
       )}
     >
       {/* Header Banner */}
@@ -253,7 +259,8 @@ export function GasCustomerApplicationForm({
           Gas Customer Application Form
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-2xl">
-          To comply with UK Pressure Systems & Gas Safety Regulations, all new customers must complete this application once before placing their first gas cylinder or refill order.
+          To comply with UK Pressure Systems & Gas Safety Regulations, all new customers must
+          complete this application once before placing their first gas cylinder or refill order.
         </p>
       </div>
 
@@ -369,7 +376,9 @@ export function GasCustomerApplicationForm({
 
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs font-bold text-slate-700">Delivery Drop-Off Address (if different from above)</Label>
+            <Label className="text-xs font-bold text-slate-700">
+              Delivery Drop-Off Address (if different from above)
+            </Label>
             <Input
               value={deliveryAddress}
               onChange={(e) => setDeliveryAddress(e.target.value)}
@@ -390,7 +399,9 @@ export function GasCustomerApplicationForm({
 
           {hasDifferentBilling && (
             <div className="space-y-1 pt-1">
-              <Label className="text-xs font-bold text-slate-700">Billing Address & Postcode *</Label>
+              <Label className="text-xs font-bold text-slate-700">
+                Billing Address & Postcode *
+              </Label>
               <Textarea
                 rows={2}
                 value={billingAddress}
@@ -440,12 +451,20 @@ export function GasCustomerApplicationForm({
                 "p-4 rounded-2xl border text-left transition-all cursor-pointer space-y-2",
                 usageType === item.type
                   ? "border-primary bg-red-50/30 ring-2 ring-primary/20 shadow-xs"
-                  : "border-slate-200 bg-white hover:border-slate-300"
+                  : "border-slate-200 bg-white hover:border-slate-300",
               )}
             >
               <div className="flex items-center justify-between">
-                <item.icon className={cn("h-5 w-5", usageType === item.type ? "text-primary" : "text-slate-400")} />
-                <Badge variant={usageType === item.type ? "default" : "outline"} className="text-[10px]">
+                <item.icon
+                  className={cn(
+                    "h-5 w-5",
+                    usageType === item.type ? "text-primary" : "text-slate-400",
+                  )}
+                />
+                <Badge
+                  variant={usageType === item.type ? "default" : "outline"}
+                  className="text-[10px]"
+                >
                   {item.type}
                 </Badge>
               </div>
@@ -464,7 +483,9 @@ export function GasCustomerApplicationForm({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-700">Registered Business Name *</Label>
+                <Label className="text-xs font-bold text-slate-700">
+                  Registered Business Name *
+                </Label>
                 <Input
                   required
                   value={businessName}
@@ -490,7 +511,9 @@ export function GasCustomerApplicationForm({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-700">Accounts / Business Phone</Label>
+                <Label className="text-xs font-bold text-slate-700">
+                  Accounts / Business Phone
+                </Label>
                 <Input
                   value={businessContact}
                   onChange={(e) => setBusinessContact(e.target.value)}
@@ -500,7 +523,9 @@ export function GasCustomerApplicationForm({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-700">Trading Address (if different)</Label>
+                <Label className="text-xs font-bold text-slate-700">
+                  Trading Address (if different)
+                </Label>
                 <Input
                   value={businessAddress}
                   onChange={(e) => setBusinessAddress(e.target.value)}
@@ -529,10 +554,18 @@ export function GasCustomerApplicationForm({
               onChange={(e) => setExistingCylinderStatus(e.target.value)}
               className="w-full h-11 rounded-xl border border-slate-200 px-3 bg-white text-xs font-bold"
             >
-              <option value="New Customer (No Existing Cylinders)">New Customer (No Empty Cylinders to Return)</option>
-              <option value="Have Empty Calor Propane">Have Empty Calor Propane Cylinder for Exchange</option>
-              <option value="Have Empty Calor Butane">Have Empty Calor Butane Cylinder for Exchange</option>
-              <option value="Have Empty Patio Gas">Have Empty Patio Gas Cylinder for Exchange</option>
+              <option value="New Customer (No Existing Cylinders)">
+                New Customer (No Empty Cylinders to Return)
+              </option>
+              <option value="Have Empty Calor Propane">
+                Have Empty Calor Propane Cylinder for Exchange
+              </option>
+              <option value="Have Empty Calor Butane">
+                Have Empty Calor Butane Cylinder for Exchange
+              </option>
+              <option value="Have Empty Patio Gas">
+                Have Empty Patio Gas Cylinder for Exchange
+              </option>
               <option value="Bulk Tank on Site">Static Bulk Tank Vessel on Premises</option>
             </select>
           </div>
@@ -581,7 +614,9 @@ export function GasCustomerApplicationForm({
           <ShieldCheck className="h-4 w-4 text-emerald-600" /> 5. Safety Declaration & Agreement
         </h3>
         <p className="text-slate-600 leading-relaxed text-[11px]">
-          By submitting this application, I declare that all cylinders will be stored upright in well-ventilated areas away from heat sources and ignition. For refill exchanges, I confirm an empty cylinder of equivalent group will be returned upon delivery or scheduled pickup.
+          By submitting this application, I declare that all cylinders will be stored upright in
+          well-ventilated areas away from heat sources and ignition. For refill exchanges, I confirm
+          an empty cylinder of equivalent group will be returned upon delivery or scheduled pickup.
         </p>
 
         <label className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-200 cursor-pointer">
@@ -593,7 +628,8 @@ export function GasCustomerApplicationForm({
             className="h-4 w-4 rounded text-primary focus:ring-primary mt-0.5"
           />
           <span className="font-bold text-slate-900 text-xs leading-snug">
-            I confirm that the information provided is accurate and agree to John Stayte Services terms of gas supply. *
+            I confirm that the information provided is accurate and agree to John Stayte Services
+            terms of gas supply. *
           </span>
         </label>
       </div>
@@ -663,7 +699,9 @@ export function GasCustomerApplicationForm({
           >
             Cancel
           </Button>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
 
         <Button
           type="submit"

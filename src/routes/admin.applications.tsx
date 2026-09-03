@@ -7,7 +7,8 @@ export const Route = createFileRoute("/admin/applications")({
       { title: "Gas Customer Applications | Admin Dashboard | John Stayte Services" },
       {
         name: "description",
-        content: "Review, approve, and verify registered customer gas applications and submitted digital signatures.",
+        content:
+          "Review, approve, and verify registered customer gas applications and submitted digital signatures.",
       },
     ],
   }),

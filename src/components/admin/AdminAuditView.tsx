@@ -52,7 +52,9 @@ export function AdminAuditView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Audit Logs</span>
           </div>
@@ -106,7 +108,9 @@ export function AdminAuditView() {
                   <TableCell className="text-xs text-muted-foreground font-medium">
                     {new Date(l.created_at).toLocaleString("en-GB")}
                   </TableCell>
-                  <TableCell className="font-bold text-xs text-foreground">{l.actor_name}</TableCell>
+                  <TableCell className="font-bold text-xs text-foreground">
+                    {l.actor_name}
+                  </TableCell>
                   <TableCell className="text-xs font-semibold">{l.action}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="bg-slate-100 font-bold text-[10px]">

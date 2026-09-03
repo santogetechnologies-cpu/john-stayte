@@ -1,14 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import {
-  ShoppingBag,
-  Search,
-  Eye,
-  Filter,
-  X,
-  Clock,
-  PackageCheck,
-} from "lucide-react";
+import { ShoppingBag, Search, Eye, Filter, X, Clock, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -29,12 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -121,7 +108,9 @@ export function ManagerOrdersView() {
   });
 
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
-  const processingCount = orders.filter((o) => o.status === "Approved" || o.status === "Packed" || o.status === "Processing").length;
+  const processingCount = orders.filter(
+    (o) => o.status === "Approved" || o.status === "Packed" || o.status === "Processing",
+  ).length;
 
   const handleUpdateStatus = async (order: any, newStatus: OrderStatus) => {
     if (order.status === newStatus) return;
@@ -195,20 +184,21 @@ export function ManagerOrdersView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Orders</span>
             {statusFilter !== "all" && (
               <>
                 <span>/</span>
-                <span className="text-primary font-bold capitalize">
-                  {statusFilter}
-                </span>
+                <span className="text-primary font-bold capitalize">{statusFilter}</span>
               </>
             )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Manager Orders Operations ({filteredOrders.length}{statusFilter !== "all" ? ` of ${orders.length}` : ""})
+            Manager Orders Operations ({filteredOrders.length}
+            {statusFilter !== "all" ? ` of ${orders.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Approve, schedule, and track cylinder orders assigned to your depot.
@@ -319,7 +309,9 @@ export function ManagerOrdersView() {
                     #{o.order_number || o.id.slice(0, 8)}
                   </TableCell>
                   <TableCell className="text-xs font-semibold">{o.customer_name}</TableCell>
-                  <TableCell className="font-extrabold text-xs text-foreground">{gbp(Number(o.total))}</TableCell>
+                  <TableCell className="font-extrabold text-xs text-foreground">
+                    {gbp(Number(o.total))}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -327,10 +319,10 @@ export function ManagerOrdersView() {
                         o.status === "Approved"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : o.status === "Pending"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : o.status === "Cancelled"
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : o.status === "Cancelled"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
                       }`}
                     >
                       {o.status}
@@ -338,7 +330,10 @@ export function ManagerOrdersView() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Select value={o.status} onValueChange={(val) => handleUpdateStatus(o, val as OrderStatus)}>
+                      <Select
+                        value={o.status}
+                        onValueChange={(val) => handleUpdateStatus(o, val as OrderStatus)}
+                      >
                         <SelectTrigger className="h-8 text-[11px] font-bold rounded-xl border-slate-200 w-[130px]">
                           <SelectValue />
                         </SelectTrigger>

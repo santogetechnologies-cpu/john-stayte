@@ -18,12 +18,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
@@ -86,8 +81,8 @@ export function CustomerDeliveriesView() {
           new Set(
             loadedOrders
               .flatMap((o) => (o.order_items || []).map((i: any) => i.product_id))
-              .filter(Boolean)
-          )
+              .filter(Boolean),
+          ),
         );
 
         if (productIds.length > 0) {
@@ -108,7 +103,9 @@ export function CustomerDeliveriesView() {
       const params = new URLSearchParams(window.location.search);
       const targetOrderId = params.get("orderId");
       if (targetOrderId && loadedOrders.length > 0) {
-        const match = loadedOrders.find((o) => o.id === targetOrderId || o.order_number === targetOrderId);
+        const match = loadedOrders.find(
+          (o) => o.id === targetOrderId || o.order_number === targetOrderId,
+        );
         if (match) setSelectedOrder(match);
       }
     } catch (err: any) {
@@ -125,15 +122,11 @@ export function CustomerDeliveriesView() {
     // Supabase Realtime synchronization
     const ordersChannel = supabase
       .channel("customer_deliveries_realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        () => loadCustomerDeliveries()
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadCustomerDeliveries(),
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "delivery_assignments" },
-        () => loadCustomerDeliveries()
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadCustomerDeliveries(),
       )
       .subscribe();
 
@@ -144,7 +137,7 @@ export function CustomerDeliveriesView() {
 
   // Active / Non-completed deliveries: status not Delivered or Cancelled
   const activeDeliveries = orders.filter(
-    (o) => o.status !== "Delivered" && o.status !== "Cancelled"
+    (o) => o.status !== "Delivered" && o.status !== "Cancelled",
   );
 
   const displayedOrders = (activeTab === "active" ? activeDeliveries : orders).filter((o) => {
@@ -152,7 +145,7 @@ export function CustomerDeliveriesView() {
     const q = searchQuery.toLowerCase();
     const matchesNum = (o.order_number || o.id).toLowerCase().includes(q);
     const matchesItems = (o.order_items || []).some((item: any) =>
-      (item.product_name || "").toLowerCase().includes(q)
+      (item.product_name || "").toLowerCase().includes(q),
     );
     return matchesNum || matchesItems;
   });
@@ -300,9 +293,7 @@ export function CustomerDeliveriesView() {
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-2">
           <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
-          <p className="text-xs text-slate-500 font-bold">
-            Loading active deliveries...
-          </p>
+          <p className="text-xs text-slate-500 font-bold">Loading active deliveries...</p>
         </div>
       ) : displayedOrders.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-10 text-center shadow-xs space-y-3 max-w-md mx-auto">
@@ -318,7 +309,11 @@ export function CustomerDeliveriesView() {
               : "No orders found in your account."}
           </p>
           <div className="pt-2">
-            <Button asChild size="sm" className="rounded-full text-xs font-bold bg-primary text-white">
+            <Button
+              asChild
+              size="sm"
+              className="rounded-full text-xs font-bold bg-primary text-white"
+            >
               <Link to="/products">Browse Gas Cylinders</Link>
             </Button>
           </div>
@@ -330,7 +325,7 @@ export function CustomerDeliveriesView() {
             const firstItem = (order.order_items || [])[0];
             const totalQty = (order.order_items || []).reduce(
               (acc: number, i: any) => acc + (i.quantity || 1),
-              0
+              0,
             );
 
             // Resolve real product image from products table or catalog
@@ -338,11 +333,11 @@ export function CustomerDeliveriesView() {
             const catalogMatch = catalogProducts.find(
               (p) =>
                 p.name.toLowerCase() === (firstItem?.product_name || "").toLowerCase() ||
-                p.slug === prod?.slug
+                p.slug === prod?.slug,
             );
             const productImage = cleanImageUrl(
               prod?.image_url || catalogMatch?.image,
-              prod?.slug || catalogMatch?.slug
+              prod?.slug || catalogMatch?.slug,
             );
 
             const productName = firstItem?.product_name || "Gas Cylinder Supply";
@@ -350,7 +345,9 @@ export function CustomerDeliveriesView() {
             const expectedDate = assignment?.dispatched_at
               ? formatDate(assignment.dispatched_at)
               : formatDate(
-                  new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString()
+                  new Date(
+                    new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000,
+                  ).toISOString(),
                 );
             const timeSlot = assignment?.time_slot || "Morning (08:00 - 12:00)";
 

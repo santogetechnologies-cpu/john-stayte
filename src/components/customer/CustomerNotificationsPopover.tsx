@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, CheckCheck, Loader2, ArrowRight } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -49,7 +45,7 @@ export function CustomerNotificationsPopover() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "customer_notifications" },
-        () => loadNotifications()
+        () => loadNotifications(),
       )
       .subscribe();
     return () => {
@@ -78,7 +74,10 @@ export function CustomerNotificationsPopover() {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="end" className="w-80 sm:w-88 p-0 rounded-2xl border border-slate-200/90 bg-white shadow-xl overflow-hidden">
+      <PopoverContent
+        align="end"
+        className="w-80 sm:w-88 p-0 rounded-2xl border border-slate-200/90 bg-white shadow-xl overflow-hidden"
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/70">
           <div className="flex items-center gap-2">
             <h4 className="font-display font-extrabold text-xs text-slate-900">Notifications</h4>
@@ -88,9 +87,7 @@ export function CustomerNotificationsPopover() {
               </span>
             )}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">
-            {unreadCount} unread
-          </span>
+          <span className="text-[11px] text-slate-400 font-medium">{unreadCount} unread</span>
         </div>
 
         {notifications.length === 0 ? (
@@ -111,7 +108,9 @@ export function CustomerNotificationsPopover() {
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className={`text-xs leading-snug truncate ${!n.is_read ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}>
+                  <p
+                    className={`text-xs leading-snug truncate ${!n.is_read ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}
+                  >
                     {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
                   </p>
                   {!n.is_read && (

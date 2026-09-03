@@ -26,12 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 
@@ -46,7 +41,8 @@ export const ALL_EXISTING_STATIONS = [
     hours: "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
     autogas_available: true,
     maps_link: "https://maps.google.com/?q=Fromebridge+Service+Station+Whitminster",
-    services: "Fuel Pumps, HGV / Large Vehicle Pumps, Car Wash, Air Pressure & Tyre Inflation, Convenience Store & Shop, Autogas LPG & Cylinder Exchange, Easy Vehicle Access, Forecourt & Customer Parking, AdBlue Dispenser",
+    services:
+      "Fuel Pumps, HGV / Large Vehicle Pumps, Car Wash, Air Pressure & Tyre Inflation, Convenience Store & Shop, Autogas LPG & Cylinder Exchange, Easy Vehicle Access, Forecourt & Customer Parking, AdBlue Dispenser",
     image: "/fromebridge-service-station-1.jpg",
     image_url: "/fromebridge-service-station-1.jpg",
   },
@@ -74,7 +70,8 @@ export const ALL_EXISTING_STATIONS = [
     hours: "Mon–Fri 6:30–20:00 · Sat–Sun 8:00–18:00",
     autogas_available: false,
     maps_link: "https://maps.google.com/?q=Bridge+Service+Station+Frampton+on+Severn",
-    services: "Texaco Supreme Fuel, NETAVOLT Rapid EV Charging, Car Wash & Jet Wash, Air Pressure & Screen Wash, Stonehouse Autoparts & Londis, Calor Gas Cylinders, Coal & Solid Fuel Logs, HGV High-Flow Pumps, Wash.ME 24/7 Laundry",
+    services:
+      "Texaco Supreme Fuel, NETAVOLT Rapid EV Charging, Car Wash & Jet Wash, Air Pressure & Screen Wash, Stonehouse Autoparts & Londis, Calor Gas Cylinders, Coal & Solid Fuel Logs, HGV High-Flow Pumps, Wash.ME 24/7 Laundry",
     image: "/bridge-station-ev-totem.jpg",
     image_url: "/bridge-station-ev-totem.jpg",
   },
@@ -104,18 +101,25 @@ export function AdminStationsView() {
           hours: s.hours || "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
           autogas_available: Boolean(s.autogas_available),
           maps_link: s.maps_link || "",
-          services: Array.isArray(s.services) ? s.services : typeof s.services === "string" ? s.services.split(",").map((x) => x.trim()) : [],
+          services: Array.isArray(s.services)
+            ? s.services
+            : typeof s.services === "string"
+              ? s.services.split(",").map((x) => x.trim())
+              : [],
         };
         try {
           await supabase.from("stations").insert(dbPayload);
-        } catch { }
+        } catch {}
       }
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "stations_data",
-        title: "Filling Stations Directory",
-        content: JSON.stringify(ALL_EXISTING_STATIONS),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "stations_data",
+          title: "Filling Stations Directory",
+          content: JSON.stringify(ALL_EXISTING_STATIONS),
+        },
+        { onConflict: "section_key" },
+      );
 
       setStations(ALL_EXISTING_STATIONS);
     } catch (e) {
@@ -128,12 +132,18 @@ export function AdminStationsView() {
     try {
       const [{ data: dbStations }, { data: blockData }] = await Promise.all([
         supabase.from("stations").select("*").order("name", { ascending: true }),
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "stations_data").maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "stations_data")
+          .maybeSingle(),
       ]);
 
       let parsedBlock: any[] = [];
       if (blockData?.content) {
-        try { parsedBlock = JSON.parse(blockData.content); } catch { }
+        try {
+          parsedBlock = JSON.parse(blockData.content);
+        } catch {}
       }
 
       if ((!dbStations || dbStations.length === 0) && (!parsedBlock || parsedBlock.length === 0)) {
@@ -141,9 +151,14 @@ export function AdminStationsView() {
       } else {
         const stationMap = new Map<string, any>();
         ALL_EXISTING_STATIONS.forEach((s) => stationMap.set(s.name.toLowerCase(), s));
-        if (Array.isArray(parsedBlock)) parsedBlock.forEach((s) => stationMap.set(s.name.toLowerCase(), { ...stationMap.get(s.name.toLowerCase()), ...s }));
+        if (Array.isArray(parsedBlock))
+          parsedBlock.forEach((s) =>
+            stationMap.set(s.name.toLowerCase(), { ...stationMap.get(s.name.toLowerCase()), ...s }),
+          );
         if (Array.isArray(dbStations) && dbStations.length > 0) {
-          dbStations.forEach((s) => stationMap.set(s.name.toLowerCase(), { ...stationMap.get(s.name.toLowerCase()), ...s }));
+          dbStations.forEach((s) =>
+            stationMap.set(s.name.toLowerCase(), { ...stationMap.get(s.name.toLowerCase()), ...s }),
+          );
         }
         setStations(Array.from(stationMap.values()));
       }
@@ -170,22 +185,33 @@ export function AdminStationsView() {
           hours: s.hours || "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
           autogas_available: Boolean(s.autogas_available),
           maps_link: s.maps_link || "",
-          services: Array.isArray(s.services) ? s.services : typeof s.services === "string" ? s.services.split(",").map((x) => x.trim()) : [],
+          services: Array.isArray(s.services)
+            ? s.services
+            : typeof s.services === "string"
+              ? s.services.split(",").map((x) => x.trim())
+              : [],
         };
         try {
           const { error } = await supabase.from("stations").insert(dbPayload);
           if (!error) count++;
-        } catch { }
+        } catch {}
       }
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "stations_data",
-        title: "Filling Stations Directory",
-        content: JSON.stringify(ALL_EXISTING_STATIONS),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "stations_data",
+          title: "Filling Stations Directory",
+          content: JSON.stringify(ALL_EXISTING_STATIONS),
+        },
+        { onConflict: "section_key" },
+      );
 
-      await logAdminAuditAction("MIGRATE_STATIONS", "stations", "forecourts", { count: ALL_EXISTING_STATIONS.length });
-      toast.success(`Migrated all ${ALL_EXISTING_STATIONS.length} filling stations into Supabase database!`);
+      await logAdminAuditAction("MIGRATE_STATIONS", "stations", "forecourts", {
+        count: ALL_EXISTING_STATIONS.length,
+      });
+      toast.success(
+        `Migrated all ${ALL_EXISTING_STATIONS.length} filling stations into Supabase database!`,
+      );
       await loadStations();
     } catch (err: any) {
       toast.error("Stations migration error: " + err.message);
@@ -201,11 +227,14 @@ export function AdminStationsView() {
   const persistStations = async (updatedList: any[]) => {
     try {
       window.dispatchEvent(new CustomEvent("cms_stations_updated", { detail: updatedList }));
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "stations_data",
-        title: "Filling Stations Directory",
-        content: JSON.stringify(updatedList),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "stations_data",
+          title: "Filling Stations Directory",
+          content: JSON.stringify(updatedList),
+        },
+        { onConflict: "section_key" },
+      );
     } catch (err) {
       console.warn("Stations sync notice:", err);
     }
@@ -242,7 +271,9 @@ export function AdminStationsView() {
       ...station,
       image: station.image || station.image_url || "/station.jpg",
       image_url: station.image_url || station.image || "/station.jpg",
-      services: Array.isArray(station.services) ? station.services.join(", ") : station.services || "",
+      services: Array.isArray(station.services)
+        ? station.services.join(", ")
+        : station.services || "",
     });
     setIsNew(false);
     setModalOpen(true);
@@ -307,9 +338,13 @@ export function AdminStationsView() {
         autogas_available: Boolean(editStation.autogas_available),
         image: editStation.image || editStation.image_url || "/station.jpg",
         image_url: editStation.image_url || editStation.image || "/station.jpg",
-        services: typeof editStation.services === "string"
-          ? editStation.services.split(",").map((s: string) => s.trim()).filter(Boolean)
-          : editStation.services || [],
+        services:
+          typeof editStation.services === "string"
+            ? editStation.services
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : editStation.services || [],
       };
 
       const dbPayload = {
@@ -320,9 +355,13 @@ export function AdminStationsView() {
         phone: editStation.phone || "01452 741234",
         hours: editStation.hours || "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
         autogas_available: Boolean(editStation.autogas_available),
-        services: typeof editStation.services === "string"
-          ? editStation.services.split(",").map((s: string) => s.trim()).filter(Boolean)
-          : editStation.services || [],
+        services:
+          typeof editStation.services === "string"
+            ? editStation.services
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : editStation.services || [],
       };
 
       try {
@@ -337,13 +376,22 @@ export function AdminStationsView() {
 
       const updatedList = isNew
         ? [payload, ...stations]
-        : stations.map((s) => (s.name.toLowerCase() === editStation.name.toLowerCase() ? { ...s, ...payload } : s));
+        : stations.map((s) =>
+            s.name.toLowerCase() === editStation.name.toLowerCase() ? { ...s, ...payload } : s,
+          );
 
       setStations(updatedList);
       await persistStations(updatedList);
 
-      await logAdminAuditAction(isNew ? "CREATE_STATION" : "UPDATE_STATION", "stations", payload.name, { name: payload.name });
-      toast.success(isNew ? "Filling station added to Supabase!" : "Station details updated in Supabase!");
+      await logAdminAuditAction(
+        isNew ? "CREATE_STATION" : "UPDATE_STATION",
+        "stations",
+        payload.name,
+        { name: payload.name },
+      );
+      toast.success(
+        isNew ? "Filling station added to Supabase!" : "Station details updated in Supabase!",
+      );
       setModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save station: " + err.message);
@@ -355,13 +403,15 @@ export function AdminStationsView() {
   const handleDelete = async (stationName: string) => {
     if (!confirm(`Are you sure you want to delete "${stationName}"?`)) return;
     try {
-      const updatedList = stations.filter((s) => s.name.toLowerCase() !== stationName.toLowerCase());
+      const updatedList = stations.filter(
+        (s) => s.name.toLowerCase() !== stationName.toLowerCase(),
+      );
       setStations(updatedList);
       await persistStations(updatedList);
 
       try {
         await supabase.from("stations").delete().eq("name", stationName);
-      } catch { }
+      } catch {}
 
       await logAdminAuditAction("DELETE_STATION", "stations", stationName, { name: stationName });
       toast.success("Filling station removed!");
@@ -376,10 +426,13 @@ export function AdminStationsView() {
         <div>
           <div className="flex items-center gap-2">
             <MapPin className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Filling Stations & Depots</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              Filling Stations & Depots
+            </h1>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Manage forecourt locations, opening times, Autogas LPG availability, and forecourt imagery ({stations.length} locations active in database).
+            Manage forecourt locations, opening times, Autogas LPG availability, and forecourt
+            imagery ({stations.length} locations active in database).
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -400,11 +453,18 @@ export function AdminStationsView() {
               size="sm"
               className="rounded-full font-bold text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/5"
             >
-              {migrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+              {migrating ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
               Migrate Legacy Stations ({ALL_EXISTING_STATIONS.length - stations.length})
             </Button>
           )}
-          <Button onClick={handleOpenNew} className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs">
+          <Button
+            onClick={handleOpenNew}
+            className="rounded-full shadow-sm font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 text-xs"
+          >
             <Plus className="h-4 w-4" /> Add Station
           </Button>
         </div>
@@ -455,7 +515,8 @@ export function AdminStationsView() {
                       </div>
                     </td>
                     <td className="px-5 py-4 text-slate-600">
-                      {s.address}, {s.town} <span className="font-mono text-slate-400 font-bold">{s.postcode}</span>
+                      {s.address}, {s.town}{" "}
+                      <span className="font-mono text-slate-400 font-bold">{s.postcode}</span>
                     </td>
                     <td className="px-5 py-4 text-slate-600 font-mono">{s.phone}</td>
                     <td className="px-5 py-4 text-slate-600">{s.hours}</td>
@@ -465,17 +526,30 @@ export function AdminStationsView() {
                           Available
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-slate-400 text-[10px] rounded-full">
+                        <Badge
+                          variant="outline"
+                          className="text-slate-400 text-[10px] rounded-full"
+                        >
                           Cylinders Only
                         </Badge>
                       )}
                     </td>
                     <td className="px-5 py-4 text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(s)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenEdit(s)}
+                          className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
+                        >
                           <Edit className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(s.name)} className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(s.name)}
+                          className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -514,14 +588,29 @@ export function AdminStationsView() {
               <div className="flex items-center gap-2 mt-1">
                 <Input
                   value={editStation?.image_url || editStation?.image || ""}
-                  onChange={(e) => setEditStation({ ...editStation, image: e.target.value, image_url: e.target.value })}
+                  onChange={(e) =>
+                    setEditStation({
+                      ...editStation,
+                      image: e.target.value,
+                      image_url: e.target.value,
+                    })
+                  }
                   placeholder="/station.jpg or https://..."
                   className="rounded-xl text-xs flex-1"
                 />
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                   <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition-colors">
-                    {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    {uploadingImage ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
                     Upload
                   </span>
                 </label>
@@ -597,17 +686,30 @@ export function AdminStationsView() {
               />
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <span className="text-xs font-bold text-slate-700">Autogas Vehicle Pump Available</span>
+              <span className="text-xs font-bold text-slate-700">
+                Autogas Vehicle Pump Available
+              </span>
               <Switch
                 checked={Boolean(editStation?.autogas_available)}
-                onCheckedChange={(checked) => setEditStation({ ...editStation, autogas_available: checked })}
+                onCheckedChange={(checked) =>
+                  setEditStation({ ...editStation, autogas_available: checked })
+                }
               />
             </div>
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                className="rounded-full text-xs font-bold"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+              <Button
+                type="submit"
+                disabled={saving}
+                className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+              >
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {isNew ? "Save Station" : "Update Station"}
               </Button>

@@ -1,17 +1,21 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Image as ImageIcon, Plus, Edit3, Trash2, CheckCircle2, XCircle, Loader2, Upload } from "lucide-react";
+import {
+  Image as ImageIcon,
+  Plus,
+  Edit3,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 
@@ -43,9 +47,7 @@ export function AdminBannersView() {
 
       if (uploadErr) throw uploadErr;
 
-      const { data } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(filePath);
+      const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
 
       setImageUrl(data.publicUrl);
       toast.success("Banner image uploaded!");
@@ -112,12 +114,19 @@ export function AdminBannersView() {
       };
 
       if (editingBanner) {
-        const { error } = await supabase.from("cms_banners").update(payload).eq("id", editingBanner.id);
+        const { error } = await supabase
+          .from("cms_banners")
+          .update(payload)
+          .eq("id", editingBanner.id);
         if (error) throw error;
         await logAdminAuditAction("UPDATE_BANNER", "banner", editingBanner.id, { title });
         toast.success("Banner updated successfully!");
       } else {
-        const { data, error } = await supabase.from("cms_banners").insert(payload).select().single();
+        const { data, error } = await supabase
+          .from("cms_banners")
+          .insert(payload)
+          .select()
+          .single();
         if (error) throw error;
         await logAdminAuditAction("CREATE_BANNER", "banner", data.id, { title });
         toast.success("New banner created successfully!");
@@ -136,7 +145,10 @@ export function AdminBannersView() {
   const toggleBannerStatus = async (b: any) => {
     try {
       const updatedStatus = !b.is_active;
-      const { error } = await supabase.from("cms_banners").update({ is_active: updatedStatus }).eq("id", b.id);
+      const { error } = await supabase
+        .from("cms_banners")
+        .update({ is_active: updatedStatus })
+        .eq("id", b.id);
       if (error) throw error;
       await logAdminAuditAction(updatedStatus ? "ENABLE_BANNER" : "DISABLE_BANNER", "banner", b.id);
       toast.success(`Banner status updated!`);
@@ -166,7 +178,9 @@ export function AdminBannersView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Banners</span>
           </div>
@@ -195,15 +209,23 @@ export function AdminBannersView() {
         <div className="surface-card p-12 text-center rounded-3xl border bg-white space-y-3">
           <ImageIcon className="h-10 w-10 text-slate-300 mx-auto" />
           <h3 className="font-extrabold text-base text-foreground">No Banners Found</h3>
-          <p className="text-xs text-muted-foreground">Create your first homepage promotional banner.</p>
-          <Button onClick={openCreateModal} className="rounded-full text-xs font-extrabold gap-1 mt-2">
+          <p className="text-xs text-muted-foreground">
+            Create your first homepage promotional banner.
+          </p>
+          <Button
+            onClick={openCreateModal}
+            className="rounded-full text-xs font-extrabold gap-1 mt-2"
+          >
             <Plus className="h-4 w-4" /> Create Banner
           </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {banners.map((b) => (
-            <div key={b.id} className="surface-card p-5 rounded-3xl border bg-white space-y-4 shadow-xs">
+            <div
+              key={b.id}
+              className="surface-card p-5 rounded-3xl border bg-white space-y-4 shadow-xs"
+            >
               <div className="h-40 rounded-2xl bg-slate-100 border overflow-hidden relative">
                 {b.image_url && b.image_url.trim() ? (
                   <img
@@ -241,10 +263,20 @@ export function AdminBannersView() {
                   {b.is_active ? "🟢 Active on Site" : "🔴 Disabled"}
                 </span>
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => openEditModal(b)} variant="ghost" size="sm" className="rounded-xl h-8 w-8 p-0">
+                  <Button
+                    onClick={() => openEditModal(b)}
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl h-8 w-8 p-0"
+                  >
                     <Edit3 className="h-4 w-4 text-slate-600" />
                   </Button>
-                  <Button onClick={() => handleDeleteBanner(b.id, b.title)} variant="ghost" size="sm" className="rounded-xl h-8 w-8 p-0 text-red-600 hover:bg-red-50">
+                  <Button
+                    onClick={() => handleDeleteBanner(b.id, b.title)}
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -294,9 +326,18 @@ export function AdminBannersView() {
                   className="rounded-xl text-xs font-semibold h-10 border-slate-200 flex-1"
                 />
                 <label className="cursor-pointer">
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                   <span className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition-colors">
-                    {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    {uploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
                     Upload
                   </span>
                 </label>
@@ -314,9 +355,7 @@ export function AdminBannersView() {
                       if (fallback) fallback.style.display = "flex";
                     }}
                   />
-                  <div
-                    className="absolute inset-0 hidden items-center justify-center flex-col gap-1 text-slate-400"
-                  >
+                  <div className="absolute inset-0 hidden items-center justify-center flex-col gap-1 text-slate-400">
                     <ImageIcon className="h-6 w-6" />
                     <span className="text-[10px] font-bold">Image unavailable — check URL</span>
                   </div>
@@ -337,16 +376,26 @@ export function AdminBannersView() {
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border">
               <div>
                 <Label className="font-bold text-slate-700 cursor-pointer">Active Status</Label>
-                <p className="text-[11px] text-muted-foreground">Publish banner on customer homepage</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Publish banner on customer homepage
+                </p>
               </div>
               <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
 
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button onClick={() => setModalOpen(false)} variant="outline" className="rounded-full text-xs font-bold">
+              <Button
+                onClick={() => setModalOpen(false)}
+                variant="outline"
+                className="rounded-full text-xs font-bold"
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSaveBanner} disabled={saving} className="rounded-full text-xs font-bold bg-primary text-white">
+              <Button
+                onClick={handleSaveBanner}
+                disabled={saving}
+                className="rounded-full text-xs font-bold bg-primary text-white"
+              >
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
                 {editingBanner ? "Save Changes" : "Create Banner"}
               </Button>

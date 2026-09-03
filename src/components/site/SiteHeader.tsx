@@ -120,7 +120,9 @@ export function SiteHeader() {
 
     const channel = supabase
       .channel("site_header_cms_banners")
-      .on("postgres_changes", { event: "*", schema: "public", table: "cms_banners" }, () => loadActiveBanner())
+      .on("postgres_changes", { event: "*", schema: "public", table: "cms_banners" }, () =>
+        loadActiveBanner(),
+      )
       .subscribe();
 
     return () => {
@@ -149,7 +151,7 @@ export function SiteHeader() {
               <Truck className="h-3.5 w-3.5 text-primary shrink-0" />
               <span>
                 {typeof (activeBanner.message || activeBanner.title) === "string"
-                  ? (activeBanner.message || activeBanner.title)
+                  ? activeBanner.message || activeBanner.title
                   : ""}
                 {typeof activeBanner.subtitle === "string" && activeBanner.subtitle.trim()
                   ? ` — ${activeBanner.subtitle}`
@@ -170,7 +172,10 @@ export function SiteHeader() {
               Gloucestershire
             </p>
           )}
-          <a href="tel:01452741234" className="flex items-center gap-2 hover:text-primary shrink-0 ml-4">
+          <a
+            href="tel:01452741234"
+            className="flex items-center gap-2 hover:text-primary shrink-0 ml-4"
+          >
             <Phone className="h-3.5 w-3.5" /> 01452 741234
           </a>
         </div>
@@ -209,7 +214,12 @@ export function SiteHeader() {
         </form>
 
         <div className="flex items-center gap-1.5">
-          <Button asChild variant="ghost" size="icon" className="hidden rounded-full sm:inline-flex">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="hidden rounded-full sm:inline-flex"
+          >
             <Link to={user ? "/account/wishlist" : "/login"} aria-label="Wishlist">
               <Heart className="h-5 w-5" />
               {wishlist.length > 0 && (
@@ -267,7 +277,12 @@ export function SiteHeader() {
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full lg:hidden" aria-label="Menu">
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full lg:hidden"
+                aria-label="Menu"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>

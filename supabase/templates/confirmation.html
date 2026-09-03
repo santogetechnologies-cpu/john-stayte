@@ -1,55 +1,127 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to John Stayte Services - Confirm Your Account</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f8fafc;
-      margin: 0;
-      padding: 0;
-      color: #0f172a;
-      -webkit-font-smoothing: antialiased;
-    }
-    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 16px; }
-    .container { max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); }
-    .header { background-color: #dc2626; padding: 32px; text-align: center; }
-    .header-title { color: #ffffff; font-size: 22px; font-weight: 900; letter-spacing: -0.5px; margin: 0; text-transform: uppercase; }
-    .header-subtitle { color: #fecaca; font-size: 12px; margin-top: 4px; font-weight: 600; }
-    .content { padding: 36px 32px; }
-    .title { font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 0; margin-bottom: 16px; }
-    .text { font-size: 14px; line-height: 1.6; color: #475569; margin-bottom: 24px; }
-    .btn-container { text-align: center; margin: 32px 0; }
-    .btn { display: inline-block; background-color: #dc2626; color: #ffffff !important; font-weight: 800; font-size: 14px; padding: 14px 32px; border-radius: 50px; text-decoration: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25); }
-    .footer { background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 32px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="container">
-      <div class="header">
-        <h1 class="header-title">JOHN STAYTE SERVICES</h1>
-        <div class="header-subtitle">Whitminster Depot, Gloucestershire &bull; Tel: 01452 740326</div>
-      </div>
-      
-      <div class="content">
-        <h2 class="title">Confirm Your Customer Account</h2>
-        <p class="text">
-          Welcome to <strong>John Stayte Services</strong>! Thank you for creating an account with us. Please confirm your email address by clicking the button below:
-        </p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to John Stayte Services - Confirm Your Account</title>
+    <style>
+      body {
+        font-family:
+          "Segoe UI",
+          -apple-system,
+          BlinkMacSystemFont,
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        background-color: #f8fafc;
+        margin: 0;
+        padding: 0;
+        color: #0f172a;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrapper {
+        width: 100%;
+        background-color: #f8fafc;
+        padding: 40px 16px;
+      }
+      .container {
+        max-width: 580px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+      }
+      .header {
+        background-color: #dc2626;
+        padding: 32px;
+        text-align: center;
+      }
+      .header-title {
+        color: #ffffff;
+        font-size: 22px;
+        font-weight: 900;
+        letter-spacing: -0.5px;
+        margin: 0;
+        text-transform: uppercase;
+      }
+      .header-subtitle {
+        color: #fecaca;
+        font-size: 12px;
+        margin-top: 4px;
+        font-weight: 600;
+      }
+      .content {
+        padding: 36px 32px;
+      }
+      .title {
+        font-size: 20px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-top: 0;
+        margin-bottom: 16px;
+      }
+      .text {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #475569;
+        margin-bottom: 24px;
+      }
+      .btn-container {
+        text-align: center;
+        margin: 32px 0;
+      }
+      .btn {
+        display: inline-block;
+        background-color: #dc2626;
+        color: #ffffff !important;
+        font-weight: 800;
+        font-size: 14px;
+        padding: 14px 32px;
+        border-radius: 50px;
+        text-decoration: none;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+      }
+      .footer {
+        background-color: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        padding: 24px 32px;
+        text-align: center;
+        font-size: 11px;
+        color: #94a3b8;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="container">
+        <div class="header">
+          <h1 class="header-title">JOHN STAYTE SERVICES</h1>
+          <div class="header-subtitle">
+            Whitminster Depot, Gloucestershire &bull; Tel: 01452 740326
+          </div>
+        </div>
 
-        <div class="btn-container">
-          <a href="{{ .ConfirmationURL }}" class="btn" target="_blank">Confirm My Account</a>
+        <div class="content">
+          <h2 class="title">Confirm Your Customer Account</h2>
+          <p class="text">
+            Welcome to <strong>John Stayte Services</strong>! Thank you for creating an account with
+            us. Please confirm your email address by clicking the button below:
+          </p>
+
+          <div class="btn-container">
+            <a href="{{ .ConfirmationURL }}" class="btn" target="_blank">Confirm My Account</a>
+          </div>
+        </div>
+
+        <div class="footer">
+          John Stayte Services Ltd &bull; Whitminster Depot, Gloucestershire, GL2 7NY<br />
+          VAT Reg No: GB 123 4567 89 &bull; Quality Gas, Fuel & Appliance Supplies
         </div>
       </div>
-
-      <div class="footer">
-        John Stayte Services Ltd &bull; Whitminster Depot, Gloucestershire, GL2 7NY<br>
-        VAT Reg No: GB 123 4567 89 &bull; Quality Gas, Fuel & Appliance Supplies
-      </div>
     </div>
-  </div>
-</body>
+  </body>
 </html>

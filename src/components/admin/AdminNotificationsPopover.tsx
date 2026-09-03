@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
 import { Bell, Check, Sparkles } from "lucide-react";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabase";
@@ -58,7 +54,10 @@ export function AdminNotificationsPopover() {
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-sm">Notifications</h4>
             {unreadCount > 0 && (
-              <Badge variant="secondary" className="rounded-full px-2 text-[10px] bg-primary/10 text-primary font-bold">
+              <Badge
+                variant="secondary"
+                className="rounded-full px-2 text-[10px] bg-primary/10 text-primary font-bold"
+              >
                 {unreadCount} new
               </Badge>
             )}
@@ -89,7 +88,10 @@ export function AdminNotificationsPopover() {
                   <div className="flex items-center justify-between gap-1">
                     <p className="text-xs font-bold text-foreground truncate">{item.title}</p>
                     <span className="text-[10px] text-muted-foreground shrink-0">
-                      {new Date(item.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(item.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">

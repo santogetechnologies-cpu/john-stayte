@@ -86,15 +86,11 @@ export function ManagerPerformanceView() {
     // Subscribe to realtime changes on orders & tickets
     const channel = supabase
       .channel("manager_performance_realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        () => loadPerformanceData()
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadPerformanceData(),
       )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "support_tickets" },
-        () => loadPerformanceData()
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
+        loadPerformanceData(),
       )
       .subscribe();
 
@@ -124,14 +120,19 @@ export function ManagerPerformanceView() {
   // Real Metric Calculations from Unified Data Layer
   const totalOrdersCount = filteredOrders.length;
   const approvedOrdersCount = filteredOrders.filter(
-    (o) => o.status === "Approved" || o.status === "Packed" || o.status === "Out for Delivery" || o.status === "Delivered"
+    (o) =>
+      o.status === "Approved" ||
+      o.status === "Packed" ||
+      o.status === "Out for Delivery" ||
+      o.status === "Delivered",
   ).length;
   const completedDeliveriesCount = filteredOrders.filter((o) => o.status === "Delivered").length;
   const pendingOrdersCount = filteredOrders.filter((o) => o.status === "Pending").length;
 
   const resolvedTicketsCount = tickets.filter((t) => t.status === "Resolved").length;
   const totalTicketsCount = tickets.length;
-  const slaPercentage = totalTicketsCount > 0 ? Math.round((resolvedTicketsCount / totalTicketsCount) * 100) : 100;
+  const slaPercentage =
+    totalTicketsCount > 0 ? Math.round((resolvedTicketsCount / totalTicketsCount) * 100) : 100;
 
   const lowStockCount = products.filter((p) => Number(p.stock || 0) <= 5).length;
 
@@ -142,7 +143,13 @@ export function ManagerPerformanceView() {
     const completionRatio = completedDeliveriesCount / totalOrdersCount;
     const slaRatio = totalTicketsCount > 0 ? resolvedTicketsCount / totalTicketsCount : 1;
     return Math.round((approvalRatio * 0.4 + completionRatio * 0.4 + slaRatio * 0.2) * 100);
-  }, [totalOrdersCount, approvedOrdersCount, completedDeliveriesCount, resolvedTicketsCount, totalTicketsCount]);
+  }, [
+    totalOrdersCount,
+    approvedOrdersCount,
+    completedDeliveriesCount,
+    resolvedTicketsCount,
+    totalTicketsCount,
+  ]);
 
   // Semantic color for Performance Score Circle
   const scoreColor = useMemo(() => {
@@ -172,7 +179,10 @@ export function ManagerPerformanceView() {
 
     // Aggregate actual orders into dateMap
     filteredOrders.forEach((o) => {
-      const key = new Date(o.created_at).toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+      const key = new Date(o.created_at).toLocaleDateString("en-GB", {
+        month: "short",
+        day: "numeric",
+      });
       if (!dateMap[key]) {
         dateMap[key] = { date: key, handled: 0, completed: 0 };
       }
@@ -281,7 +291,12 @@ export function ManagerPerformanceView() {
           <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
           <h3 className="font-bold text-sm text-foreground">Unable to load performance data</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
-          <Button onClick={loadPerformanceData} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
+          <Button
+            onClick={loadPerformanceData}
+            size="sm"
+            variant="outline"
+            className="rounded-full text-xs font-bold gap-1.5 mt-2"
+          >
             <RotateCcw className="h-3.5 w-3.5" /> Retry
           </Button>
         </div>
@@ -294,9 +309,13 @@ export function ManagerPerformanceView() {
               <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
                 Performance Score
               </p>
-              <div className={`relative flex items-center justify-center h-28 w-28 rounded-full border-4 transition-colors ${scoreColor}`}>
+              <div
+                className={`relative flex items-center justify-center h-28 w-28 rounded-full border-4 transition-colors ${scoreColor}`}
+              >
                 <span className="text-4xl font-black">{performanceScore}</span>
-                <span className="text-xs font-extrabold text-muted-foreground align-top mt-1">%</span>
+                <span className="text-xs font-extrabold text-muted-foreground align-top mt-1">
+                  %
+                </span>
               </div>
               <p className="text-[11px] text-muted-foreground font-medium">
                 {totalOrdersCount === 0
@@ -312,7 +331,9 @@ export function ManagerPerformanceView() {
                   Orders Processed
                 </p>
                 <p className="text-2xl font-black text-foreground">{totalOrdersCount}</p>
-                <p className="text-[11px] text-muted-foreground">{pendingOrdersCount} pending approval</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {pendingOrdersCount} pending approval
+                </p>
               </div>
 
               <div className="surface-card p-4 rounded-2xl border bg-white space-y-1 shadow-2xs">
@@ -371,11 +392,17 @@ export function ManagerPerformanceView() {
                 title: "Inventory Health",
                 metric: lowStockCount === 0 ? "Optimal Stock" : `${lowStockCount} Low Stock`,
                 detail: `${products.length} Products Monitored`,
-                color: lowStockCount > 0 ? "text-amber-700 bg-amber-50 border-amber-100" : "text-emerald-700 bg-emerald-50 border-emerald-100",
+                color:
+                  lowStockCount > 0
+                    ? "text-amber-700 bg-amber-50 border-amber-100"
+                    : "text-emerald-700 bg-emerald-50 border-emerald-100",
                 icon: Package,
               },
             ].map((sec) => (
-              <div key={sec.title} className={`surface-card p-4 rounded-2xl border ${sec.color} space-y-1 shadow-2xs`}>
+              <div
+                key={sec.title}
+                className={`surface-card p-4 rounded-2xl border ${sec.color} space-y-1 shadow-2xs`}
+              >
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-black text-foreground">{sec.title}</p>
                   <sec.icon className="h-4 w-4 opacity-70" />
@@ -392,7 +419,8 @@ export function ManagerPerformanceView() {
               <div>
                 <h2 className="text-base font-black text-foreground">Orders Handled Trend</h2>
                 <p className="text-xs text-muted-foreground">
-                  Daily orders handled in selected window (Reconciled Total: {graphTotalHandled} orders).
+                  Daily orders handled in selected window (Reconciled Total: {graphTotalHandled}{" "}
+                  orders).
                 </p>
               </div>
 
@@ -405,7 +433,9 @@ export function ManagerPerformanceView() {
               {chartData.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed rounded-2xl bg-slate-50/50">
                   <Activity className="h-8 w-8 text-muted-foreground/30" />
-                  <p className="text-xs font-bold text-foreground">No performance history in date window</p>
+                  <p className="text-xs font-bold text-foreground">
+                    No performance history in date window
+                  </p>
                   <p className="text-[11px] text-muted-foreground">
                     Daily performance trend graphs will render when orders are placed.
                   </p>
@@ -420,11 +450,27 @@ export function ManagerPerformanceView() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
-                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#64748b" }} />
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "#64748b" }}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "#64748b" }}
+                    />
                     <Tooltip
                       formatter={(val: any) => [`${val} orders`, "Orders Handled"]}
-                      contentStyle={{ backgroundColor: "#ffffff", borderRadius: "16px", border: `1px solid ${trendState.strokeColor}40`, fontSize: "12px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)" }}
+                      contentStyle={{
+                        backgroundColor: "#ffffff",
+                        borderRadius: "16px",
+                        border: `1px solid ${trendState.strokeColor}40`,
+                        fontSize: "12px",
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                      }}
                     />
                     <Area
                       type="monotone"
@@ -445,20 +491,23 @@ export function ManagerPerformanceView() {
             <h2 className="text-base font-black text-foreground">Operational Insights</h2>
             {totalOrdersCount === 0 ? (
               <p className="text-xs text-muted-foreground font-medium">
-                No performance insights available for this period. Insights generate automatically as order activity occurs.
+                No performance insights available for this period. Insights generate automatically
+                as order activity occurs.
               </p>
             ) : (
               <div className="space-y-2 text-xs">
                 <div className="p-3 rounded-2xl border bg-emerald-50/50 border-emerald-100 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span className="font-semibold text-emerald-950">
-                    Order throughput is active with {approvedOrdersCount} orders approved and {completedDeliveriesCount} completed deliveries.
+                    Order throughput is active with {approvedOrdersCount} orders approved and{" "}
+                    {completedDeliveriesCount} completed deliveries.
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl border bg-blue-50/50 border-blue-100 flex items-center gap-2">
                   <Activity className="h-4 w-4 text-blue-600 shrink-0" />
                   <span className="font-semibold text-blue-950">
-                    Customer support SLA resolution rate is operating at {slaPercentage}% across {totalTicketsCount} logged enquiries.
+                    Customer support SLA resolution rate is operating at {slaPercentage}% across{" "}
+                    {totalTicketsCount} logged enquiries.
                   </span>
                 </div>
               </div>

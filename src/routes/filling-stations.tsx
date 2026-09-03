@@ -15,10 +15,6 @@ import {
   Flame,
   Sparkles,
   ArrowRight,
-  Truck,
-  Gauge,
-  Car,
-  Zap,
 } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { supabase } from "@/lib/supabase";
@@ -56,22 +52,11 @@ const DEFAULT_STATIONS = [
     hours: "Mon–Sat 7:00–20:00 • Sun 8:00–18:00",
     autogas_available: true,
     maps_link: "https://maps.google.com/?q=Fromebridge+Service+Station+Whitminster",
-    services: [
-      "Fuel Pumps",
-      "HGV / Large Vehicle Pumps",
-      "Car Wash",
-      "Air Pressure & Tyre Inflation",
-      "Convenience Store & Shop",
-      "Autogas LPG & Cylinder Exchange",
-      "Easy Vehicle Access",
-      "Forecourt & Customer Parking",
-      "AdBlue Dispenser",
-    ],
+    services: ["Fuel", "Autogas", "Shop", "Air", "AdBlue", "Cylinder Exchange"],
     images: [
       "/fromebridge-service-station-1.jpg",
       "/fromebridge-service-station-2.jpg",
-      "/fromebridge-service-station-new-1.jpg",
-      "/fromebridge-service-station-new-2.jpg",
+      "/fromebridge-service-station-3.jpg",
     ],
     latitude: 51.7694,
     longitude: -2.3486,
@@ -87,37 +72,61 @@ const DEFAULT_STATIONS = [
     autogas_available: false,
     maps_link: "https://maps.google.com/?q=Bridge+Service+Station+Frampton+on+Severn",
     services: [
-      "Texaco Supreme Fuel",
-      "NETAVOLT Rapid EV Charging",
-      "Car Wash & Jet Wash",
-      "Air Pressure & Screen Wash",
-      "Stonehouse Autoparts & Londis",
-      "Calor Gas Cylinders",
-      "Coal & Solid Fuel Logs",
+      "Texaco Fuel",
       "HGV High-Flow Pumps",
+      "Car Wash & Jet Wash",
+      "Air Pressure Pumps",
       "Wash.ME 24/7 Laundry",
+      "Londis Shop & Costa",
+      "Calor Gas Cylinders",
+      "Solid Fuels & Logs",
+      "AdBlue",
     ],
     images: [
-      "/bridge-station-ev-totem.jpg",
-      "/bridge-station-forecourt-lanes.jpg",
-      "/bridge-station-netavolt-ev-charger.jpg",
+      "/bridge-station-forecourt.jpg",
+      "/bridge-station-canopy-londis.jpg",
+      "/bridge-station-wide-facilities.jpg",
     ],
     latitude: 51.7719,
     longitude: -2.3681,
   },
 ];
 
-const normalizeServices = (services: any): string[] => {
+export interface FillingStation {
+  id?: string;
+  name: string;
+  badge?: string;
+  badgeCls?: string;
+  address: string;
+  phone?: string;
+  hours?: string;
+  services?: string[] | string;
+  latitude?: number;
+  longitude?: number;
+  description?: string;
+  image?: string;
+  images?: string[];
+  image_url?: string;
+  maps_link?: string;
+  maps_url?: string;
+  autogas_available?: boolean;
+  postcode?: string;
+}
+
+const normalizeServices = (services: unknown): string[] => {
   if (Array.isArray(services)) {
     return services.map((s) => String(s).trim()).filter(Boolean);
   }
   if (typeof services === "string") {
-    return services.split(",").map((s) => s.trim()).filter(Boolean);
+    return services
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
   return ["Fuel", "Autogas", "Shop", "Air", "AdBlue"];
 };
 
-const getStationImages = (s: any): string[] => {
+const getStationImages = (s: FillingStation): string[] => {
   const name = (s.name || "").toLowerCase();
   if (name.includes("wild goose") || name.includes("cambridge")) {
     return [
@@ -129,34 +138,26 @@ const getStationImages = (s: any): string[] => {
     ];
   }
   if (name.includes("fromebridge") || name.includes("whitminster")) {
-    return [
-      "/fromebridge-service-station-1.jpg",
-      "/fromebridge-service-station-2.jpg",
-      "/fromebridge-service-station-new-1.jpg",
-      "/fromebridge-service-station-new-2.jpg",
-    ];
-  }
-  if (name.includes("bridge") || name.includes("frampton")) {
-    return [
-      "/bridge-station-ev-totem.jpg",
-      "/bridge-station-forecourt-lanes.jpg",
-      "/bridge-station-netavolt-ev-charger.jpg",
-    ];
+    return ["/fromebridge-service-station-1.jpg", "/fromebridge-service-station-2.jpg"];
   }
   if (Array.isArray(s.images) && s.images.length > 0) {
     return s.images;
   }
+  if (name.includes("bridge") || name.includes("frampton")) {
+    return ["/bridge-service-station-1.jpg"];
+  }
   if (s.image_url) return [s.image_url];
   if (s.image) return [s.image];
-  return ["/bridge-station-ev-totem.jpg"];
+  return ["/fromebridge-service-station-1.jpg"];
 };
 
-const getStationCoordinates = (station: any): { lat: number; lng: number } => {
+const getStationCoordinates = (station: FillingStation): { lat: number; lng: number } => {
   if (station.latitude && station.longitude) {
     return { lat: Number(station.latitude), lng: Number(station.longitude) };
   }
   const name = (station.name || "").toLowerCase();
-  if (name.includes("wild goose") || name.includes("cambridge")) return { lat: 51.7389, lng: -2.3842 };
+  if (name.includes("wild goose") || name.includes("cambridge"))
+    return { lat: 51.7389, lng: -2.3842 };
   if (name.includes("fromebridge")) return { lat: 51.7694, lng: -2.3486 };
   if (name.includes("bridge") || name.includes("frampton")) return { lat: 51.7719, lng: -2.3681 };
   return { lat: 51.76, lng: -2.36 };
@@ -166,26 +167,18 @@ function ServiceChip({ name }: { name: string }) {
   const n = name.toLowerCase();
   let icon = <Fuel className="h-3.5 w-3.5 text-primary shrink-0" />;
 
-  if (n.includes("ev") || n.includes("electric") || n.includes("charging") || n.includes("netavolt")) {
-    icon = <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500/20 shrink-0" />;
-  } else if (n.includes("hgv") || n.includes("large vehicle") || n.includes("truck")) {
-    icon = <Truck className="h-3.5 w-3.5 text-amber-600 shrink-0" />;
-  } else if (n.includes("air") || n.includes("pressure") || n.includes("tyre") || n.includes("inflation") || n.includes("screen wash")) {
-    icon = <Gauge className="h-3.5 w-3.5 text-cyan-600 shrink-0" />;
-  } else if (n.includes("wash") || n.includes("laundry") || n.includes("clean")) {
-    icon = <Sparkles className="h-3.5 w-3.5 text-indigo-600 shrink-0" />;
-  } else if (n.includes("parking")) {
-    icon = <CircleDot className="h-3.5 w-3.5 text-slate-600 shrink-0" />;
-  } else if (n.includes("access")) {
-    icon = <Navigation className="h-3.5 w-3.5 text-rose-600 shrink-0" />;
-  } else if (n.includes("autogas") || n.includes("lpg")) {
+  if (n.includes("autogas") || n.includes("lpg")) {
     icon = <Leaf className="h-3.5 w-3.5 text-emerald-600 shrink-0" />;
-  } else if (n.includes("shop") || n.includes("store") || n.includes("coffee") || n.includes("londis") || n.includes("costa") || n.includes("convenience") || n.includes("autoparts")) {
+  } else if (n.includes("shop") || n.includes("store") || n.includes("coffee")) {
     icon = <ShoppingBag className="h-3.5 w-3.5 text-blue-600 shrink-0" />;
+  } else if (n.includes("air")) {
+    icon = <CircleDot className="h-3.5 w-3.5 text-cyan-600 shrink-0" />;
   } else if (n.includes("adblue")) {
     icon = <Droplet className="h-3.5 w-3.5 text-sky-600 shrink-0" />;
-  } else if (n.includes("cylinder") || n.includes("solid") || n.includes("gas") || n.includes("coal") || n.includes("logs")) {
+  } else if (n.includes("cylinder") || n.includes("solid") || n.includes("gas")) {
     icon = <Flame className="h-3.5 w-3.5 text-amber-500 shrink-0" />;
+  } else if (n.includes("wash")) {
+    icon = <Sparkles className="h-3.5 w-3.5 text-indigo-500 shrink-0" />;
   }
 
   return (
@@ -199,7 +192,7 @@ function ServiceChip({ name }: { name: string }) {
 /**
  * Station Section Card matching Services Page Typography Scale & Hierarchy
  */
-function StationSectionBlock({ station, index }: { station: any; index: number }) {
+function StationSectionBlock({ station, index }: { station: FillingStation; index: number }) {
   const images = getStationImages(station);
   const [currentImgIdx, setCurrentImgIdx] = useState(0);
   const [prevImgIdx, setPrevImgIdx] = useState(0);
@@ -250,7 +243,8 @@ function StationSectionBlock({ station, index }: { station: any; index: number }
               </span>
               {station.autogas_available && (
                 <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Autogas Available
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Autogas
+                  Available
                 </span>
               )}
             </div>
@@ -270,8 +264,12 @@ function StationSectionBlock({ station, index }: { station: any; index: number }
                 <MapPin className="h-4 w-4 sm:h-4.5 sm:w-4.5 stroke-[2]" />
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Address</div>
-                <div className="text-xs sm:text-sm text-slate-700 font-normal leading-relaxed">{station.address}</div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Address
+                </div>
+                <div className="text-xs sm:text-sm text-slate-700 font-normal leading-relaxed">
+                  {station.address}
+                </div>
               </div>
             </div>
 
@@ -282,7 +280,9 @@ function StationSectionBlock({ station, index }: { station: any; index: number }
                   <Phone className="h-4 w-4 sm:h-4.5 sm:w-4.5 stroke-[2]" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Telephone</div>
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Telephone
+                  </div>
                   <a
                     href={`tel:${station.phone.replace(/\s/g, "")}`}
                     className="text-xs sm:text-sm font-semibold text-slate-900 hover:text-primary transition-colors"
@@ -300,8 +300,12 @@ function StationSectionBlock({ station, index }: { station: any; index: number }
                   <Clock className="h-4 w-4 sm:h-4.5 sm:w-4.5 stroke-[2]" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Opening Hours</div>
-                  <div className="text-xs sm:text-sm text-slate-700 font-normal leading-relaxed">{station.hours}</div>
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Opening Hours
+                  </div>
+                  <div className="text-xs sm:text-sm text-slate-700 font-normal leading-relaxed">
+                    {station.hours}
+                  </div>
                 </div>
               </div>
             )}
@@ -358,12 +362,13 @@ function StationSectionBlock({ station, index }: { station: any; index: number }
                     alt={`${station.name} view ${idx + 1}`}
                     loading={idx === 0 ? "eager" : "lazy"}
                     style={{ willChange: "opacity" }}
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out select-none pointer-events-none ${isCurrent
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out select-none pointer-events-none ${
+                      isCurrent
                         ? "opacity-100 z-10"
                         : isPrevious
                           ? "opacity-0 z-5"
                           : "opacity-0 z-0"
-                      }`}
+                    }`}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = images[0] || "/wild-goose-garage-1.jpg";
                     }}
@@ -410,10 +415,11 @@ function StationSectionBlock({ station, index }: { station: any; index: number }
                       });
                     }}
                     aria-label={`Go to ${station.name} photo ${dotIdx + 1}`}
-                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${dotIdx === currentImgIdx
+                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                      dotIdx === currentImgIdx
                         ? "bg-white w-5.5 shadow-xs"
                         : "bg-white/50 hover:bg-white/80 w-2"
-                      }`}
+                    }`}
                   />
                 ))}
               </div>
@@ -437,14 +443,17 @@ export const Route = createFileRoute("/filling-stations")({
           "Visit Wild Goose Garage, Fromebridge Service Station, or Bridge Service Station for fuel, autogas and cylinder exchange.",
       },
       { property: "og:title", content: "Our Filling Stations | John Stayte Services" },
-      { property: "og:description", content: "Three Gloucestershire forecourts for fuel, gas and cylinder exchange." },
+      {
+        property: "og:description",
+        content: "Three Gloucestershire forecourts for fuel, gas and cylinder exchange.",
+      },
     ],
   }),
   component: Stations,
 });
 
 function Stations() {
-  const [stationList, setStationList] = useState<any[]>(DEFAULT_STATIONS);
+  const [stationList, setStationList] = useState<FillingStation[]>(DEFAULT_STATIONS);
 
   useEffect(() => {
     async function loadStations() {
@@ -460,27 +469,39 @@ function Stations() {
           .eq("section_key", "stations_data")
           .maybeSingle();
 
-        let parsedBlock: any[] = [];
+        let parsedBlock: FillingStation[] = [];
         if (block?.content) {
           try {
             parsedBlock = JSON.parse(block.content);
-          } catch { }
+          } catch (e) {
+            console.warn("Failed to parse stations_data CMS block", e);
+          }
         }
 
-        const stationMap = new Map<string, any>();
+        const stationMap = new Map<string, FillingStation>();
         DEFAULT_STATIONS.forEach((s) => stationMap.set(s.name.toLowerCase(), s));
 
         if (Array.isArray(parsedBlock) && parsedBlock.length > 0) {
           parsedBlock.forEach((s) => {
             const key = (s.name || "").toLowerCase();
-            stationMap.set(key, { ...stationMap.get(key), ...s });
+            const existing = stationMap.get(key);
+            if (existing) {
+              stationMap.set(key, { ...existing, ...s });
+            } else {
+              stationMap.set(key, s);
+            }
           });
         }
 
         if (Array.isArray(dbStations) && dbStations.length > 0) {
-          dbStations.forEach((s) => {
+          (dbStations as FillingStation[]).forEach((s) => {
             const key = (s.name || "").toLowerCase();
-            stationMap.set(key, { ...stationMap.get(key), ...s });
+            const existing = stationMap.get(key);
+            if (existing) {
+              stationMap.set(key, { ...existing, ...s });
+            } else {
+              stationMap.set(key, s);
+            }
           });
         }
 
@@ -545,7 +566,8 @@ function Stations() {
               Our <span className="text-primary">filling stations</span>
             </h1>
             <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed max-w-2xl">
-              Three Gloucestershire forecourts for fuel, autogas, cylinder exchange and shop essentials.
+              Three Gloucestershire forecourts for fuel, autogas, cylinder exchange and shop
+              essentials.
             </p>
           </div>
 
@@ -613,14 +635,17 @@ function Stations() {
             <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="space-y-0.5">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 font-display tracking-tight flex items-center gap-2">
-                  <MapPin className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-primary stroke-[2]" /> Forecourt Locations Map
+                  <MapPin className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-primary stroke-[2]" /> Forecourt
+                  Locations Map
                 </h3>
                 <p className="text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
-                  Interactive map of our Gloucestershire forecourts. Click any pin for station address and directions.
+                  Interactive map of our Gloucestershire forecourts. Click any pin for station
+                  address and directions.
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-primary">
-                <span className="inline-block w-2 h-2 rounded-full bg-primary" /> 3 Forecourts Active
+                <span className="inline-block w-2 h-2 rounded-full bg-primary" /> 3 Forecourts
+                Active
               </div>
             </div>
 

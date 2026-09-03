@@ -6,12 +6,7 @@ export type OrderType = "NEW_CYLINDER" | "REFILL_EXCHANGE";
 export type ReturnMethod = "RETURN_ON_DELIVERY" | "SCHEDULED_PICKUP";
 
 export type CylinderReturnStatus =
-  | "PENDING_RETURN"
-  | "PICKUP_SCHEDULED"
-  | "COLLECTED"
-  | "RECEIVED"
-  | "VERIFIED"
-  | "REJECTED";
+  "PENDING_RETURN" | "PICKUP_SCHEDULED" | "COLLECTED" | "RECEIVED" | "VERIFIED" | "REJECTED";
 
 export interface GasProductRecord {
   id: string;
@@ -85,8 +80,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Propane Cylinders",
-    description: "Standard red domestic propane cylinder with POL screw valve for whole-home heating, cooking, and light commercial use.",
-    price: 48.50,
+    description:
+      "Standard red domestic propane cylinder with POL screw valve for whole-home heating, cooking, and light commercial use.",
+    price: 48.5,
     stock: 25,
     image_url: "/domestic_kitchen_cylinder.jpg",
     images: ["/domestic_kitchen_cylinder.jpg", "/calor-cylinders-studio.jpg"],
@@ -94,7 +90,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "13kg",
     deposit_price: 39.99,
-    refill_price: 48.50,
+    refill_price: 48.5,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -103,7 +99,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Reliable sub-zero outdoor vaporisation performance",
       "Compatible with automatic 2-cylinder & 4-cylinder changeover valves",
     ],
-    suitable_for: ["Home Central Heating", "Gas Hobs & Cookers", "Domestic Water Heating", "Workshop Space Heaters"],
+    suitable_for: [
+      "Home Central Heating",
+      "Gas Hobs & Cookers",
+      "Domestic Water Heating",
+      "Workshop Space Heaters",
+    ],
   },
   {
     name: "Calor 15kg Butane Gas Cylinder",
@@ -111,8 +112,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Butane Cylinders",
-    description: "Classic high-capacity blue Calor butane cylinder for indoor portable mobile cabinet room heaters and indoor cookers.",
-    price: 46.00,
+    description:
+      "Classic high-capacity blue Calor butane cylinder for indoor portable mobile cabinet room heaters and indoor cookers.",
+    price: 46.0,
     stock: 20,
     image_url: "/calor-cylinders-studio.jpg",
     images: ["/calor-cylinders-studio.jpg"],
@@ -120,7 +122,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Butane",
     cylinder_size: "15kg",
     deposit_price: 39.99,
-    refill_price: 46.00,
+    refill_price: 46.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -129,7 +131,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Standard UK cabinet heater cavity compatibility",
       "Long-lasting 15kg capacity for cold winter periods",
     ],
-    suitable_for: ["Portable Cabinet Heaters", "Living Room Mobile Heating", "Indoor Domestic Cookers"],
+    suitable_for: [
+      "Portable Cabinet Heaters",
+      "Living Room Mobile Heating",
+      "Indoor Domestic Cookers",
+    ],
   },
   {
     name: "Calor 13kg Patio Gas Cylinder",
@@ -137,8 +143,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Patio Cylinders",
-    description: "Equipped with easy 27mm clip-on connector and built-in Gas Trac indicator for domestic BBQs and garden patio warmers.",
-    price: 52.00,
+    description:
+      "Equipped with easy 27mm clip-on connector and built-in Gas Trac indicator for domestic BBQs and garden patio warmers.",
+    price: 52.0,
     stock: 30,
     image_url: "/safety_away_from_flames_v2.jpg",
     images: ["/safety_away_from_flames_v2.jpg", "/calor-cylinders-studio.jpg"],
@@ -146,7 +153,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Patio Gas",
     cylinder_size: "13kg",
     deposit_price: 44.99,
-    refill_price: 52.00,
+    refill_price: 52.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -155,7 +162,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Specially formulated propane for consistent flame in any weather",
       "Large capacity designed for multi-burner outdoor kitchens",
     ],
-    suitable_for: ["4-Burner+ Gas Barbecues", "Patio Tower Heaters", "Garden Fire Pits", "Outdoor Hospitality"],
+    suitable_for: [
+      "4-Burner+ Gas Barbecues",
+      "Patio Tower Heaters",
+      "Garden Fire Pits",
+      "Outdoor Hospitality",
+    ],
   },
   {
     name: "Calor 5kg Patio Gas Cylinder",
@@ -163,8 +175,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Patio Cylinders",
-    description: "Compact domestic patio gas cylinder for tabletop barbecues, small terrace warmers, and weekend garden cookouts.",
-    price: 32.50,
+    description:
+      "Compact domestic patio gas cylinder for tabletop barbecues, small terrace warmers, and weekend garden cookouts.",
+    price: 32.5,
     stock: 18,
     image_url: "/safety_away_from_flames_v3.jpg",
     images: ["/safety_away_from_flames_v3.jpg"],
@@ -172,7 +185,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Patio Gas",
     cylinder_size: "5kg",
     deposit_price: 34.99,
-    refill_price: 32.50,
+    refill_price: 32.5,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -189,8 +202,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Propane Cylinders",
-    description: "Lightweight domestic camping and touring caravan cylinder with screw-on POL valve.",
-    price: 34.00,
+    description:
+      "Lightweight domestic camping and touring caravan cylinder with screw-on POL valve.",
+    price: 34.0,
     stock: 15,
     image_url: "/safety_upright_v3.jpg",
     images: ["/safety_upright_v3.jpg"],
@@ -198,7 +212,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "6kg",
     deposit_price: 34.99,
-    refill_price: 34.00,
+    refill_price: 34.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -215,8 +229,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Campingaz",
     category_slug: "bottled-gas",
     subcategory: "Camping Gas",
-    description: "Compact 2.72kg refillable butane cylinder for camping stoves, campervans, and portable outdoor cooking.",
-    price: 36.50,
+    description:
+      "Compact 2.72kg refillable butane cylinder for camping stoves, campervans, and portable outdoor cooking.",
+    price: 36.5,
     stock: 25,
     image_url: "/calor-cylinders-studio.jpg",
     images: ["/calor-cylinders-studio.jpg"],
@@ -224,7 +239,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Butane",
     cylinder_size: "2.72kg",
     deposit_price: 29.99,
-    refill_price: 36.50,
+    refill_price: 36.5,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -233,7 +248,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Ultra-compact footprint for small campervans and boats",
       "Safety self-sealing valve when disconnected",
     ],
-    suitable_for: ["Camping Stoves", "Campervan Conversions", "Marine & Boating", "Portable Outdoor Cooking"],
+    suitable_for: [
+      "Camping Stoves",
+      "Campervan Conversions",
+      "Marine & Boating",
+      "Portable Outdoor Cooking",
+    ],
   },
 
   // Commercial Products
@@ -243,8 +263,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Commercial Propane",
-    description: "Heavy-duty commercial propane supply for hotels, commercial kitchens, farms, and workshops.",
-    price: 94.00,
+    description:
+      "Heavy-duty commercial propane supply for hotels, commercial kitchens, farms, and workshops.",
+    price: 94.0,
     stock: 40,
     image_url: "/safety_storage_v2.jpg",
     images: ["/safety_storage_v2.jpg", "/calor-cylinders-studio.jpg"],
@@ -252,7 +273,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "47kg",
     deposit_price: 59.99,
-    refill_price: 94.00,
+    refill_price: 94.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -261,7 +282,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "High vaporisation rate for demanding commercial cooking & heating",
       "Ideal for multi-cylinder automatic changeover manifolds",
     ],
-    suitable_for: ["Whole-Home Off-Grid Heating", "Commercial Kitchens & Restaurants", "Holiday Parks & Lodges", "Agricultural Grain Dryers"],
+    suitable_for: [
+      "Whole-Home Off-Grid Heating",
+      "Commercial Kitchens & Restaurants",
+      "Holiday Parks & Lodges",
+      "Agricultural Grain Dryers",
+    ],
   },
   {
     name: "Calor 19kg Commercial Propane Cylinder",
@@ -269,8 +295,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Commercial Propane",
-    description: "Mid-size commercial propane bottle for catering trailers, bitumen boilers, and blowtorches.",
-    price: 68.00,
+    description:
+      "Mid-size commercial propane bottle for catering trailers, bitumen boilers, and blowtorches.",
+    price: 68.0,
     stock: 25,
     image_url: "/safety_upright_v2.jpg",
     images: ["/safety_upright_v2.jpg"],
@@ -278,7 +305,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "19kg",
     deposit_price: 49.99,
-    refill_price: 68.00,
+    refill_price: 68.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -287,7 +314,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Heavy-duty commercial propane for high-heat equipment",
       "Mobile catering health & safety compliant",
     ],
-    suitable_for: ["Mobile Catering Trailers", "Bitumen & Roofing Boilers", "Site Blow Heaters", "Agricultural Sheds"],
+    suitable_for: [
+      "Mobile Catering Trailers",
+      "Bitumen & Roofing Boilers",
+      "Site Blow Heaters",
+      "Agricultural Sheds",
+    ],
   },
   {
     name: "Calor 18kg FLT Forklift Truck Gas",
@@ -295,8 +327,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Calor",
     category_slug: "bottled-gas",
     subcategory: "Commercial FLT",
-    description: "Liquid withdrawal FLT cylinder engineered specifically for industrial forklift trucks.",
-    price: 62.00,
+    description:
+      "Liquid withdrawal FLT cylinder engineered specifically for industrial forklift trucks.",
+    price: 62.0,
     stock: 35,
     image_url: "/safety_upright_v3.jpg",
     images: ["/safety_upright_v3.jpg"],
@@ -304,7 +337,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Forklift Gas",
     cylinder_size: "18kg",
     deposit_price: 49.99,
-    refill_price: 62.00,
+    refill_price: 62.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -321,16 +354,17 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Stayte Gas",
     category_slug: "bottled-gas",
     subcategory: "Pub Gas",
-    description: "60/40 CO2/Nitrogen mixed dispense gas for pub cellars, restaurants, and draught beer lines.",
-    price: 38.00,
+    description:
+      "60/40 CO2/Nitrogen mixed dispense gas for pub cellars, restaurants, and draught beer lines.",
+    price: 38.0,
     stock: 22,
     image_url: "/commercial_kitchen_cylinders.jpg",
     images: ["/commercial_kitchen_cylinders.jpg"],
     usage_type: "COMMERCIAL",
     gas_type: "Pub Gas",
     cylinder_size: "10L / 14kg",
-    deposit_price: 55.00,
-    refill_price: 38.00,
+    deposit_price: 55.0,
+    refill_price: 38.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -339,7 +373,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Maintains optimal carbonation and creamy head on ales and stouts",
       "Certified clean food and beverage grade purity",
     ],
-    suitable_for: ["Pub Cellars", "Bar Beer Dispense", "Restaurants & Clubs", "Draught Beverage Systems"],
+    suitable_for: [
+      "Pub Cellars",
+      "Bar Beer Dispense",
+      "Restaurants & Clubs",
+      "Draught Beverage Systems",
+    ],
   },
 
   // Bulk Products
@@ -349,16 +388,20 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Stayte Bulk LPG",
     category_slug: "bulk-gas",
     subcategory: "Bulk Tank Supply",
-    description: "Bulk road tanker metered delivery directly into on-site bulk storage vessels across Gloucestershire.",
-    price: 780.00,
+    description:
+      "Bulk road tanker metered delivery directly into on-site bulk storage vessels across Gloucestershire.",
+    price: 780.0,
     stock: 50,
     image_url: "/own_vehicle_fleet_truck_1787408938768.jpg",
-    images: ["/own_vehicle_fleet_truck_1787408938768.jpg", "/photorealistic_lpg_truck_hero_1787400698764.jpg"],
+    images: [
+      "/own_vehicle_fleet_truck_1787408938768.jpg",
+      "/photorealistic_lpg_truck_hero_1787400698764.jpg",
+    ],
     usage_type: "BULK",
     gas_type: "Bulk Propane",
     cylinder_size: "1,000L - 4,000L Vessel",
     deposit_price: 0,
-    refill_price: 780.00,
+    refill_price: 780.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -367,7 +410,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Telemetry tank monitoring & automatic top-ups available",
       "Lowest cost per litre for high-volume commercial users",
     ],
-    suitable_for: ["Poultry & Livestock Rearing", "Crop & Grain Drying", "Commercial Glasshouses", "Large Rural Estates"],
+    suitable_for: [
+      "Poultry & Livestock Rearing",
+      "Crop & Grain Drying",
+      "Commercial Glasshouses",
+      "Large Rural Estates",
+    ],
   },
   {
     name: "Bulk Autogas Forecourt Tanker Supply",
@@ -375,8 +423,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Stayte Bulk LPG",
     category_slug: "bulk-gas",
     subcategory: "Bulk Autogas",
-    description: "Scheduled road tanker delivery for commercial fleet depots and forecourt autogas dispensers.",
-    price: 1450.00,
+    description:
+      "Scheduled road tanker delivery for commercial fleet depots and forecourt autogas dispensers.",
+    price: 1450.0,
     stock: 30,
     image_url: "/photorealistic_lpg_truck_hero_1787400698764.jpg",
     images: ["/photorealistic_lpg_truck_hero_1787400698764.jpg"],
@@ -384,7 +433,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Autogas",
     cylinder_size: "5,000L Vessel",
     deposit_price: 0,
-    refill_price: 1450.00,
+    refill_price: 1450.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -393,7 +442,12 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Commercial fleet bunkering & depot tanks",
       "Scheduled contracted deliveries with emergency backup",
     ],
-    suitable_for: ["Forecourt Fuel Stations", "Commercial Fleet Depots", "Taxi & Van Operators", "Local Authority Vehicles"],
+    suitable_for: [
+      "Forecourt Fuel Stations",
+      "Commercial Fleet Depots",
+      "Taxi & Van Operators",
+      "Local Authority Vehicles",
+    ],
   },
 ];
 
@@ -430,7 +484,7 @@ export async function seedGasProductsIfEmpty() {
     if (error || !existing) return;
 
     const missingSeeds = INITIAL_GAS_PRODUCTS.filter(
-      (seed) => !existing.some((p) => p.slug === seed.slug)
+      (seed) => !existing.some((p) => p.slug === seed.slug),
     );
 
     if (missingSeeds.length > 0) {
@@ -471,13 +525,10 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
   seedGasProductsIfEmpty().catch(() => {});
 
   // Direct fetch with a 5-second timeout
-  const fetchPromise = supabase
-    .from("products")
-    .select("*")
-    .order("price", { ascending: true });
+  const fetchPromise = supabase.from("products").select("*").order("price", { ascending: true });
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Request timed out")), 5000)
+    setTimeout(() => reject(new Error("Request timed out")), 5000),
   );
 
   let data: any[] | null = null;
@@ -520,12 +571,12 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
         (catSlug === "bulk-gas"
           ? "BULK"
           : p.name.toLowerCase().includes("commercial") ||
-            p.name.toLowerCase().includes("flt") ||
-            p.name.toLowerCase().includes("pub gas") ||
-            p.name.toLowerCase().includes("47kg") ||
-            p.name.toLowerCase().includes("19kg")
-          ? "COMMERCIAL"
-          : "DOMESTIC");
+              p.name.toLowerCase().includes("flt") ||
+              p.name.toLowerCase().includes("pub gas") ||
+              p.name.toLowerCase().includes("47kg") ||
+              p.name.toLowerCase().includes("19kg")
+            ? "COMMERCIAL"
+            : "DOMESTIC");
 
       return productUsage === usageType;
     })
@@ -537,32 +588,35 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
         (catSlug === "bulk-gas"
           ? "BULK"
           : p.name.toLowerCase().includes("commercial") ||
-            p.name.toLowerCase().includes("flt") ||
-            p.name.toLowerCase().includes("pub gas") ||
-            p.name.toLowerCase().includes("47kg") ||
-            p.name.toLowerCase().includes("19kg")
-          ? "COMMERCIAL"
-          : "DOMESTIC");
+              p.name.toLowerCase().includes("flt") ||
+              p.name.toLowerCase().includes("pub gas") ||
+              p.name.toLowerCase().includes("47kg") ||
+              p.name.toLowerCase().includes("19kg")
+            ? "COMMERCIAL"
+            : "DOMESTIC");
 
-      const rawImages = Array.isArray(p.images) && p.images.length > 0
-        ? p.images
-        : p.image_url
-        ? [p.image_url]
-        : ["/calor-cylinders-studio.jpg"];
+      const rawImages =
+        Array.isArray(p.images) && p.images.length > 0
+          ? p.images
+          : p.image_url
+            ? [p.image_url]
+            : ["/calor-cylinders-studio.jpg"];
 
-      const features = Array.isArray(p.features) && p.features.length > 0
-        ? p.features
-        : Array.isArray(specs.features) && specs.features.length > 0
-        ? specs.features
-        : undefined;
+      const features =
+        Array.isArray(p.features) && p.features.length > 0
+          ? p.features
+          : Array.isArray(specs.features) && specs.features.length > 0
+            ? specs.features
+            : undefined;
 
-      const suitableFor = Array.isArray(p.suitable_for) && p.suitable_for.length > 0
-        ? p.suitable_for
-        : Array.isArray(specs.suitable_for) && specs.suitable_for.length > 0
-        ? specs.suitable_for
-        : Array.isArray(specs.applications) && specs.applications.length > 0
-        ? specs.applications
-        : undefined;
+      const suitableFor =
+        Array.isArray(p.suitable_for) && p.suitable_for.length > 0
+          ? p.suitable_for
+          : Array.isArray(specs.suitable_for) && specs.suitable_for.length > 0
+            ? specs.suitable_for
+            : Array.isArray(specs.applications) && specs.applications.length > 0
+              ? specs.applications
+              : undefined;
 
       return {
         id: p.id,
@@ -582,15 +636,15 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
           (p.name.toLowerCase().includes("butane")
             ? "Butane"
             : p.name.toLowerCase().includes("patio")
-            ? "Patio Gas"
-            : p.name.toLowerCase().includes("forklift") || p.name.toLowerCase().includes("flt")
-            ? "Forklift Gas"
-            : p.name.toLowerCase().includes("pub")
-            ? "Pub Gas"
-            : "Propane"),
-        cylinder_size: specs.cylinder_size || (p.name.match(/\d+(\.\d+)?kg/i)?.[0] || "13kg"),
+              ? "Patio Gas"
+              : p.name.toLowerCase().includes("forklift") || p.name.toLowerCase().includes("flt")
+                ? "Forklift Gas"
+                : p.name.toLowerCase().includes("pub")
+                  ? "Pub Gas"
+                  : "Propane"),
+        cylinder_size: specs.cylinder_size || p.name.match(/\d+(\.\d+)?kg/i)?.[0] || "13kg",
         deposit_price: Number(specs.deposit_price ?? 39.99),
-        refill_price: Number(specs.refill_price ?? p.price ?? 45.00),
+        refill_price: Number(specs.refill_price ?? p.price ?? 45.0),
         delivery_charge: Number(specs.delivery_charge ?? 0),
         is_active: specs.is_active !== false && p.is_active !== false,
         specs: typeof specs === "object" ? specs : {},
@@ -609,7 +663,9 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
 export async function getAvailableSlots(params: {
   type: "delivery" | "pickup";
   date: string;
-}): Promise<{ slot: SlotConfig; bookedCount: number; available: boolean; remainingCapacity: number }[]> {
+}): Promise<
+  { slot: SlotConfig; bookedCount: number; available: boolean; remainingCapacity: number }[]
+> {
   const { type, date } = params;
 
   // 1. Fetch slots config from cms_content_blocks or fallback to defaults
@@ -633,7 +689,7 @@ export async function getAvailableSlots(params: {
 
   // Filter slots for requested type
   const activeSlots = slotConfigs.filter(
-    (s) => s.is_active && (s.type === "both" || s.type === type)
+    (s) => s.is_active && (s.type === "both" || s.type === type),
   );
 
   // 2. Count existing bookings for this date and time slots from orders & delivery_assignments
@@ -646,8 +702,7 @@ export async function getAvailableSlots(params: {
     // Approximate matching on slot name or time string
     const booked = (assignments || []).filter(
       (a) =>
-        a.time_slot &&
-        (a.time_slot === slot.slot_name || a.time_slot.includes(slot.start_time))
+        a.time_slot && (a.time_slot === slot.slot_name || a.time_slot.includes(slot.start_time)),
     ).length;
 
     const remaining = Math.max(0, slot.capacity - booked);
@@ -682,7 +737,10 @@ export async function validateAndCalculateOrderTotal(params: {
     throw new Error("Invalid gas product selected.");
   }
 
-  const specs: Record<string, any> = prod.specs && typeof prod.specs === "object" && !Array.isArray(prod.specs) ? (prod.specs as Record<string, any>) : {};
+  const specs: Record<string, any> =
+    prod.specs && typeof prod.specs === "object" && !Array.isArray(prod.specs)
+      ? (prod.specs as Record<string, any>)
+      : {};
   const isNew = orderType === "NEW_CYLINDER";
 
   const gasPriceUnit = Number(specs.refill_price ?? prod.price ?? 0);
@@ -753,14 +811,16 @@ export async function createGasOrder(params: {
   } = params;
 
   if (!userId) {
-    throw new Error("Authentication required: Order must be linked to an authenticated customer account.");
+    throw new Error(
+      "Authentication required: Order must be linked to an authenticated customer account.",
+    );
   }
 
   // 1. Mandatory Gas Customer Application Verification (Backend Enforcement)
   const app = await getCustomerGasApplication(userId);
   if (!app || (app.status !== "SUBMITTED" && app.status !== "APPROVED")) {
     throw new Error(
-      "Gas Customer Application Required: You must complete and submit your Gas Customer Application Form before placing your first gas order."
+      "Gas Customer Application Required: You must complete and submit your Gas Customer Application Form before placing your first gas order.",
     );
   }
 
@@ -804,7 +864,9 @@ export async function createGasOrder(params: {
         notes: [
           `[${usageType}]`,
           `[${orderType}]`,
-          isNew ? `Deposit: £${calculated.depositTotal.toFixed(2)}` : `Return Method: ${returnMethod}`,
+          isNew
+            ? `Deposit: £${calculated.depositTotal.toFixed(2)}`
+            : `Return Method: ${returnMethod}`,
           pickupDate ? `Pickup: ${pickupDate} (${pickupTimeSlot || "Anytime"})` : "",
           cylinderTag ? `Tag: ${cylinderTag}` : "",
           notes,
@@ -878,7 +940,9 @@ export async function createGasOrder(params: {
       driver_name: "Gloucestershire Logistics Team",
       vehicle_identifier: "JS-CYL-FLEET",
       route_area: "Gloucestershire Forecourt Route",
-      time_slot: isNew ? (deliveryTimeSlot || "Morning Window (08:00 - 12:00)") : (pickupTimeSlot || "Morning Window (08:00 - 12:00)"),
+      time_slot: isNew
+        ? deliveryTimeSlot || "Morning Window (08:00 - 12:00)"
+        : pickupTimeSlot || "Morning Window (08:00 - 12:00)",
       status: isNew ? "Confirmed" : "Pickup Scheduled",
     },
   ]);
@@ -964,18 +1028,46 @@ export async function updateCylinderReturnStatus(params: {
 }
 
 export const REFILL_STATUS_STEPS = [
-  { key: "REFILL_REQUESTED", label: "Refill Requested", description: "Refill request logged in system." },
-  { key: "PICKUP_SCHEDULED", label: "Pickup Scheduled", description: "Driver and pickup window assigned." },
-  { key: "EMPTY_COLLECTED", label: "Empty Cylinder Collected", description: "Driver collected empty cylinder." },
-  { key: "EMPTY_VERIFIED", label: "Empty Cylinder Verified", description: "Cylinder inspected & passed safety checks." },
-  { key: "REFILL_IN_PROGRESS", label: "Refill In Progress", description: "Cylinder being refilled at station." },
-  { key: "REFILL_COMPLETED", label: "Refill Completed", description: "Cylinder filled, tested & sealed." },
-  { key: "OUT_FOR_DELIVERY", label: "Out for Delivery", description: "Refilled cylinder on vehicle for drop-off." },
+  {
+    key: "REFILL_REQUESTED",
+    label: "Refill Requested",
+    description: "Refill request logged in system.",
+  },
+  {
+    key: "PICKUP_SCHEDULED",
+    label: "Pickup Scheduled",
+    description: "Driver and pickup window assigned.",
+  },
+  {
+    key: "EMPTY_COLLECTED",
+    label: "Empty Cylinder Collected",
+    description: "Driver collected empty cylinder.",
+  },
+  {
+    key: "EMPTY_VERIFIED",
+    label: "Empty Cylinder Verified",
+    description: "Cylinder inspected & passed safety checks.",
+  },
+  {
+    key: "REFILL_IN_PROGRESS",
+    label: "Refill In Progress",
+    description: "Cylinder being refilled at station.",
+  },
+  {
+    key: "REFILL_COMPLETED",
+    label: "Refill Completed",
+    description: "Cylinder filled, tested & sealed.",
+  },
+  {
+    key: "OUT_FOR_DELIVERY",
+    label: "Out for Delivery",
+    description: "Refilled cylinder on vehicle for drop-off.",
+  },
   { key: "DELIVERED", label: "Delivered", description: "Refilled cylinder delivered to customer." },
   { key: "COMPLETED", label: "Completed", description: "Order complete and cylinder registered." },
 ] as const;
 
-export type RefillStatusKey = typeof REFILL_STATUS_STEPS[number]["key"];
+export type RefillStatusKey = (typeof REFILL_STATUS_STEPS)[number]["key"];
 
 /**
  * Advances a refill request through sequential status steps.
@@ -1006,13 +1098,15 @@ export async function advanceRefillStatus(params: {
   const pastStatuses = (currentHistory.data || []).map((h) => h.status);
 
   if (
-    (nextStatus === "OUT_FOR_DELIVERY" || nextStatus === "DELIVERED" || nextStatus === "COMPLETED") &&
+    (nextStatus === "OUT_FOR_DELIVERY" ||
+      nextStatus === "DELIVERED" ||
+      nextStatus === "COMPLETED") &&
     order.notes?.includes("[REFILL") &&
     !pastStatuses.includes("Empty Cylinder Verified") &&
     !pastStatuses.includes("EMPTY_VERIFIED")
   ) {
     throw new Error(
-      "Exchange Policy Violation: An empty cylinder MUST be collected and verified before the refilled cylinder can be dispatched or delivered."
+      "Exchange Policy Violation: An empty cylinder MUST be collected and verified before the refilled cylinder can be dispatched or delivered.",
     );
   }
 

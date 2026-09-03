@@ -26,8 +26,10 @@ const fullProductCatalog = [
     reviews_count: 32,
     is_featured: true,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-19kg-propane.jpg",
-    description: "Ideal for residential heating, light commercial catering, and space heaters across Gloucestershire. Uses a standard POL screw fitting.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-19kg-propane.jpg",
+    description:
+      "Ideal for residential heating, light commercial catering, and space heaters across Gloucestershire. Uses a standard POL screw fitting.",
     specs: {
       capacity: "19kg",
       tare_weight: "18.5kg",
@@ -50,8 +52,10 @@ const fullProductCatalog = [
     reviews_count: 19,
     is_featured: true,
     is_offer: true,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-47kg-propane.jpg",
-    description: "The largest cylinder in the Calor range, designed for whole-home central heating, commercial kitchens, holiday parks, and agricultural grain dryers.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-47kg-propane.jpg",
+    description:
+      "The largest cylinder in the Calor range, designed for whole-home central heating, commercial kitchens, holiday parks, and agricultural grain dryers.",
     specs: {
       capacity: "47kg",
       tare_weight: "34kg",
@@ -74,8 +78,10 @@ const fullProductCatalog = [
     reviews_count: 24,
     is_featured: false,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-13kg-butane.jpg",
-    description: "The classic blue Calor butane bottle, purpose-engineered for indoor portable cabinet room heaters and indoor gas cookers.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-13kg-butane.jpg",
+    description:
+      "The classic blue Calor butane bottle, purpose-engineered for indoor portable cabinet room heaters and indoor gas cookers.",
     specs: {
       capacity: "13kg",
       tare_weight: "14kg",
@@ -98,8 +104,10 @@ const fullProductCatalog = [
     reviews_count: 41,
     is_featured: true,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-13kg-patio.jpg",
-    description: "Equipped with Calor's built-in Gas Trac indicator so you never run out unexpectedly during summer barbecues or patio heater evenings.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/calor-13kg-patio.jpg",
+    description:
+      "Equipped with Calor's built-in Gas Trac indicator so you never run out unexpectedly during summer barbecues or patio heater evenings.",
     specs: {
       capacity: "13kg",
       tare_weight: "15.2kg",
@@ -122,8 +130,10 @@ const fullProductCatalog = [
     reviews_count: 15,
     is_featured: false,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/campingaz-907.jpg",
-    description: "The most popular European camping cylinder size. Lightweight, portable and readily exchangeable across the UK and Continental Europe.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/campingaz-907.jpg",
+    description:
+      "The most popular European camping cylinder size. Lightweight, portable and readily exchangeable across the UK and Continental Europe.",
     specs: {
       capacity: "2.72kg Butane",
       tare_weight: "3.7kg",
@@ -148,8 +158,10 @@ const fullProductCatalog = [
     reviews_count: 38,
     is_featured: true,
     is_offer: true,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/maxibrite-25kg.jpg",
-    description: "HETAS and Defra approved Ready to Burn smokeless fuel. Produces a consistent, long-lasting high heat output with minimal ash residue.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/maxibrite-25kg.jpg",
+    description:
+      "HETAS and Defra approved Ready to Burn smokeless fuel. Produces a consistent, long-lasting high heat output with minimal ash residue.",
     specs: {
       weight: "25kg",
       fuel_type: "Manufactured Smokeless Ovals",
@@ -170,8 +182,10 @@ const fullProductCatalog = [
     reviews_count: 27,
     is_featured: true,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/kiln-dried-logs.jpg",
-    description: "Premium British kiln-dried ash logs with guaranteed moisture content below 18%. Delivers maximum heat efficiency and clean burning glass on log burners.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/kiln-dried-logs.jpg",
+    description:
+      "Premium British kiln-dried ash logs with guaranteed moisture content below 18%. Delivers maximum heat efficiency and clean burning glass on log burners.",
     specs: {
       log_length: "25cm (10 inches)",
       moisture_content: "< 18% Guaranteed",
@@ -194,8 +208,10 @@ const fullProductCatalog = [
     reviews_count: 52,
     is_featured: false,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/mainline-cell.jpg",
-    description: "The UK's most successful carp bait formulation. Three active protein fractions deliver an instant feeding trigger all year round.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/mainline-cell.jpg",
+    description:
+      "The UK's most successful carp bait formulation. Three active protein fractions deliver an instant feeding trigger all year round.",
     specs: {
       weight: "1kg",
       size: "15mm",
@@ -218,8 +234,10 @@ const fullProductCatalog = [
     reviews_count: 14,
     is_featured: false,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/dodson-horrell-pasture.jpg",
-    description: "The UK's favourite horse feed formulation, packed with micronized cereals, spearmint and garlic for horses and ponies in light to medium work.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/dodson-horrell-pasture.jpg",
+    description:
+      "The UK's favourite horse feed formulation, packed with micronized cereals, spearmint and garlic for horses and ponies in light to medium work.",
     specs: {
       bag_size: "20kg",
       digestible_energy: "10.0 MJ/kg",
@@ -242,8 +260,10 @@ const fullProductCatalog = [
     reviews_count: 16,
     is_featured: true,
     is_offer: true,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/char_broil_professionalpro3_1.jpg",
-    description: "Equipped with patented TRU-Infrared cooking technology that distributes heat evenly across cast iron grates, keeping steaks and chicken up to 50% juicier.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/char_broil_professionalpro3_1.jpg",
+    description:
+      "Equipped with patented TRU-Infrared cooking technology that distributes heat evenly across cast iron grates, keeping steaks and chicken up to 50% juicier.",
     specs: {
       burners: "3 High-Performance Stainless Steel Burners + Side Sear Station",
       grate_material: "Porcelain-Enameled Cast Iron",
@@ -264,8 +284,10 @@ const fullProductCatalog = [
     reviews_count: 22,
     is_featured: true,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/supercalor-heater.jpg",
-    description: "Compact mobile room heater on castor wheels with 3 heat settings, piezo ignition, oxygen depletion sensor (ODS) and flame failure safety cut-off.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/supercalor-heater.jpg",
+    description:
+      "Compact mobile room heater on castor wheels with 3 heat settings, piezo ignition, oxygen depletion sensor (ODS) and flame failure safety cut-off.",
     specs: {
       max_heat_output: "4.2 kW (3 Heat Settings: 1.4kW / 2.8kW / 4.2kW)",
       fuel_type: "13kg or 15kg Butane Cylinder (21mm Clip-on)",
@@ -288,8 +310,10 @@ const fullProductCatalog = [
     reviews_count: 47,
     is_featured: false,
     is_offer: false,
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/propane-pol-regulator.jpg",
-    description: "UK standard low pressure regulator designed for red Calor 19kg and 47kg propane cylinders. Features female brass 5/8 inch LH POL thread with nozzle outlet.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/products/propane-pol-regulator.jpg",
+    description:
+      "UK standard low pressure regulator designed for red Calor 19kg and 47kg propane cylinders. Features female brass 5/8 inch LH POL thread with nozzle outlet.",
     specs: {
       operating_pressure: "37 mbar",
       inlet_connection: "POL Screw-on (BS 3016 / BS 3212)",

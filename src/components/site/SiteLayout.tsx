@@ -60,12 +60,24 @@ export function SectionHead({
     <div className="mb-5 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
       <div className="min-w-0">
         {badge && (
-          <p className={`text-xs font-bold uppercase tracking-[0.2em] mb-1 ${light ? "text-primary-foreground/80" : "text-primary"}`}>
+          <p
+            className={`text-xs font-bold uppercase tracking-[0.2em] mb-1 ${light ? "text-primary-foreground/80" : "text-primary"}`}
+          >
             {badge}
           </p>
         )}
-        <h2 className={`text-2xl font-extrabold md:text-3xl ${light ? "text-white" : "text-foreground"}`}>{title}</h2>
-        {subText && <p className={`mt-2 text-sm md:text-base ${light ? "text-slate-300" : "text-muted-foreground"}`}>{subText}</p>}
+        <h2
+          className={`text-2xl font-extrabold md:text-3xl ${light ? "text-white" : "text-foreground"}`}
+        >
+          {title}
+        </h2>
+        {subText && (
+          <p
+            className={`mt-2 text-sm md:text-base ${light ? "text-slate-300" : "text-muted-foreground"}`}
+          >
+            {subText}
+          </p>
+        )}
       </div>
       {action}
     </div>

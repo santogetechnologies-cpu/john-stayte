@@ -67,10 +67,8 @@ export function ManagerNotificationsView() {
     // Supabase Realtime subscription on public.notifications
     const notifsChannel = supabase
       .channel("manager_notifications_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => loadNotifications()
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () =>
+        loadNotifications(),
       )
       .subscribe();
 
@@ -90,7 +88,7 @@ export function ManagerNotificationsView() {
 
     if (isUnread) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n))
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n)),
       );
 
       try {
@@ -145,10 +143,7 @@ export function ManagerNotificationsView() {
     setNotifications((prev) => prev.filter((n) => n.id !== targetId));
 
     try {
-      const { error: delErr } = await supabase
-        .from("notifications")
-        .delete()
-        .eq("id", targetId);
+      const { error: delErr } = await supabase.from("notifications").delete().eq("id", targetId);
 
       if (delErr) throw delErr;
 
@@ -170,10 +165,7 @@ export function ManagerNotificationsView() {
     setNotifications([]);
 
     try {
-      const { error: delErr } = await supabase
-        .from("notifications")
-        .delete()
-        .not("id", "is", null);
+      const { error: delErr } = await supabase.from("notifications").delete().not("id", "is", null);
 
       if (delErr) throw delErr;
 
@@ -357,8 +349,8 @@ export function ManagerNotificationsView() {
               {activeFilter === "unread"
                 ? "You're all caught up"
                 : activeFilter === "all"
-                ? "No notifications yet"
-                : `No ${activeFilter} notifications`}
+                  ? "No notifications yet"
+                  : `No ${activeFilter} notifications`}
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               {activeFilter === "unread"
@@ -400,7 +392,9 @@ export function ManagerNotificationsView() {
                               : "font-semibold text-slate-700"
                           }`}
                         >
-                          {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
+                          {typeof n.title === "string"
+                            ? n.title
+                            : String(n.title || "Notification")}
                         </p>
                         {n.status === "Pending" && n.type === "order" && (
                           <Badge
@@ -420,12 +414,17 @@ export function ManagerNotificationsView() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                        {typeof (n.message || n.description) === "string" ? (n.message || n.description) : String(n.message || n.description || "")}
+                        {typeof (n.message || n.description) === "string"
+                          ? n.message || n.description
+                          : String(n.message || n.description || "")}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className="flex items-center gap-2 shrink-0 pt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <span className="text-[11px] font-medium text-muted-foreground">
                       {formatRelativeTime(n.created_at)}
                     </span>
@@ -470,17 +469,12 @@ export function ManagerNotificationsView() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               Are you sure you want to permanently delete{" "}
-              <span className="text-foreground font-bold">
-                "{notificationToDelete?.title}"
-              </span>{" "}
+              <span className="text-foreground font-bold">"{notificationToDelete?.title}"</span>{" "}
               from the Supabase database? This record will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2">
-            <AlertDialogCancel
-              disabled={deleting}
-              className="rounded-full text-xs font-bold h-9"
-            >
+            <AlertDialogCancel disabled={deleting} className="rounded-full text-xs font-bold h-9">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -509,10 +503,9 @@ export function ManagerNotificationsView() {
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               Are you sure you want to permanently delete all{" "}
-              <strong className="text-foreground font-bold">
-                {notifications.length}
-              </strong>{" "}
-              manager notifications from the database? This action will permanently remove all notifications and cannot be undone.
+              <strong className="text-foreground font-bold">{notifications.length}</strong> manager
+              notifications from the database? This action will permanently remove all notifications
+              and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2">

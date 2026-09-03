@@ -7,7 +7,8 @@ export const Route = createFileRoute("/account/application")({
       { title: "Gas Customer Application | John Stayte Services" },
       {
         name: "description",
-        content: "Complete or view your official Gas Customer Application Form for Calor LPG supply across Gloucestershire.",
+        content:
+          "Complete or view your official Gas Customer Application Form for Calor LPG supply across Gloucestershire.",
       },
     ],
   }),
