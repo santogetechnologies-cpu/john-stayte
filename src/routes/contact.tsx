@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { faqs as defaultFaqs } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 
@@ -18,9 +23,16 @@ export const Route = createFileRoute("/contact")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Contact & FAQ | John Stayte Services" },
-      { name: "description", content: "Call, email or message John Stayte Services. Opening hours, location and answers to common gas delivery questions." },
+      {
+        name: "description",
+        content:
+          "Call, email or message John Stayte Services. Opening hours, location and answers to common gas delivery questions.",
+      },
       { property: "og:title", content: "Contact John Stayte Services" },
-      { property: "og:description", content: "Get in touch about gas, fuel, deliveries and trade accounts." },
+      {
+        property: "og:description",
+        content: "Get in touch about gas, fuel, deliveries and trade accounts.",
+      },
     ],
   }),
   component: Contact,
@@ -134,11 +146,14 @@ function Contact() {
           }
         }
         const updatedList = [enquiryRecord, ...(Array.isArray(currentList) ? currentList : [])];
-        await supabase.from("cms_content_blocks").upsert({
-          section_key: "enquiries_data",
-          title: "Customer & Manager Enquiries",
-          content: JSON.stringify(updatedList),
-        }, { onConflict: "section_key" });
+        await supabase.from("cms_content_blocks").upsert(
+          {
+            section_key: "enquiries_data",
+            title: "Customer & Manager Enquiries",
+            content: JSON.stringify(updatedList),
+          },
+          { onConflict: "section_key" },
+        );
       } catch {
         /* continue */
       }
@@ -187,7 +202,10 @@ function Contact() {
             <form onSubmit={submit} className="space-y-5">
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                  <Label
+                    htmlFor="name"
+                    className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
+                  >
                     Name *
                   </Label>
                   <Input
@@ -200,7 +218,10 @@ function Contact() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                  <Label
+                    htmlFor="email"
+                    className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
+                  >
                     Email *
                   </Label>
                   <Input
@@ -216,7 +237,10 @@ function Contact() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="message" className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider">
+                <Label
+                  htmlFor="message"
+                  className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
+                >
                   Message *
                 </Label>
                 <Textarea
@@ -256,8 +280,13 @@ function Contact() {
                     <Phone className="h-4.5 w-4.5 stroke-[2]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Phone</span>
-                    <a href="tel:01452741234" className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors">
+                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      Phone
+                    </span>
+                    <a
+                      href="tel:01452741234"
+                      className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
+                    >
                       01452 741234
                     </a>
                   </div>
@@ -268,8 +297,13 @@ function Contact() {
                     <Mail className="h-4.5 w-4.5 stroke-[2]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Email</span>
-                    <a href="mailto:sales@johnstayte.co.uk" className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors">
+                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      Email
+                    </span>
+                    <a
+                      href="mailto:sales@johnstayte.co.uk"
+                      className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
+                    >
                       sales@johnstayte.co.uk
                     </a>
                   </div>
@@ -280,7 +314,9 @@ function Contact() {
                     <MapPin className="h-4.5 w-4.5 stroke-[2]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Address</span>
+                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      Address
+                    </span>
                     <span className="font-bold text-slate-800 leading-snug">
                       Fromebridge, Whitminster, Gloucester GL2 7PD
                     </span>
@@ -292,7 +328,9 @@ function Contact() {
                     <Clock className="h-4.5 w-4.5 stroke-[2]" />
                   </div>
                   <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">Opening Hours</span>
+                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                      Opening Hours
+                    </span>
                     <span className="font-bold text-slate-800 leading-snug">
                       Mon–Sat 7:00–20:00 · Sun 8:00–18:00
                     </span>
@@ -323,7 +361,11 @@ function Contact() {
           <div className="h-1 w-12 bg-primary rounded-full mt-2" />
         </div>
 
-        <Accordion type="single" collapsible className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] px-6 sm:px-8 divide-y divide-slate-100">
+        <Accordion
+          type="single"
+          collapsible
+          className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] px-6 sm:px-8 divide-y divide-slate-100"
+        >
           {faqsList.map((f) => (
             <AccordionItem key={f.q} value={f.q} className="border-b-0 py-1">
               <AccordionTrigger className="text-left font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors py-4">

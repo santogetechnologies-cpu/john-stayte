@@ -39,7 +39,10 @@ function ScrollRevealCard({
   const [isRevealed, setIsRevealed] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setIsRevealed(true);
       return;
     }
@@ -61,7 +64,7 @@ function ScrollRevealCard({
         {
           threshold: 0.08,
           rootMargin: "0px 0px -30px 0px",
-        }
+        },
       );
 
       observer.observe(el);
@@ -100,9 +103,16 @@ export const Route = createFileRoute("/services")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Gas Services | Delivery, Bulk & Commercial | John Stayte Services" },
-      { name: "description", content: "Gas delivery, bulk supply, commercial and domestic gas, cylinder exchange and emergency delivery across Gloucestershire." },
+      {
+        name: "description",
+        content:
+          "Gas delivery, bulk supply, commercial and domestic gas, cylinder exchange and emergency delivery across Gloucestershire.",
+      },
       { property: "og:title", content: "Our Services | John Stayte Services" },
-      { property: "og:description", content: "Domestic, commercial and emergency LPG supply across Gloucestershire." },
+      {
+        property: "og:description",
+        content: "Domestic, commercial and emergency LPG supply across Gloucestershire.",
+      },
     ],
   }),
   component: Services,
@@ -143,7 +153,7 @@ function Services() {
   return (
     <SiteLayout>
       <div className="bg-[#fcfdfe] min-h-[85vh] py-8 sm:py-10 lg:py-12 border-b border-slate-200/60">
-        <div className="container-page max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4">
           {/* Header / Intro Section matching Reference */}
           <ScrollRevealCard delay={0}>
             <div className="space-y-2 mb-8 sm:mb-10 text-left">
@@ -219,10 +229,14 @@ function Services() {
                     Need a trade or bulk account?
                   </h2>
                   <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
-                    Scheduled supply, agreed pricing and one monthly invoice. Talk to our commercial team.
+                    Scheduled supply, agreed pricing and one monthly invoice. Talk to our commercial
+                    team.
                   </p>
                 </div>
-                <Button asChild className="rounded-full px-8 py-3.5 bg-primary hover:bg-primary/90 text-white font-extrabold text-sm shrink-0 shadow-md">
+                <Button
+                  asChild
+                  className="rounded-full px-8 py-3.5 bg-primary hover:bg-primary/90 text-white font-extrabold text-sm shrink-0 shadow-md"
+                >
                   <Link to="/contact">Talk to us</Link>
                 </Button>
               </div>

@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
-import {
-  ShoppingBag,
-  Search,
-  Eye,
-} from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { ShoppingBag, Search, Eye, Filter, X, Clock, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -25,21 +21,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerOrdersView() {
+  const navigate = useNavigate();
+  const routerLocation = useRouterState({ select: (s) => s.location });
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("status") || "all";
+    }
+    return "all";
+  });
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Keep statusFilter synchronized with live router location changes
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const paramStatus = (routerLocation.search as any)?.status || params.get("status") || "all";
+    setStatusFilter(paramStatus);
+  }, [routerLocation]);
 
   const loadOrders = async () => {
     setLoading(true);
@@ -60,16 +66,51 @@ export function ManagerOrdersView() {
 
   useEffect(() => {
     loadOrders();
+
+    const channel = supabase
+      .channel("manager_orders_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => loadOrders())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    navigate({
+      to: "/manager/orders",
+      search: (val === "all" ? {} : { status: val }) as never,
+    });
+  };
 
   const filteredOrders = orders.filter((o) => {
     const matchesSearch =
       (o.order_number || o.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
       (o.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesStatus = statusFilter === "all" || o.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    if (!matchesSearch) return false;
+
+    if (statusFilter === "all") return true;
+
+    const sf = statusFilter.toLowerCase();
+    const os = (o.status || "").toLowerCase();
+
+    if (sf === "processing") {
+      return os === "approved" || os === "packed" || os === "processing";
+    }
+    if (sf === "pending") {
+      return os === "pending";
+    }
+
+    return os === sf;
   });
+
+  const pendingCount = orders.filter((o) => o.status === "Pending").length;
+  const processingCount = orders.filter(
+    (o) => o.status === "Approved" || o.status === "Packed" || o.status === "Processing",
+  ).length;
 
   const handleUpdateStatus = async (order: any, newStatus: OrderStatus) => {
     if (order.status === newStatus) return;
@@ -143,21 +184,58 @@ export function ManagerOrdersView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
-            <span className="text-foreground">Orders</span>
+            <span className="text-foreground font-bold">Orders</span>
+            {statusFilter !== "all" && (
+              <>
+                <span>/</span>
+                <span className="text-primary font-bold capitalize">{statusFilter}</span>
+              </>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Manager Orders Operations ({orders.length})
+            Manager Orders Operations ({filteredOrders.length}
+            {statusFilter !== "all" ? ` of ${orders.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Approve, schedule, and track cylinder orders assigned to your depot in Supabase.
+            Approve, schedule, and track cylinder orders assigned to your depot.
           </p>
+        </div>
+
+        {/* Quick status filter pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={statusFilter === "all" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("all")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            All Orders ({orders.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter.toLowerCase() === "pending" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("Pending")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Pending Approval ({pendingCount})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter.toLowerCase() === "processing" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("Processing")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Processing ({processingCount})
+          </Button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
         <div className="relative flex-1 max-w-md w-full">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -168,34 +246,49 @@ export function ManagerOrdersView() {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
-            <SelectValue placeholder="Status Filter" />
-          </SelectTrigger>
-          <SelectContent className="rounded-2xl font-medium text-xs">
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Approved">Approved</SelectItem>
-            <SelectItem value="Packed">Packed</SelectItem>
-            <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-            <SelectItem value="Delivered">Delivered</SelectItem>
-            <SelectItem value="Cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-48 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
+              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Status Filter" />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl font-medium text-xs">
+              <SelectItem value="all">All Orders ({orders.length})</SelectItem>
+              <SelectItem value="Pending">Pending Approval ({pendingCount})</SelectItem>
+              <SelectItem value="Processing">Processing ({processingCount})</SelectItem>
+              <SelectItem value="Approved">Approved</SelectItem>
+              <SelectItem value="Packed">Packed</SelectItem>
+              <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+              <SelectItem value="Delivered">Delivered</SelectItem>
+              <SelectItem value="Cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {statusFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleStatusFilterChange("all")}
+              className="rounded-full text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Orders Table */}
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading manager orders from Supabase...
+            Loading manager orders...
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground/30" />
             <h3 className="font-bold text-sm text-foreground">No manager orders found</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Real customer orders will display here when created in Supabase.
+              Customer orders assigned to this depot will display here.
             </p>
           </div>
         ) : (
@@ -216,7 +309,9 @@ export function ManagerOrdersView() {
                     #{o.order_number || o.id.slice(0, 8)}
                   </TableCell>
                   <TableCell className="text-xs font-semibold">{o.customer_name}</TableCell>
-                  <TableCell className="font-extrabold text-xs text-foreground">{gbp(Number(o.total))}</TableCell>
+                  <TableCell className="font-extrabold text-xs text-foreground">
+                    {gbp(Number(o.total))}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -224,10 +319,10 @@ export function ManagerOrdersView() {
                         o.status === "Approved"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                           : o.status === "Pending"
-                          ? "bg-amber-50 text-amber-700 border-amber-200"
-                          : o.status === "Cancelled"
-                          ? "bg-red-50 text-red-700 border-red-200"
-                          : "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : o.status === "Cancelled"
+                              ? "bg-red-50 text-red-700 border-red-200"
+                              : "bg-blue-50 text-blue-700 border-blue-200"
                       }`}
                     >
                       {o.status}
@@ -235,7 +330,10 @@ export function ManagerOrdersView() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Select value={o.status} onValueChange={(val) => handleUpdateStatus(o, val as OrderStatus)}>
+                      <Select
+                        value={o.status}
+                        onValueChange={(val) => handleUpdateStatus(o, val as OrderStatus)}
+                      >
                         <SelectTrigger className="h-8 text-[11px] font-bold rounded-xl border-slate-200 w-[130px]">
                           <SelectValue />
                         </SelectTrigger>

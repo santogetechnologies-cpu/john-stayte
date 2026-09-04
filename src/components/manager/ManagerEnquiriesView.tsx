@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   MessageSquare,
   Search,
@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Loader2,
   Filter,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,25 +34,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import { logAdminAuditAction } from "@/lib/audit";
 
 export function ManagerEnquiriesView() {
+  const navigate = useNavigate();
+  const routerLocation = useRouterState({ select: (s) => s.location });
+
   const { user } = useStore();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("status") || "all";
+    }
+    return "all";
+  });
   const [priorityFilter, setPriorityFilter] = useState("all");
+
+  // Keep statusFilter synchronized with live router location changes
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+    const paramStatus = (routerLocation.search as any)?.status || params.get("status") || "all";
+    setStatusFilter(paramStatus);
+  }, [routerLocation]);
 
   // Selected Ticket Detail & Messages
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
@@ -115,10 +126,8 @@ export function ManagerEnquiriesView() {
     // Supabase Realtime Subscription for tickets
     const channel = supabase
       .channel("manager_support_tickets_realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "support_tickets" },
-        () => loadTickets()
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
+        loadTickets(),
       )
       .subscribe();
 
@@ -210,7 +219,9 @@ export function ManagerEnquiriesView() {
 
       if (error) throw error;
 
-      await logAdminAuditAction("CHANGED_TICKET_STATUS", "ticket", selectedTicket.id, { newStatus });
+      await logAdminAuditAction("CHANGED_TICKET_STATUS", "ticket", selectedTicket.id, {
+        newStatus,
+      });
       setSelectedTicket((prev: any) => ({ ...prev, status: newStatus }));
       toast.success(`Ticket status updated to ${newStatus}`);
       loadTickets();
@@ -229,7 +240,9 @@ export function ManagerEnquiriesView() {
 
       if (error) throw error;
 
-      await logAdminAuditAction("CHANGED_TICKET_PRIORITY", "ticket", selectedTicket.id, { newPriority });
+      await logAdminAuditAction("CHANGED_TICKET_PRIORITY", "ticket", selectedTicket.id, {
+        newPriority,
+      });
       setSelectedTicket((prev: any) => ({ ...prev, priority: newPriority }));
       toast.success(`Ticket priority updated to ${newPriority}`);
       loadTickets();
@@ -238,8 +251,24 @@ export function ManagerEnquiriesView() {
     }
   };
 
+  const handleStatusFilterChange = (val: string) => {
+    setStatusFilter(val);
+    navigate({
+      to: "/manager/enquiries",
+      search: (val === "all" ? {} : { status: val }) as never,
+    });
+  };
+
   const filtered = tickets.filter((t) => {
-    if (statusFilter !== "all" && t.status !== statusFilter) return false;
+    if (statusFilter !== "all") {
+      const sf = statusFilter.toLowerCase();
+      const st = (t.status || "").toLowerCase();
+      if (sf === "open") {
+        if (st !== "open") return false;
+      } else if (st !== sf) {
+        return false;
+      }
+    }
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
 
     if (searchQuery.trim()) {
@@ -254,23 +283,34 @@ export function ManagerEnquiriesView() {
     return true;
   });
 
-  const openOrPendingCount = tickets.filter((t) => t.status !== "Resolved" && t.status !== "Closed").length;
+  const openTicketsCount = tickets.filter((t) => (t.status || "").toLowerCase() === "open").length;
+  const openOrPendingCount = tickets.filter(
+    (t) => t.status !== "Resolved" && t.status !== "Closed",
+  ).length;
 
   const getPriorityBadgeClass = (priority: string) => {
     switch (priority) {
-      case "Urgent": return "bg-red-100 text-red-800 border-red-200 font-bold";
-      case "High": return "bg-amber-100 text-amber-800 border-amber-200 font-bold";
-      case "Medium": return "bg-blue-100 text-blue-800 border-blue-200 font-bold";
-      default: return "bg-slate-100 text-slate-700 border-slate-200 font-bold";
+      case "Urgent":
+        return "bg-red-100 text-red-800 border-red-200 font-bold";
+      case "High":
+        return "bg-amber-100 text-amber-800 border-amber-200 font-bold";
+      case "Medium":
+        return "bg-blue-100 text-blue-800 border-blue-200 font-bold";
+      default:
+        return "bg-slate-100 text-slate-700 border-slate-200 font-bold";
     }
   };
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case "Resolved": return "bg-emerald-100 text-emerald-800 border-emerald-200 font-bold";
-      case "In Progress": return "bg-blue-100 text-blue-800 border-blue-200 font-bold";
-      case "Waiting": return "bg-purple-100 text-purple-800 border-purple-200 font-bold";
-      default: return "bg-amber-100 text-amber-800 border-amber-200 font-bold";
+      case "Resolved":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200 font-bold";
+      case "In Progress":
+        return "bg-blue-100 text-blue-800 border-blue-200 font-bold";
+      case "Waiting":
+        return "bg-purple-100 text-purple-800 border-purple-200 font-bold";
+      default:
+        return "bg-amber-100 text-amber-800 border-amber-200 font-bold";
     }
   };
 
@@ -280,17 +320,48 @@ export function ManagerEnquiriesView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">Manager</Link>
+            <Link to="/manager" className="hover:text-primary transition-colors">
+              Manager
+            </Link>
             <span>/</span>
-            <span className="text-foreground">Enquiries</span>
+            <span className="text-foreground font-bold">Enquiries</span>
+            {statusFilter !== "all" && (
+              <>
+                <span>/</span>
+                <span className="text-primary font-bold capitalize">
+                  {statusFilter === "Open" ? "Open Enquiries" : statusFilter}
+                </span>
+              </>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
             <MessageSquare className="h-7 w-7 text-primary" />
-            Customer Support & Enquiry Tickets ({openOrPendingCount})
+            Customer Support & Enquiry Tickets ({filtered.length}
+            {statusFilter !== "all" ? ` of ${tickets.length}` : ""})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Manage and respond to customer enquiries and support requests.
           </p>
+        </div>
+
+        {/* Quick filter pills */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={statusFilter === "all" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("all")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            All Enquiries ({tickets.length})
+          </Button>
+          <Button
+            size="sm"
+            variant={statusFilter.toLowerCase() === "open" ? "default" : "outline"}
+            onClick={() => handleStatusFilterChange("Open")}
+            className="rounded-full text-xs h-8 font-bold"
+          >
+            Open Enquiries ({openTicketsCount})
+          </Button>
         </div>
       </div>
 
@@ -307,18 +378,30 @@ export function ManagerEnquiriesView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 rounded-xl text-xs font-bold h-9 border-slate-200">
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-44 rounded-xl text-xs font-bold h-9 border-slate-200">
+              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl">
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Open">Open</SelectItem>
+            <SelectContent className="rounded-2xl font-medium text-xs">
+              <SelectItem value="all">All Statuses ({tickets.length})</SelectItem>
+              <SelectItem value="Open">Open Enquiries ({openTicketsCount})</SelectItem>
               <SelectItem value="In Progress">In Progress</SelectItem>
               <SelectItem value="Waiting">Waiting</SelectItem>
               <SelectItem value="Resolved">Resolved</SelectItem>
             </SelectContent>
           </Select>
+
+          {statusFilter !== "all" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleStatusFilterChange("all")}
+              className="rounded-full text-xs h-9 px-2.5 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5 mr-1" /> Clear
+            </Button>
+          )}
 
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
             <SelectTrigger className="w-36 rounded-xl text-xs font-bold h-9 border-slate-200">
@@ -339,7 +422,7 @@ export function ManagerEnquiriesView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Querying support tickets from Supabase...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading customer enquiries...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">
@@ -369,8 +452,16 @@ export function ManagerEnquiriesView() {
                     #{t.ticket_number || t.id.slice(0, 8)}
                   </TableCell>
                   <TableCell className="text-xs">
-                    <p className="font-bold text-foreground">{typeof t.customer_name === "string" ? t.customer_name : String(t.customer_name || "")}</p>
-                    <p className="text-[10px] text-muted-foreground">{typeof t.customer_email === "string" ? t.customer_email : String(t.customer_email || "")}</p>
+                    <p className="font-bold text-foreground">
+                      {typeof t.customer_name === "string"
+                        ? t.customer_name
+                        : String(t.customer_name || "")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {typeof t.customer_email === "string"
+                        ? t.customer_email
+                        : String(t.customer_email || "")}
+                    </p>
                   </TableCell>
                   <TableCell className="text-xs font-bold text-foreground truncate max-w-[200px]">
                     {typeof t.subject === "string" ? t.subject : String(t.subject || "")}
@@ -415,16 +506,32 @@ export function ManagerEnquiriesView() {
                   <Badge className={`text-[10px] ${getStatusBadgeClass(selectedTicket.status)}`}>
                     {selectedTicket.status}
                   </Badge>
-                  <Badge className={`text-[10px] ${getPriorityBadgeClass(selectedTicket.priority)}`}>
+                  <Badge
+                    className={`text-[10px] ${getPriorityBadgeClass(selectedTicket.priority)}`}
+                  >
                     {selectedTicket.priority} Priority
                   </Badge>
                 </div>
                 <SheetTitle className="font-black text-xl text-foreground mt-2">
                   Ticket #{selectedTicket.ticket_number || selectedTicket.id.slice(0, 8)}
                 </SheetTitle>
-                <p className="font-extrabold text-sm text-foreground">{typeof selectedTicket.subject === "string" ? selectedTicket.subject : String(selectedTicket.subject || "")}</p>
+                <p className="font-extrabold text-sm text-foreground">
+                  {typeof selectedTicket.subject === "string"
+                    ? selectedTicket.subject
+                    : String(selectedTicket.subject || "")}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Customer: <span className="font-bold text-foreground">{typeof selectedTicket.customer_name === "string" ? selectedTicket.customer_name : String(selectedTicket.customer_name || "")}</span> ({typeof selectedTicket.customer_email === "string" ? selectedTicket.customer_email : String(selectedTicket.customer_email || "")})
+                  Customer:{" "}
+                  <span className="font-bold text-foreground">
+                    {typeof selectedTicket.customer_name === "string"
+                      ? selectedTicket.customer_name
+                      : String(selectedTicket.customer_name || "")}
+                  </span>{" "}
+                  (
+                  {typeof selectedTicket.customer_email === "string"
+                    ? selectedTicket.customer_email
+                    : String(selectedTicket.customer_email || "")}
+                  )
                 </p>
               </SheetHeader>
 
@@ -479,7 +586,9 @@ export function ManagerEnquiriesView() {
                       <div
                         key={m.id}
                         className={`p-4 rounded-2xl border space-y-1 ${
-                          isManager ? "bg-blue-50/50 border-blue-200/80 ml-4" : "bg-slate-50 border-slate-200 mr-4"
+                          isManager
+                            ? "bg-blue-50/50 border-blue-200/80 ml-4"
+                            : "bg-slate-50 border-slate-200 mr-4"
                         }`}
                       >
                         <div className="flex items-center justify-between text-[11px]">
@@ -491,7 +600,9 @@ export function ManagerEnquiriesView() {
                           </span>
                         </div>
                         <p className="text-xs text-foreground leading-relaxed pt-1">
-                          {typeof (m.message || m.text) === "string" ? (m.message || m.text) : String(m.message || m.text || "")}
+                          {typeof (m.message || m.text) === "string"
+                            ? m.message || m.text
+                            : String(m.message || m.text || "")}
                         </p>
                       </div>
                     );
@@ -501,7 +612,9 @@ export function ManagerEnquiriesView() {
 
               {/* REPLY FORM */}
               <form onSubmit={handleSendReply} className="space-y-3 pt-4 border-t">
-                <label className="font-extrabold text-sm text-foreground">Write Manager Response</label>
+                <label className="font-extrabold text-sm text-foreground">
+                  Write Manager Response
+                </label>
                 <Textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}

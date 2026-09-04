@@ -57,9 +57,12 @@ async function testAuthAndSeed() {
   const samplePost = {
     title: "Gas Cylinder Safety Measures",
     slug: "safe-cylinder-storage",
-    excerpt: "Essential UK safety rules for storing propane, butane and patio gas cylinders safely outdoors, upright and well-ventilated.",
-    content: "Safe storage of LPG cylinders helps protect your home, family and neighbours. Follow our 5-step leak protocol, upright positioning rules, and emergency guidelines.",
-    image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/gas-cylinder-safety-measures.jpg",
+    excerpt:
+      "Essential UK safety rules for storing propane, butane and patio gas cylinders safely outdoors, upright and well-ventilated.",
+    content:
+      "Safe storage of LPG cylinders helps protect your home, family and neighbours. Follow our 5-step leak protocol, upright positioning rules, and emergency guidelines.",
+    image_url:
+      "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/gas-cylinder-safety-measures.jpg",
     author_name: "John Stayte Safety Team",
     is_published: true,
   };

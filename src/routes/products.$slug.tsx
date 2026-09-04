@@ -1,6 +1,17 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Heart, Minus, Plus, Star, Truck, ShieldCheck, RefreshCw, Loader2, MessageSquare, CheckCircle2 } from "lucide-react";
+import {
+  Heart,
+  Minus,
+  Plus,
+  Star,
+  Truck,
+  ShieldCheck,
+  RefreshCw,
+  Loader2,
+  MessageSquare,
+  CheckCircle2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/ProductCard";
@@ -110,7 +121,10 @@ function ProductPage() {
           featured: Boolean(dbProd.is_featured),
           offer: Boolean(dbProd.is_offer),
           description: dbProd.description || "",
-          specs: dbProd.specs && typeof dbProd.specs === "object" && !Array.isArray(dbProd.specs) ? (dbProd.specs as Record<string, string>) : {},
+          specs:
+            dbProd.specs && typeof dbProd.specs === "object" && !Array.isArray(dbProd.specs)
+              ? (dbProd.specs as Record<string, string>)
+              : {},
         };
 
         setProduct(mapped);
@@ -139,7 +153,10 @@ function ProductPage() {
               rating: Number(rp.rating || 5.0),
               reviews: Number(rp.reviews_count || 0),
               description: rp.description || "",
-              specs: rp.specs && typeof rp.specs === "object" && !Array.isArray(rp.specs) ? (rp.specs as Record<string, string>) : {},
+              specs:
+                rp.specs && typeof rp.specs === "object" && !Array.isArray(rp.specs)
+                  ? (rp.specs as Record<string, string>)
+                  : {},
             })),
           );
         }
@@ -159,7 +176,8 @@ function ProductPage() {
       toast.error("Please sign in to submit a review.", {
         action: {
           label: "Sign In",
-          onClick: () => navigate({ to: "/login", search: { redirect: `/products/${product?.slug}` } }),
+          onClick: () =>
+            navigate({ to: "/login", search: { redirect: `/products/${product?.slug}` } }),
         },
       });
       return;
@@ -180,11 +198,14 @@ function ProductPage() {
 
       const newCount = (product.reviews || 0) + 1;
       const newRating = Number(
-        (((product.rating || 5) * (product.reviews || 0) + reviewRating) / newCount).toFixed(1)
+        (((product.rating || 5) * (product.reviews || 0) + reviewRating) / newCount).toFixed(1),
       );
 
       setProduct((prev) => (prev ? { ...prev, reviews: newCount, rating: newRating } : null));
-      await supabase.from("products").update({ reviews_count: newCount, rating: newRating }).eq("id", product.id);
+      await supabase
+        .from("products")
+        .update({ reviews_count: newCount, rating: newRating })
+        .eq("id", product.id);
 
       toast.success("Thank you! Your review has been submitted.");
       setReviewComment("");
@@ -280,9 +301,7 @@ function ProductPage() {
                     key={i}
                     className={cn(
                       "h-4 w-4",
-                      i < Math.round(product.rating)
-                        ? "fill-warning text-warning"
-                        : "text-border",
+                      i < Math.round(product.rating) ? "fill-warning text-warning" : "text-border",
                     )}
                   />
                 ))}
@@ -307,9 +326,7 @@ function ProductPage() {
               <span
                 className={cn(
                   "inline-block rounded-full px-3 py-1 text-xs font-bold",
-                  product.stock > 0
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-red-50 text-red-700",
+                  product.stock > 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700",
                 )}
               >
                 {product.stock > 0 ? "In Stock" : "Out of Stock"}
@@ -371,7 +388,8 @@ function ProductPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
               <h2 className="text-2xl font-extrabold tracking-tight text-foreground flex items-center gap-2">
-                <Star className="h-6 w-6 text-amber-500 fill-amber-500" /> Customer Reviews ({reviewsList.length})
+                <Star className="h-6 w-6 text-amber-500 fill-amber-500" /> Customer Reviews (
+                {reviewsList.length})
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Verified customer ratings and feedback for {product.name}.
@@ -382,16 +400,22 @@ function ProductPage() {
               onClick={() => setShowReviewForm(!showReviewForm)}
               className="rounded-full text-xs font-bold gap-1.5 shadow-xs self-start sm:self-auto"
             >
-              <MessageSquare className="h-4 w-4" /> {showReviewForm ? "Close Review Form" : "Write a Review"}
+              <MessageSquare className="h-4 w-4" />{" "}
+              {showReviewForm ? "Close Review Form" : "Write a Review"}
             </Button>
           </div>
 
           {/* Review Submission Form */}
           {showReviewForm && (
-            <form onSubmit={handleReviewSubmit} className="surface-card p-6 rounded-3xl border bg-slate-50/70 mb-8 space-y-4 max-w-2xl">
+            <form
+              onSubmit={handleReviewSubmit}
+              className="surface-card p-6 rounded-3xl border bg-slate-50/70 mb-8 space-y-4 max-w-2xl"
+            >
               <h3 className="text-sm font-extrabold text-foreground">Share Your Experience</h3>
               <div>
-                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Rating</label>
+                <label className="text-xs font-bold text-muted-foreground block mb-1.5">
+                  Rating
+                </label>
                 <div className="flex gap-1.5 items-center">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -402,19 +426,21 @@ function ProductPage() {
                     >
                       <Star
                         className={`h-6 w-6 ${
-                          star <= reviewRating
-                            ? "text-amber-500 fill-amber-500"
-                            : "text-slate-300"
+                          star <= reviewRating ? "text-amber-500 fill-amber-500" : "text-slate-300"
                         }`}
                       />
                     </button>
                   ))}
-                  <span className="text-xs font-bold text-slate-700 ml-2">{reviewRating} of 5 Stars</span>
+                  <span className="text-xs font-bold text-slate-700 ml-2">
+                    {reviewRating} of 5 Stars
+                  </span>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Your Review / Comments</label>
+                <label className="text-xs font-bold text-muted-foreground block mb-1.5">
+                  Your Review / Comments
+                </label>
                 <Textarea
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
@@ -451,16 +477,23 @@ function ProductPage() {
             <div className="p-10 rounded-3xl border border-dashed bg-slate-50/50 text-center space-y-2">
               <Star className="mx-auto h-8 w-8 text-muted-foreground/30" />
               <p className="text-sm font-extrabold text-foreground">No customer reviews yet</p>
-              <p className="text-xs text-muted-foreground">Be the first verified customer to review this product.</p>
+              <p className="text-xs text-muted-foreground">
+                Be the first verified customer to review this product.
+              </p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {reviewsList.map((rev) => (
-                <div key={rev.id} className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-2.5">
+                <div
+                  key={rev.id}
+                  className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-2.5"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-xs">
-                        {(typeof rev.user_name === "string" ? rev.user_name : "C").charAt(0).toUpperCase()}
+                        {(typeof rev.user_name === "string" ? rev.user_name : "C")
+                          .charAt(0)
+                          .toUpperCase()}
                       </div>
                       <div>
                         <p className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
@@ -490,9 +523,7 @@ function ProductPage() {
                     </div>
                   </div>
                   {typeof rev.comment === "string" && rev.comment.trim() && (
-                    <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                      "{rev.comment}"
-                    </p>
+                    <p className="text-xs text-slate-600 leading-relaxed pt-1">"{rev.comment}"</p>
                   )}
                 </div>
               ))}

@@ -29,15 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { cleanImageUrl } from "@/lib/utils";
+import { cleanImageUrl, cn } from "@/lib/utils";
 
 const STATUS_STEPS = ["Pending", "Approved", "Packed", "Out for Delivery", "Delivered"];
 
@@ -337,7 +332,7 @@ export function CustomerOrdersView() {
       {loading ? (
         <div className="surface-card p-12 text-center text-xs text-muted-foreground font-bold rounded-3xl border bg-white shadow-xs">
           <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
-          Loading your order history from Supabase...
+          Loading your order history...
         </div>
       ) : filteredOrders.length === 0 ? (
         <div className="surface-card p-12 sm:p-16 text-center rounded-3xl border bg-white space-y-4 shadow-xs">
@@ -373,7 +368,7 @@ export function CustomerOrdersView() {
 
             const imageUrl = cleanImageUrl(
               firstItem?.product_info?.image_url,
-              firstItem?.product_info?.slug
+              firstItem?.product_info?.slug,
             );
 
             const streetAddress = o.delivery_address?.street || o.delivery_address?.name || "";
@@ -383,6 +378,15 @@ export function CustomerOrdersView() {
               month: "short",
               year: "numeric",
             });
+
+            const isRefillOrder =
+              Boolean(o.notes?.includes("[REFILL]")) ||
+              Boolean(o.order_number?.startsWith("CYL-REF")) ||
+              (o.status || "").toLowerCase().includes("refill");
+
+            const isNewCylinder =
+              Boolean(o.notes?.includes("[NEW_CYLINDER]")) ||
+              Boolean(o.order_number?.startsWith("CYL-NEW"));
 
             return (
               <div
@@ -395,8 +399,20 @@ export function CustomerOrdersView() {
                     <span className="font-mono font-extrabold text-foreground">
                       ORDER #{o.order_number || o.id.slice(0, 8)}
                     </span>
+                    {isNewCylinder && (
+                      <Badge className="bg-blue-600 text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full">
+                        NEW CYLINDER
+                      </Badge>
+                    )}
+                    {isRefillOrder && (
+                      <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full">
+                        CYLINDER REFILL
+                      </Badge>
+                    )}
                     <span className="text-slate-300">•</span>
-                    <span className="text-muted-foreground font-medium">Placed {formattedDate}</span>
+                    <span className="text-muted-foreground font-medium">
+                      Placed {formattedDate}
+                    </span>
                     <span className="text-slate-300">•</span>
                     <span className="font-black text-foreground">{gbp(Number(o.total))}</span>
                   </div>
@@ -416,7 +432,7 @@ export function CustomerOrdersView() {
                       {imageUrl && imageUrl !== "/placeholder.svg" ? (
                         <img
                           src={imageUrl}
-                          alt={firstItem?.product_name || "Product"}
+                          alt={firstItem?.name || firstItem?.product_name || "Product"}
                           className="h-full w-full object-contain"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "/placeholder.svg";
@@ -429,12 +445,13 @@ export function CustomerOrdersView() {
 
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-bold text-foreground truncate">
-                        {firstItem?.product_name || "John Stayte Services Order"}
+                        {firstItem?.name || firstItem?.product_name || "John Stayte Services Order"}
                       </p>
 
                       {firstItem && (
                         <p className="text-xs text-muted-foreground font-semibold mt-0.5">
-                          Quantity: {firstItem.quantity} × {gbp(Number(firstItem.unit_price))}
+                          Quantity: {firstItem.quantity} ×{" "}
+                          {gbp(Number(firstItem.unit_price || firstItem.price || 0))}
                         </p>
                       )}
 
@@ -454,25 +471,32 @@ export function CustomerOrdersView() {
                   <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
                     <div className="flex items-center gap-2">
                       {isCancelled ? (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-bold text-[11px] px-3 py-1">
+                        <Badge
+                          variant="outline"
+                          className="bg-red-50 text-red-700 border-red-200 font-bold text-[11px] px-3 py-1"
+                        >
                           <XCircle className="mr-1 h-3.5 w-3.5" /> Cancelled
                         </Badge>
-                      ) : o.status === "Delivered" ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[11px] px-3 py-1">
+                      ) : o.status === "Delivered" || o.status === "Completed" ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[11px] px-3 py-1"
+                        >
                           <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Delivered
                         </Badge>
                       ) : (
                         <Badge
                           variant="outline"
-                          className={`font-bold text-[11px] px-3 py-1 ${
-                            o.status === "Out for Delivery"
-                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                              : o.status === "Packed"
+                          className={cn(
+                            "font-bold text-[11px] px-3 py-1",
+                            o.status?.includes("Verified") || o.status?.includes("Collected")
                               ? "bg-purple-50 text-purple-700 border-purple-200"
-                              : o.status === "Approved"
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200"
-                          }`}
+                              : o.status === "Out for Delivery"
+                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                : o.status === "Packed" || o.status?.includes("Refill")
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-blue-50 text-blue-700 border-blue-200",
+                          )}
                         >
                           <Clock className="mr-1 h-3.5 w-3.5" /> {o.status}
                         </Badge>
@@ -496,20 +520,28 @@ export function CustomerOrdersView() {
                         </Button>
                       )}
 
-                      {!isCancelled && (
+                      {(isNewCylinder || isRefillOrder) && (
                         <Button
-                          variant="outline"
                           size="sm"
-                          disabled={reorderingId === o.id}
-                          onClick={() => handleReorder(o)}
-                          className="rounded-full text-xs font-bold gap-1.5"
+                          asChild
+                          className="rounded-full text-xs font-extrabold gap-1 bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
                         >
-                          {reorderingId === o.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          )}
-                          Reorder
+                          <Link to="/order-gas">
+                            <RotateCcw className="h-3 w-3" /> Request Refill
+                          </Link>
+                        </Button>
+                      )}
+
+                      {!isCancelled && o.status !== "Delivered" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          asChild
+                          className="rounded-full text-xs font-bold gap-1 border-primary/20 text-primary hover:bg-primary/10"
+                        >
+                          <Link to="/account/deliveries" search={{ orderId: o.id } as never}>
+                            <Truck className="h-3.5 w-3.5" /> Track Live
+                          </Link>
                         </Button>
                       )}
 
@@ -537,13 +569,15 @@ export function CustomerOrdersView() {
           <DialogContent className="max-w-md rounded-3xl p-6 bg-white space-y-4">
             <DialogHeader>
               <DialogTitle className="text-lg font-black flex items-center gap-2 text-red-600">
-                <AlertTriangle className="h-5 w-5" /> Cancel Order #{orderToCancel.order_number || orderToCancel.id.slice(0, 8)}?
+                <AlertTriangle className="h-5 w-5" /> Cancel Order #
+                {orderToCancel.order_number || orderToCancel.id.slice(0, 8)}?
               </DialogTitle>
             </DialogHeader>
 
             <div className="text-xs text-muted-foreground space-y-3">
               <p>
-                Are you sure you want to cancel this order? Stock will be released and the status updated to Cancelled in Supabase.
+                Are you sure you want to cancel this order? Stock will be released and your order
+                status updated to Cancelled.
               </p>
 
               <div className="bg-slate-50 p-3 rounded-2xl border text-foreground font-bold">

@@ -6,21 +6,24 @@ import {
   MessageSquare,
   ShoppingBag,
   Truck,
-  CreditCard,
   User,
   Package,
   CheckCheck,
   CheckCircle2,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  AlertCircle,
   FileText,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -43,18 +46,72 @@ function getNotificationMeta(title: string): {
 } {
   const t = title.toLowerCase();
   if (t.includes("support") || t.includes("help") || t.includes("enquir") || t.includes("ticket"))
-    return { Icon: MessageSquare, colour: "text-violet-600", bg: "bg-violet-50 border border-violet-100", category: "Support" };
-  if (t.includes("deliver") || t.includes("dispatch") || t.includes("shipment") || t.includes("transit") || t.includes("truck"))
-    return { Icon: Truck, colour: "text-blue-600", bg: "bg-blue-50 border border-blue-100", category: "Delivery" };
-  if (t.includes("order") && (t.includes("confirm") || t.includes("placed") || t.includes("received")))
-    return { Icon: ShoppingBag, colour: "text-emerald-600", bg: "bg-emerald-50 border border-emerald-100", category: "Order Confirmed" };
+    return {
+      Icon: MessageSquare,
+      colour: "text-violet-600",
+      bg: "bg-violet-50 border border-violet-100",
+      category: "Support",
+    };
+  if (
+    t.includes("deliver") ||
+    t.includes("dispatch") ||
+    t.includes("shipment") ||
+    t.includes("transit") ||
+    t.includes("truck")
+  )
+    return {
+      Icon: Truck,
+      colour: "text-blue-600",
+      bg: "bg-blue-50 border border-blue-100",
+      category: "Delivery",
+    };
+  if (
+    t.includes("order") &&
+    (t.includes("confirm") || t.includes("placed") || t.includes("received"))
+  )
+    return {
+      Icon: ShoppingBag,
+      colour: "text-emerald-600",
+      bg: "bg-emerald-50 border border-emerald-100",
+      category: "Order Confirmed",
+    };
   if (t.includes("order") || t.includes("status") || t.includes("package"))
-    return { Icon: Package, colour: "text-amber-600", bg: "bg-amber-50 border border-amber-100", category: "Order Update" };
-  if (t.includes("payment") || t.includes("invoice") || t.includes("receipt") || t.includes("billing"))
-    return { Icon: FileText, colour: "text-purple-600", bg: "bg-purple-50 border border-purple-100", category: "Billing" };
-  if (t.includes("account") || t.includes("profile") || t.includes("password") || t.includes("security"))
-    return { Icon: User, colour: "text-slate-600", bg: "bg-slate-100 border border-slate-200", category: "Account" };
-  return { Icon: Bell, colour: "text-primary", bg: "bg-primary/10 border border-primary/20", category: "Notification" };
+    return {
+      Icon: Package,
+      colour: "text-amber-600",
+      bg: "bg-amber-50 border border-amber-100",
+      category: "Order Update",
+    };
+  if (
+    t.includes("payment") ||
+    t.includes("invoice") ||
+    t.includes("receipt") ||
+    t.includes("billing")
+  )
+    return {
+      Icon: FileText,
+      colour: "text-purple-600",
+      bg: "bg-purple-50 border border-purple-100",
+      category: "Billing",
+    };
+  if (
+    t.includes("account") ||
+    t.includes("profile") ||
+    t.includes("password") ||
+    t.includes("security")
+  )
+    return {
+      Icon: User,
+      colour: "text-slate-600",
+      bg: "bg-slate-100 border border-slate-200",
+      category: "Account",
+    };
+  return {
+    Icon: Bell,
+    colour: "text-primary",
+    bg: "bg-primary/10 border border-primary/20",
+    category: "Notification",
+  };
 }
 
 /** Relative timestamp formatter */
@@ -107,6 +164,9 @@ export function CustomerNotificationsView() {
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [deleteAllModalOpen, setDeleteAllModalOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   /* ── Load notifications from Supabase ── */
   const loadNotifications = useCallback(async () => {
@@ -144,7 +204,7 @@ export function CustomerNotificationsView() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "customer_notifications" },
-        () => loadNotifications()
+        () => loadNotifications(),
       )
       .subscribe();
     return () => {
@@ -155,13 +215,8 @@ export function CustomerNotificationsView() {
   /* ── Mark single as read ── */
   const markAsRead = async (id: string) => {
     try {
-      await supabase
-        .from("customer_notifications")
-        .update({ is_read: true })
-        .eq("id", id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
+      await supabase.from("customer_notifications").update({ is_read: true }).eq("id", id);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
     } catch (err: unknown) {
       console.error("Failed to mark notification as read:", err);
     }
@@ -191,6 +246,56 @@ export function CustomerNotificationsView() {
     }
   };
 
+  /* ── Delete single notification ── */
+  const deleteNotification = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user) return;
+
+      const { error } = await supabase
+        .from("customer_notifications")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", authUser.user.id);
+
+      if (error) throw error;
+
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+      toast.success("Notification removed");
+    } catch (err: unknown) {
+      console.error("Failed to delete notification:", err);
+      toast.error("Failed to delete notification");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  /* ── Delete all notifications ── */
+  const handleDeleteAll = async () => {
+    setDeletingAll(true);
+    try {
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user) return;
+
+      const { error } = await supabase
+        .from("customer_notifications")
+        .delete()
+        .eq("user_id", authUser.user.id);
+
+      if (error) throw error;
+
+      setNotifications([]);
+      setDeleteAllModalOpen(false);
+      toast.success("All notifications deleted");
+    } catch (err: unknown) {
+      console.error("Failed to delete all notifications:", err);
+      toast.error("Failed to delete all notifications");
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   /* ── Navigate on click ── */
   const handleNotificationNavigate = (n: CustomerNotification) => {
     if (!n.is_read) {
@@ -205,10 +310,14 @@ export function CustomerNotificationsView() {
       navigate({ to: "/account/support" });
     else if (t.includes("invoice") || t.includes("receipt") || t.includes("billing"))
       navigate({ to: "/account/invoices" });
-    else if (t.includes("order") || t.includes("deliver") || t.includes("payment") || t.includes("dispatch"))
+    else if (
+      t.includes("order") ||
+      t.includes("deliver") ||
+      t.includes("payment") ||
+      t.includes("dispatch")
+    )
       navigate({ to: "/account/orders" });
-    else if (t.includes("address"))
-      navigate({ to: "/account/addresses" });
+    else if (t.includes("address")) navigate({ to: "/account/addresses" });
   };
 
   const hasUnread = notifications.some((n) => !n.is_read);
@@ -254,16 +363,18 @@ export function CustomerNotificationsView() {
             </div>
 
             <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-              Stay updated with your orders, deliveries and account activity with John Stayte Services.
+              Stay updated with your orders, deliveries and account activity with John Stayte
+              Services.
             </p>
           </div>
 
-          <div className="shrink-0">
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {hasUnread && (
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl text-xs font-bold gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary h-9 px-4"
+                className="rounded-xl text-xs font-bold gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary h-9 px-3.5 transition-colors cursor-pointer"
                 onClick={markAllAsRead}
                 disabled={markingAll}
               >
@@ -273,6 +384,18 @@ export function CustomerNotificationsView() {
                   <CheckCheck className="h-3.5 w-3.5 text-primary" />
                 )}
                 Mark all as read
+              </Button>
+            )}
+
+            {notifications.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl text-xs font-bold gap-1.5 border-slate-200 text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200/80 h-9 px-3.5 transition-colors cursor-pointer"
+                onClick={() => setDeleteAllModalOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete all
               </Button>
             )}
           </div>
@@ -285,35 +408,20 @@ export function CustomerNotificationsView() {
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
           <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
-          <p className="text-xs text-slate-500 font-bold">
-            Loading your notifications from Supabase...
-          </p>
+          <p className="text-xs text-slate-500 font-bold">Loading your notifications...</p>
         </div>
       ) : notifications.length === 0 ? (
-        /* EMPTY STATE */
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-14 text-center shadow-xs space-y-4 max-w-lg mx-auto">
-          <div className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-            <Bell className="h-8 w-8 text-slate-400" />
+        /* COMPACT CENTERED EMPTY STATE */
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-12 text-center shadow-xs space-y-3 max-w-md mx-auto">
+          <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <Bell className="h-6 w-6 text-slate-400" />
           </div>
 
-          <div className="space-y-1.5 max-w-sm mx-auto">
-            <h2 className="font-display font-extrabold text-lg text-slate-900">
-              You're all caught up
-            </h2>
+          <div className="space-y-1">
+            <h2 className="font-display font-bold text-base text-slate-900">No notifications</h2>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              New order confirmations, dispatch updates, and support replies will appear here in real time.
+              You’re all caught up. New updates will appear here.
             </p>
-          </div>
-
-          <div className="pt-2">
-            <Button
-              asChild
-              className="rounded-xl font-extrabold text-xs shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-9 px-5 gap-2"
-            >
-              <Link to="/account/orders">
-                <ShoppingBag className="h-3.5 w-3.5" /> View My Orders
-              </Link>
-            </Button>
           </div>
         </div>
       ) : (
@@ -333,7 +441,9 @@ export function CustomerNotificationsView() {
                   <NotificationItem
                     key={n.id}
                     n={n}
+                    isDeleting={deletingId === n.id}
                     onMarkRead={markAsRead}
+                    onDelete={deleteNotification}
                     onNavigate={handleNotificationNavigate}
                   />
                 ))}
@@ -355,7 +465,9 @@ export function CustomerNotificationsView() {
                   <NotificationItem
                     key={n.id}
                     n={n}
+                    isDeleting={deletingId === n.id}
                     onMarkRead={markAsRead}
+                    onDelete={deleteNotification}
                     onNavigate={handleNotificationNavigate}
                   />
                 ))}
@@ -377,7 +489,9 @@ export function CustomerNotificationsView() {
                   <NotificationItem
                     key={n.id}
                     n={n}
+                    isDeleting={deletingId === n.id}
                     onMarkRead={markAsRead}
+                    onDelete={deleteNotification}
                     onNavigate={handleNotificationNavigate}
                   />
                 ))}
@@ -386,17 +500,64 @@ export function CustomerNotificationsView() {
           )}
         </div>
       )}
+
+      {/* ============================================================ */}
+      {/* 3. DELETE ALL CONFIRMATION DIALOG                            */}
+      {/* ============================================================ */}
+      <Dialog open={deleteAllModalOpen} onOpenChange={setDeleteAllModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200 shadow-xl">
+          <DialogHeader className="space-y-2.5">
+            <div className="h-10 w-10 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <DialogTitle className="font-display font-extrabold text-lg text-slate-900">
+              Delete all notifications?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
+              This will permanently remove all notifications from your account. This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex sm:justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={deletingAll}
+              onClick={() => setDeleteAllModalOpen(false)}
+              className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-4 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={deletingAll}
+              onClick={handleDeleteAll}
+              className="rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white h-9 px-4 gap-1.5 cursor-pointer shadow-xs shadow-rose-200"
+            >
+              {deletingAll && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Delete all
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function NotificationItem({
   n,
+  isDeleting,
   onMarkRead,
+  onDelete,
   onNavigate,
 }: {
   n: CustomerNotification;
+  isDeleting: boolean;
   onMarkRead: (id: string) => void;
+  onDelete: (id: string) => void;
   onNavigate: (n: CustomerNotification) => void;
 }) {
   const { Icon, colour, bg, category } = getNotificationMeta(n.title);
@@ -409,13 +570,10 @@ function NotificationItem({
       onClick={() => onNavigate(n)}
       onKeyDown={(e) => e.key === "Enter" && onNavigate(n)}
       className={`
-        group relative flex items-start gap-4 p-4 sm:p-5 cursor-pointer
+        group relative flex items-start gap-3.5 p-4 sm:p-5 cursor-pointer
         transition-all duration-150 outline-none
-        ${
-          isUnread
-            ? "bg-rose-50/30 hover:bg-rose-50/60"
-            : "hover:bg-slate-50/70"
-        }
+        ${isUnread ? "bg-rose-50/30 hover:bg-rose-50/60" : "hover:bg-slate-50/70"}
+        ${isDeleting ? "opacity-40 pointer-events-none" : ""}
       `}
     >
       {/* Icon Container */}
@@ -453,20 +611,41 @@ function NotificationItem({
         </p>
       </div>
 
-      {/* Unread Action */}
-      {isUnread && (
+      {/* Actions (Mark read + Individual Delete) */}
+      <div className="flex items-center gap-1.5 shrink-0 self-center sm:self-start pt-0.5">
+        {isUnread && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMarkRead(n.id);
+            }}
+            className="text-[11px] font-bold text-primary opacity-0 group-hover:opacity-100 hover:underline transition-opacity px-1.5 py-1"
+            title="Mark as read"
+          >
+            Mark read
+          </button>
+        )}
+
+        {/* Individual Delete Action */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            onMarkRead(n.id);
+            onDelete(n.id);
           }}
-          className="shrink-0 text-[11px] font-bold text-primary opacity-0 group-hover:opacity-100 hover:underline transition-opacity pt-1"
-          title="Mark as read"
+          disabled={isDeleting}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all opacity-0 group-hover:opacity-100 sm:opacity-40 sm:group-hover:opacity-100 cursor-pointer"
+          title="Delete notification"
+          aria-label="Delete notification"
         >
-          Mark read
+          {isDeleting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-600" />
+          ) : (
+            <Trash2 className="h-3.5 w-3.5" />
+          )}
         </button>
-      )}
+      </div>
     </div>
   );
 }

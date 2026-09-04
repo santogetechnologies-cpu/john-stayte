@@ -1,11 +1,5 @@
 export type OrderStatus =
-  | "Pending"
-  | "Approved"
-  | "Packed"
-  | "Out for Delivery"
-  | "Delivered"
-  | "Cancelled"
-  | "Refunded";
+  "Pending" | "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled" | "Refunded";
 
 export type Order = {
   id: string;
@@ -20,14 +14,91 @@ export type Order = {
 };
 
 export const orders: Order[] = [
-  { id: "JSS-10241", customer: "Sarah Hughes", email: "customer@jss.com", date: "2026-07-24", items: 2, total: 92.5, status: "Out for Delivery", driver: "Tom R.", area: "Frampton" },
-  { id: "JSS-10238", customer: "Sarah Hughes", email: "customer@jss.com", date: "2026-07-11", items: 4, total: 148.0, status: "Delivered", driver: "Tom R.", area: "Frampton" },
-  { id: "JSS-10230", customer: "Sarah Hughes", email: "customer@jss.com", date: "2026-06-28", items: 1, total: 39.5, status: "Delivered", driver: "Ken P.", area: "Frampton" },
-  { id: "JSS-10244", customer: "The Bell Inn", email: "bell@pub.co.uk", date: "2026-07-26", items: 6, total: 486.0, status: "Pending", area: "Stroud" },
-  { id: "JSS-10243", customer: "Mark Turner", email: "mark@farm.co.uk", date: "2026-07-26", items: 3, total: 121.5, status: "Pending", area: "Cam" },
-  { id: "JSS-10242", customer: "Green Acres Farm", email: "office@greenacres.uk", date: "2026-07-25", items: 9, total: 812.0, status: "Approved", driver: "Ken P.", area: "Dursley" },
-  { id: "JSS-10239", customer: "Riverside Cafe", email: "hi@riverside.uk", date: "2026-07-22", items: 2, total: 96.0, status: "Packed", driver: "Ken P.", area: "Gloucester" },
-  { id: "JSS-10237", customer: "Tom Bailey", email: "tom@mail.com", date: "2026-07-20", items: 1, total: 26.0, status: "Cancelled", area: "Stonehouse" },
+  {
+    id: "JSS-10241",
+    customer: "Sarah Hughes",
+    email: "customer@jss.com",
+    date: "2026-07-24",
+    items: 2,
+    total: 92.5,
+    status: "Out for Delivery",
+    driver: "Tom R.",
+    area: "Frampton",
+  },
+  {
+    id: "JSS-10238",
+    customer: "Sarah Hughes",
+    email: "customer@jss.com",
+    date: "2026-07-11",
+    items: 4,
+    total: 148.0,
+    status: "Delivered",
+    driver: "Tom R.",
+    area: "Frampton",
+  },
+  {
+    id: "JSS-10230",
+    customer: "Sarah Hughes",
+    email: "customer@jss.com",
+    date: "2026-06-28",
+    items: 1,
+    total: 39.5,
+    status: "Delivered",
+    driver: "Ken P.",
+    area: "Frampton",
+  },
+  {
+    id: "JSS-10244",
+    customer: "The Bell Inn",
+    email: "bell@pub.co.uk",
+    date: "2026-07-26",
+    items: 6,
+    total: 486.0,
+    status: "Pending",
+    area: "Stroud",
+  },
+  {
+    id: "JSS-10243",
+    customer: "Mark Turner",
+    email: "mark@farm.co.uk",
+    date: "2026-07-26",
+    items: 3,
+    total: 121.5,
+    status: "Pending",
+    area: "Cam",
+  },
+  {
+    id: "JSS-10242",
+    customer: "Green Acres Farm",
+    email: "office@greenacres.uk",
+    date: "2026-07-25",
+    items: 9,
+    total: 812.0,
+    status: "Approved",
+    driver: "Ken P.",
+    area: "Dursley",
+  },
+  {
+    id: "JSS-10239",
+    customer: "Riverside Cafe",
+    email: "hi@riverside.uk",
+    date: "2026-07-22",
+    items: 2,
+    total: 96.0,
+    status: "Packed",
+    driver: "Ken P.",
+    area: "Gloucester",
+  },
+  {
+    id: "JSS-10237",
+    customer: "Tom Bailey",
+    email: "tom@mail.com",
+    date: "2026-07-20",
+    items: 1,
+    total: 26.0,
+    status: "Cancelled",
+    area: "Stonehouse",
+  },
 ];
 
 export const salesByMonth = [
@@ -56,15 +127,39 @@ export const lowStock = [
 ];
 
 export const managers = [
-  { name: "Dave Miller", email: "manager@jss.com", area: "Gloucester & Stroud", orders: 128, status: "Active" },
-  { name: "Priya Shah", email: "priya@jss.com", area: "Dursley & Cam", orders: 96, status: "Active" },
-  { name: "Ken Porter", email: "ken@jss.com", area: "Forest of Dean", orders: 74, status: "Disabled" },
+  {
+    name: "Dave Miller",
+    email: "manager@jss.com",
+    area: "Gloucester & Stroud",
+    orders: 128,
+    status: "Active",
+  },
+  {
+    name: "Priya Shah",
+    email: "priya@jss.com",
+    area: "Dursley & Cam",
+    orders: 96,
+    status: "Active",
+  },
+  {
+    name: "Ken Porter",
+    email: "ken@jss.com",
+    area: "Forest of Dean",
+    orders: 74,
+    status: "Disabled",
+  },
 ];
 
 export const customersList = [
   { name: "Sarah Hughes", email: "customer@jss.com", orders: 14, spend: 1284.5, points: 320 },
   { name: "The Bell Inn", email: "bell@pub.co.uk", orders: 62, spend: 18420.0, points: 4210 },
-  { name: "Green Acres Farm", email: "office@greenacres.uk", orders: 41, spend: 12960.0, points: 3105 },
+  {
+    name: "Green Acres Farm",
+    email: "office@greenacres.uk",
+    orders: 41,
+    spend: 12960.0,
+    points: 3105,
+  },
   { name: "Mark Turner", email: "mark@farm.co.uk", orders: 23, spend: 3120.0, points: 780 },
 ];
 

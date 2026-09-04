@@ -211,7 +211,9 @@ export function CustomerSettingsView() {
       toast.success("Password updated successfully.");
     } catch (err: any) {
       console.error("Change password error:", err);
-      setPasswordError("Unable to update password. Please check your current password and try again.");
+      setPasswordError(
+        "Unable to update password. Please check your current password and try again.",
+      );
     } finally {
       setUpdatingPassword(false);
     }
@@ -411,7 +413,9 @@ export function CustomerSettingsView() {
               {/* Personal Information */}
               <div className="p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 transition-colors flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-slate-900 text-xs sm:text-sm">Personal Information</p>
+                  <p className="font-bold text-slate-900 text-xs sm:text-sm">
+                    Personal Information
+                  </p>
                   <p className="text-[11px] text-slate-500 font-medium">
                     Manage your personal account information.
                   </p>
@@ -439,7 +443,9 @@ export function CustomerSettingsView() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => toast.info("Data preferences are set to standard UK privacy defaults.")}
+                  onClick={() =>
+                    toast.info("Data preferences are set to standard UK privacy defaults.")
+                  }
                   className="rounded-xl text-xs font-bold shrink-0 border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-8 px-3"
                 >
                   View <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
@@ -457,7 +463,11 @@ export function CustomerSettingsView() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => toast.info("John Stayte Services processes customer order data in accordance with UK GDPR and data protection regulations.")}
+                  onClick={() =>
+                    toast.info(
+                      "John Stayte Services processes customer order data in accordance with UK GDPR and data protection regulations.",
+                    )
+                  }
                   className="rounded-xl text-xs font-bold shrink-0 border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-8 px-3"
                 >
                   Learn More <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
@@ -531,9 +541,7 @@ export function CustomerSettingsView() {
             <div className="flex items-center gap-2.5 border-b border-red-100 pb-3">
               <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
               <div>
-                <h2 className="text-sm font-display font-bold text-red-950">
-                  Account Actions
-                </h2>
+                <h2 className="text-sm font-display font-bold text-red-950">Account Actions</h2>
                 <p className="text-[11px] text-red-800/70 font-medium">
                   Session termination and account closure options.
                 </p>
@@ -637,7 +645,10 @@ export function CustomerSettingsView() {
 
               <div className="flex items-center justify-between border-t border-slate-100 pt-2.5">
                 <span className="text-slate-500 font-medium">Account Email</span>
-                <span className="font-bold text-slate-900 truncate max-w-[140px]" title={user?.email}>
+                <span
+                  className="font-bold text-slate-900 truncate max-w-[140px]"
+                  title={user?.email}
+                >
                   {user?.email || "customer@jss.com"}
                 </span>
               </div>
@@ -650,7 +661,8 @@ export function CustomerSettingsView() {
               <HelpCircle className="h-4 w-4" /> Need Help With Settings?
             </div>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Contact our Whitminster logistics team or submit a customer support ticket for assistance with your account preferences.
+              Contact our Whitminster logistics team or submit a customer support ticket for
+              assistance with your account preferences.
             </p>
             <Button
               asChild
@@ -670,7 +682,8 @@ export function CustomerSettingsView() {
               <Info className="h-4 w-4 text-slate-400" /> Data Protection
             </div>
             <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-              Your account settings, fuel preferences, and delivery notes are strictly managed under UK GDPR and ISO data protection standards.
+              Your account settings, fuel preferences, and delivery notes are strictly managed under
+              UK GDPR and ISO data protection standards.
             </p>
           </div>
         </aside>
@@ -711,7 +724,11 @@ export function CustomerSettingsView() {
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                 >
-                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -761,7 +778,11 @@ export function CustomerSettingsView() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -790,7 +811,11 @@ export function CustomerSettingsView() {
                 disabled={updatingPassword}
                 className="rounded-xl font-extrabold text-xs gap-2 px-5 shadow-sm bg-primary hover:bg-primary/90 text-white h-10"
               >
-                {updatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {updatingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}
                 {updatingPassword ? "Updating Password..." : "Update Password"}
               </Button>
             </div>
@@ -808,7 +833,8 @@ export function CustomerSettingsView() {
               <AlertTriangle className="h-5 w-5 text-red-600" /> Request Account Deletion
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 pt-1 leading-relaxed">
-              Are you sure you want to request account closure? Account deletion requests are processed manually by our customer support team in Gloucestershire.
+              Are you sure you want to request account closure? Account deletion requests are
+              processed manually by our customer support team in Gloucestershire.
             </DialogDescription>
           </DialogHeader>
 

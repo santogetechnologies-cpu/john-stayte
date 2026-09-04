@@ -100,7 +100,8 @@ export function CustomerWishlistView() {
             </div>
 
             <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-              Products and fuels you’ve saved for later or quick local reordering across Gloucestershire.
+              Products and fuels you’ve saved for later or quick local reordering across
+              Gloucestershire.
             </p>
           </div>
 
@@ -125,9 +126,7 @@ export function CustomerWishlistView() {
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
           <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
-          <p className="text-xs text-slate-500 font-bold">
-            Loading your saved products from Supabase...
-          </p>
+          <p className="text-xs text-slate-500 font-bold">Loading your saved products...</p>
         </div>
       ) : wishlist.length === 0 || wishlistProducts.length === 0 ? (
         /* ============================================================ */
@@ -143,7 +142,8 @@ export function CustomerWishlistView() {
               Your wishlist is empty
             </h2>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Save your frequently ordered bottled gas, smokeless fuels, logs, or BBQ essentials here for fast 1-click reordering.
+              Save your frequently ordered bottled gas, smokeless fuels, logs, or BBQ essentials
+              here for fast 1-click reordering.
             </p>
           </div>
 

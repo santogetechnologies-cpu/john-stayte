@@ -4,7 +4,7 @@ export async function logAdminAuditAction(
   action: string,
   targetType?: string,
   targetId?: string,
-  metadata: Record<string, any> = {}
+  metadata: Record<string, any> = {},
 ) {
   try {
     const { data: authSession } = await supabase.auth.getSession();

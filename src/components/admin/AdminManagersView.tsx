@@ -1,12 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  UserCheck,
-  Plus,
-  Mail,
-  ShieldCheck,
-  User,
-} from "lucide-react";
+import { UserCheck, Plus, Mail, ShieldCheck, User } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,12 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 
@@ -83,10 +72,7 @@ export function AdminManagersView() {
 
       // Update public.profiles role to manager if user exists
       if (data.user) {
-        await supabase
-          .from("profiles")
-          .update({ role: "manager" })
-          .eq("id", data.user.id);
+        await supabase.from("profiles").update({ role: "manager" }).eq("id", data.user.id);
       }
 
       toast.success("Manager account created!");
@@ -108,7 +94,9 @@ export function AdminManagersView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Managers</span>
           </div>
@@ -120,7 +108,10 @@ export function AdminManagersView() {
           </p>
         </div>
 
-        <Button onClick={() => setModalOpen(true)} className="rounded-full font-bold text-xs gap-1.5 shadow-md shrink-0">
+        <Button
+          onClick={() => setModalOpen(true)}
+          className="rounded-full font-bold text-xs gap-1.5 shadow-md shrink-0"
+        >
           <Plus className="h-4 w-4" /> Add Manager Account
         </Button>
       </div>
@@ -159,18 +150,26 @@ export function AdminManagersView() {
                       </div>
                       <div>
                         <p className="font-extrabold text-foreground">{m.full_name || "Manager"}</p>
-                        <p className="text-[11px] text-muted-foreground font-normal">{m.id.slice(0, 8)}</p>
+                        <p className="text-[11px] text-muted-foreground font-normal">
+                          {m.id.slice(0, 8)}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs font-semibold text-foreground">{m.email}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 font-bold text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-purple-50 text-purple-700 border-purple-200 font-bold text-[10px]"
+                    >
                       Depot Manager
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]">
+                    <Badge
+                      variant="outline"
+                      className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]"
+                    >
                       {m.status || "Active"}
                     </Badge>
                   </TableCell>
@@ -221,7 +220,12 @@ export function AdminManagersView() {
               />
             </div>
             <div className="pt-2 flex justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={() => setModalOpen(false)} className="rounded-full text-xs font-bold">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                className="rounded-full text-xs font-bold"
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={creating} className="rounded-full font-bold text-xs">

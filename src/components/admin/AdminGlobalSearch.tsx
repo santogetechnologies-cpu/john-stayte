@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Search, Package, ShoppingBag, Users, Building2, ChevronRight, Loader2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Search,
+  Package,
+  ShoppingBag,
+  Users,
+  Building2,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 
@@ -40,34 +43,26 @@ export function AdminGlobalSearch({
 
     async function fetchSearch() {
       try {
-        const [
-          { data: prods },
-          { data: ords },
-          { data: custs },
-          { data: stns },
-        ] = await Promise.all([
-          supabase
-            .from("products")
-            .select("id, name, slug, brand, category_slug")
-            .ilike("name", `%${q}%`)
-            .limit(5),
-          supabase
-            .from("orders")
-            .select("id, order_number, customer_name, total, status")
-            .ilike("order_number", `%${q}%`)
-            .limit(5),
-          supabase
-            .from("profiles")
-            .select("id, full_name, email, role")
-            .eq("role", "customer")
-            .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
-            .limit(5),
-          supabase
-            .from("stations")
-            .select("id, name, city")
-            .ilike("name", `%${q}%`)
-            .limit(5),
-        ]);
+        const [{ data: prods }, { data: ords }, { data: custs }, { data: stns }] =
+          await Promise.all([
+            supabase
+              .from("products")
+              .select("id, name, slug, brand, category_slug")
+              .ilike("name", `%${q}%`)
+              .limit(5),
+            supabase
+              .from("orders")
+              .select("id, order_number, customer_name, total, status")
+              .ilike("order_number", `%${q}%`)
+              .limit(5),
+            supabase
+              .from("profiles")
+              .select("id, full_name, email, role")
+              .eq("role", "customer")
+              .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
+              .limit(5),
+            supabase.from("stations").select("id, name, city").ilike("name", `%${q}%`).limit(5),
+          ]);
 
         if (isCurrent) {
           setMatchedProducts(prods || []);
@@ -151,7 +146,8 @@ export function AdminGlobalSearch({
               {matchedOrders.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <ShoppingBag className="h-3.5 w-3.5 text-primary" /> Orders ({matchedOrders.length})
+                    <ShoppingBag className="h-3.5 w-3.5 text-primary" /> Orders (
+                    {matchedOrders.length})
                   </p>
                   <div className="grid gap-1">
                     {matchedOrders.map((o) => (
@@ -161,8 +157,12 @@ export function AdminGlobalSearch({
                         className="w-full flex items-center justify-between p-2.5 rounded-xl border bg-card hover:bg-slate-50 text-left transition-all"
                       >
                         <div>
-                          <p className="text-xs font-black">#{o.order_number || o.id.slice(0, 8)}</p>
-                          <p className="text-[11px] text-muted-foreground">{o.customer_name} · £{Number(o.total).toFixed(2)}</p>
+                          <p className="text-xs font-black">
+                            #{o.order_number || o.id.slice(0, 8)}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {o.customer_name} · £{Number(o.total).toFixed(2)}
+                          </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </button>
@@ -175,7 +175,8 @@ export function AdminGlobalSearch({
               {matchedProducts.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Package className="h-3.5 w-3.5 text-primary" /> Products ({matchedProducts.length})
+                    <Package className="h-3.5 w-3.5 text-primary" /> Products (
+                    {matchedProducts.length})
                   </p>
                   <div className="grid gap-1">
                     {matchedProducts.map((p) => (
@@ -186,7 +187,9 @@ export function AdminGlobalSearch({
                       >
                         <div>
                           <p className="text-xs font-bold">{p.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{p.brand} · {p.category_slug}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {p.brand} · {p.category_slug}
+                          </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </button>
@@ -199,7 +202,8 @@ export function AdminGlobalSearch({
               {matchedCustomers.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5 text-primary" /> Customers ({matchedCustomers.length})
+                    <Users className="h-3.5 w-3.5 text-primary" /> Customers (
+                    {matchedCustomers.length})
                   </p>
                   <div className="grid gap-1">
                     {matchedCustomers.map((c) => (
@@ -223,7 +227,8 @@ export function AdminGlobalSearch({
               {matchedStations.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-primary" /> Stations ({matchedStations.length})
+                    <Building2 className="h-3.5 w-3.5 text-primary" /> Stations (
+                    {matchedStations.length})
                   </p>
                   <div className="grid gap-1">
                     {matchedStations.map((s) => (

@@ -1,4 +1,4 @@
-# JOHN  Stayte
+# JOHN Stayte
 
 Build a modern, responsive, light-themed website and e-commerce ordering platform for John Stayte Services.
 
@@ -23,6 +23,7 @@ Large hero banners
 Modern icons
 Smooth animations
 User Roles (3 Logins)
+
 1. Customer
 
 Self Registration
@@ -43,8 +44,7 @@ Wishlist
 Download invoices
 Track delivery
 Manage profile
-Notifications
-2. Manager
+Notifications 2. Manager
 
 Created only by Admin.
 
@@ -64,8 +64,7 @@ Reply customer enquiries
 Cannot
 
 Delete system data
-Create admins
-3. Admin
+Create admins 3. Admin
 
 Full control
 

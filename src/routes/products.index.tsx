@@ -49,7 +49,10 @@ export const Route = createFileRoute("/products/")({
           "Browse the full John Stayte Services catalogue: gas cylinders, coal and logs, fishing baits, animal feed, appliances and spares.",
       },
       { property: "og:title", content: "Shop All Products | John Stayte Services" },
-      { property: "og:description", content: "Gas, fuel, baits, feed and appliances delivered locally." },
+      {
+        property: "og:description",
+        content: "Gas, fuel, baits, feed and appliances delivered locally.",
+      },
     ],
   }),
   component: ProductsPage,
@@ -91,7 +94,10 @@ function ProductsPage() {
             featured: Boolean(p.is_featured),
             offer: Boolean(p.is_offer),
             description: p.description || "",
-            specs: p.specs && typeof p.specs === "object" && !Array.isArray(p.specs) ? (p.specs as Record<string, string>) : {},
+            specs:
+              p.specs && typeof p.specs === "object" && !Array.isArray(p.specs)
+                ? (p.specs as Record<string, string>)
+                : {},
           }));
           setDbProducts(mapped);
         }
@@ -173,7 +179,9 @@ function ProductsPage() {
 
       {/* 2. CATEGORIES SECTION */}
       <div className="pt-4 border-t border-slate-100">
-        <h3 className="mb-2.5 text-xs font-black uppercase tracking-wider text-slate-800">Categories</h3>
+        <h3 className="mb-2.5 text-xs font-black uppercase tracking-wider text-slate-800">
+          Categories
+        </h3>
         <div className="space-y-1">
           <button
             type="button"
@@ -191,7 +199,7 @@ function ProductsPage() {
 
             // Filter out fake duplicate subcategories that have the exact same name as the parent category
             const validSubs = (c.subs || []).filter(
-              (s) => s.trim().toLowerCase() !== c.name.trim().toLowerCase()
+              (s) => s.trim().toLowerCase() !== c.name.trim().toLowerCase(),
             );
 
             return (
@@ -263,7 +271,9 @@ function ProductsPage() {
       <div className="pt-4 border-t border-slate-100 space-y-3.5">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Max price</h3>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+              Max price
+            </h3>
             <span className="text-xs font-bold text-primary">£{search.max ?? maxPrice}</span>
           </div>
           <Slider
@@ -349,14 +359,15 @@ function ProductsPage() {
           {loading ? (
             <div className="surface-card p-16 text-center space-y-3 rounded-3xl border border-slate-200/80 bg-white">
               <Loader2 className="mx-auto h-8 w-8 text-primary animate-spin" />
-              <p className="font-bold text-sm text-muted-foreground">
-                Loading products from Supabase...
-              </p>
+              <p className="font-bold text-sm text-muted-foreground">Loading products...</p>
             </div>
           ) : list.length === 0 ? (
             <div className="surface-card p-16 text-center rounded-3xl border border-slate-200/80 bg-white space-y-3">
               <p className="font-bold text-slate-800 text-sm">No products match those filters.</p>
-              <Button className="rounded-full text-xs font-bold px-6" onClick={() => navigate({ search: {} as never })}>
+              <Button
+                className="rounded-full text-xs font-bold px-6"
+                onClick={() => navigate({ search: {} as never })}
+              >
                 Reset filters
               </Button>
             </div>

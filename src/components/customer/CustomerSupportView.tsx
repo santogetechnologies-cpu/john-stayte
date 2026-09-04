@@ -126,10 +126,8 @@ export function CustomerSupportView() {
     // Setup Supabase Realtime subscription for customer support ticket status changes
     const channel = supabase
       .channel("customer_support_tickets_realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "support_tickets" },
-        () => loadData()
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
+        loadData(),
       )
       .subscribe();
 
@@ -165,7 +163,8 @@ export function CustomerSupportView() {
       }
 
       const currentEmail = activeUser.email || user?.email || "";
-      const chosenOrder = selectedOrderId !== "none" ? customerOrders.find((o) => o.id === selectedOrderId) : null;
+      const chosenOrder =
+        selectedOrderId !== "none" ? customerOrders.find((o) => o.id === selectedOrderId) : null;
 
       // Derive short topic title from first line of message
       const cleanMessage = message.trim();
@@ -275,25 +274,37 @@ export function CustomerSupportView() {
     switch (status) {
       case "Resolved":
         return (
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-extrabold flex items-center gap-1"
+          >
             <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Resolved
           </Badge>
         );
       case "Closed":
         return (
-          <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-extrabold flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] font-extrabold flex items-center gap-1"
+          >
             Closed
           </Badge>
         );
       case "In Progress":
         return (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-extrabold flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] font-extrabold flex items-center gap-1"
+          >
             <Clock className="h-3 w-3 text-blue-600" /> In Progress
           </Badge>
         );
       default:
         return (
-          <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-extrabold flex items-center gap-1">
+          <Badge
+            variant="outline"
+            className="bg-amber-50 text-amber-800 border-amber-200 text-[10px] font-extrabold flex items-center gap-1"
+          >
             <Clock className="h-3 w-3 text-amber-600" /> Pending
           </Badge>
         );
@@ -306,7 +317,9 @@ export function CustomerSupportView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/account" className="hover:text-primary transition-colors">Account</Link>
+            <Link to="/account" className="hover:text-primary transition-colors">
+              Account
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Help & Support</span>
           </div>
@@ -341,7 +354,9 @@ export function CustomerSupportView() {
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
             <div>
               <p className="font-extrabold text-amber-900 text-sm">Your session has expired.</p>
-              <p className="text-amber-800 font-medium mt-0.5">Please sign in again to submit support requests.</p>
+              <p className="text-amber-800 font-medium mt-0.5">
+                Please sign in again to submit support requests.
+              </p>
             </div>
           </div>
           <Button
@@ -402,7 +417,11 @@ export function CustomerSupportView() {
               disabled={submitting}
               className="rounded-full font-black text-xs gap-2 px-8 py-3 h-12 shadow-md bg-primary hover:bg-primary/90 text-white w-full sm:w-auto min-w-[200px]"
             >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
               {submitting ? "Sending Request..." : "Send Request"}
             </Button>
           </div>
@@ -424,7 +443,8 @@ export function CustomerSupportView() {
           <div className="pt-4 space-y-3 text-xs">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground font-bold flex items-center justify-center gap-2">
-                <Loader2 className="h-4 w-4 text-primary animate-spin" /> Loading your request history...
+                <Loader2 className="h-4 w-4 text-primary animate-spin" /> Loading your request
+                history...
               </div>
             ) : supportRequests.length === 0 ? (
               <div className="p-8 text-center space-y-2 rounded-2xl bg-slate-50 border border-slate-200/80">
@@ -436,7 +456,9 @@ export function CustomerSupportView() {
               </div>
             ) : (
               supportRequests.map((req) => {
-                const matchedOrder = req.order_id ? customerOrders.find((o) => o.id === req.order_id) : null;
+                const matchedOrder = req.order_id
+                  ? customerOrders.find((o) => o.id === req.order_id)
+                  : null;
                 const isExpanded = expandedRequestId === req.id;
 
                 return (
@@ -455,18 +477,36 @@ export function CustomerSupportView() {
                           </p>
                           {getStatusBadge(req.status)}
                           {matchedOrder && (
-                            <Badge variant="outline" className="bg-white text-slate-700 border-slate-200 text-[10px] font-bold flex items-center gap-1">
-                              <Package className="h-3 w-3 text-slate-500" /> Order #{matchedOrder.order_number}
+                            <Badge
+                              variant="outline"
+                              className="bg-white text-slate-700 border-slate-200 text-[10px] font-bold flex items-center gap-1"
+                            >
+                              <Package className="h-3 w-3 text-slate-500" /> Order #
+                              {matchedOrder.order_number}
                             </Badge>
                           )}
                         </div>
                         <p className="text-[10px] text-muted-foreground font-medium">
-                          Submitted {new Date(req.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                          Submitted{" "}
+                          {new Date(req.created_at).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
                         </p>
                       </div>
 
-                      <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 rounded-full shrink-0">
-                        {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 rounded-full shrink-0"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-slate-500" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-slate-500" />
+                        )}
                       </Button>
                     </div>
 
@@ -476,7 +516,10 @@ export function CustomerSupportView() {
                           {typeof req.description === "string" ? req.description : ""}
                         </p>
                         <div className="flex justify-between items-center text-[10px] text-muted-foreground font-semibold pt-1">
-                          <span>Status: {req.status === "Open" ? "Pending Support Team Review" : req.status}</span>
+                          <span>
+                            Status:{" "}
+                            {req.status === "Open" ? "Pending Support Team Review" : req.status}
+                          </span>
                           <span className="text-emerald-700 font-bold">Support Team</span>
                         </div>
                       </div>

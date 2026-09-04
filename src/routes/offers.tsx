@@ -12,7 +12,11 @@ export const Route = createFileRoute("/offers")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Latest Offers & Bundles | John Stayte Services" },
-      { name: "description", content: "Seasonal deals, fuel bundles and discounted appliances from John Stayte Services." },
+      {
+        name: "description",
+        content:
+          "Seasonal deals, fuel bundles and discounted appliances from John Stayte Services.",
+      },
       { property: "og:title", content: "Latest Offers | John Stayte Services" },
       { property: "og:description", content: "Seasonal fuel bundles and discounted appliances." },
     ],
@@ -49,7 +53,10 @@ function OffersPage() {
             featured: Boolean(p.is_featured),
             offer: Boolean(p.is_offer),
             description: p.description || "",
-            specs: p.specs && typeof p.specs === "object" && !Array.isArray(p.specs) ? (p.specs as Record<string, string>) : {},
+            specs:
+              p.specs && typeof p.specs === "object" && !Array.isArray(p.specs)
+                ? (p.specs as Record<string, string>)
+                : {},
           }));
           setDeals(mapped);
         }
@@ -66,12 +73,19 @@ function OffersPage() {
 
   return (
     <SiteLayout>
-      <PageHero eyebrow="Offers" title="Latest deals & bundles" subtitle="Refreshed monthly — while stocks last." />
+      <PageHero
+        eyebrow="Offers"
+        title="Latest deals & bundles"
+        subtitle="Refreshed monthly — while stocks last."
+      />
       <div className="container-page py-12">
         {promoOffers.length > 0 && (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-12">
             {promoOffers.map((o) => (
-              <article key={o.id} className="surface-card flex flex-col overflow-hidden bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-md">
+              <article
+                key={o.id}
+                className="surface-card flex flex-col overflow-hidden bg-slate-900 text-white rounded-3xl border border-slate-800 shadow-md"
+              >
                 {o.banner_url && (
                   <img
                     src={o.banner_url}
@@ -101,7 +115,7 @@ function OffersPage() {
         <h2 className="mb-6 text-2xl font-extrabold">Special Offer Products</h2>
         {deals.length === 0 ? (
           <div className="surface-card p-12 text-center text-xs text-muted-foreground font-bold rounded-3xl border bg-white">
-            No special offers active in Supabase right now.
+            No special offers active right now.
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -90,7 +90,7 @@ export function AdminNewsletterView() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "newsletter_subscribers" },
-        () => loadSubscribers()
+        () => loadSubscribers(),
       )
       .subscribe();
 
@@ -106,8 +106,7 @@ export function AdminNewsletterView() {
         s.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (s.source || "").toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesStatus =
-        statusFilter === "all" ? true : s.status === statusFilter;
+      const matchesStatus = statusFilter === "all" ? true : s.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -167,7 +166,9 @@ export function AdminNewsletterView() {
         .eq("id", subscriber.id);
 
       if (error) throw error;
-      await logAdminAuditAction("UPDATE_SUBSCRIBER_STATUS", "newsletter", subscriber.email, { status: newStatus });
+      await logAdminAuditAction("UPDATE_SUBSCRIBER_STATUS", "newsletter", subscriber.email, {
+        status: newStatus,
+      });
       toast.success(`Status updated to ${newStatus}`);
       loadSubscribers();
     } catch (err: any) {
@@ -209,7 +210,10 @@ export function AdminNewsletterView() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `jss_newsletter_subscribers_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `jss_newsletter_subscribers_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -222,7 +226,9 @@ export function AdminNewsletterView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Newsletter</span>
           </div>
@@ -230,7 +236,8 @@ export function AdminNewsletterView() {
             <Mail className="h-7 w-7 text-primary" /> Newsletter Subscribers ({subscribers.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            View, search, manage and export verified email subscribers collected across the storefront.
+            View, search, manage and export verified email subscribers collected across the
+            storefront.
           </p>
         </div>
 
@@ -254,25 +261,33 @@ export function AdminNewsletterView() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Total Subscribers</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Total Subscribers
+          </p>
           <p className="text-3xl font-black text-slate-900">{stats.total}</p>
           <p className="text-[11px] text-muted-foreground">All registered emails</p>
         </div>
 
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Audience</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Active Audience
+          </p>
           <p className="text-3xl font-black text-emerald-600">{stats.active}</p>
           <p className="text-[11px] text-muted-foreground">Ready for broadcast</p>
         </div>
 
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Unsubscribed</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Unsubscribed
+          </p>
           <p className="text-3xl font-black text-slate-400">{stats.unsubscribed}</p>
           <p className="text-[11px] text-muted-foreground">Opted-out contacts</p>
         </div>
 
         <div className="surface-card p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
-          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">New (Last 30 Days)</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            New (Last 30 Days)
+          </p>
           <p className="text-3xl font-black text-primary">{stats.recent}</p>
           <p className="text-[11px] text-muted-foreground">Recent signups</p>
         </div>
@@ -343,7 +358,10 @@ export function AdminNewsletterView() {
                   </TableCell>
 
                   <TableCell className="text-xs text-muted-foreground font-mono">
-                    <Badge variant="outline" className="rounded-full text-[10px] font-medium bg-slate-50">
+                    <Badge
+                      variant="outline"
+                      className="rounded-full text-[10px] font-medium bg-slate-50"
+                    >
                       {s.source || "website_footer"}
                     </Badge>
                   </TableCell>
@@ -406,7 +424,9 @@ export function AdminNewsletterView() {
 
             <div className="space-y-4 py-4">
               <div>
-                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Email Address</label>
+                <label className="text-xs font-bold text-muted-foreground block mb-1.5">
+                  Email Address
+                </label>
                 <Input
                   type="email"
                   required
@@ -418,7 +438,9 @@ export function AdminNewsletterView() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-muted-foreground block mb-1.5">Origin / Channel</label>
+                <label className="text-xs font-bold text-muted-foreground block mb-1.5">
+                  Origin / Channel
+                </label>
                 <Select value={newSource} onValueChange={setNewSource}>
                   <SelectTrigger className="rounded-full text-xs">
                     <SelectValue />
@@ -442,11 +464,7 @@ export function AdminNewsletterView() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={adding}
-                className="rounded-full text-xs font-bold"
-              >
+              <Button type="submit" disabled={adding} className="rounded-full text-xs font-bold">
                 {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Subscriber"}
               </Button>
             </DialogFooter>

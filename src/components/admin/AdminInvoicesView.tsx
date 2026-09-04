@@ -19,12 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -48,10 +43,14 @@ export function AdminInvoicesView() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [{ data: ordersData, error: ordersErr }, { data: invData, error: invErr }] = await Promise.all([
-        supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }),
-        supabase.from("invoices").select("*").order("issued_at", { ascending: false }),
-      ]);
+      const [{ data: ordersData, error: ordersErr }, { data: invData, error: invErr }] =
+        await Promise.all([
+          supabase
+            .from("orders")
+            .select("*, order_items(*)")
+            .order("created_at", { ascending: false }),
+          supabase.from("invoices").select("*").order("issued_at", { ascending: false }),
+        ]);
 
       if (ordersErr) throw ordersErr;
       if (invErr) throw invErr;
@@ -74,7 +73,8 @@ export function AdminInvoicesView() {
   const invoiceRecords = useMemo(() => {
     return orders.map((order) => {
       const matchingInv = invoices.find((inv) => inv.order_id === order.id);
-      const invoiceNumber = matchingInv?.invoice_number || `INV-${order.order_number.replace("JSS-", "")}`;
+      const invoiceNumber =
+        matchingInv?.invoice_number || `INV-${order.order_number.replace("JSS-", "")}`;
       const status = matchingInv?.status || (order.status === "Cancelled" ? "Cancelled" : "Paid");
       return {
         ...order,
@@ -130,9 +130,9 @@ export function AdminInvoicesView() {
             <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px;">${it.product_name || "LPG Product"}</td>
             <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 13px;">${it.quantity || 1}</td>
             <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px;">${gbp(Number(it.unit_price || 0))}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px; font-weight: 700;">${gbp(Number(it.total_price || (it.unit_price * it.quantity) || 0))}</td>
+            <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px; font-weight: 700;">${gbp(Number(it.total_price || it.unit_price * it.quantity || 0))}</td>
           </tr>
-        `
+        `,
         )
         .join("");
 
@@ -240,10 +240,16 @@ export function AdminInvoicesView() {
             Company Invoices & VAT Billing
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Enterprise overview of all customer order tax invoices, VAT amounts, and payment settlements.
+            Enterprise overview of all customer order tax invoices, VAT amounts, and payment
+            settlements.
           </p>
         </div>
-        <Button onClick={loadData} variant="outline" size="sm" className="rounded-xl gap-2 text-xs self-start sm:self-auto">
+        <Button
+          onClick={loadData}
+          variant="outline"
+          size="sm"
+          className="rounded-xl gap-2 text-xs self-start sm:self-auto"
+        >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
         </Button>
       </div>
@@ -252,29 +258,39 @@ export function AdminInvoicesView() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="surface-card p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Revenue Billed</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Total Revenue Billed
+            </span>
             <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 grid place-items-center">
               <TrendingUp className="h-4 w-4" />
             </div>
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">{gbp(totalBilled)}</p>
-          <p className="text-[11px] text-slate-500 font-medium mt-1">Across all confirmed customer orders</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            Across all confirmed customer orders
+          </p>
         </div>
 
         <div className="surface-card p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Invoices Issued</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Total Invoices Issued
+            </span>
             <div className="h-8 w-8 rounded-xl bg-blue-50 text-blue-600 grid place-items-center">
               <FileText className="h-4 w-4" />
             </div>
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">{invoiceRecords.length}</p>
-          <p className="text-[11px] text-slate-500 font-medium mt-1">{paidCount} paid and verified</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            {paidCount} paid and verified
+          </p>
         </div>
 
         <div className="surface-card p-5 rounded-2xl border border-slate-200/80 bg-white shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Average Invoice Value</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Average Invoice Value
+            </span>
             <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 grid place-items-center">
               <CreditCard className="h-4 w-4" />
             </div>
@@ -282,7 +298,9 @@ export function AdminInvoicesView() {
           <p className="text-2xl font-black text-slate-900 mt-2">
             {gbp(invoiceRecords.length > 0 ? totalBilled / invoiceRecords.length : 0)}
           </p>
-          <p className="text-[11px] text-slate-500 font-medium mt-1">Standard VAT rate of 20% applied</p>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            Standard VAT rate of 20% applied
+          </p>
         </div>
       </div>
 
@@ -331,13 +349,19 @@ export function AdminInvoicesView() {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50/70">
-                <TableHead className="text-xs font-extrabold text-slate-700">Invoice Number</TableHead>
+                <TableHead className="text-xs font-extrabold text-slate-700">
+                  Invoice Number
+                </TableHead>
                 <TableHead className="text-xs font-extrabold text-slate-700">Order Ref</TableHead>
                 <TableHead className="text-xs font-extrabold text-slate-700">Customer</TableHead>
                 <TableHead className="text-xs font-extrabold text-slate-700">Date Issued</TableHead>
-                <TableHead className="text-xs font-extrabold text-slate-700">Amount (Inc VAT)</TableHead>
+                <TableHead className="text-xs font-extrabold text-slate-700">
+                  Amount (Inc VAT)
+                </TableHead>
                 <TableHead className="text-xs font-extrabold text-slate-700">Status</TableHead>
-                <TableHead className="text-xs font-extrabold text-slate-700 text-right">Actions</TableHead>
+                <TableHead className="text-xs font-extrabold text-slate-700 text-right">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -347,7 +371,10 @@ export function AdminInvoicesView() {
                     <span className="font-mono">{r.invoiceNumber}</span>
                   </TableCell>
                   <TableCell className="text-xs font-semibold text-slate-600">
-                    <Link to={`/account/orders/${r.id}` as any} className="hover:text-primary underline">
+                    <Link
+                      to={`/account/orders/${r.id}` as any}
+                      className="hover:text-primary underline"
+                    >
                       #{r.order_number}
                     </Link>
                   </TableCell>
@@ -367,15 +394,24 @@ export function AdminInvoicesView() {
                   </TableCell>
                   <TableCell>
                     {r.invoiceStatus === "Cancelled" ? (
-                      <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold">
+                      <Badge
+                        variant="outline"
+                        className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold"
+                      >
                         Cancelled
                       </Badge>
                     ) : r.invoiceStatus === "Pending" ? (
-                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold">
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold"
+                      >
                         Pending
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+                      <Badge
+                        variant="outline"
+                        className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"
+                      >
                         Paid & Issued
                       </Badge>
                     )}
@@ -424,21 +460,31 @@ export function AdminInvoicesView() {
             <div className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10px] uppercase">Order Number</span>
-                  <span className="font-extrabold text-slate-900">#{previewOrder.order_number}</span>
+                  <span className="text-slate-400 block font-bold text-[10px] uppercase">
+                    Order Number
+                  </span>
+                  <span className="font-extrabold text-slate-900">
+                    #{previewOrder.order_number}
+                  </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10px] uppercase">Date Issued</span>
+                  <span className="text-slate-400 block font-bold text-[10px] uppercase">
+                    Date Issued
+                  </span>
                   <span className="font-semibold text-slate-700">
                     {new Date(previewOrder.created_at).toLocaleDateString("en-GB")}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10px] uppercase">Customer</span>
+                  <span className="text-slate-400 block font-bold text-[10px] uppercase">
+                    Customer
+                  </span>
                   <span className="font-semibold text-slate-700">{previewOrder.customer_name}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10px] uppercase">Total Paid</span>
+                  <span className="text-slate-400 block font-bold text-[10px] uppercase">
+                    Total Paid
+                  </span>
                   <span className="font-black text-primary text-sm">{gbp(previewOrder.total)}</span>
                 </div>
               </div>
@@ -452,14 +498,21 @@ export function AdminInvoicesView() {
                         <span className="font-bold text-slate-800">{it.product_name}</span>
                         <span className="text-slate-400 ml-2">× {it.quantity}</span>
                       </div>
-                      <span className="font-extrabold text-slate-900">{gbp(it.total_price || 0)}</span>
+                      <span className="font-extrabold text-slate-900">
+                        {gbp(it.total_price || 0)}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" size="sm" onClick={() => setPreviewModalOpen(false)} className="rounded-xl">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewModalOpen(false)}
+                  className="rounded-xl"
+                >
                   Close
                 </Button>
                 <Button

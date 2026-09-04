@@ -1,5 +1,4 @@
-@import "tailwindcss" source(none);
-@source "../src";
+@import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
@@ -151,23 +150,6 @@
   }
 }
 
-@utility container-page {
-  margin-inline: auto;
-  width: 100%;
-  max-width: 80rem;
-  padding-inline: 1rem;
-  @media (min-width: 1024px) {
-    padding-inline: 2rem;
-  }
-}
-
-@utility surface-card {
-  background-color: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-card);
-}
-
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -177,47 +159,6 @@
     opacity: 1;
     transform: none;
   }
-}
-
-@utility animate-rise {
-  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@utility section-padding {
-  padding-block: 2.75rem;
-  @media (min-width: 768px) {
-    padding-block: 3.75rem;
-  }
-}
-
-@utility custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: oklch(0.85 0.004 255) transparent;
-  &::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  &::-webkit-scrollbar-thumb {
-    background-color: oklch(0.85 0.004 255);
-    border-radius: 9999px;
-  }
-  &::-webkit-scrollbar-thumb:hover {
-    background-color: oklch(0.75 0.008 255);
-  }
-}
-
-/* =========================================================================
-   ISOLATED SECTION WRAPPERS (Scoped to avoid cross-section CSS collisions)
-   ========================================================================= */
-.why-trust-us-section {
-  contain: layout style;
-}
-
-.filling-stations-section {
-  contain: layout style;
 }
 
 @keyframes timeline-pulse {
@@ -235,6 +176,191 @@
   }
 }
 
-@utility animate-timeline-pulse {
-  animation: timeline-pulse 2s ease-in-out infinite;
+@layer utilities {
+  .container-page {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 88rem;
+    padding-inline: 0.75rem;
+    @media (min-width: 640px) {
+      padding-inline: 0.875rem;
+    }
+    @media (min-width: 1024px) {
+      padding-inline: 1rem;
+    }
+  }
+
+  .surface-card {
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-card);
+  }
+
+  .animate-rise {
+    animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .section-padding {
+    padding-block: 2.75rem;
+    @media (min-width: 768px) {
+      padding-block: 3.75rem;
+    }
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.85 0.004 255) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: oklch(0.85 0.004 255);
+    border-radius: 9999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.75 0.008 255);
+  }
+
+  .animate-timeline-pulse {
+    animation: timeline-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* =========================================================================
+   FORECOURT LOCATIONS MAP MARKER PULSE ANIMATION
+   ========================================================================= */
+.custom-station-pin {
+  overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes station-marker-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0.8;
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1.65);
+    opacity: 0.22;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.15);
+    opacity: 0;
+  }
+}
+
+@keyframes station-marker-glow {
+  0%,
+  100% {
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 4px 22px rgba(220, 38, 38, 0.78),
+      0 0 14px rgba(220, 38, 38, 0.4);
+  }
+}
+
+.station-pin-ring {
+  position: absolute;
+  top: 15px;
+  left: 19px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid rgba(220, 38, 38, 0.7);
+  transform: translate(-50%, -50%) scale(0.85);
+  pointer-events: none;
+  animation: station-marker-pulse 2s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+}
+
+.station-pin-aura {
+  position: absolute;
+  top: 15px;
+  left: 19px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(220, 38, 38, 0.4) 0%, rgba(220, 38, 38, 0) 70%);
+  transform: translate(-50%, -50%) scale(0.85);
+  pointer-events: none;
+  animation: station-marker-pulse 2s cubic-bezier(0.2, 0.8, 0.4, 1) infinite 0.25s;
+}
+
+.station-pin-head {
+  animation: station-marker-glow 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .station-pin-ring,
+  .station-pin-aura {
+    animation: none !important;
+    display: none !important;
+  }
+  .station-pin-head {
+    animation: none !important;
+  }
+}
+
+@keyframes critical-alert-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(220, 38, 38, 0.4),
+      0 4px 14px -2px rgba(220, 38, 38, 0.2);
+    border-color: rgba(239, 68, 68, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(220, 38, 38, 0.18),
+      0 6px 24px -2px rgba(220, 38, 38, 0.45);
+    border-color: rgba(220, 38, 38, 1);
+  }
+}
+
+@keyframes warning-alert-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(245, 158, 11, 0.3),
+      0 2px 8px -2px rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.5);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px rgba(245, 158, 11, 0.14),
+      0 4px 16px -2px rgba(245, 158, 11, 0.25);
+    border-color: rgba(217, 119, 6, 0.85);
+  }
+}
+
+.critical-alert-pulse {
+  animation: critical-alert-pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.warning-alert-pulse {
+  animation: warning-alert-pulse 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.alert-pulse-card {
+  animation: critical-alert-pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .critical-alert-pulse,
+  .warning-alert-pulse,
+  .alert-pulse-card {
+    animation: none !important;
+  }
 }

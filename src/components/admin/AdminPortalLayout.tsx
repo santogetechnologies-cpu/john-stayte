@@ -32,6 +32,9 @@ import {
   Mail,
   User,
   Menu,
+  Home,
+  Factory,
+  Flame,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -44,22 +47,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { AdminGlobalSearch } from "./AdminGlobalSearch";
 import { AdminNotificationsPopover } from "./AdminNotificationsPopover";
 
+import type { LucideIcon } from "lucide-react";
+
 type NavItem = {
   title: string;
   href: string;
-  icon: any;
+  icon: LucideIcon | React.ElementType;
   moduleKey?: string;
   badgeKey?: "ordersPending" | "inventoryLow" | "unreadNotifications";
   badgeColor?: string;
@@ -86,6 +86,7 @@ const adminNavGroups: NavGroup[] = [
         badgeColor: "bg-amber-100 text-amber-800 font-extrabold",
       },
       { title: "Deliveries", href: "/admin/deliveries", icon: Truck },
+      { title: "Applications", href: "/admin/applications", icon: FileText },
       {
         title: "Inventory",
         href: "/admin/inventory",
@@ -106,6 +107,14 @@ const adminNavGroups: NavGroup[] = [
       { title: "Reviews", href: "/admin/reviews", icon: Star },
       { title: "Offers", href: "/admin/offers", icon: Tag, moduleKey: "offers" },
       { title: "Coupons", href: "/admin/coupons", icon: Ticket, moduleKey: "coupons" },
+    ],
+  },
+  {
+    groupLabel: "GAS CATALOG",
+    items: [
+      { title: "Domestic LPG", href: "/admin/order-gas/domestic", icon: Home },
+      { title: "Commercial LPG", href: "/admin/order-gas/commercial", icon: Building2 },
+      { title: "Bulk LPG", href: "/admin/order-gas/bulk", icon: Factory },
     ],
   },
   {
@@ -180,19 +189,29 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
 
   const loadModuleConfigAndBadges = async () => {
     try {
-      const [{ data: moduleBlock }, { data: pendingOrders }, { data: lowStock }, { data: unreadNotifs }] =
-        await Promise.all([
-          supabase.from("cms_content_blocks").select("content").eq("section_key", "admin_modules_config").maybeSingle(),
-          supabase.from("orders").select("id").eq("status", "Pending"),
-          supabase.from("products").select("id").lte("stock", 5),
-          supabase.from("notifications").select("id").eq("read", false),
-        ]);
+      const [
+        { data: moduleBlock },
+        { data: pendingOrders },
+        { data: lowStock },
+        { data: unreadNotifs },
+      ] = await Promise.all([
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "admin_modules_config")
+          .maybeSingle(),
+        supabase.from("orders").select("id").eq("status", "Pending"),
+        supabase.from("products").select("id").lte("stock", 10),
+        supabase.from("notifications").select("id").eq("read", false),
+      ]);
 
       if (moduleBlock?.content) {
         try {
           const parsed = JSON.parse(moduleBlock.content);
           setModuleConfig((prev) => ({ ...prev, ...parsed }));
-        } catch (e) { }
+        } catch (e) {
+          console.warn("Could not parse module config", e);
+        }
       }
 
       setRealBadges({
@@ -221,7 +240,10 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
           <p className="mt-2 text-xs text-slate-600 leading-relaxed">
             Please sign in using an Administrator account to view the Enterprise Control Center.
           </p>
-          <Button asChild className="mt-6 w-full rounded-full shadow-md font-bold bg-red-600 hover:bg-red-700 text-white">
+          <Button
+            asChild
+            className="mt-6 w-full rounded-full shadow-md font-bold bg-red-600 hover:bg-red-700 text-white"
+          >
             <Link to="/login">Go to Sign In</Link>
           </Button>
         </div>
@@ -247,14 +269,18 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
               </p>
             )}
             {visibleItems.map((item) => {
-              const searchStr = typeof routerState.location.search === "string" ? routerState.location.search : JSON.stringify(routerState.location.search || {});
+              const searchStr =
+                typeof routerState.location.search === "string"
+                  ? routerState.location.search
+                  : JSON.stringify(routerState.location.search || {});
               const hasPeopleSection = searchStr.includes("people");
 
               let isActive = false;
               if (item.href.includes("?")) {
                 isActive = currentPath === item.href.split("?")[0] && hasPeopleSection;
               } else if (item.href === "/admin") {
-                isActive = (currentPath === "/admin" || currentPath === "/admin/") && !hasPeopleSection;
+                isActive =
+                  (currentPath === "/admin" || currentPath === "/admin/") && !hasPeopleSection;
               } else {
                 isActive = currentPath === item.href && !hasPeopleSection;
               }
@@ -277,11 +303,15 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
                       isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700"
                     }`}
                   />
-                  {(!collapsed || isMobile) && <span className="flex-1 truncate">{item.title}</span>}
+                  {(!collapsed || isMobile) && (
+                    <span className="flex-1 truncate">{item.title}</span>
+                  )}
                   {(!collapsed || isMobile) && hasBadge && (
                     <span
                       className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        isActive ? "bg-white/20 text-white" : item.badgeColor || "bg-slate-200 text-slate-700"
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : item.badgeColor || "bg-slate-200 text-slate-700"
                       }`}
                     >
                       {badgeCount}
@@ -295,7 +325,10 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
                   <TooltipProvider key={group.groupLabel + "-" + item.title} delayDuration={100}>
                     <Tooltip>
                       <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                      <TooltipContent side="right" className="font-extrabold text-xs bg-slate-900 text-white">
+                      <TooltipContent
+                        side="right"
+                        className="font-extrabold text-xs bg-slate-900 text-white"
+                      >
                         {item.title}
                       </TooltipContent>
                     </Tooltip>
@@ -333,16 +366,27 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
           {/* Mobile Sheet Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-xl text-slate-600 hover:bg-white/80">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden rounded-xl text-slate-600 hover:bg-white/80"
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-4 pt-6 bg-white/90 backdrop-blur-2xl border-r border-white/80">
+            <SheetContent
+              side="left"
+              className="w-72 p-4 pt-6 bg-white/90 backdrop-blur-2xl border-r border-white/80"
+            >
               <div className="flex items-center gap-3 px-2 mb-6">
                 <img src={logo} alt="JSS" className="h-9 w-9 rounded-xl shadow-xs" />
                 <div>
-                  <h2 className="font-black text-sm tracking-tight text-slate-900 leading-none">JOHN STAYTE SERVICES</h2>
-                  <span className="inline-block text-[9px] font-extrabold text-red-600 uppercase tracking-widest mt-1">ADMIN PORTAL</span>
+                  <h2 className="font-black text-sm tracking-tight text-slate-900 leading-none">
+                    JOHN STAYTE SERVICES
+                  </h2>
+                  <span className="inline-block text-[9px] font-extrabold text-red-600 uppercase tracking-widest mt-1">
+                    ADMIN PORTAL
+                  </span>
                 </div>
               </div>
               <div className="max-h-[calc(100vh-100px)] overflow-y-auto pr-1 custom-scrollbar">
@@ -353,15 +397,23 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
 
           {/* Desktop Logo Branding */}
           <Link to="/admin" className="flex items-center gap-3 group select-none">
-            <img src={logo} alt="JSS Logo" className="h-9.5 w-9.5 rounded-xl shadow-xs shrink-0 group-hover:scale-105 transition-transform" />
+            <img
+              src={logo}
+              alt="JSS Logo"
+              className="h-9.5 w-9.5 rounded-xl shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+            />
             <div className="hidden sm:block">
               <div className="flex items-center gap-2">
-                <span className="font-black text-sm tracking-tight text-slate-900 leading-none">JOHN STAYTE SERVICES</span>
+                <span className="font-black text-sm tracking-tight text-slate-900 leading-none">
+                  JOHN STAYTE SERVICES
+                </span>
                 <span className="px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/20 text-[9px] font-black uppercase tracking-wider shadow-2xs">
                   ADMIN PORTAL
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Enterprise Control Center</p>
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                Enterprise Control Center
+              </p>
             </div>
           </Link>
         </div>
@@ -432,11 +484,16 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
                   <p className="text-xs font-extrabold leading-tight text-slate-900 truncate max-w-[120px]">
                     {typeof user?.name === "string" ? user.name : "Administrator"}
                   </p>
-                  <p className="text-[10px] font-semibold text-slate-500 leading-tight">Administrator</p>
+                  <p className="text-[10px] font-semibold text-slate-500 leading-tight">
+                    Administrator
+                  </p>
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5 shadow-xl border border-white/80 bg-white/95 backdrop-blur-2xl">
+            <DropdownMenuContent
+              align="end"
+              className="w-56 rounded-2xl p-1.5 shadow-xl border border-white/80 bg-white/95 backdrop-blur-2xl"
+            >
               <DropdownMenuLabel className="p-2">
                 <p className="text-xs font-bold text-slate-900">
                   {typeof user?.name === "string" ? user.name : "Administrator"}
@@ -447,12 +504,19 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/admin/settings" className="flex items-center gap-2 text-xs font-semibold">
+                <Link
+                  to="/admin/settings"
+                  className="flex items-center gap-2 text-xs font-semibold"
+                >
                   <Settings className="h-4 w-4 text-slate-400" /> Admin Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/" target="_blank" className="flex items-center gap-2 text-xs font-semibold">
+                <Link
+                  to="/"
+                  target="_blank"
+                  className="flex items-center gap-2 text-xs font-semibold"
+                >
                   <ExternalLink className="h-4 w-4 text-slate-400" /> View Customer Site
                 </Link>
               </DropdownMenuItem>
@@ -475,8 +539,9 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
       <div className="flex-1 flex min-h-0 overflow-hidden relative z-10">
         {/* DESKTOP COLLAPSIBLE FROSTED GLASS SIDEBAR */}
         <aside
-          className={`hidden lg:flex flex-col h-full border-r border-white/70 bg-white/60 backdrop-blur-2xl transition-all duration-300 relative z-20 shrink-0 shadow-2xs ${collapsed ? "w-20" : "w-64"
-            }`}
+          className={`hidden lg:flex flex-col h-full border-r border-white/70 bg-white/60 backdrop-blur-2xl transition-all duration-300 relative z-20 shrink-0 shadow-2xs ${
+            collapsed ? "w-20" : "w-64"
+          }`}
         >
           {/* Collapse Toggle Button */}
           <button
@@ -484,7 +549,11 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
             className="absolute -right-3 top-6 z-30 h-6 w-6 rounded-full border border-white/80 bg-white/90 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-900 hover:scale-110 transition-all cursor-pointer"
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            )}
           </button>
 
           {/* INDEPENDENTLY SCROLLABLE SIDEBAR NAV */}
@@ -498,8 +567,12 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white/80 border border-white/90 shadow-2xs backdrop-blur-md">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-extrabold text-slate-900 truncate">JSS Enterprise System</p>
-                  <p className="text-[10px] text-slate-500 truncate font-semibold">Live Operational Status</p>
+                  <p className="text-[11px] font-extrabold text-slate-900 truncate">
+                    JSS Enterprise System
+                  </p>
+                  <p className="text-[10px] text-slate-500 truncate font-semibold">
+                    Live Operational Status
+                  </p>
                 </div>
               </div>
             </div>
@@ -508,9 +581,7 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
 
         {/* MAIN DASHBOARD CONTENT WORKSPACE */}
         <main className="flex-1 h-full min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 relative z-10">
-          <div className="w-full max-w-[1600px] mx-auto space-y-8 animate-rise">
-            {children}
-          </div>
+          <div className="w-full max-w-[1600px] mx-auto space-y-8 animate-rise">{children}</div>
         </main>
       </div>
     </div>

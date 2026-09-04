@@ -29,7 +29,8 @@ export const Route = createFileRoute("/cart")({
       { title: "My Cart | John Stayte Services" },
       {
         name: "description",
-        content: "Review your gas cylinders, smokeless fuels, and country essentials before placing your order.",
+        content:
+          "Review your gas cylinders, smokeless fuels, and country essentials before placing your order.",
       },
       { property: "og:title", content: "My Cart | John Stayte Services" },
       { property: "og:description", content: "Review your cart items and checkout securely." },
@@ -86,7 +87,8 @@ function CartPage() {
                   Your cart is empty!
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
-                  Explore our Calor gas cylinders, winter solid fuels, and store essentials to add items.
+                  Explore our Calor gas cylinders, winter solid fuels, and store essentials to add
+                  items.
                 </p>
               </div>
 
@@ -115,7 +117,10 @@ function CartPage() {
                   <div className="flex items-center gap-2.5 text-xs text-slate-700 font-semibold min-w-0">
                     <MapPin className="h-4 w-4 text-primary shrink-0" />
                     <span className="truncate">
-                      Deliver to: <strong className="text-slate-900 font-bold">Gloucestershire & Stroud Area (GL10)</strong>
+                      Deliver to:{" "}
+                      <strong className="text-slate-900 font-bold">
+                        Gloucestershire & Stroud Area (GL10)
+                      </strong>
                     </span>
                   </div>
                   <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-md shrink-0 w-fit">
@@ -142,7 +147,9 @@ function CartPage() {
                     const maxStock = Number(line.product.stock || 0);
                     const isOutOfStock = maxStock <= 0;
                     const isMaxStockReached = line.qty >= maxStock && !isOutOfStock;
-                    const compareAtPrice = line.product.compareAt ? Number(line.product.compareAt) : null;
+                    const compareAtPrice = line.product.compareAt
+                      ? Number(line.product.compareAt)
+                      : null;
                     const discountPercent =
                       compareAtPrice && compareAtPrice > line.product.price
                         ? Math.round(((compareAtPrice - line.product.price) / compareAtPrice) * 100)

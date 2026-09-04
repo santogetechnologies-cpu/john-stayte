@@ -52,7 +52,9 @@ export function AdminAuditView() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Audit Logs</span>
           </div>
@@ -60,7 +62,7 @@ export function AdminAuditView() {
             System Audit Trail ({logs.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Immutable system event logs recorded in Supabase database.
+            Immutable system event logs and activity history.
           </p>
         </div>
       </div>
@@ -80,7 +82,7 @@ export function AdminAuditView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold">
-            Loading audit logs from Supabase...
+            Loading audit logs...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">
@@ -106,7 +108,9 @@ export function AdminAuditView() {
                   <TableCell className="text-xs text-muted-foreground font-medium">
                     {new Date(l.created_at).toLocaleString("en-GB")}
                   </TableCell>
-                  <TableCell className="font-bold text-xs text-foreground">{l.actor_name}</TableCell>
+                  <TableCell className="font-bold text-xs text-foreground">
+                    {l.actor_name}
+                  </TableCell>
                   <TableCell className="text-xs font-semibold">{l.action}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="bg-slate-100 font-bold text-[10px]">

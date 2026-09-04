@@ -12,10 +12,21 @@ import {
   Sparkles,
   RotateCcw,
   AlertCircle,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerNotificationsView() {
@@ -23,51 +34,24 @@ export function ManagerNotificationsView() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<
-    "all" | "unread" | "orders" | "deliveries" | "inventory" | "customers" | "system"
-  >("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "unread">("all");
   const [markingAll, setMarkingAll] = useState(false);
+  const [notificationToDelete, setNotificationToDelete] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   // Fetch real persistent staff notifications from public.notifications in Supabase
   const loadNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      let { data: notifsData, error: notifErr } = await supabase
+      const { data: notifsData, error: notifErr } = await supabase
         .from("notifications")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (notifErr) throw notifErr;
-
-      // If notifications table is completely empty, seed initial recent order alerts so historical orders appear
-      if ((!notifsData || notifsData.length === 0)) {
-        const { data: recentOrders } = await supabase
-          .from("orders")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(10);
-
-        if (recentOrders && recentOrders.length > 0) {
-          const backfillRows = recentOrders.map((o: any) => ({
-            user_id: null,
-            title: `New Order #${o.order_number || o.id.slice(0, 8)}`,
-            message: `${o.customer_name || o.customer_email || "Customer"} placed an order #${o.order_number || o.id.slice(0, 8)} (Total: £${Number(o.total || 0).toFixed(2)}).`,
-            category: "Orders",
-            link: `/manager/orders?orderId=${o.id}`,
-            read: o.status !== "Pending",
-            is_read: o.status !== "Pending",
-            created_at: o.created_at,
-          }));
-          await (supabase.from("notifications") as any).insert(backfillRows);
-          const { data: refreshed } = await supabase
-            .from("notifications")
-            .select("*")
-            .order("created_at", { ascending: false });
-          if (refreshed) notifsData = refreshed;
-        }
-      }
-
       setNotifications(notifsData || []);
     } catch (err: any) {
       console.error("Failed to load notifications from Supabase:", err);
@@ -83,10 +67,8 @@ export function ManagerNotificationsView() {
     // Supabase Realtime subscription on public.notifications
     const notifsChannel = supabase
       .channel("manager_notifications_live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications" },
-        () => loadNotifications()
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () =>
+        loadNotifications(),
       )
       .subscribe();
 
@@ -106,7 +88,7 @@ export function ManagerNotificationsView() {
 
     if (isUnread) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n))
+        prev.map((n) => (n.id === notif.id ? { ...n, is_read: true, read: true } : n)),
       );
 
       try {
@@ -142,7 +124,7 @@ export function ManagerNotificationsView() {
 
       if (updErr) throw updErr;
 
-      toast.success("All manager notifications marked as read in database");
+      toast.success("All manager notifications marked as read");
       await loadNotifications();
     } catch (err: any) {
       toast.error("Failed to mark all as read: " + err.message);
@@ -151,31 +133,58 @@ export function ManagerNotificationsView() {
     }
   };
 
-  // Filter notifications based on tab
+  // Permanently delete single notification from Supabase database
+  const handleDeleteNotification = async () => {
+    if (!notificationToDelete) return;
+    const targetId = notificationToDelete.id;
+    setDeleting(true);
+
+    // Optimistically update UI immediately
+    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+
+    try {
+      const { error: delErr } = await supabase.from("notifications").delete().eq("id", targetId);
+
+      if (delErr) throw delErr;
+
+      toast.success("Notification deleted successfully");
+      setNotificationToDelete(null);
+    } catch (err: any) {
+      toast.error("Failed to delete notification: " + err.message);
+      // Revert if error
+      await loadNotifications();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Permanently delete ALL notifications from Supabase database
+  const handleDeleteAll = async () => {
+    setDeletingAll(true);
+    // Optimistically update UI immediately
+    setNotifications([]);
+
+    try {
+      const { error: delErr } = await supabase.from("notifications").delete().not("id", "is", null);
+
+      if (delErr) throw delErr;
+
+      toast.success("All manager notifications deleted successfully");
+      setDeleteAllDialogOpen(false);
+      await loadNotifications();
+    } catch (err: any) {
+      toast.error("Failed to delete all notifications: " + err.message);
+      await loadNotifications();
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
+  // Filter notifications based on tab (All vs Unread only)
   const filteredNotifications = useMemo(() => {
     return notifications.filter((n: any) => {
       const isUnread = !n.is_read && !n.read;
       if (activeFilter === "unread") return isUnread;
-      if (activeFilter === "all") return true;
-
-      const category = (n.category || n.type || "").toLowerCase();
-      if (activeFilter === "orders") return category.includes("order");
-      if (activeFilter === "deliveries")
-        return category.includes("delivery") || category.includes("truck");
-      if (activeFilter === "inventory")
-        return category.includes("inventory") || category.includes("stock");
-      if (activeFilter === "customers")
-        return (
-          category.includes("customer") ||
-          category.includes("user") ||
-          category.includes("support")
-        );
-      if (activeFilter === "system")
-        return (
-          category.includes("system") ||
-          category.includes("security") ||
-          category.includes("setting")
-        );
       return true;
     });
   }, [notifications, activeFilter]);
@@ -217,29 +226,6 @@ export function ManagerNotificationsView() {
   const filterTabs = [
     { id: "all", label: "All", count: notifications.length },
     { id: "unread", label: "Unread", count: unreadCount },
-    {
-      id: "orders",
-      label: "Orders",
-      count: notifications.filter((n: any) =>
-        (n.category || n.type || "").toLowerCase().includes("order")
-      ).length,
-    },
-    {
-      id: "customers",
-      label: "Customers / Support",
-      count: notifications.filter(
-        (n: any) =>
-          (n.category || n.type || "").toLowerCase().includes("support") ||
-          (n.category || n.type || "").toLowerCase().includes("customer")
-      ).length,
-    },
-    {
-      id: "deliveries",
-      label: "Deliveries",
-      count: notifications.filter((n: any) =>
-        (n.category || n.type || "").toLowerCase().includes("delivery")
-      ).length,
-    },
   ];
 
   return (
@@ -275,34 +261,48 @@ export function ManagerNotificationsView() {
         )}
       </div>
 
-      {/* 2. FILTER TABS */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {filterTabs.map((tab) => {
-          const isActive = activeFilter === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveFilter(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border ${
-                isActive
-                  ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-              }`}
-            >
-              <span>{tab.label}</span>
-              {tab.count !== undefined && tab.count > 0 && (
-                <Badge
-                  variant="secondary"
-                  className={`px-1.5 py-0 text-[10px] font-black rounded-full ${
-                    isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                  }`}
-                >
-                  {tab.count}
-                </Badge>
-              )}
-            </button>
-          );
-        })}
+      {/* 2. FILTER TABS & DELETE ALL BUTTON */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {filterTabs.map((tab) => {
+            const isActive = activeFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveFilter(tab.id as "all" | "unread")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border cursor-pointer ${
+                  isActive
+                    ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                }`}
+              >
+                <span>{tab.label}</span>
+                {tab.count !== undefined && tab.count > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className={`px-1.5 py-0 text-[10px] font-black rounded-full ${
+                      isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    {tab.count}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Clean Red Delete All Button */}
+        {notifications.length > 0 && (
+          <Button
+            onClick={() => setDeleteAllDialogOpen(true)}
+            disabled={deletingAll}
+            className="rounded-full text-xs font-bold gap-1.5 bg-red-600 hover:bg-red-700 text-white shadow-sm border-transparent shrink-0 h-9 px-4 self-start sm:self-auto cursor-pointer"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-white" />
+            {deletingAll ? "Deleting all..." : "Delete All"}
+          </Button>
+        )}
       </div>
 
       {/* 3. NOTIFICATION LIST CONTAINER */}
@@ -349,8 +349,8 @@ export function ManagerNotificationsView() {
               {activeFilter === "unread"
                 ? "You're all caught up"
                 : activeFilter === "all"
-                ? "No notifications yet"
-                : `No ${activeFilter} notifications`}
+                  ? "No notifications yet"
+                  : `No ${activeFilter} notifications`}
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               {activeFilter === "unread"
@@ -392,7 +392,9 @@ export function ManagerNotificationsView() {
                               : "font-semibold text-slate-700"
                           }`}
                         >
-                          {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
+                          {typeof n.title === "string"
+                            ? n.title
+                            : String(n.title || "Notification")}
                         </p>
                         {n.status === "Pending" && n.type === "order" && (
                           <Badge
@@ -412,12 +414,17 @@ export function ManagerNotificationsView() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                        {typeof (n.message || n.description) === "string" ? (n.message || n.description) : String(n.message || n.description || "")}
+                        {typeof (n.message || n.description) === "string"
+                          ? n.message || n.description
+                          : String(n.message || n.description || "")}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                  <div
+                    className="flex items-center gap-2 shrink-0 pt-0.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <span className="text-[11px] font-medium text-muted-foreground">
                       {formatRelativeTime(n.created_at)}
                     </span>
@@ -427,6 +434,18 @@ export function ManagerNotificationsView() {
                         title="Unread notification"
                       />
                     )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Delete notification"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNotificationToDelete(n);
+                      }}
+                      className="h-7 w-7 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -434,6 +453,78 @@ export function ManagerNotificationsView() {
           </div>
         )}
       </div>
+
+      {/* Permanent Deletion Confirmation Modal */}
+      <AlertDialog
+        open={!!notificationToDelete}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setNotificationToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="rounded-3xl p-6 bg-white border max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-black text-foreground flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-rose-600" />
+              Delete Notification Permanently?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to permanently delete{" "}
+              <span className="text-foreground font-bold">"{notificationToDelete?.title}"</span>{" "}
+              from the Supabase database? This record will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel disabled={deleting} className="rounded-full text-xs font-bold h-9">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={handleDeleteNotification}
+              className="rounded-full text-xs font-bold h-9 bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {deleting ? "Deleting..." : "Permanently Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Permanent Delete All Confirmation Modal */}
+      <AlertDialog
+        open={deleteAllDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !deletingAll) setDeleteAllDialogOpen(false);
+        }}
+      >
+        <AlertDialogContent className="rounded-3xl p-6 bg-white border max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-black text-foreground flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-red-600" />
+              Delete All Notifications Permanently?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Are you sure you want to permanently delete all{" "}
+              <strong className="text-foreground font-bold">{notifications.length}</strong> manager
+              notifications from the database? This action will permanently remove all notifications
+              and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel
+              disabled={deletingAll}
+              className="rounded-full text-xs font-bold h-9"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletingAll}
+              onClick={handleDeleteAll}
+              className="rounded-full text-xs font-bold h-9 bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deletingAll ? "Deleting..." : "Permanently Delete All"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

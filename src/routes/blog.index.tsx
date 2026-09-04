@@ -106,7 +106,10 @@ function ScrollRevealCard({
   const [isRevealed, setIsRevealed] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setIsRevealed(true);
       return;
     }
@@ -128,7 +131,7 @@ function ScrollRevealCard({
         {
           threshold: 0.08,
           rootMargin: "0px 0px -30px 0px",
-        }
+        },
       );
 
       observer.observe(el);
@@ -172,7 +175,10 @@ export const Route = createFileRoute("/blog/")({
         content:
           "Practical gas safety guidance, fuel advice and home energy tips from certified UK specialists at John Stayte Services.",
       },
-      { property: "og:title", content: "Knowledge Centre — Safety & Advice | John Stayte Services" },
+      {
+        property: "og:title",
+        content: "Knowledge Centre — Safety & Advice | John Stayte Services",
+      },
       {
         property: "og:description",
         content: "Gas cylinder safety measures, fuel regulations, and expert heating tips.",
@@ -192,9 +198,6 @@ const CATEGORIES = [
   "News",
 ] as const;
 
-
-
-
 const CHECKLIST_ITEMS = [
   "Cylinder standing upright on firm, level ground",
   "Valve and regulator checked for tight gas-tight fit",
@@ -207,7 +210,15 @@ const CHECKLIST_ITEMS = [
 ];
 
 const AlertLineIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <circle cx="12" cy="12" r="10" />
     <line x1="12" y1="8" x2="12" y2="12" />
     <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -215,7 +226,15 @@ const AlertLineIcon = ({ className }: { className?: string }) => (
 );
 
 const BbqBurnerIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <rect x="5" y="6" width="14" height="6" rx="1" />
     <line x1="3" y1="6" x2="21" y2="6" />
     <line x1="7" y1="12" x2="7" y2="20" />
@@ -227,7 +246,15 @@ const BbqBurnerIcon = ({ className }: { className?: string }) => (
 );
 
 const ConnectingBottlesIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <rect x="4" y="8" width="7" height="13" rx="2" />
     <path d="M6 8V5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3" />
     <rect x="13" y="10" width="8" height="11" rx="2" />
@@ -237,7 +264,15 @@ const ConnectingBottlesIcon = ({ className }: { className?: string }) => (
 );
 
 const StoringBottleIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <path d="M9 5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
     <rect x="6" y="5" width="12" height="16" rx="3" />
     <circle cx="12" cy="13" r="1.5" fill="currentColor" />
@@ -246,7 +281,15 @@ const StoringBottleIcon = ({ className }: { className?: string }) => (
 );
 
 const TransportCarIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <path d="M4 11l2-4a2 2 0 0 1 1.8-1.1h8.4A2 2 0 0 1 18 7l2 4" />
     <rect x="2" y="11" width="20" height="6" rx="2" />
     <circle cx="6.5" cy="17.5" r="2.5" />
@@ -255,13 +298,29 @@ const TransportCarIcon = ({ className }: { className?: string }) => (
 );
 
 const ToolsInspectionIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </svg>
 );
 
 const ForkliftBusinessIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <path d="M3 6h4v11H3z" />
     <path d="M7 11h6l3 3v3H7" />
     <circle cx="9" cy="17" r="2" />
@@ -272,7 +331,15 @@ const ForkliftBusinessIcon = ({ className }: { className?: string }) => (
 );
 
 const BulkTankIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <rect x="5" y="7" width="14" height="9" rx="4.5" />
     <line x1="8" y1="16" x2="8" y2="20" />
     <line x1="16" y1="16" x2="16" y2="20" />
@@ -282,7 +349,15 @@ const BulkTankIcon = ({ className }: { className?: string }) => (
 );
 
 const PipeworkServicingIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
     <rect x="13" y="3" width="7" height="4" rx="0.5" />
     <path d="M13 5H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h7" />
     <rect x="13" y="16" width="7" height="4" rx="0.5" />
@@ -300,47 +375,72 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "What to do in the event of a gas emergency.",
     image: guidanceEmergencyHelpImg,
     icon: AlertLineIcon,
-    overview: "Immediate life-safety guidance and action steps to follow if you smell gas, suspect an LPG leak, or experience an emergency involving gas cylinders, bulk vessels, or supply pipework.",
+    overview:
+      "Immediate life-safety guidance and action steps to follow if you smell gas, suspect an LPG leak, or experience an emergency involving gas cylinders, bulk vessels, or supply pipework.",
     situationTitle: "IF YOU SMELL GAS OR SUSPECT AN LPG LEAK",
-    situationText: "LPG (Liquefied Petroleum Gas) is naturally odourless, but an artificial pungent odorant is added to alert you immediately. Because LPG vapour is heavier than air, it settles at floor level, cellar drains, and low-lying hollows where it can accumulate silently.",
+    situationText:
+      "LPG (Liquefied Petroleum Gas) is naturally odourless, but an artificial pungent odorant is added to alert you immediately. Because LPG vapour is heavier than air, it settles at floor level, cellar drains, and low-lying hollows where it can accumulate silently.",
     immediateActions: [
       "Extinguish all naked flames, cigarettes, pilot lights, and burning appliances immediately.",
       "Do NOT turn any electrical switches, extractors, appliances, or lights on or off.",
       "Do NOT use mobile phones, doorbells, landlines, or handheld electronic devices within the affected area.",
       "Shut off the gas supply immediately at the cylinder valve (turn clockwise) or the main emergency control valve.",
       "Open all external doors and windows wide to promote rapid natural cross-ventilation.",
-      "Evacuate all occupants and pets to an outdoor assembly point at least 15 metres away."
+      "Evacuate all occupants and pets to an outdoor assembly point at least 15 metres away.",
     ],
     steps: [
-      { num: "01", title: "Isolate Gas Supply", text: "Turn the handwheel on your gas cylinder fully clockwise to shut off supply, or flip the emergency control valve to OFF." },
-      { num: "02", title: "Eliminate Ignition Sources", text: "Extinguish all candles, matches, and cigarettes. Do not touch power points, light switches, or circuit breakers." },
-      { num: "03", title: "Maximise Cross-Ventilation", text: "Open external doors and ground-level windows wide to allow fresh outdoor air to disperse heavy pooling gas." },
-      { num: "04", title: "Evacuate the Building", text: "Escort all family members, occupants, and pets outside immediately to a safe, well-ventilated outdoor assembly point." },
-      { num: "05", title: "Call Emergency Services", text: "Once outside in fresh air, call the National Gas Emergency Service on 0800 111 999 or 999 if there is immediate fire danger." }
+      {
+        num: "01",
+        title: "Isolate Gas Supply",
+        text: "Turn the handwheel on your gas cylinder fully clockwise to shut off supply, or flip the emergency control valve to OFF.",
+      },
+      {
+        num: "02",
+        title: "Eliminate Ignition Sources",
+        text: "Extinguish all candles, matches, and cigarettes. Do not touch power points, light switches, or circuit breakers.",
+      },
+      {
+        num: "03",
+        title: "Maximise Cross-Ventilation",
+        text: "Open external doors and ground-level windows wide to allow fresh outdoor air to disperse heavy pooling gas.",
+      },
+      {
+        num: "04",
+        title: "Evacuate the Building",
+        text: "Escort all family members, occupants, and pets outside immediately to a safe, well-ventilated outdoor assembly point.",
+      },
+      {
+        num: "05",
+        title: "Call Emergency Services",
+        text: "Once outside in fresh air, call the National Gas Emergency Service on 0800 111 999 or 999 if there is immediate fire danger.",
+      },
     ],
     whatToCheck: [
       "Check if any cooker burner control dials or heater knobs were accidentally left open without being lit",
       "Inspect flexible rubber pigtails and regulator connections for audible hissing or obvious disconnections",
       "Check automatic changeover valve indicator to confirm if it has tripped or shows a continuous red signal",
-      "Inspect nearby cellar vents, basement entrances, and external drains for pooling gas odorant"
+      "Inspect nearby cellar vents, basement entrances, and external drains for pooling gas odorant",
     ],
     whatToAvoid: [
       "NEVER strike matches, lighters, spark igniters, or use battery tools inside the contaminated property",
       "NEVER turn electrical switches on OR off — even flicking a light off generates a microscopic internal electrical spark",
       "NEVER enter cellars, basements, or inspection pits as LPG vapor is 1.5 to 2.0 times heavier than air",
       "NEVER attempt DIY repairs on gas valves, regulators, or fixed copper pipework while gas is leaking",
-      "NEVER re-enter the building until certified emergency engineers have declared the premises 100% safe"
+      "NEVER re-enter the building until certified emergency engineers have declared the premises 100% safe",
     ],
-    whenToLeave: "Evacuate immediately without delay if you detect a strong, overwhelming gas odour, hear loud high-pressure hissing from a cylinder valve or pipe joint, or if anyone in the building experiences dizziness, nausea, headaches, or difficulty breathing.",
-    afterLeaving: "Once outside, stay at least 15 metres upwind from the building. Keep everyone away from property entry points and prevent anyone from re-entering until Gas Safe engineers or the Fire & Rescue Service give formal clearance.",
-    whenToCallPro: "A certified Gas Safe registered engineer must be called whenever a gas leak is confirmed, a regulator has frozen or vented, pipework has suffered mechanical impact, or following any emergency isolation before supply is restored.",
+    whenToLeave:
+      "Evacuate immediately without delay if you detect a strong, overwhelming gas odour, hear loud high-pressure hissing from a cylinder valve or pipe joint, or if anyone in the building experiences dizziness, nausea, headaches, or difficulty breathing.",
+    afterLeaving:
+      "Once outside, stay at least 15 metres upwind from the building. Keep everyone away from property entry points and prevent anyone from re-entering until Gas Safe engineers or the Fire & Rescue Service give formal clearance.",
+    whenToCallPro:
+      "A certified Gas Safe registered engineer must be called whenever a gas leak is confirmed, a regulator has frozen or vented, pipework has suffered mechanical impact, or following any emergency isolation before supply is restored.",
     recapPoints: [
       "Turn off cylinder valve clockwise to isolate gas flow",
       "Do NOT operate any electrical switches or naked flames",
       "Open doors and windows wide for cross-ventilation",
       "Evacuate all occupants outdoors to a safe distance",
-      "Call National Gas Emergency (0800 111 999) from outside"
-    ]
+      "Call National Gas Emergency (0800 111 999) from outside",
+    ],
   },
 
   // 2. Using gas safely
@@ -351,46 +451,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Tips for safe everyday use in your home or business.",
     image: guidanceUsingGasSafelyImg,
     icon: BbqBurnerIcon,
-    overview: "Comprehensive safety protocols and proven operational standards for domestic gas cookers, hobs, space heaters, and hot water systems.",
+    overview:
+      "Comprehensive safety protocols and proven operational standards for domestic gas cookers, hobs, space heaters, and hot water systems.",
     situationTitle: "SAFE EVERYDAY APPLIANCE PROTOCOLS",
-    situationText: "LPG is one of the cleanest, most efficient heating fuels available when used properly. Maintaining correct combustion conditions, good room airflow, and regular visual safety monitoring prevents carbon monoxide formation and fire hazards.",
+    situationText:
+      "LPG is one of the cleanest, most efficient heating fuels available when used properly. Maintaining correct combustion conditions, good room airflow, and regular visual safety monitoring prevents carbon monoxide formation and fire hazards.",
     immediateActions: [
       "Ensure rooms containing gas appliances have unobstructed permanent ventilation grilles and window trickle vents.",
       "Check burner flames daily: healthy LPG combustion produces a crisp, steady, vibrant blue flame with sharp inner cones.",
       "Never leave portable indoor cabinet gas heaters on unattended or running overnight while occupants are asleep.",
       "Maintain at least 1 metre clearance between room heaters and soft furnishings, curtains, bedding, and furniture.",
-      "Install audible Carbon Monoxide (CO) alarms certified to BS EN 50291 in every living room and bedroom near gas appliances."
+      "Install audible Carbon Monoxide (CO) alarms certified to BS EN 50291 in every living room and bedroom near gas appliances.",
     ],
     steps: [
-      { num: "01", title: "Ensure Constant Airflow", text: "Never block wall vents, air bricks, or trickle vents. Proper air exchange supplies essential oxygen for clean combustion." },
-      { num: "02", title: "Monitor Flame Quality", text: "Look for stable blue flames. Yellow, floppy, lazy flames or heavy soot indicate incomplete combustion and carbon monoxide risks." },
-      { num: "03", title: "Keep Combustibles Clear", text: "Maintain strict separation distances. Keep kitchen towels, grease, paper, curtains, and aerosol cans away from hot cookers." },
-      { num: "04", title: "Test CO Alarms Monthly", text: "Press the test button on all household carbon monoxide detectors once every month and replace batteries annually." },
-      { num: "05", title: "Schedule Annual Service", text: "Have a Gas Safe registered technician inspect and service your appliances, flue pipes, and seals every 12 months." }
+      {
+        num: "01",
+        title: "Ensure Constant Airflow",
+        text: "Never block wall vents, air bricks, or trickle vents. Proper air exchange supplies essential oxygen for clean combustion.",
+      },
+      {
+        num: "02",
+        title: "Monitor Flame Quality",
+        text: "Look for stable blue flames. Yellow, floppy, lazy flames or heavy soot indicate incomplete combustion and carbon monoxide risks.",
+      },
+      {
+        num: "03",
+        title: "Keep Combustibles Clear",
+        text: "Maintain strict separation distances. Keep kitchen towels, grease, paper, curtains, and aerosol cans away from hot cookers.",
+      },
+      {
+        num: "04",
+        title: "Test CO Alarms Monthly",
+        text: "Press the test button on all household carbon monoxide detectors once every month and replace batteries annually.",
+      },
+      {
+        num: "05",
+        title: "Schedule Annual Service",
+        text: "Have a Gas Safe registered technician inspect and service your appliances, flue pipes, and seals every 12 months.",
+      },
     ],
     whatToCheck: [
       "Check that burner flame failure safety devices (FFD) extinguish gas flow within 90 seconds if the flame blows out",
       "Inspect pan supports to ensure cookware sits level and does not obstruct primary air aeration ports",
       "Examine cooker hoods and extractor grease filters: clean monthly to eliminate grease accumulation",
-      "Check heater gas hoses for any signs of cracking, fraying, pet teeth marks, or surface stiffening"
+      "Check heater gas hoses for any signs of cracking, fraying, pet teeth marks, or surface stiffening",
     ],
     whatToAvoid: [
       "NEVER use outdoor patio heaters, gas barbecues, or camping stoves inside enclosed rooms, conservatories, or tents",
       "NEVER use gas cooking hobs or open ovens as an impromptu room space heater during cold weather",
       "NEVER drape wet laundry, towels, or clothing directly over portable gas heaters to dry",
       "NEVER ignore soot, dark yellow flame tips, brown scorch marks, or unusual acrid odours around appliances",
-      "NEVER modify appliance jet sizes or attempt DIY conversions between natural gas and LPG"
+      "NEVER modify appliance jet sizes or attempt DIY conversions between natural gas and LPG",
     ],
-    whenToLeave: "If your Carbon Monoxide alarm sounds continuously, or if anyone develops headaches, dizziness, unexplained tiredness, nausea, or visual disturbance, shut off the appliance, open windows, and leave the property immediately for medical assessment.",
-    afterLeaving: "Breathe fresh outdoor air deeply. Seek medical attention immediately if CO poisoning symptoms persist. Contact a qualified Gas Safe technician to inspect all heating appliances before re-lighting.",
-    whenToCallPro: "Contact a Gas Safe registered engineer if an appliance burner produces yellow flames, leaves black soot on pans, fails to ignite smoothly, or if pilot lights repeatedly blow out.",
+    whenToLeave:
+      "If your Carbon Monoxide alarm sounds continuously, or if anyone develops headaches, dizziness, unexplained tiredness, nausea, or visual disturbance, shut off the appliance, open windows, and leave the property immediately for medical assessment.",
+    afterLeaving:
+      "Breathe fresh outdoor air deeply. Seek medical attention immediately if CO poisoning symptoms persist. Contact a qualified Gas Safe technician to inspect all heating appliances before re-lighting.",
+    whenToCallPro:
+      "Contact a Gas Safe registered engineer if an appliance burner produces yellow flames, leaves black soot on pans, fails to ignite smoothly, or if pilot lights repeatedly blow out.",
     recapPoints: [
       "Burners must display clean, steady blue flames",
       "Never block permanent ventilation openings or air bricks",
       "Install and test BS EN 50291 Carbon Monoxide alarms",
       "Never use outdoor cooking gear or patio heaters indoors",
-      "Book annual appliance servicing with a Gas Safe engineer"
-    ]
+      "Book annual appliance servicing with a Gas Safe engineer",
+    ],
   },
 
   // 3. Connections
@@ -401,46 +526,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "How to connect appliances and fittings safely.",
     image: guidanceConnectionsImg,
     icon: ConnectingBottlesIcon,
-    overview: "Step-by-step technical guidance on connecting, tightening, testing, and disconnecting LPG regulators, automatic changeover valves, pigtails, and flexible hoses.",
+    overview:
+      "Step-by-step technical guidance on connecting, tightening, testing, and disconnecting LPG regulators, automatic changeover valves, pigtails, and flexible hoses.",
     situationTitle: "CYLINDER & REGULATOR CONNECTION PROTOCOLS",
-    situationText: "Safe gas connections depend on correct thread engagement, undamaged rubber seals ('O' rings), appropriate spanners, and systematic leak detection. Propane and Butane use completely different regulator fittings and operating pressures.",
+    situationText:
+      "Safe gas connections depend on correct thread engagement, undamaged rubber seals ('O' rings), appropriate spanners, and systematic leak detection. Propane and Butane use completely different regulator fittings and operating pressures.",
     immediateActions: [
       "Always extinguish naked flames, pilot lights, and cigarettes before changing any gas cylinder.",
       "Check the replacement cylinder label to confirm correct gas type: Propane (Red) or Butane (Blue).",
       "Inspect the brass bullnose connector and rubber sealing washer for hairline cracks, dirt, or flattening.",
       "Ensure the appliance control knobs and cylinder handwheel are turned fully OFF before connecting.",
-      "Perform a 50/50 soapy water bubble test or certified leak detection spray over all joints after connecting."
+      "Perform a 50/50 soapy water bubble test or certified leak detection spray over all joints after connecting.",
     ],
     steps: [
-      { num: "01", title: "Turn Off Old Cylinder", text: "Turn the cylinder handwheel fully clockwise to shut off the valve, or flip the clip-on regulator lever to the OFF position." },
-      { num: "02", title: "Carefully Disconnect Fitting", text: "For Propane: turn nut clockwise (LH reverse thread) with a Calor spanner. For Butane: squeeze release collar and lift upwards." },
-      { num: "03", title: "Inspect Seal & Threads", text: "Wipe clean the mating surfaces. Check the rubber 'O' ring washer on the regulator nozzle for cracks or degradation." },
-      { num: "04", title: "Connect to New Cylinder", text: "Align threads straight. For Propane: turn nut anti-clockwise (LH) by hand, then tighten firmly with spanner. Do not overtighten." },
-      { num: "05", title: "Perform Bubble Leak Test", text: "Open cylinder valve slowly. Apply 50/50 soapy water across all joints. If growing bubbles appear, shut valve immediately and reseat." }
+      {
+        num: "01",
+        title: "Turn Off Old Cylinder",
+        text: "Turn the cylinder handwheel fully clockwise to shut off the valve, or flip the clip-on regulator lever to the OFF position.",
+      },
+      {
+        num: "02",
+        title: "Carefully Disconnect Fitting",
+        text: "For Propane: turn nut clockwise (LH reverse thread) with a Calor spanner. For Butane: squeeze release collar and lift upwards.",
+      },
+      {
+        num: "03",
+        title: "Inspect Seal & Threads",
+        text: "Wipe clean the mating surfaces. Check the rubber 'O' ring washer on the regulator nozzle for cracks or degradation.",
+      },
+      {
+        num: "04",
+        title: "Connect to New Cylinder",
+        text: "Align threads straight. For Propane: turn nut anti-clockwise (LH) by hand, then tighten firmly with spanner. Do not overtighten.",
+      },
+      {
+        num: "05",
+        title: "Perform Bubble Leak Test",
+        text: "Open cylinder valve slowly. Apply 50/50 soapy water across all joints. If growing bubbles appear, shut valve immediately and reseat.",
+      },
     ],
     whatToCheck: [
       "Inspect high-pressure pigtail hoses for manufacturing date stamps: replace all flexible LPG hoses every 5 years",
       "Check that propane Left-Hand (LH) reverse-threaded nuts are free from cross-threading or damaged flats",
       "Verify that clip-on regulators for butane cylinders click down firmly and lock securely into the neck groove",
-      "Ensure copper gas pipework is anchored with non-combustible clips and not subject to mechanical stress"
+      "Ensure copper gas pipework is anchored with non-combustible clips and not subject to mechanical stress",
     ],
     whatToAvoid: [
       "NEVER use PTFE plumber's tape, jointing paste, or sealants on brass bullnose regulator connections",
       "NEVER use matches, lighters, or any naked flame to test for connection leaks",
       "NEVER use excessive force or extend spanner handles with pipe bars; brass fittings can shear or strip",
       "NEVER kink, stretch, twist, or route rubber gas hoses behind hot cooker backs or oven panels exceeding 50°C",
-      "NEVER attempt to connect a propane regulator to a butane bottle or vice versa"
+      "NEVER attempt to connect a propane regulator to a butane bottle or vice versa",
     ],
-    whenToLeave: "If you hear loud continuous hissing from the regulator joint upon opening the valve, or if soapy water produces rapid frothing that does not stop after gentle re-tightening, shut the cylinder valve and step back into fresh air.",
-    afterLeaving: "Keep the cylinder isolated outdoors. If the cylinder neck valve itself continues to hiss or leak despite being turned off, keep everyone 15m clear and call John Stayte Services or emergency services immediately.",
-    whenToCallPro: "Contact our technical team or a certified Gas Safe engineer if you require high-pressure auto-changeover manifold installation, rigid copper pipework extension, or replacement of worn regulator valves.",
+    whenToLeave:
+      "If you hear loud continuous hissing from the regulator joint upon opening the valve, or if soapy water produces rapid frothing that does not stop after gentle re-tightening, shut the cylinder valve and step back into fresh air.",
+    afterLeaving:
+      "Keep the cylinder isolated outdoors. If the cylinder neck valve itself continues to hiss or leak despite being turned off, keep everyone 15m clear and call John Stayte Services or emergency services immediately.",
+    whenToCallPro:
+      "Contact our technical team or a certified Gas Safe engineer if you require high-pressure auto-changeover manifold installation, rigid copper pipework extension, or replacement of worn regulator valves.",
     recapPoints: [
       "Propane uses Left-Hand (LH) reverse threads (turn anti-clockwise to tighten)",
       "Always inspect rubber 'O' ring seals before fitting",
       "Test joints with soapy water — never with a flame",
       "Replace flexible rubber hoses every 5 years",
-      "Do not use PTFE tape on brass bullnose connections"
-    ]
+      "Do not use PTFE tape on brass bullnose connections",
+    ],
   },
 
   // 4. Storage advice
@@ -451,46 +601,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Store cylinders correctly and keep everyone safe.",
     image: guidanceStorageAdviceImg,
     icon: StoringBottleIcon,
-    overview: "UK statutory guidelines, ventilation criteria, and distance separation standards for domestic and commercial LPG cylinder storage.",
+    overview:
+      "UK statutory guidelines, ventilation criteria, and distance separation standards for domestic and commercial LPG cylinder storage.",
     situationTitle: "OUTDOOR LPG STORAGE PRINCIPLES",
-    situationText: "Because LPG vapour is significantly denser than ambient air, cylinders must always be stored outdoors in well-ventilated locations on a stable, level surface away from ground-level drainage channels, cellars, and basement entries.",
+    situationText:
+      "Because LPG vapour is significantly denser than ambient air, cylinders must always be stored outdoors in well-ventilated locations on a stable, level surface away from ground-level drainage channels, cellars, and basement entries.",
     immediateActions: [
       "Always store LPG gas bottles outdoors in a well-ventilated location on a firm, level, paved concrete base.",
       "Keep all cylinders standing vertically upright at all times, with valves pointing straight upwards.",
       "Maintain a minimum 1-metre separation distance from openable windows, doors, air bricks, and cellar grates.",
       "Keep cylinders at least 3 metres away from sources of ignition, electrical switches, barbecues, and bonfires.",
-      "Secure cylinders firmly with heavy-duty wall chains or lockable safety brackets to prevent accidental tipping."
+      "Secure cylinders firmly with heavy-duty wall chains or lockable safety brackets to prevent accidental tipping.",
     ],
     steps: [
-      { num: "01", title: "Select Outdoor Location", text: "Choose a sheltered outdoor location with natural cross-ventilation, on solid level paving or concrete slabs." },
-      { num: "02", title: "Maintain Boundary Clearances", text: "Keep at least 1m from doors and air vents, and at least 3m from electrical sockets, air conditioning units, and fire pits." },
-      { num: "03", title: "Secure in Upright Position", text: "Position cylinders vertically upright and secure with wall safety chains or inside a lockable galvanised steel cage." },
-      { num: "04", title: "Segregate Full & Empty Bottles", text: "Keep full and empty cylinders clearly labeled and separated. Refit plastic protective valve caps when disconnected." },
-      { num: "05", title: "Keep Perimeter Clear", text: "Keep the immediate 3-metre radius free from dry leaves, weeds, paints, petrol, solvents, and combustible rubbish." }
+      {
+        num: "01",
+        title: "Select Outdoor Location",
+        text: "Choose a sheltered outdoor location with natural cross-ventilation, on solid level paving or concrete slabs.",
+      },
+      {
+        num: "02",
+        title: "Maintain Boundary Clearances",
+        text: "Keep at least 1m from doors and air vents, and at least 3m from electrical sockets, air conditioning units, and fire pits.",
+      },
+      {
+        num: "03",
+        title: "Secure in Upright Position",
+        text: "Position cylinders vertically upright and secure with wall safety chains or inside a lockable galvanised steel cage.",
+      },
+      {
+        num: "04",
+        title: "Segregate Full & Empty Bottles",
+        text: "Keep full and empty cylinders clearly labeled and separated. Refit plastic protective valve caps when disconnected.",
+      },
+      {
+        num: "05",
+        title: "Keep Perimeter Clear",
+        text: "Keep the immediate 3-metre radius free from dry leaves, weeds, paints, petrol, solvents, and combustible rubbish.",
+      },
     ],
     whatToCheck: [
       "Check that cylinder valve dust caps or sealing plugs are firmly fitted to all disconnected cylinders",
       "Verify that ground-level drains and cellar grates within 2 metres are fitted with water traps or sealed covers",
       "Inspect wall chain anchors and padlocks to ensure bottles cannot be knocked over by pets or vehicles",
-      "Confirm that storage areas are not enclosed by non-breathable plastic tarpaulins or unventilated wooden boxes"
+      "Confirm that storage areas are not enclosed by non-breathable plastic tarpaulins or unventilated wooden boxes",
     ],
     whatToAvoid: [
       "NEVER store LPG cylinders inside residential rooms, hallways, porches, cellars, basements, or under staircases",
       "NEVER store gas cylinders inside unventilated garden sheds, enclosed garages, or lock-ups",
       "NEVER lay gas cylinders down horizontally on their sides during storage or operation",
       "NEVER store paints, thinners, white spirit, petrol, oil, or weedkillers in the same enclosure as LPG cylinders",
-      "NEVER stack gas cylinders on top of one another unless using certified modular stacking racks"
+      "NEVER stack gas cylinders on top of one another unless using certified modular stacking racks",
     ],
-    whenToLeave: "If an outdoor storage area has pooled gas odour or a cylinder valve is venting vapour under thermal pressure, stay upwind at least 15 metres away and prevent anyone from approaching with vehicles or electrical equipment.",
-    afterLeaving: "Keep the area cordoned off. Alert neighbours if wind carries gas towards adjacent buildings, and call emergency services immediately.",
-    whenToCallPro: "Contact John Stayte Services on 01452 741234 to install heavy-duty galvanised cylinder cages, auto-changeover manifolds, or to arrange commercial storage safety surveys.",
+    whenToLeave:
+      "If an outdoor storage area has pooled gas odour or a cylinder valve is venting vapour under thermal pressure, stay upwind at least 15 metres away and prevent anyone from approaching with vehicles or electrical equipment.",
+    afterLeaving:
+      "Keep the area cordoned off. Alert neighbours if wind carries gas towards adjacent buildings, and call emergency services immediately.",
+    whenToCallPro:
+      "Contact John Stayte Services on 01452 741234 to install heavy-duty galvanised cylinder cages, auto-changeover manifolds, or to arrange commercial storage safety surveys.",
     recapPoints: [
       "Store cylinders outdoors on a firm, level, paved base",
       "Always keep bottles standing vertically upright",
       "Maintain 1m from doors/windows and 3m from ignition sources",
       "Never store LPG bottles in sheds, cellars, or garages",
-      "Secure bottles with wall chains or lockable cages"
-    ]
+      "Secure bottles with wall chains or lockable cages",
+    ],
   },
 
   // 5. Transporting gas
@@ -501,46 +676,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Guidance for transporting gas cylinders safely.",
     image: guidanceTransportingGasImg,
     icon: TransportCarIcon,
-    overview: "Legal requirements, weight limits, vehicle ventilation rules, and securing methods for carrying bottled gas in cars, vans, and commercial vehicles.",
+    overview:
+      "Legal requirements, weight limits, vehicle ventilation rules, and securing methods for carrying bottled gas in cars, vans, and commercial vehicles.",
     situationTitle: "VEHICLE TRANSPORT SAFETY PROTOCOLS",
-    situationText: "Transporting gas bottles requires careful preparation to prevent movement during braking, cornering, or acceleration. Unsecured cylinders can cause severe damage or valve shearing in an impact.",
+    situationText:
+      "Transporting gas bottles requires careful preparation to prevent movement during braking, cornering, or acceleration. Unsecured cylinders can cause severe damage or valve shearing in an impact.",
     immediateActions: [
       "Transport all cylinders in an upright vertical position, firmly strapped with heavy-duty ratchet straps.",
       "Ensure the cylinder valve is fully closed (turned clockwise) and protective transport caps/plugs are tightly fitted.",
       "Maintain active cross-ventilation throughout the journey by keeping vehicle windows partially open.",
       "Limit vehicle load: carry no more than 2 portable cylinders (maximum 50kg total LPG) in a private passenger car.",
-      "Unload gas cylinders immediately upon reaching your destination — never leave cylinders unattended in a parked car."
+      "Unload gas cylinders immediately upon reaching your destination — never leave cylinders unattended in a parked car.",
     ],
     steps: [
-      { num: "01", title: "Close Valve & Fit Cap", text: "Confirm the cylinder handwheel is closed tight. Screw in or snap on the protective valve transit cap." },
-      { num: "02", title: "Position Vertically", text: "Place the cylinder upright on the vehicle boot floor or cargo bay against a fixed bulkhead. Never lay flat." },
-      { num: "03", title: "Secure with Ratchet Straps", text: "Use heavy-duty tie-down straps anchored to vehicle chassis tie points to prevent tilting, sliding, or rolling." },
-      { num: "04", title: "Enable Constant Ventilation", text: "Lower side windows slightly or ensure cargo ventilation vents are open to disperse any trace vapour during transit." },
-      { num: "05", title: "Drive Carefully & Unload Fast", text: "Avoid aggressive braking or cornering. Drive directly to your destination and unload cylinders immediately." }
+      {
+        num: "01",
+        title: "Close Valve & Fit Cap",
+        text: "Confirm the cylinder handwheel is closed tight. Screw in or snap on the protective valve transit cap.",
+      },
+      {
+        num: "02",
+        title: "Position Vertically",
+        text: "Place the cylinder upright on the vehicle boot floor or cargo bay against a fixed bulkhead. Never lay flat.",
+      },
+      {
+        num: "03",
+        title: "Secure with Ratchet Straps",
+        text: "Use heavy-duty tie-down straps anchored to vehicle chassis tie points to prevent tilting, sliding, or rolling.",
+      },
+      {
+        num: "04",
+        title: "Enable Constant Ventilation",
+        text: "Lower side windows slightly or ensure cargo ventilation vents are open to disperse any trace vapour during transit.",
+      },
+      {
+        num: "05",
+        title: "Drive Carefully & Unload Fast",
+        text: "Avoid aggressive braking or cornering. Drive directly to your destination and unload cylinders immediately.",
+      },
     ],
     whatToCheck: [
       "Check the vehicle cargo area for loose tools, sharp metal objects, or corrosive battery fluids before loading",
       "Confirm that a 2kg dry powder fire extinguisher conforming to BS EN 3 is carried inside the vehicle",
       "Verify that transport straps are tightened across the middle barrel of the cylinder",
-      "Ensure the vehicle is not parked in direct hot sunlight or enclosed underground parking facilities"
+      "Ensure the vehicle is not parked in direct hot sunlight or enclosed underground parking facilities",
     ],
     whatToAvoid: [
       "NEVER transport gas cylinders lying flat horizontally on their side in the boot, back seat, or footwell",
       "NEVER smoke, vape, or use open flames inside or within 5 metres of a vehicle transporting gas cylinders",
       "NEVER leave gas cylinders inside a parked passenger car, boot, or van in hot weather",
       "NEVER transport cylinders with connected regulators, hoses, or appliances attached",
-      "NEVER exceed the statutory carriage threshold without ADR certification and commercial HAZCHEM signage"
+      "NEVER exceed the statutory carriage threshold without ADR certification and commercial HAZCHEM signage",
     ],
-    whenToLeave: "If you detect gas odour inside your vehicle while driving, pull over immediately to a safe, open roadside location, turn off the engine, exit the vehicle with all passengers, and leave the doors/tailgate open to ventilate.",
-    afterLeaving: "Stand at least 15 metres away from the vehicle. Do not use electronic key fobs or mobile phones near the vehicle. Call John Stayte Services or emergency services if the leak cannot be stopped by closing the handwheel.",
-    whenToCallPro: "Save the hassle of vehicle transport: John Stayte Services provides fast, certified local delivery across Gloucestershire straight to your door: 01452 741234.",
+    whenToLeave:
+      "If you detect gas odour inside your vehicle while driving, pull over immediately to a safe, open roadside location, turn off the engine, exit the vehicle with all passengers, and leave the doors/tailgate open to ventilate.",
+    afterLeaving:
+      "Stand at least 15 metres away from the vehicle. Do not use electronic key fobs or mobile phones near the vehicle. Call John Stayte Services or emergency services if the leak cannot be stopped by closing the handwheel.",
+    whenToCallPro:
+      "Save the hassle of vehicle transport: John Stayte Services provides fast, certified local delivery across Gloucestershire straight to your door: 01452 741234.",
     recapPoints: [
       "Keep cylinders upright and secured with ratchet straps",
       "Ensure cylinder valves are tightly closed with transit caps",
       "Keep vehicle windows open for active cross-ventilation",
       "Never leave gas bottles unattended in a parked car",
-      "Maximum 2 cylinders (50kg LPG) in a private car"
-    ]
+      "Maximum 2 cylinders (50kg LPG) in a private car",
+    ],
   },
 
   // 6. Checks & servicing
@@ -551,46 +751,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Why regular checks and servicing are important.",
     image: guidanceChecksServicingImg,
     icon: ToolsInspectionIcon,
-    overview: "Routine inspection protocols, safety audits, and statutory Gas Safe certification procedures to ensure long-term appliance safety and performance.",
+    overview:
+      "Routine inspection protocols, safety audits, and statutory Gas Safe certification procedures to ensure long-term appliance safety and performance.",
     situationTitle: "STATUTORY INSPECTION & SERVICING STANDARDS",
-    situationText: "Gas appliances, regulators, and flexible rubber hoses degrade naturally over time due to thermal cycling, UV exposure, and mechanical vibration. Regular servicing guarantees fuel efficiency, carbon monoxide safety, and warranty compliance.",
+    situationText:
+      "Gas appliances, regulators, and flexible rubber hoses degrade naturally over time due to thermal cycling, UV exposure, and mechanical vibration. Regular servicing guarantees fuel efficiency, carbon monoxide safety, and warranty compliance.",
     immediateActions: [
       "Have all LPG appliances, pipework, and regulators inspected and serviced annually by a certified Gas Safe registered engineer.",
       "Perform a visual inspection of external hoses, changeover valves, and pipe clamps every 3 months.",
       "Landlords must obtain an annual Landlord Gas Safety Record (CP12) from a Gas Safe engineer for all rental properties.",
       "Monitor automatic changeover indicators regularly to identify when the primary cylinder has switched to reserve.",
-      "Replace LPG rubber pigtails and flexible hoses every 5 years, or immediately if any surface perishing is observed."
+      "Replace LPG rubber pigtails and flexible hoses every 5 years, or immediately if any surface perishing is observed.",
     ],
     steps: [
-      { num: "01", title: "Check Hose Manufacture Dates", text: "Inspect the printed date stamp along all flexible rubber hoses. Replace any hose that is more than 5 years old." },
-      { num: "02", title: "Conduct Visual Soundness Checks", text: "Look for cracked rubber, corrosion on brass fittings, damaged pipe clips, and blocked burner aeration ports." },
-      { num: "03", title: "Test Flue & Ventilation Paths", text: "Check that external boiler flue terminals, balanced flues, and room air grilles are clear of bird nests, leaves, and debris." },
-      { num: "04", title: "Verify Automatic Changeover", text: "Look at the changeover valve indicator window: green indicates normal primary feed, red indicates primary bottle is empty." },
-      { num: "05", title: "Book Gas Safe Annual Service", text: "Schedule your annual comprehensive service with John Stayte Services to test operating pressures, seals, and flue gases." }
+      {
+        num: "01",
+        title: "Check Hose Manufacture Dates",
+        text: "Inspect the printed date stamp along all flexible rubber hoses. Replace any hose that is more than 5 years old.",
+      },
+      {
+        num: "02",
+        title: "Conduct Visual Soundness Checks",
+        text: "Look for cracked rubber, corrosion on brass fittings, damaged pipe clips, and blocked burner aeration ports.",
+      },
+      {
+        num: "03",
+        title: "Test Flue & Ventilation Paths",
+        text: "Check that external boiler flue terminals, balanced flues, and room air grilles are clear of bird nests, leaves, and debris.",
+      },
+      {
+        num: "04",
+        title: "Verify Automatic Changeover",
+        text: "Look at the changeover valve indicator window: green indicates normal primary feed, red indicates primary bottle is empty.",
+      },
+      {
+        num: "05",
+        title: "Book Gas Safe Annual Service",
+        text: "Schedule your annual comprehensive service with John Stayte Services to test operating pressures, seals, and flue gases.",
+      },
     ],
     whatToCheck: [
       "Check regulator breather vents to confirm they point downwards and are free from spider webs or water ingress",
       "Check that copper gas pipework is supported with non-combustible pipe clips and free from mechanical strain",
       "Inspect appliance burner flames for uniform blue flame cones across all ports without lifting or flash-back",
-      "Verify that high-visibility safety shut-off tags and emergency contact numbers are legible on manifold controls"
+      "Verify that high-visibility safety shut-off tags and emergency contact numbers are legible on manifold controls",
     ],
     whatToAvoid: [
       "NEVER attempt DIY modifications, servicing, or disassembly of gas valves, burner jets, or internal parts",
       "NEVER ignore minor hairline rubber cracks, surface perishing, or faint intermittent gas odours",
       "NEVER hire an unregistered tradesperson; always verify Gas Safe ID cards before allowing work to begin",
       "NEVER paint over brass regulator relief vents, data plates, or emergency isolation valves",
-      "NEVER bypass safety thermostats, flame failure devices (FFD), or emergency gas interlocks"
+      "NEVER bypass safety thermostats, flame failure devices (FFD), or emergency gas interlocks",
     ],
-    whenToLeave: "If an appliance produces pungent stinging fumes, black soot, or makes loud explosive booming sounds during ignition, shut off the gas supply and leave the room immediately.",
-    afterLeaving: "Do not attempt to re-light the appliance. Keep the room ventilated and contact a Gas Safe engineer to diagnose the flue or burner failure.",
-    whenToCallPro: "Annual servicing, boiler commissioning, landlord CP12 certificates, and pipework pressure soundness tests must be carried out exclusively by Gas Safe registered engineers: 01452 741234.",
+    whenToLeave:
+      "If an appliance produces pungent stinging fumes, black soot, or makes loud explosive booming sounds during ignition, shut off the gas supply and leave the room immediately.",
+    afterLeaving:
+      "Do not attempt to re-light the appliance. Keep the room ventilated and contact a Gas Safe engineer to diagnose the flue or burner failure.",
+    whenToCallPro:
+      "Annual servicing, boiler commissioning, landlord CP12 certificates, and pipework pressure soundness tests must be carried out exclusively by Gas Safe registered engineers: 01452 741234.",
     recapPoints: [
       "Schedule annual servicing with a Gas Safe registered engineer",
       "Replace flexible rubber gas hoses every 5 years",
       "Landlords must obtain an annual CP12 Gas Safety Record",
       "Check auto-changeover indicators to monitor fuel reserves",
-      "Never attempt DIY repairs on gas hardware or pipework"
-    ]
+      "Never attempt DIY repairs on gas hardware or pipework",
+    ],
   },
 
   // 7. Business
@@ -601,46 +826,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "LPG safety guidance for hospitality, catering and trade.",
     image: guidanceBusinessImg,
     icon: ForkliftBusinessIcon,
-    overview: "Comprehensive statutory safety guidance for commercial kitchens, mobile catering trailers, forklift fleets, agricultural crop dryers, and industrial manifold installations.",
+    overview:
+      "Comprehensive statutory safety guidance for commercial kitchens, mobile catering trailers, forklift fleets, agricultural crop dryers, and industrial manifold installations.",
     situationTitle: "COMMERCIAL LPG COMPLIANCE & DSEAR REGULATIONS",
-    situationText: "Commercial LPG installations operate under strict UK health and safety legislation, including the Dangerous Substances and Explosive Atmospheres Regulations (DSEAR 2002) and Gas Safety (Installation and Use) Regulations 1998.",
+    situationText:
+      "Commercial LPG installations operate under strict UK health and safety legislation, including the Dangerous Substances and Explosive Atmospheres Regulations (DSEAR 2002) and Gas Safety (Installation and Use) Regulations 1998.",
     immediateActions: [
       "Ensure all commercial kitchens operating under mechanical extraction hoods have an active Gas Interlock System (GIS).",
       "Multi-cylinder manifold banks must have dedicated auto-changeover regulators and external thermal fire-stop valves.",
       "Train all kitchen and operating staff in emergency gas isolation procedures and display clear shut-off signage.",
       "Store forklift (FLT) cylinders in secure, lockable outdoor galvanised steel cages segregated from oxidising gases.",
-      "Conduct regular written risk assessments and maintain up-to-date statutory commercial gas safety certificates."
+      "Conduct regular written risk assessments and maintain up-to-date statutory commercial gas safety certificates.",
     ],
     steps: [
-      { num: "01", title: "Verify Gas Interlock Function", text: "Test the Gas Interlock System (GIS) at the start of every shift to confirm gas will not flow without extraction running." },
-      { num: "02", title: "Inspect High-Pressure Manifolds", text: "Check multi-bottle headers, pigtails, non-return valves, and auto-changeover indicators for leaks and soundness." },
-      { num: "03", title: "Secure FLT Cylinder Storage", text: "Store forklift bottles in a dedicated outdoor cage at least 3m from openings, clear of vehicle traffic and pedestrian routes." },
-      { num: "04", title: "Train Staff in Emergency Steps", text: "Conduct regular drills ensuring staff know the location of emergency slam-shut buttons and external isolation valves." },
-      { num: "05", title: "Maintain Commercial Records", text: "Keep annual Non-Domestic Gas Safety inspection certificates on file for Environmental Health and insurance audits." }
+      {
+        num: "01",
+        title: "Verify Gas Interlock Function",
+        text: "Test the Gas Interlock System (GIS) at the start of every shift to confirm gas will not flow without extraction running.",
+      },
+      {
+        num: "02",
+        title: "Inspect High-Pressure Manifolds",
+        text: "Check multi-bottle headers, pigtails, non-return valves, and auto-changeover indicators for leaks and soundness.",
+      },
+      {
+        num: "03",
+        title: "Secure FLT Cylinder Storage",
+        text: "Store forklift bottles in a dedicated outdoor cage at least 3m from openings, clear of vehicle traffic and pedestrian routes.",
+      },
+      {
+        num: "04",
+        title: "Train Staff in Emergency Steps",
+        text: "Conduct regular drills ensuring staff know the location of emergency slam-shut buttons and external isolation valves.",
+      },
+      {
+        num: "05",
+        title: "Maintain Commercial Records",
+        text: "Keep annual Non-Domestic Gas Safety inspection certificates on file for Environmental Health and insurance audits.",
+      },
     ],
     whatToCheck: [
       "Check that commercial kitchen extraction canopy grease filters and ductwork are cleaned to TR19 standards",
       "Inspect forklift quick-release couplings and seal rings for gas weeping before starting engine",
       "Check that emergency gas shut-off push buttons (slam switches) are fully unobstructed and clearly labeled",
-      "Verify that high-pressure commercial pigtails meet BS EN 16436-1 Class 3 high-pressure ratings"
+      "Verify that high-pressure commercial pigtails meet BS EN 16436-1 Class 3 high-pressure ratings",
     ],
     whatToAvoid: [
       "NEVER use domestic single-stage regulators on high-demand commercial catering equipment",
       "NEVER obstruct emergency exit routes, fire hydrants, or fire extinguishers with cylinder storage",
       "NEVER permit unauthorised or untrained personnel to swap commercial gas cylinder manifolds",
       "NEVER store FLT cylinders horizontally unless they are purpose-designed liquid-withdrawal bottles",
-      "NEVER operate mobile catering appliances without flame failure devices (FFD) on every single burner"
+      "NEVER operate mobile catering appliances without flame failure devices (FFD) on every single burner",
     ],
-    whenToLeave: "In the event of a commercial gas leak or manifold rupture, hit the emergency gas slam button, initiate the building fire evacuation alarm, and escort all employees and patrons outside immediately.",
-    afterLeaving: "Account for all staff at the designated assembly point. Notify the Fire & Rescue Service and the National Gas Emergency Helpline. Do not re-enter until emergency services declare the commercial premises safe.",
-    whenToCallPro: "John Stayte Services supplies commercial LPG bulk tanks, multi-bottle cylinder contracts, and commercial installation services: 01452 741234.",
+    whenToLeave:
+      "In the event of a commercial gas leak or manifold rupture, hit the emergency gas slam button, initiate the building fire evacuation alarm, and escort all employees and patrons outside immediately.",
+    afterLeaving:
+      "Account for all staff at the designated assembly point. Notify the Fire & Rescue Service and the National Gas Emergency Helpline. Do not re-enter until emergency services declare the commercial premises safe.",
+    whenToCallPro:
+      "John Stayte Services supplies commercial LPG bulk tanks, multi-bottle cylinder contracts, and commercial installation services: 01452 741234.",
     recapPoints: [
       "Commercial kitchens must have an active Gas Interlock System (GIS)",
       "Train all staff on emergency isolation and slam switches",
       "Store forklift cylinders in locked outdoor steel cages",
       "Multi-bottle manifolds require annual commercial certification",
-      "All commercial catering equipment must have flame failure devices"
-    ]
+      "All commercial catering equipment must have flame failure devices",
+    ],
   },
 
   // 8. Tank replacement
@@ -651,46 +901,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Safe procedures for bulk tank replacement and swaps.",
     image: guidanceTankReplacementImg,
     icon: BulkTankIcon,
-    overview: "Safety guidelines, statutory clearance exclusion zones, and delivery crane protocols for domestic and commercial bulk LPG storage vessels.",
+    overview:
+      "Safety guidelines, statutory clearance exclusion zones, and delivery crane protocols for domestic and commercial bulk LPG storage vessels.",
     situationTitle: "BULK LPG TANK SAFETY & REPLACEMENT STANDARDS",
-    situationText: "Bulk LPG tanks provide large-capacity central heating and hot water storage. Tanks must comply with UK Code of Practice 1 (CoP 1) regarding separation distances from property boundaries, buildings, and overhead electrical lines.",
+    situationText:
+      "Bulk LPG tanks provide large-capacity central heating and hot water storage. Tanks must comply with UK Code of Practice 1 (CoP 1) regarding separation distances from property boundaries, buildings, and overhead electrical lines.",
     immediateActions: [
       "Maintain clear statutory safety exclusion zones around bulk tanks: minimum 3 metres from walls and property lines.",
       "Keep the ground within the 3-metre tank perimeter completely free from weeds, dry grass, and combustible materials.",
       "Ensure delivery tanker access routes and hardstanding areas are clear, level, and unobstructed at all times.",
       "Check magnetic float contents gauges regularly to monitor fuel levels and schedule timely seasonal refills.",
-      "Inspect tank earthing connections, cathodic protection, and pressure relief valve covers annually."
+      "Inspect tank earthing connections, cathodic protection, and pressure relief valve covers annually.",
     ],
     steps: [
-      { num: "01", title: "Establish 3m Exclusion Zone", text: "Keep a strict 3-metre radius around the vessel clear of wooden sheds, fences, foliage, drains, and ignition sources." },
-      { num: "02", title: "Monitor Fuel Gauge Level", text: "Check the magnetic percentage gauge under the tank hood. Contact us when fuel drops below 25-30%." },
-      { num: "03", title: "Inspect Shroud & Hood Latches", text: "Keep the tank hood lid closed and securely latched to protect valves, regulator, and contents gauge from weather." },
-      { num: "04", title: "Verify Tanker Access Path", text: "Ensure delivery drivers have clear, safe hose-run access (max 45m) with no trip hazards or parked vehicle obstructions." },
-      { num: "05", title: "Schedule Replacement Surveys", text: "Bulk vessels have a certified 15-20 year inspection life. We perform ultrasonic thickness testing and seamless tank swaps." }
+      {
+        num: "01",
+        title: "Establish 3m Exclusion Zone",
+        text: "Keep a strict 3-metre radius around the vessel clear of wooden sheds, fences, foliage, drains, and ignition sources.",
+      },
+      {
+        num: "02",
+        title: "Monitor Fuel Gauge Level",
+        text: "Check the magnetic percentage gauge under the tank hood. Contact us when fuel drops below 25-30%.",
+      },
+      {
+        num: "03",
+        title: "Inspect Shroud & Hood Latches",
+        text: "Keep the tank hood lid closed and securely latched to protect valves, regulator, and contents gauge from weather.",
+      },
+      {
+        num: "04",
+        title: "Verify Tanker Access Path",
+        text: "Ensure delivery drivers have clear, safe hose-run access (max 45m) with no trip hazards or parked vehicle obstructions.",
+      },
+      {
+        num: "05",
+        title: "Schedule Replacement Surveys",
+        text: "Bulk vessels have a certified 15-20 year inspection life. We perform ultrasonic thickness testing and seamless tank swaps.",
+      },
     ],
     whatToCheck: [
       "Check that the pressure relief valve weather cap is in place to prevent rainwater entering the relief mechanism",
       "Inspect cathodic protection test points and sacrificial anode cables on underground tanks",
       "Check copper and MDPE underground pipe entry points into the building for intact yellow protective sleeving",
-      "Confirm that no electrical conduits, cables, or external lighting are attached to the tank body"
+      "Confirm that no electrical conduits, cables, or external lighting are attached to the tank body",
     ],
     whatToAvoid: [
       "NEVER build wooden sheds, carports, gazebos, or extensions within 3 metres of a bulk LPG tank",
       "NEVER use electric strimmers, lawnmowers, or metal-blade tools directly adjacent to tank valves",
       "NEVER park vehicles or store petrol, weedkiller, or garden waste inside the tank exclusion zone",
       "NEVER tamper with hydrostatic relief valves, regulator bonnet vents, or telemetry transmitter units",
-      "NEVER bury an above-ground tank or mound soil against the vessel shell"
+      "NEVER bury an above-ground tank or mound soil against the vessel shell",
     ],
-    whenToLeave: "If you observe rapid white vapour venting from the tank safety relief valve, or hear loud hissing accompanied by heavy gas odour, evacuate everyone upwind to a safe distance (at least 50m) immediately.",
-    afterLeaving: "Prevent vehicle entry into the driveway. Call the Fire & Rescue Service (999) and the John Stayte 24/7 Bulk Emergency Team immediately.",
-    whenToCallPro: "John Stayte Services provides complete bulk LPG tank supply, automated tank telemetry, inspections, and seamless tank swaps: 01452 741234.",
+    whenToLeave:
+      "If you observe rapid white vapour venting from the tank safety relief valve, or hear loud hissing accompanied by heavy gas odour, evacuate everyone upwind to a safe distance (at least 50m) immediately.",
+    afterLeaving:
+      "Prevent vehicle entry into the driveway. Call the Fire & Rescue Service (999) and the John Stayte 24/7 Bulk Emergency Team immediately.",
+    whenToCallPro:
+      "John Stayte Services provides complete bulk LPG tank supply, automated tank telemetry, inspections, and seamless tank swaps: 01452 741234.",
     recapPoints: [
       "Maintain a strict 3m clear exclusion zone around bulk tanks",
       "Keep ground free from weeds, timber, and dry debris",
       "Order refills when gauge drops to 25-30%",
       "Keep tank hood closed and latched against weather",
-      "Bulk vessels require periodic statutory soundness audits"
-    ]
+      "Bulk vessels require periodic statutory soundness audits",
+    ],
   },
 
   // 9. Pipework check and servicing
@@ -701,46 +976,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Maintaining supply lines, valves and gas regulators.",
     image: guidancePipeworkServicingImg,
     icon: PipeworkServicingIcon,
-    overview: "Best practices for maintaining above-ground and underground LPG distribution pipework, emergency isolation valves (EIV), two-stage regulation, and building entry points.",
+    overview:
+      "Best practices for maintaining above-ground and underground LPG distribution pipework, emergency isolation valves (EIV), two-stage regulation, and building entry points.",
     situationTitle: "GAS PIPEWORK INTEGRITY & VALVE SERVICING",
-    situationText: "Gas distribution pipework carries pressurized LPG from storage to internal appliances. Proper pipe clamping, corrosion protection, gas-tight wall sleeving, and certified isolation valves prevent dangerous leaks.",
+    situationText:
+      "Gas distribution pipework carries pressurized LPG from storage to internal appliances. Proper pipe clamping, corrosion protection, gas-tight wall sleeving, and certified isolation valves prevent dangerous leaks.",
     immediateActions: [
       "Ensure all external copper and MDPE pipework is properly supported with non-combustible pipe clips.",
       "Emergency isolation valves (EIV) must be clearly labeled, accessible, and tested annually for smooth operation.",
       "Protect exposed pipework from accidental impact along driveways, loading bays, and public pathways.",
       "Two-stage regulation systems must feature integrated over-pressure (OPSO) and under-pressure (UPSO) shut-off devices.",
-      "Ensure all building entry pipe penetrations are sealed gas-tight and sleeved through masonry walls."
+      "Ensure all building entry pipe penetrations are sealed gas-tight and sleeved through masonry walls.",
     ],
     steps: [
-      { num: "01", title: "Inspect Pipe Clamps & Clips", text: "Verify that copper pipework is securely anchored at statutory intervals (max 1.5m) to prevent vibration and sagging." },
-      { num: "02", title: "Test Emergency Isolation Valves", text: "Turn external quarter-turn lever valves back and forth to confirm smooth operation. Handles must point perpendicular when OFF." },
-      { num: "03", title: "Check Building Wall Sleeves", text: "Confirm gas pipes entering brickwork pass through continuous PVC/copper sleeves sealed with non-setting fire-retardant mastic." },
-      { num: "04", title: "Inspect Regulator OPSO/UPSO", text: "Ensure secondary over-pressure shut-off valves show green indicator flags and have not tripped due to line pressure surges." },
-      { num: "05", title: "Perform Annual Pressure Test", text: "Have a Gas Safe engineer perform a 10-minute electronic manometer tightness test to prove 0.0 mbar pressure drop." }
+      {
+        num: "01",
+        title: "Inspect Pipe Clamps & Clips",
+        text: "Verify that copper pipework is securely anchored at statutory intervals (max 1.5m) to prevent vibration and sagging.",
+      },
+      {
+        num: "02",
+        title: "Test Emergency Isolation Valves",
+        text: "Turn external quarter-turn lever valves back and forth to confirm smooth operation. Handles must point perpendicular when OFF.",
+      },
+      {
+        num: "03",
+        title: "Check Building Wall Sleeves",
+        text: "Confirm gas pipes entering brickwork pass through continuous PVC/copper sleeves sealed with non-setting fire-retardant mastic.",
+      },
+      {
+        num: "04",
+        title: "Inspect Regulator OPSO/UPSO",
+        text: "Ensure secondary over-pressure shut-off valves show green indicator flags and have not tripped due to line pressure surges.",
+      },
+      {
+        num: "05",
+        title: "Perform Annual Pressure Test",
+        text: "Have a Gas Safe engineer perform a 10-minute electronic manometer tightness test to prove 0.0 mbar pressure drop.",
+      },
     ],
     whatToCheck: [
       "Check for visible green verdigris corrosion, surface pitting, or paint flaking on external copper pipe runs",
       "Check that high-visibility yellow 'GAS' warning tape is present on underground and above-ground gas lines",
       "Verify that earth bonding continuity clamps are securely attached to gas pipework where required by BS 7671",
-      "Inspect secondary regulators to ensure breather vents are free from mud, paint, or ice obstruction"
+      "Inspect secondary regulators to ensure breather vents are free from mud, paint, or ice obstruction",
     ],
     whatToAvoid: [
       "NEVER use gas pipework as an electrical earth, or hang washing lines, tools, or bikes from gas pipes",
       "NEVER bury unprotected bare copper pipework directly in soil without certified yellow plastic factory sleeving",
       "NEVER conceal mechanical compression joints inside cavity walls, solid floors, or ceiling voids",
       "NEVER run gas pipework through lift shafts, unventilated ducts, or drainage inspection chambers",
-      "NEVER operate gas systems if the OPSO safety reset button has tripped without finding the root cause"
+      "NEVER operate gas systems if the OPSO safety reset button has tripped without finding the root cause",
     ],
-    whenToLeave: "If underground gas pipework is damaged or snagged by garden digging or building excavators, evacuate the entire area immediately. Do not attempt to bend or crimp damaged gas pipework.",
-    afterLeaving: "Shut off the gas supply at the cylinder or tank immediately if safe to do so from upwind. Call emergency services and John Stayte Services right away.",
-    whenToCallPro: "All pipework installation, extension, electronic tightness testing, and regulator commissioning must be performed by certified Gas Safe engineers: 01452 741234.",
+    whenToLeave:
+      "If underground gas pipework is damaged or snagged by garden digging or building excavators, evacuate the entire area immediately. Do not attempt to bend or crimp damaged gas pipework.",
+    afterLeaving:
+      "Shut off the gas supply at the cylinder or tank immediately if safe to do so from upwind. Call emergency services and John Stayte Services right away.",
+    whenToCallPro:
+      "All pipework installation, extension, electronic tightness testing, and regulator commissioning must be performed by certified Gas Safe engineers: 01452 741234.",
     recapPoints: [
       "Emergency Isolation Valves (EIV) must remain unobstructed",
       "Pipes entering buildings must be properly sleeved and sealed",
       "Never hang items or connect electrical earths to gas pipes",
       "Underground pipework requires factory-sleeved protection",
-      "Annual electronic manometer tightness testing is essential"
-    ]
+      "Annual electronic manometer tightness testing is essential",
+    ],
   },
 
   // 10. Safe Cylinder Storage
@@ -748,49 +1048,75 @@ const SAFETY_GUIDANCE_ITEMS = [
     id: "safe-cylinder-storage",
     title: "Safe Cylinder Storage",
     badge: "Storage Safety",
-    description: "Correct positioning, ventilation, and outdoor storage principles for LPG bottles.",
+    description:
+      "Correct positioning, ventilation, and outdoor storage principles for LPG bottles.",
     image: safetyStorageV3Img,
     icon: StoringBottleIcon,
-    overview: "Essential safety guidance for storing Propane and Butane bottles on residential and rural properties, preventing gas accumulation and weather degradation.",
+    overview:
+      "Essential safety guidance for storing Propane and Butane bottles on residential and rural properties, preventing gas accumulation and weather degradation.",
     situationTitle: "RESIDENTIAL CYLINDER STORAGE REQUIREMENTS",
-    situationText: "Safe storage protects cylinders against accidental impact, tampering, radiant heat, and pooling gas hazards. Following UK code requirements keeps your household and neighbours completely protected.",
+    situationText:
+      "Safe storage protects cylinders against accidental impact, tampering, radiant heat, and pooling gas hazards. Following UK code requirements keeps your household and neighbours completely protected.",
     immediateActions: [
       "Always store LPG cylinders upright on a solid, non-combustible concrete or paved stone base outdoors.",
       "Ensure the storage position has unrestricted natural ventilation to disperse any minute trace gas immediately.",
       "Maintain a minimum 1-metre horizontal clearance from windows, doors, air bricks, and cellar entry points.",
       "Keep cylinders at least 3 metres away from bonfires, garden fire pits, barbecues, and outdoor electrical sockets.",
-      "Fasten cylinders securely with wall chains or purpose-built metal safety brackets to prevent accidental tipping."
+      "Fasten cylinders securely with wall chains or purpose-built metal safety brackets to prevent accidental tipping.",
     ],
     steps: [
-      { num: "01", title: "Select Concrete Base", text: "Place cylinders on a flat, level concrete slab or paved flagstones to prevent subsidence or ground moisture corrosion." },
-      { num: "02", title: "Anchor with Safety Chains", text: "Fasten heavy-duty rustproof chains around the cylinder mid-section to a solid masonry wall." },
-      { num: "03", title: "Check Distance from Drains", text: "Ensure no open drain grates or unsealed cellar covers are within 2 metres of the storage footprint." },
-      { num: "04", title: "Protect Disconnected Bottles", text: "Refit protective plastic dust caps and plugs onto valve outlets whenever bottles are not in active service." },
-      { num: "05", title: "Keep Area Tidy & Free of Debris", text: "Clear away dry leaves, garden clippings, timber, and flammable chemicals from around the gas storage perimeter." }
+      {
+        num: "01",
+        title: "Select Concrete Base",
+        text: "Place cylinders on a flat, level concrete slab or paved flagstones to prevent subsidence or ground moisture corrosion.",
+      },
+      {
+        num: "02",
+        title: "Anchor with Safety Chains",
+        text: "Fasten heavy-duty rustproof chains around the cylinder mid-section to a solid masonry wall.",
+      },
+      {
+        num: "03",
+        title: "Check Distance from Drains",
+        text: "Ensure no open drain grates or unsealed cellar covers are within 2 metres of the storage footprint.",
+      },
+      {
+        num: "04",
+        title: "Protect Disconnected Bottles",
+        text: "Refit protective plastic dust caps and plugs onto valve outlets whenever bottles are not in active service.",
+      },
+      {
+        num: "05",
+        title: "Keep Area Tidy & Free of Debris",
+        text: "Clear away dry leaves, garden clippings, timber, and flammable chemicals from around the gas storage perimeter.",
+      },
     ],
     whatToCheck: [
       "Check that cylinder storage bases remain level and have not shifted due to frost heave or soil movement",
       "Inspect wall chain anchor bolts and brackets to ensure they are firmly secured in solid brickwork",
       "Verify that full and empty cylinders are kept segregated and clearly marked with status tags",
-      "Ensure storage enclosures have open mesh panels allowing at least 50% free natural air exchange"
+      "Ensure storage enclosures have open mesh panels allowing at least 50% free natural air exchange",
     ],
     whatToAvoid: [
       "NEVER store gas cylinders inside domestic rooms, porches, cellars, basements, or under stairwells",
       "NEVER store cylinders in wooden garden sheds or unventilated plastic storage boxes",
       "NEVER place cylinders directly on soft earth, grass, or gravel where ground moisture accelerates base corrosion",
       "NEVER store solvents, paints, petrol cans, or weedkillers in the same storage zone as gas bottles",
-      "NEVER cover cylinders with non-breathable plastic tarpaulins that trap moisture and gas vapour"
+      "NEVER cover cylinders with non-breathable plastic tarpaulins that trap moisture and gas vapour",
     ],
-    whenToLeave: "If you discover a stored cylinder is leaking or venting vapour in an enclosed or semi-enclosed alcove, step back upwind at least 15 metres and keep everyone away.",
-    afterLeaving: "Do not operate outdoor garden lighting or vehicle engines. Contact John Stayte Services on 01452 741234 or the National Gas Emergency line.",
-    whenToCallPro: "Contact John Stayte Services for supply and installation of certified galvanised residential cylinder security cages, wall brackets, and auto-changeover kits.",
+    whenToLeave:
+      "If you discover a stored cylinder is leaking or venting vapour in an enclosed or semi-enclosed alcove, step back upwind at least 15 metres and keep everyone away.",
+    afterLeaving:
+      "Do not operate outdoor garden lighting or vehicle engines. Contact John Stayte Services on 01452 741234 or the National Gas Emergency line.",
+    whenToCallPro:
+      "Contact John Stayte Services for supply and installation of certified galvanised residential cylinder security cages, wall brackets, and auto-changeover kits.",
     recapPoints: [
       "Store cylinders upright on solid concrete paving outdoors",
       "Maintain 1m from doors/windows and 3m from ignition sources",
       "Never store LPG bottles in sheds, cellars, or garages",
       "Secure bottles with wall chains or lockable steel brackets",
-      "Keep storage areas clear of timber, weeds, and chemicals"
-    ]
+      "Keep storage areas clear of timber, weeds, and chemicals",
+    ],
   },
 
   // 11. Keep Cylinders Upright
@@ -801,45 +1127,70 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Why gas cylinders must remain vertical with relief valves pointing upwards.",
     image: safetyUprightV3Img,
     icon: AlertLineIcon,
-    overview: "Technical explanation and life-safety reasons why LPG bottles must remain strictly vertical during storage, transit, and active operation.",
+    overview:
+      "Technical explanation and life-safety reasons why LPG bottles must remain strictly vertical during storage, transit, and active operation.",
     situationTitle: "LIQUID LPG VS VAPOUR PHASE DYNAMICS",
-    situationText: "LPG is stored inside steel bottles as a pressurized liquid occupying the bottom 80-85%, with pressurized vapour at the top. Keeping cylinders upright ensures internal pressure-relief valves communicate exclusively with the vapour space.",
+    situationText:
+      "LPG is stored inside steel bottles as a pressurized liquid occupying the bottom 80-85%, with pressurized vapour at the top. Keeping cylinders upright ensures internal pressure-relief valves communicate exclusively with the vapour space.",
     immediateActions: [
       "Always keep cylinders standing vertically upright during storage, appliance operation, and vehicle transit.",
       "Ensure relief valves and cylinder handwheels point straight upwards towards the sky.",
       "Never lay cylinders on their sides or roll them horizontally across the ground.",
       "Fasten securely in vehicles or outdoor storage racks using heavy-duty ratchet straps.",
-      "Even 'empty' cylinders must remain upright as dangerous residual liquid and heavy vapour remain inside."
+      "Even 'empty' cylinders must remain upright as dangerous residual liquid and heavy vapour remain inside.",
     ],
     steps: [
-      { num: "01", title: "Inspect Standing Stability", text: "Ensure the cylinder base foot-ring rests flat and stable on a level, non-combustible surface." },
-      { num: "02", title: "Position Valve Upward", text: "Verify the brass valve assembly, handwheel, and pressure relief orifice point straight up." },
-      { num: "03", title: "Secure Against Tipping", text: "Use wall chains, cylinder stands, or vehicle transport cradles to prevent accidental tipping." },
-      { num: "04", title: "Never Roll on Barrel", text: "Use a purpose-built two-wheeled cylinder trolley or cylinder handling technique to move bottles." },
-      { num: "05", title: "Handle Empty Bottles Same", text: "Treat empty cylinders with the exact same safety care as full bottles: keep vertical and capped." }
+      {
+        num: "01",
+        title: "Inspect Standing Stability",
+        text: "Ensure the cylinder base foot-ring rests flat and stable on a level, non-combustible surface.",
+      },
+      {
+        num: "02",
+        title: "Position Valve Upward",
+        text: "Verify the brass valve assembly, handwheel, and pressure relief orifice point straight up.",
+      },
+      {
+        num: "03",
+        title: "Secure Against Tipping",
+        text: "Use wall chains, cylinder stands, or vehicle transport cradles to prevent accidental tipping.",
+      },
+      {
+        num: "04",
+        title: "Never Roll on Barrel",
+        text: "Use a purpose-built two-wheeled cylinder trolley or cylinder handling technique to move bottles.",
+      },
+      {
+        num: "05",
+        title: "Handle Empty Bottles Same",
+        text: "Treat empty cylinders with the exact same safety care as full bottles: keep vertical and capped.",
+      },
     ],
     whatToCheck: [
       "Check that cylinder base foot-rings are not bent, cracked, or deformed from rough handling",
       "Inspect transport cradles and wall safety chains to ensure they restrain the bottle at 2/3 height",
-      "Check that cylinder valve protective shroud collars are intact and have not taken direct impact"
+      "Check that cylinder valve protective shroud collars are intact and have not taken direct impact",
     ],
     whatToAvoid: [
       "NEVER lay a cylinder horizontally on its side in a car boot, van bed, or garden storage area",
       "NEVER operate any gas appliance connected to a cylinder that is tilted or lying on its side",
       "NEVER roll gas cylinders horizontally along the ground or throw them from vehicle tailgates",
       "NEVER use cylinders as rollers to move heavy machinery or furniture across the floor",
-      "NEVER invert or shake gas cylinders to 'get the last bit of gas out' — this risks liquid entering regulators"
+      "NEVER invert or shake gas cylinders to 'get the last bit of gas out' — this risks liquid entering regulators",
     ],
-    whenToLeave: "If a horizontal or fallen cylinder begins releasing liquid gas (visible as dense white frosty fog or liquid spray), evacuate the entire area immediately upwind at least 25 metres.",
-    afterLeaving: "Liquid LPG expands 250 times into gas vapour and creates an immediate severe flash-fire hazard. Alert emergency services (999) without delay.",
-    whenToCallPro: "If a cylinder has suffered heavy impact, neck deformation, or has fallen from a vehicle, contact John Stayte Services for professional assessment and safe recovery.",
+    whenToLeave:
+      "If a horizontal or fallen cylinder begins releasing liquid gas (visible as dense white frosty fog or liquid spray), evacuate the entire area immediately upwind at least 25 metres.",
+    afterLeaving:
+      "Liquid LPG expands 250 times into gas vapour and creates an immediate severe flash-fire hazard. Alert emergency services (999) without delay.",
+    whenToCallPro:
+      "If a cylinder has suffered heavy impact, neck deformation, or has fallen from a vehicle, contact John Stayte Services for professional assessment and safe recovery.",
     recapPoints: [
       "Always keep gas cylinders standing vertically upright",
       "Laying cylinders flat allows dangerous liquid to enter regulators",
       "Valves and relief vents must point straight up",
       "Never roll cylinders horizontally on their sides",
-      "Empty cylinders still contain liquid and must stay upright"
-    ]
+      "Empty cylinders still contain liquid and must stay upright",
+    ],
   },
 
   // 12. Keep Away From Flames
@@ -847,48 +1198,74 @@ const SAFETY_GUIDANCE_ITEMS = [
     id: "keep-away-from-flames",
     title: "Keep Away From Flames",
     badge: "Ignition Safety",
-    description: "Maintaining safe statutory separation distances from open fires, barbecues, and sparks.",
+    description:
+      "Maintaining safe statutory separation distances from open fires, barbecues, and sparks.",
     image: safetyAwayFromFlamesV3Img,
     icon: Flame,
-    overview: "Crucial guidance on maintaining safe physical separation distances between LPG bottles, barbecue burners, outdoor heaters, fire pits, and electrical spark sources.",
+    overview:
+      "Crucial guidance on maintaining safe physical separation distances between LPG bottles, barbecue burners, outdoor heaters, fire pits, and electrical spark sources.",
     situationTitle: "THERMAL RADIATION & IGNITION SEPARATION",
-    situationText: "Radiant heat from nearby barbecues, bonfires, patio heaters, or electrical arcing rapidly heats cylinder steel, causing internal liquid LPG to boil and internal pressure to surge dangerously.",
+    situationText:
+      "Radiant heat from nearby barbecues, bonfires, patio heaters, or electrical arcing rapidly heats cylinder steel, causing internal liquid LPG to boil and internal pressure to surge dangerously.",
     immediateActions: [
       "Maintain a minimum 3-metre clearance from open bonfires, barbecues, patio heaters, and fire pits.",
       "Never smoke, vape, or light matches near gas storage, cylinder changeover, or appliance connection areas.",
       "Keep cylinders clear of outdoor power sockets, air conditioning condenser units, and light switches.",
       "Position flexible gas hoses so they cannot contact hot cooker surfaces, oven sides, or BBQ hoods.",
-      "Keep timber, dry foliage, garden waste, paints, and petrol well clear of gas bottles."
+      "Keep timber, dry foliage, garden waste, paints, and petrol well clear of gas bottles.",
     ],
     steps: [
-      { num: "01", title: "Position BBQ at Safe Distance", text: "Place the gas cylinder outside the direct heat footprint of the barbecue body and side burners." },
-      { num: "02", title: "Inspect Hose Routing", text: "Ensure flexible rubber gas hoses do not touch hot barbecue drip trays, firebox panels, or burner tubes." },
-      { num: "03", title: "Enforce 3m Smoking Ban", text: "Never permit smoking, vaping, or open flames within 3 metres of cylinders or connection points." },
-      { num: "04", title: "Clear Combustible Debris", text: "Remove dry grass, wooden pallets, paints, and aerosol cans from the immediate cylinder area." },
-      { num: "05", title: "Keep Fire Extinguisher Handy", text: "Keep a dry powder fire extinguisher or fire blanket accessible whenever operating outdoor gas cooking equipment." }
+      {
+        num: "01",
+        title: "Position BBQ at Safe Distance",
+        text: "Place the gas cylinder outside the direct heat footprint of the barbecue body and side burners.",
+      },
+      {
+        num: "02",
+        title: "Inspect Hose Routing",
+        text: "Ensure flexible rubber gas hoses do not touch hot barbecue drip trays, firebox panels, or burner tubes.",
+      },
+      {
+        num: "03",
+        title: "Enforce 3m Smoking Ban",
+        text: "Never permit smoking, vaping, or open flames within 3 metres of cylinders or connection points.",
+      },
+      {
+        num: "04",
+        title: "Clear Combustible Debris",
+        text: "Remove dry grass, wooden pallets, paints, and aerosol cans from the immediate cylinder area.",
+      },
+      {
+        num: "05",
+        title: "Keep Fire Extinguisher Handy",
+        text: "Keep a dry powder fire extinguisher or fire blanket accessible whenever operating outdoor gas cooking equipment.",
+      },
     ],
     whatToCheck: [
       "Check that barbecue gas hoses are protected from radiant heat and hot fat dripping from the grill",
       "Verify that outdoor electrical cables, junction boxes, and security lights are at least 1m away from gas lines",
-      "Check patio heater base stability: ensure cylinders inside heater housings are firmly strapped"
+      "Check patio heater base stability: ensure cylinders inside heater housings are firmly strapped",
     ],
     whatToAvoid: [
       "NEVER operate gas barbecues or patio heaters directly under low timber pergolas, awnings, or marquee canopies",
       "NEVER place gas cylinders directly behind barbecue grease trays or underneath open charcoal grills",
       "NEVER use lighter fluid, petrol, or aerosol accelerants near gas cylinders or burners",
       "NEVER leave gas patio heaters or barbecues operating unattended around children or pets",
-      "NEVER store gas cylinders near domestic incinerators, garden bonfires, or outdoor wood burners"
+      "NEVER store gas cylinders near domestic incinerators, garden bonfires, or outdoor wood burners",
     ],
-    whenToLeave: "If an uncontrolled fire breaks out near a gas cylinder and cannot be instantly extinguished with a fire blanket, evacuate the area immediately to a distance of at least 100 metres.",
-    afterLeaving: "Notify the Fire & Rescue Service (999) immediately. Inform the emergency incident commander of the exact number, size, and location of gas cylinders involved.",
-    whenToCallPro: "Contact John Stayte Services for certified gas barbecue regulators, armored high-temperature pigtails, and outdoor gas appliance hardware.",
+    whenToLeave:
+      "If an uncontrolled fire breaks out near a gas cylinder and cannot be instantly extinguished with a fire blanket, evacuate the area immediately to a distance of at least 100 metres.",
+    afterLeaving:
+      "Notify the Fire & Rescue Service (999) immediately. Inform the emergency incident commander of the exact number, size, and location of gas cylinders involved.",
+    whenToCallPro:
+      "Contact John Stayte Services for certified gas barbecue regulators, armored high-temperature pigtails, and outdoor gas appliance hardware.",
     recapPoints: [
       "Maintain a minimum 3-metre clearance from fires and barbecues",
       "Ensure rubber gas hoses never contact hot metal surfaces",
       "Never smoke or light matches near gas storage areas",
       "Keep fire blankets or dry powder extinguishers nearby",
-      "Evacuate 100m immediately if a nearby fire threatens a cylinder"
-    ]
+      "Evacuate 100m immediately if a nearby fire threatens a cylinder",
+    ],
   },
 
   // 13. Ventilation & Leak Checks
@@ -899,46 +1276,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Routine soapy water bubble testing and ventilation checks for safe connections.",
     image: safetyVentilationLeaksFinalImg,
     icon: ConnectingBottlesIcon,
-    overview: "Detailed instructions on executing routine 50/50 soapy water leak tests, recognizing micro-leaks, and maintaining permanent ventilation openings.",
+    overview:
+      "Detailed instructions on executing routine 50/50 soapy water leak tests, recognizing micro-leaks, and maintaining permanent ventilation openings.",
     situationTitle: "BUBBLE LEAK TESTING & VENTILATION PRINCIPLES",
-    situationText: "Unrestricted air exchange prevents minor gas seepage from reaching flammable concentrations (LPG lower explosive limit is approx 2%). Performing systematic bubble checks identifies joint leaks before appliances are lit.",
+    situationText:
+      "Unrestricted air exchange prevents minor gas seepage from reaching flammable concentrations (LPG lower explosive limit is approx 2%). Performing systematic bubble checks identifies joint leaks before appliances are lit.",
     immediateActions: [
       "Ensure permanent room ventilation grilles, air bricks, and window trickle vents remain completely clear.",
       "Perform a bubble test with 50/50 soapy water or certified leak detection fluid across all joints after every bottle swap.",
       "Inspect flexible rubber pigtails and hoses for hairline cracks, weathering, and 5-year replacement date stamps.",
       "Tighten propane Left-Hand (LH) threaded nuts anti-clockwise using the correct Calor cylinder spanner.",
-      "Never test for gas leaks using matches, lighters, or any naked flame."
+      "Never test for gas leaks using matches, lighters, or any naked flame.",
     ],
     steps: [
-      { num: "01", title: "Mix 50/50 Bubble Solution", text: "Mix equal parts washing-up liquid and water in a spray bottle or cup, or use certified Leak Detection Fluid (LDF)." },
-      { num: "02", title: "Turn Off Appliance Burners", text: "Ensure all cooker and appliance control knobs are in the OFF position before testing." },
-      { num: "03", title: "Open Cylinder Valve", text: "Open the cylinder handwheel 1 to 2 turns to pressurize the regulator and flexible hose lines." },
-      { num: "04", title: "Apply Solution to All Joints", text: "Brush or spray the soapy mixture generously over the valve stem, regulator nut, hose barb, and joint crimps." },
-      { num: "05", title: "Inspect for Growing Bubbles", text: "Watch for 60 seconds. Growing, frothing bubbles signal an active gas leak. If seen, shut valve immediately and reseat." }
+      {
+        num: "01",
+        title: "Mix 50/50 Bubble Solution",
+        text: "Mix equal parts washing-up liquid and water in a spray bottle or cup, or use certified Leak Detection Fluid (LDF).",
+      },
+      {
+        num: "02",
+        title: "Turn Off Appliance Burners",
+        text: "Ensure all cooker and appliance control knobs are in the OFF position before testing.",
+      },
+      {
+        num: "03",
+        title: "Open Cylinder Valve",
+        text: "Open the cylinder handwheel 1 to 2 turns to pressurize the regulator and flexible hose lines.",
+      },
+      {
+        num: "04",
+        title: "Apply Solution to All Joints",
+        text: "Brush or spray the soapy mixture generously over the valve stem, regulator nut, hose barb, and joint crimps.",
+      },
+      {
+        num: "05",
+        title: "Inspect for Growing Bubbles",
+        text: "Watch for 60 seconds. Growing, frothing bubbles signal an active gas leak. If seen, shut valve immediately and reseat.",
+      },
     ],
     whatToCheck: [
       "Check that permanent room air bricks and window trickle vents are free from dust, paint, and furniture blockages",
       "Inspect high-pressure flexible rubber hoses for surface perishing, cracking, stiffening, or oil degradation",
       "Verify that rubber 'O' ring washers inside regulator bullnose fittings are supple and uncracked",
-      "Confirm that appliance flame failure devices (FFD) shut off gas flow if burner flame is extinguished"
+      "Confirm that appliance flame failure devices (FFD) shut off gas flow if burner flame is extinguished",
     ],
     whatToAvoid: [
       "NEVER tape over, block, or stuff insulation into air bricks or wall vents to stop winter draughts",
       "NEVER use naked flames, candles, or lighters to search for gas leaks",
       "NEVER ignore small intermittent bubbling on regulator joints; shut the valve, wipe dry, and reseat connection",
       "NEVER use corrosive acid-based cleaning chemicals on brass gas fittings or copper pipework",
-      "NEVER continue using a flexible gas hose past its printed 5-year replacement expiry date"
+      "NEVER continue using a flexible gas hose past its printed 5-year replacement expiry date",
     ],
-    whenToLeave: "If soapy water testing reveals violent frothing that persists after reseating and tightening, or if you can hear audible hissing, shut the cylinder valve and step outside into fresh air.",
-    afterLeaving: "Leave the cylinder isolated outdoors. Do not attempt to use the appliance until a replacement regulator or hose has been fitted.",
-    whenToCallPro: "If joint leaks cannot be resolved by gentle retightening, or if you require fixed pipework electronic manometer soundness testing, call John Stayte Services on 01452 741234.",
+    whenToLeave:
+      "If soapy water testing reveals violent frothing that persists after reseating and tightening, or if you can hear audible hissing, shut the cylinder valve and step outside into fresh air.",
+    afterLeaving:
+      "Leave the cylinder isolated outdoors. Do not attempt to use the appliance until a replacement regulator or hose has been fitted.",
+    whenToCallPro:
+      "If joint leaks cannot be resolved by gentle retightening, or if you require fixed pipework electronic manometer soundness testing, call John Stayte Services on 01452 741234.",
     recapPoints: [
       "Test all new cylinder connections with 50/50 soapy water",
       "Growing froth and bubbles indicate an active gas leak",
       "Never use a naked flame to test for gas leaks",
       "Never block air bricks or permanent room ventilation grilles",
-      "Replace flexible rubber hoses every 5 years"
-    ]
+      "Replace flexible rubber hoses every 5 years",
+    ],
   },
 
   // 14. Child & Pet Safety
@@ -949,46 +1351,71 @@ const SAFETY_GUIDANCE_ITEMS = [
     description: "Securing cylinder storage areas and appliances away from children and pets.",
     image: safetyChildPetFinalImg,
     icon: ShieldCheck,
-    overview: "Practical advice on securing LPG cylinders, room heaters, cooker knobs, and flexible rubber hoses from curious children and household pets.",
+    overview:
+      "Practical advice on securing LPG cylinders, room heaters, cooker knobs, and flexible rubber hoses from curious children and household pets.",
     situationTitle: "PROTECTING VULNERABLE HOUSEHOLD MEMBERS",
-    situationText: "Children and pets are naturally curious. Gas valves, regulator knobs, and flexible rubber hoses must be physically protected from accidental tampering, gnawing, clawing, or impact.",
+    situationText:
+      "Children and pets are naturally curious. Gas valves, regulator knobs, and flexible rubber hoses must be physically protected from accidental tampering, gnawing, clawing, or impact.",
     immediateActions: [
       "House outdoor cylinders inside a secure, lockable, well-ventilated galvanised mesh storage cage or timber cabinet.",
       "Keep all gas appliances, cooker knobs, and valve handles safely out of reach of young children.",
       "Protect flexible rubber hoses from pet biting, clawing, and rodent gnawing using protective conduit.",
       "Teach children never to climb on, play near, or touch gas cylinders, copper pipes, or regulators.",
-      "Never leave portable indoor cabinet heaters unattended in rooms with toddlers, puppies, or kittens."
+      "Never leave portable indoor cabinet heaters unattended in rooms with toddlers, puppies, or kittens.",
     ],
     steps: [
-      { num: "01", title: "Install Lockable Enclosures", text: "Secure outdoor cylinders inside a lockable, ventilated safety enclosure with childproof padlock latches." },
-      { num: "02", title: "Fit Cooker Knob Safety Covers", text: "Use childproof safety covers or locking clips on domestic gas cooker knobs to prevent accidental turning." },
-      { num: "03", title: "Protect Flexible Hoses", text: "Shield rubber hoses with metal conduit sleeves to prevent dogs or rodents gnawing through gas lines." },
-      { num: "04", title: "Use Fireguards Around Heaters", text: "Place a certified BS 8423 nursery fireguard securely around portable cabinet heaters in family living areas." },
-      { num: "05", title: "Educate Family Members", text: "Teach children that gas cylinders and valves are strictly for adults and must never be touched or played near." }
+      {
+        num: "01",
+        title: "Install Lockable Enclosures",
+        text: "Secure outdoor cylinders inside a lockable, ventilated safety enclosure with childproof padlock latches.",
+      },
+      {
+        num: "02",
+        title: "Fit Cooker Knob Safety Covers",
+        text: "Use childproof safety covers or locking clips on domestic gas cooker knobs to prevent accidental turning.",
+      },
+      {
+        num: "03",
+        title: "Protect Flexible Hoses",
+        text: "Shield rubber hoses with metal conduit sleeves to prevent dogs or rodents gnawing through gas lines.",
+      },
+      {
+        num: "04",
+        title: "Use Fireguards Around Heaters",
+        text: "Place a certified BS 8423 nursery fireguard securely around portable cabinet heaters in family living areas.",
+      },
+      {
+        num: "05",
+        title: "Educate Family Members",
+        text: "Teach children that gas cylinders and valves are strictly for adults and must never be touched or played near.",
+      },
     ],
     whatToCheck: [
       "Check that padlocks and security latches on outdoor storage cages are locked and keys kept safely out of reach",
       "Inspect flexible rubber hoses regularly for teeth indentations, claw scratches, or surface abrasions",
       "Verify that portable indoor cabinet heaters have secure rear panels preventing pets reaching internal bottles",
-      "Confirm that carbon monoxide alarms are positioned at breathing height in children's bedrooms"
+      "Confirm that carbon monoxide alarms are positioned at breathing height in children's bedrooms",
     ],
     whatToAvoid: [
       "NEVER leave gas bottle valves unlocked or freely accessible in garden play zones or patio areas",
       "NEVER allow dogs or pets to sleep directly against gas supply hoses, regulator lines, or room heaters",
       "NEVER leave portable cabinet heater control knobs unlocked around unsupervised toddlers",
       "NEVER let children use outdoor gas barbecues or patio heaters without strict adult supervision",
-      "NEVER store toys, balls, or pet bedding in the same space as gas cylinders"
+      "NEVER store toys, balls, or pet bedding in the same space as gas cylinders",
     ],
-    whenToLeave: "If a child or pet accidentally knocks a heater over or turns an unlit gas valve, shut off the valve immediately, open all windows wide, and escort children and pets outside into fresh air.",
-    afterLeaving: "Ensure children and pets remain outdoors until the room has completely ventilated and no trace gas odour remains.",
-    whenToCallPro: "John Stayte Services supplies heavy-duty galvanised lockable cylinder security cages, armored flexible hoses, and appliance safety accessories: 01452 741234.",
+    whenToLeave:
+      "If a child or pet accidentally knocks a heater over or turns an unlit gas valve, shut off the valve immediately, open all windows wide, and escort children and pets outside into fresh air.",
+    afterLeaving:
+      "Ensure children and pets remain outdoors until the room has completely ventilated and no trace gas odour remains.",
+    whenToCallPro:
+      "John Stayte Services supplies heavy-duty galvanised lockable cylinder security cages, armored flexible hoses, and appliance safety accessories: 01452 741234.",
     recapPoints: [
       "House outdoor cylinders in lockable, ventilated safety cages",
       "Protect flexible rubber hoses from pet teeth and claws",
       "Use childproof safety covers on cooker knobs and valves",
       "Fit nursery fireguards around portable indoor heaters",
-      "Never allow children or pets to play near gas equipment"
-    ]
+      "Never allow children or pets to play near gas equipment",
+    ],
   },
 
   // 15. What To Do If You Smell Gas
@@ -996,49 +1423,75 @@ const SAFETY_GUIDANCE_ITEMS = [
     id: "what-to-do-if-you-smell-gas",
     title: "What To Do If You Smell Gas",
     badge: "Leak Response",
-    description: "Immediate safety actions, valve shut-off, and evacuation steps if a gas smell is detected.",
+    description:
+      "Immediate safety actions, valve shut-off, and evacuation steps if a gas smell is detected.",
     image: safetySmellGasV3Img,
     icon: PhoneCall,
-    overview: "Step-by-step emergency protocol to follow the instant you detect a gas odour inside or outside your property, protecting life and property.",
+    overview:
+      "Step-by-step emergency protocol to follow the instant you detect a gas odour inside or outside your property, protecting life and property.",
     situationTitle: "IMMEDIATE EMERGENCY GAS LEAK RESPONSE",
-    situationText: "LPG contains a distinctive 'rotten egg' or sulfur odorant to ensure even the smallest leak is immediately detected. Calm, immediate, methodical action is vital to prevent accidental ignition.",
+    situationText:
+      "LPG contains a distinctive 'rotten egg' or sulfur odorant to ensure even the smallest leak is immediately detected. Calm, immediate, methodical action is vital to prevent accidental ignition.",
     immediateActions: [
       "Turn off the gas supply immediately at the cylinder valve handwheel (turn clockwise to OFF).",
       "Extinguish all naked flames, candles, pilot lights, and cigarettes without delay.",
       "Do NOT turn any electrical switches, extractors, sockets, or lights on or off.",
       "Open all external doors and windows wide to promote rapid natural cross-ventilation.",
-      "Evacuate everyone to an outdoor safe point at least 15 metres away and call 0800 111 999."
+      "Evacuate everyone to an outdoor safe point at least 15 metres away and call 0800 111 999.",
     ],
     steps: [
-      { num: "01", title: "Shut Off Cylinder Valve", text: "Turn the handwheel on the top of the cylinder fully clockwise to isolate the gas flow immediately." },
-      { num: "02", title: "Eliminate All Sparks", text: "Do not touch electrical switches, light switches, power points, cooker hoods, or doorbells." },
-      { num: "03", title: "Open Doors & Windows Wide", text: "Create immediate cross-ventilation by opening external doors and windows to disperse heavy pooling vapour." },
-      { num: "04", title: "Evacuate Property Immediately", text: "Escort all occupants and pets outside to an outdoor assembly point at least 15 metres from the building." },
-      { num: "05", title: "Call National Gas Helpline", text: "From a safe outdoor location, call 0800 111 999 (24/7 Freephone) or 999 in case of immediate fire risk." }
+      {
+        num: "01",
+        title: "Shut Off Cylinder Valve",
+        text: "Turn the handwheel on the top of the cylinder fully clockwise to isolate the gas flow immediately.",
+      },
+      {
+        num: "02",
+        title: "Eliminate All Sparks",
+        text: "Do not touch electrical switches, light switches, power points, cooker hoods, or doorbells.",
+      },
+      {
+        num: "03",
+        title: "Open Doors & Windows Wide",
+        text: "Create immediate cross-ventilation by opening external doors and windows to disperse heavy pooling vapour.",
+      },
+      {
+        num: "04",
+        title: "Evacuate Property Immediately",
+        text: "Escort all occupants and pets outside to an outdoor assembly point at least 15 metres from the building.",
+      },
+      {
+        num: "05",
+        title: "Call National Gas Helpline",
+        text: "From a safe outdoor location, call 0800 111 999 (24/7 Freephone) or 999 in case of immediate fire risk.",
+      },
     ],
     whatToCheck: [
       "Confirm the cylinder handwheel is turned fully clockwise to the completely closed position",
       "Check if any cooker control dials were accidentally bumped or left open without ignition",
-      "Ensure all building occupants, children, and pets have safely evacuated to outdoor fresh air"
+      "Ensure all building occupants, children, and pets have safely evacuated to outdoor fresh air",
     ],
     whatToAvoid: [
       "NEVER touch light switches, extractors, power sockets, or landline phones inside the building",
       "NEVER use matches, lighters, candles, or mobile phones inside the affected property",
       "NEVER enter cellars, basements, or inspection pits as LPG settles in low-lying areas",
       "NEVER turn the gas supply back on until a certified Gas Safe engineer has tested the entire installation",
-      "NEVER re-enter the property until certified emergency engineers declare it completely safe"
+      "NEVER re-enter the property until certified emergency engineers declare it completely safe",
     ],
-    whenToLeave: "Leave the building immediately if the gas odour is strong, if you hear hissing from a pipe joint or valve, or if you feel dizzy, nauseous, or lightheaded.",
-    afterLeaving: "Remain outside at a safe distance. Warn neighbours if necessary, especially those downwind or in basement properties. Wait for emergency response engineers.",
-    whenToCallPro: "National Gas Emergency Helpline: 0800 111 999 (24/7 Freephone). For emergency cylinder isolation assistance or post-incident safety testing, contact John Stayte Services on 01452 741234.",
+    whenToLeave:
+      "Leave the building immediately if the gas odour is strong, if you hear hissing from a pipe joint or valve, or if you feel dizzy, nauseous, or lightheaded.",
+    afterLeaving:
+      "Remain outside at a safe distance. Warn neighbours if necessary, especially those downwind or in basement properties. Wait for emergency response engineers.",
+    whenToCallPro:
+      "National Gas Emergency Helpline: 0800 111 999 (24/7 Freephone). For emergency cylinder isolation assistance or post-incident safety testing, contact John Stayte Services on 01452 741234.",
     recapPoints: [
       "Turn off cylinder valve clockwise to isolate gas supply",
       "Do NOT operate any electrical switches or naked flames",
       "Open doors and windows wide for cross-ventilation",
       "Evacuate all occupants outdoors to a safe distance (15m)",
-      "Call National Gas Emergency (0800 111 999) from outside"
-    ]
-  }
+      "Call National Gas Emergency (0800 111 999) from outside",
+    ],
+  },
 ];
 
 function BlogKnowledgeCentrePage() {
@@ -1050,15 +1503,13 @@ function BlogKnowledgeCentrePage() {
   const [activeSafetyGuideId, setActiveSafetyGuideId] = useState<string | null>(null);
   const activeSafetyGuide = useMemo(
     () => SAFETY_GUIDANCE_ITEMS.find((g) => g.id === activeSafetyGuideId) || null,
-    [activeSafetyGuideId]
+    [activeSafetyGuideId],
   );
 
   // Safety Checklist state
   const [checkedItems, setCheckedItems] = useState<Record<number, boolean>>({});
 
   // Safety Essentials Expandable Card & Modal State
-
-
 
   // Newsletter state
   const [newsletterEmail, setNewsletterEmail] = useState("");
@@ -1070,8 +1521,16 @@ function BlogKnowledgeCentrePage() {
     async function fetchDbPosts() {
       try {
         const [{ data: tablePosts }, { data: blockData }] = await Promise.all([
-          supabase.from("cms_blog_posts").select("*").eq("is_published", true).order("created_at", { ascending: false }),
-          supabase.from("cms_content_blocks").select("content").eq("section_key", "blog_posts_data").maybeSingle(),
+          supabase
+            .from("cms_blog_posts")
+            .select("*")
+            .eq("is_published", true)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "blog_posts_data")
+            .maybeSingle(),
         ]);
 
         let parsed: any[] = [];
@@ -1237,12 +1696,18 @@ function BlogKnowledgeCentrePage() {
           }
         }
         if (!list.some((item: any) => item.email === cleanEmail)) {
-          const updated = [...list, { email: cleanEmail, source: "blog_index", subscribed_at: new Date().toISOString() }];
-          await supabase.from("cms_content_blocks").upsert({
-            section_key: "newsletter_subscribers_data",
-            title: "Newsletter Subscribers List",
-            content: JSON.stringify(updated),
-          }, { onConflict: "section_key" });
+          const updated = [
+            ...list,
+            { email: cleanEmail, source: "blog_index", subscribed_at: new Date().toISOString() },
+          ];
+          await supabase.from("cms_content_blocks").upsert(
+            {
+              section_key: "newsletter_subscribers_data",
+              title: "Newsletter Subscribers List",
+              content: JSON.stringify(updated),
+            },
+            { onConflict: "section_key" },
+          );
         }
       } catch {
         /* continue */
@@ -1261,7 +1726,6 @@ function BlogKnowledgeCentrePage() {
       setSubscribing(false);
     }
   };
-
 
   return (
     <SiteLayout>
@@ -1288,9 +1752,8 @@ function BlogKnowledgeCentrePage() {
             <div className="absolute inset-y-0 left-0 w-48 bg-gradient-to-r from-white via-white/80 to-transparent pointer-events-none" />
           </div>
 
-          <div className="container-page max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 relative z-10">
             <div className="grid grid-cols-12 gap-8 items-center min-h-[520px] py-12">
-
               {/* Left Column: Content Area (Takes 6 cols out of 12) */}
               <div className="col-span-6 space-y-7 text-left">
                 {/* 1. Eyebrow */}
@@ -1390,7 +1853,6 @@ function BlogKnowledgeCentrePage() {
                   </ScrollRevealCard>
                 </div>
               </div>
-
             </div>
           </div>
         </section>
@@ -1525,7 +1987,8 @@ function BlogKnowledgeCentrePage() {
                 Safety guidance
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 max-w-2xl font-normal">
-                Essential UK gas safety rules, cylinder handling protocols, and practical advice to protect your home and business.
+                Essential UK gas safety rules, cylinder handling protocols, and practical advice to
+                protect your home and business.
               </p>
             </div>
 
@@ -1647,7 +2110,8 @@ function BlogKnowledgeCentrePage() {
                       {/* Reading Time & Date */}
                       <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 font-semibold">
                         <span className="flex items-center gap-1.5 text-slate-500">
-                          <Clock className="h-3.5 w-3.5 text-slate-500" /> {featuredArticle.readingTime}
+                          <Clock className="h-3.5 w-3.5 text-slate-500" />{" "}
+                          {featuredArticle.readingTime}
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1.5 text-slate-500">
@@ -1662,28 +2126,35 @@ function BlogKnowledgeCentrePage() {
 
                       {/* Description */}
                       <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-lg">
-                        Simple, practical guidance for safer LPG storage, handling and everyday use across domestic and commercial settings.
+                        Simple, practical guidance for safer LPG storage, handling and everyday use
+                        across domestic and commercial settings.
                       </p>
 
                       {/* Two-Column Safety Checklist */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2.5 pt-2 text-xs sm:text-[13px] font-bold text-slate-800 border-t border-slate-100">
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Safe storage
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Safe
+                          storage
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Outdoor ventilation
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Outdoor
+                          ventilation
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Correct handling
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Correct
+                          handling
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Leak awareness
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Leak
+                          awareness
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Child safety
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Child
+                          safety
                         </div>
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Emergency steps
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> Emergency
+                          steps
                         </div>
                       </div>
                     </div>
@@ -1694,7 +2165,9 @@ function BlogKnowledgeCentrePage() {
                         <span>READ SAFETY GUIDE</span>
                         <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform stroke-[2.5]" />
                       </span>
-                      <span className="text-xs sm:text-sm text-slate-400 font-semibold hidden sm:inline">100% Free UK Guidance</span>
+                      <span className="text-xs sm:text-sm text-slate-400 font-semibold hidden sm:inline">
+                        100% Free UK Guidance
+                      </span>
                     </div>
                   </div>
                 </Link>
@@ -1717,7 +2190,6 @@ function BlogKnowledgeCentrePage() {
 
             {/* 3-Column Editorial Grid: Desktop 3 cols, Tablet 2 cols, Mobile 1 col */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 items-stretch">
-
               {/* COLUMN 1: FIRE */}
               <ScrollRevealCard delay={0} className="h-full">
                 <div className="bg-[#f4f5f6] rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 lg:p-10 flex flex-col justify-between text-left space-y-6 h-full">
@@ -1737,38 +2209,57 @@ function BlogKnowledgeCentrePage() {
                       </p>
 
                       <p>
-                        Ask for the fire service and tell them you have an LPG gas bottle or LPG tank.
+                        Ask for the fire service and tell them you have an LPG gas bottle or LPG
+                        tank.
                       </p>
 
                       <ul className="space-y-3.5 pt-2">
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            <strong>If you have gas bottles</strong> - If it&apos;s safe to do so, shut off valves on your gas bottles and the emergency control valve outside the building.
+                            <strong>If you have gas bottles</strong> - If it&apos;s safe to do so,
+                            shut off valves on your gas bottles and the emergency control valve
+                            outside the building.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            <strong>If you have an LPG tank</strong> - If it&apos;s safe to do so, you should shut off all valves and the emergency control valve (ECV) outside the building.
+                            <strong>If you have an LPG tank</strong> - If it&apos;s safe to do so,
+                            you should shut off all valves and the emergency control valve (ECV)
+                            outside the building.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            Keep all people, children and pets well away from the danger area (at least 100 metres upwind).
+                            Keep all people, children and pets well away from the danger area (at
+                            least 100 metres upwind).
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            Call the National Gas Emergency Service on 0800 111 999 or John Stayte Emergency Support on 01452 741234.
+                            Call the National Gas Emergency Service on 0800 111 999 or John Stayte
+                            Emergency Support on 01452 741234.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            Don&apos;t turn on the gas or re-enter the building until the system has been declared completely safe by a certified engineer and all appliances have been turned off.
+                            Don&apos;t turn on the gas or re-enter the building until the system has
+                            been declared completely safe by a certified engineer and all appliances
+                            have been turned off.
                           </span>
                         </li>
                       </ul>
@@ -1792,48 +2283,67 @@ function BlogKnowledgeCentrePage() {
 
                     <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed font-normal">
                       <p>
-                        <strong>If you have gas bottles</strong> - Shut off the emergency control valve outside the building and the valve on top of each gas bottle, located under the changeover valve (if applicable).
+                        <strong>If you have gas bottles</strong> - Shut off the emergency control
+                        valve outside the building and the valve on top of each gas bottle, located
+                        under the changeover valve (if applicable).
                       </p>
 
                       <p>
-                        <strong>If you have an LPG tank</strong> - Shut the ECV outside the building. Shut the gas installation valve — you&apos;ll find this on the top of your above ground tank or beneath the cover of your below ground tank.
+                        <strong>If you have an LPG tank</strong> - Shut the ECV outside the
+                        building. Shut the gas installation valve — you&apos;ll find this on the top
+                        of your above ground tank or beneath the cover of your below ground tank.
                       </p>
 
                       <ul className="space-y-3.5 pt-2">
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            <strong>Don&apos;t</strong> use electrical switches, mobile phones, electrical devices, naked flames, or smoke within the area. Make sure there are no other sources of ignition in the affected area.
+                            <strong>Don&apos;t</strong> use electrical switches, mobile phones,
+                            electrical devices, naked flames, or smoke within the area. Make sure
+                            there are no other sources of ignition in the affected area.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
                             <strong>Don&apos;t</strong> turn any light switches on or off.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            Open windows and doors to ventilate, particularly at lower ground levels where dense LPG pools.
+                            Open windows and doors to ventilate, particularly at lower ground levels
+                            where dense LPG pools.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
+                          <span>Move everyone into fresh outdoor air immediately.</span>
+                        </li>
+                        <li className="flex items-start gap-2.5">
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            Move everyone into fresh outdoor air immediately.
+                            Call the National Gas Emergency Service on 0800 111 999 or John Stayte
+                            Services on 01452 741234.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
-                          <span>
-                            Call the National Gas Emergency Service on 0800 111 999 or John Stayte Services on 01452 741234.
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
                           </span>
-                        </li>
-                        <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
                           <span>
-                            Do not use the installation again until it has been inspected and declared safe by a Gas Safe engineer.
+                            Do not use the installation again until it has been inspected and
+                            declared safe by a Gas Safe engineer.
                           </span>
                         </li>
                       </ul>
@@ -1857,14 +2367,19 @@ function BlogKnowledgeCentrePage() {
 
                     <div className="space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed font-normal">
                       <p>
-                        CO is produced when appliances aren&apos;t working correctly. It has no colour, smell, or even taste. CO detectors* are available, and we strongly recommend you get one fitted.
+                        CO is produced when appliances aren&apos;t working correctly. It has no
+                        colour, smell, or even taste. CO detectors* are available, and we strongly
+                        recommend you get one fitted.
                       </p>
 
                       <ul className="space-y-3.5 pt-1">
                         <li className="flex items-start gap-2.5">
-                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
+                          <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                            •
+                          </span>
                           <span>
-                            Seek medical attention if you suspect you&apos;re suffering from signs of CO poisoning, and call our Emergency Service on 01452 741234.
+                            Seek medical attention if you suspect you&apos;re suffering from signs
+                            of CO poisoning, and call our Emergency Service on 01452 741234.
                           </span>
                         </li>
                       </ul>
@@ -1875,16 +2390,30 @@ function BlogKnowledgeCentrePage() {
                         </p>
                         <ul className="space-y-2.5 pl-1">
                           <li className="flex items-start gap-2.5">
-                            <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
-                            <span>Tightness across the forehead, headaches, weakness, dizziness, nausea, and vomiting</span>
+                            <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                              •
+                            </span>
+                            <span>
+                              Tightness across the forehead, headaches, weakness, dizziness, nausea,
+                              and vomiting
+                            </span>
                           </li>
                           <li className="flex items-start gap-2.5">
-                            <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
-                            <span>Breathlessness, chest pains, confusion, and visual impairment</span>
+                            <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                              •
+                            </span>
+                            <span>
+                              Breathlessness, chest pains, confusion, and visual impairment
+                            </span>
                           </li>
                           <li className="flex items-start gap-2.5">
-                            <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">•</span>
-                            <span>Severe exposure can lead to coma, intermittent convulsion, or depressed heart action</span>
+                            <span className="text-primary font-bold text-lg leading-none shrink-0 mt-0.5">
+                              •
+                            </span>
+                            <span>
+                              Severe exposure can lead to coma, intermittent convulsion, or
+                              depressed heart action
+                            </span>
                           </li>
                         </ul>
                       </div>
@@ -1898,7 +2427,6 @@ function BlogKnowledgeCentrePage() {
                   </div>
                 </div>
               </ScrollRevealCard>
-
             </div>
           </section>
 
@@ -1917,7 +2445,8 @@ function BlogKnowledgeCentrePage() {
                     Before You Use Your Cylinder
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-500 font-normal max-w-xl leading-relaxed">
-                    Run through these 8 essential pre-use verifications before lighting or operating any gas appliance.
+                    Run through these 8 essential pre-use verifications before lighting or operating
+                    any gas appliance.
                   </p>
                 </div>
 
@@ -1925,7 +2454,12 @@ function BlogKnowledgeCentrePage() {
                 <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 sm:p-4.5 min-w-[240px] space-y-2.5 shrink-0 shadow-2xs">
                   <div className="flex items-center justify-between gap-3 text-xs">
                     <span className="text-slate-600 font-bold">Verification Progress</span>
-                    <span className={cn("font-black font-display text-xs", isChecklistComplete ? "text-emerald-600" : "text-slate-900")}>
+                    <span
+                      className={cn(
+                        "font-black font-display text-xs",
+                        isChecklistComplete ? "text-emerald-600" : "text-slate-900",
+                      )}
+                    >
                       {checkedCount} of {CHECKLIST_ITEMS.length} verified
                     </span>
                   </div>
@@ -1933,7 +2467,7 @@ function BlogKnowledgeCentrePage() {
                     <div
                       className={cn(
                         "h-full transition-all duration-300 ease-out rounded-full",
-                        isChecklistComplete ? "bg-emerald-500" : "bg-primary"
+                        isChecklistComplete ? "bg-emerald-500" : "bg-primary",
                       )}
                       style={{ width: `${(checkedCount / CHECKLIST_ITEMS.length) * 100}%` }}
                     />
@@ -1953,7 +2487,8 @@ function BlogKnowledgeCentrePage() {
                         ✓ Cylinder safety check complete
                       </h4>
                       <p className="text-xs text-emerald-800 font-medium leading-relaxed">
-                        All 8 essential safety verifications have passed. Your cylinder setup is safe to use.
+                        All 8 essential safety verifications have passed. Your cylinder setup is
+                        safe to use.
                       </p>
                     </div>
                   </div>
@@ -1980,7 +2515,7 @@ function BlogKnowledgeCentrePage() {
                           "w-full group flex items-start gap-3.5 p-4 sm:p-4.5 rounded-2xl border text-left text-xs sm:text-sm transition-all duration-200 cursor-pointer select-none",
                           isChecked
                             ? "bg-emerald-50/70 border-emerald-300 text-slate-900 shadow-2xs"
-                            : "bg-slate-50/60 hover:bg-white border-slate-200/80 hover:border-slate-300 text-slate-800 shadow-2xs"
+                            : "bg-slate-50/60 hover:bg-white border-slate-200/80 hover:border-slate-300 text-slate-800 shadow-2xs",
                         )}
                       >
                         {/* Custom Checkbox Indicator */}
@@ -1989,7 +2524,7 @@ function BlogKnowledgeCentrePage() {
                             "h-5 w-5 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all duration-200",
                             isChecked
                               ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs scale-100"
-                              : "border-slate-300 bg-white group-hover:border-primary/60 scale-95"
+                              : "border-slate-300 bg-white group-hover:border-primary/60 scale-95",
                           )}
                         >
                           {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
@@ -2002,7 +2537,7 @@ function BlogKnowledgeCentrePage() {
                               "leading-relaxed block transition-colors",
                               isChecked
                                 ? "font-extrabold text-slate-900"
-                                : "font-semibold text-slate-800 group-hover:text-slate-900"
+                                : "font-semibold text-slate-800 group-hover:text-slate-900",
                             )}
                           >
                             {item}
@@ -2018,11 +2553,21 @@ function BlogKnowledgeCentrePage() {
               <div className="p-4 sm:p-4.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-start gap-3.5 text-xs sm:text-[13px] text-amber-950 text-left">
                 <AlertTriangle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
                 <div className="leading-relaxed">
-                  <strong className="font-extrabold text-amber-950 font-display">Safety first: </strong>
-                  Damaged, leaking or unsafe cylinders should never be used under any circumstances. If you discover physical damage, hear hissing, or detect a smell of gas, do not attempt to light any appliance. Move to a safe, well-ventilated outdoor area immediately and contact a Gas Safe registered engineer or call John Stayte Support on{" "}
-                  <a href="tel:01452741234" className="font-extrabold underline text-amber-950 hover:text-primary transition-colors">
+                  <strong className="font-extrabold text-amber-950 font-display">
+                    Safety first:{" "}
+                  </strong>
+                  Damaged, leaking or unsafe cylinders should never be used under any circumstances.
+                  If you discover physical damage, hear hissing, or detect a smell of gas, do not
+                  attempt to light any appliance. Move to a safe, well-ventilated outdoor area
+                  immediately and contact a Gas Safe registered engineer or call John Stayte Support
+                  on{" "}
+                  <a
+                    href="tel:01452741234"
+                    className="font-extrabold underline text-amber-950 hover:text-primary transition-colors"
+                  >
                     01452 741234
-                  </a>.
+                  </a>
+                  .
                 </div>
               </div>
             </section>
@@ -2061,7 +2606,6 @@ function BlogKnowledgeCentrePage() {
 
             {/* 5 Distinct Emergency Step Cards (Matching Reference Layout & Style) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4 text-left">
-
               {/* STEP 1: FLAMES (Warm Orange/Red) */}
               <ScrollRevealCard delay={0} className="h-full">
                 <div className="p-5 sm:p-6 rounded-[22px] sm:rounded-[24px] bg-white border border-red-100 hover:border-red-200 shadow-2xs hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between space-y-5 text-left group cursor-default min-h-[175px] h-full">
@@ -2171,7 +2715,6 @@ function BlogKnowledgeCentrePage() {
                   </div>
                 </div>
               </ScrollRevealCard>
-
             </div>
           </section>
 
@@ -2194,7 +2737,6 @@ function BlogKnowledgeCentrePage() {
 
             {/* 4 Premium Information Cards (Equal Height & Clean Single-Layer Presentation) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 items-stretch">
-
               {/* CARD 1: 50+ Years Trading */}
               <ScrollRevealCard delay={0} className="h-full">
                 <div className="relative bg-white rounded-[24px] border border-slate-200/80 shadow-2xs hover:shadow-lg hover:border-slate-300 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between text-left group h-full">
@@ -2219,7 +2761,8 @@ function BlogKnowledgeCentrePage() {
                         50+ Years Trading
                       </h4>
                       <p className="text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
-                        Family-run business serving Gloucestershire residents, smallholdings and commercial premises since 1972.
+                        Family-run business serving Gloucestershire residents, smallholdings and
+                        commercial premises since 1972.
                       </p>
                     </div>
 
@@ -2257,7 +2800,8 @@ function BlogKnowledgeCentrePage() {
                         3 Local Stations
                       </h4>
                       <p className="text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
-                        Cylinder exchanges and vehicle fuel available at Fromebridge, Wild Goose Garage and Bridge Service Station.
+                        Cylinder exchanges and vehicle fuel available at Fromebridge, Wild Goose
+                        Garage and Bridge Service Station.
                       </p>
                     </div>
 
@@ -2298,7 +2842,8 @@ function BlogKnowledgeCentrePage() {
                         Wide Range of Products
                       </h4>
                       <p className="text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
-                        Calor Gas, lifestyle cylinders, appliances, coal, kindling, smokeless fuels and much more.
+                        Calor Gas, lifestyle cylinders, appliances, coal, kindling, smokeless fuels
+                        and much more.
                       </p>
                     </div>
 
@@ -2339,7 +2884,8 @@ function BlogKnowledgeCentrePage() {
                         Safety First Approach
                       </h4>
                       <p className="text-xs sm:text-[13px] text-slate-600 font-normal leading-relaxed">
-                        Certified Calor stockist providing verified gas hardware, Defra-approved smokeless fuel, and direct expert support.
+                        Certified Calor stockist providing verified gas hardware, Defra-approved
+                        smokeless fuel, and direct expert support.
                       </p>
                     </div>
 
@@ -2360,13 +2906,11 @@ function BlogKnowledgeCentrePage() {
                   </div>
                 </div>
               </ScrollRevealCard>
-
             </div>
 
             {/* Bottom Highlight / Statistics Trust Strip */}
             <ScrollRevealCard delay={120}>
               <div className="rounded-[24px] border border-slate-200/80 bg-slate-50/60 p-6 sm:p-8 grid grid-cols-2 md:grid-cols-5 gap-6 text-center pt-8">
-
                 {/* Stat 1: 50+ Years */}
                 <div className="space-y-1.5 text-center flex flex-col items-center">
                   <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-1">
@@ -2431,7 +2975,6 @@ function BlogKnowledgeCentrePage() {
                     Supporting local homes, farms &amp; businesses
                   </p>
                 </div>
-
               </div>
             </ScrollRevealCard>
           </section>
@@ -2449,7 +2992,8 @@ function BlogKnowledgeCentrePage() {
                   Get useful gas, fuel and home energy advice.
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  Occasional safety updates, seasonal fuel recommendations, and local service alerts.
+                  Occasional safety updates, seasonal fuel recommendations, and local service
+                  alerts.
                 </p>
               </div>
 
@@ -2488,8 +3032,8 @@ function BlogKnowledgeCentrePage() {
               </form>
             </section>
           </ScrollRevealCard>
-        </div >
-      </div >
+        </div>
+      </div>
 
       {/* =========================================================================
           SAFETY GUIDANCE DETAILED KNOWLEDGE CENTRE MODAL (Rich Editorial Handbook)
@@ -2529,7 +3073,6 @@ function BlogKnowledgeCentrePage() {
 
             {/* 2. Scrollable Middle Content Area (Comprehensive Multi-Section Editorial Knowledge Handbook) */}
             <div className="px-6 sm:px-8 py-7 overflow-y-auto space-y-8 text-left text-slate-800 flex-1 custom-scrollbar">
-
               {/* SECTION 1: OVERVIEW */}
               <div className="p-5 sm:p-6 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 font-display flex items-center gap-2">
@@ -2544,7 +3087,8 @@ function BlogKnowledgeCentrePage() {
               <div className="space-y-3.5">
                 <div className="space-y-1">
                   <h4 className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-red-950 font-display flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-primary" /> 2. {activeSafetyGuide.situationTitle}
+                    <AlertTriangle className="h-4 w-4 text-primary" /> 2.{" "}
+                    {activeSafetyGuide.situationTitle}
                   </h4>
                   <p className="text-xs sm:text-sm text-slate-600 font-normal leading-relaxed">
                     {activeSafetyGuide.situationText}
@@ -2557,7 +3101,10 @@ function BlogKnowledgeCentrePage() {
                   </span>
                   <div className="space-y-2">
                     {activeSafetyGuide.immediateActions.map((action, idx) => (
-                      <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-[13px] text-slate-800">
+                      <div
+                        key={idx}
+                        className="flex items-start gap-2.5 text-xs sm:text-[13px] text-slate-800"
+                      >
                         <span className="h-5 w-5 rounded-full bg-red-100 text-primary flex items-center justify-center shrink-0 text-[11px] font-black mt-0.5">
                           !
                         </span>
@@ -2575,7 +3122,10 @@ function BlogKnowledgeCentrePage() {
                 </h4>
                 <div className="grid gap-3 sm:grid-cols-1">
                   {activeSafetyGuide.steps.map((step, idx) => (
-                    <div key={idx} className="p-4 sm:p-4.5 rounded-2xl border border-slate-200/80 bg-white hover:border-slate-300 transition-colors flex items-start gap-3.5 shadow-2xs">
+                    <div
+                      key={idx}
+                      className="p-4 sm:p-4.5 rounded-2xl border border-slate-200/80 bg-white hover:border-slate-300 transition-colors flex items-start gap-3.5 shadow-2xs"
+                    >
                       <div className="h-7 w-7 rounded-xl bg-primary/10 text-primary font-black text-xs flex items-center justify-center shrink-0 font-display mt-0.5">
                         {step.num}
                       </div>
@@ -2595,7 +3145,8 @@ function BlogKnowledgeCentrePage() {
               {/* SECTION 4 & 5: WHAT TO CHECK & WHAT TO AVOID */}
               <div className="space-y-3.5">
                 <h4 className="text-xs sm:text-[13px] font-black uppercase tracking-wider text-slate-900 font-display flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-primary" /> 4. INSPECTION CHECKS &amp; HAZARDS TO AVOID
+                  <CheckSquare className="h-4 w-4 text-primary" /> 4. INSPECTION CHECKS &amp;
+                  HAZARDS TO AVOID
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                   {/* Left Column: WHAT TO CHECK */}
@@ -2634,7 +3185,8 @@ function BlogKnowledgeCentrePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
                 <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200/80 space-y-2">
                   <h5 className="text-xs font-black uppercase tracking-wider text-amber-950 font-display flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-amber-700" /> 5. WHEN TO LEAVE IMMEDIATELY
+                    <AlertTriangle className="h-4 w-4 text-amber-700" /> 5. WHEN TO LEAVE
+                    IMMEDIATELY
                   </h5>
                   <p className="text-xs sm:text-[13px] text-amber-900/90 leading-relaxed font-medium">
                     {activeSafetyGuide.whenToLeave}
@@ -2654,7 +3206,8 @@ function BlogKnowledgeCentrePage() {
               {/* SECTION 8: WHEN TO CALL A QUALIFIED PROFESSIONAL */}
               <div className="p-5 rounded-2xl bg-blue-50/70 border border-blue-200/80 space-y-2">
                 <h5 className="text-xs font-black uppercase tracking-wider text-blue-950 font-display flex items-center gap-2">
-                  <Wrench className="h-4 w-4 text-blue-700" /> 7. WHEN TO CALL A GAS SAFE PROFESSIONAL
+                  <Wrench className="h-4 w-4 text-blue-700" /> 7. WHEN TO CALL A GAS SAFE
+                  PROFESSIONAL
                 </h5>
                 <p className="text-xs sm:text-[13px] text-blue-900/90 leading-relaxed font-medium">
                   {activeSafetyGuide.whenToCallPro}
@@ -2673,9 +3226,13 @@ function BlogKnowledgeCentrePage() {
                     </span>
                     <div className="flex items-center gap-2">
                       <PhoneCall className="h-4 w-4 text-emerald-400 shrink-0" />
-                      <strong className="text-white text-sm sm:text-base font-display">0800 111 999</strong>
+                      <strong className="text-white text-sm sm:text-base font-display">
+                        0800 111 999
+                      </strong>
                     </div>
-                    <span className="text-[11px] text-slate-400 block">24 Hours / 7 Days • Freephone UK</span>
+                    <span className="text-[11px] text-slate-400 block">
+                      24 Hours / 7 Days • Freephone UK
+                    </span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-800/90 border border-slate-700 space-y-1">
@@ -2684,11 +3241,16 @@ function BlogKnowledgeCentrePage() {
                     </span>
                     <div className="flex items-center gap-2">
                       <PhoneCall className="h-4 w-4 text-primary shrink-0" />
-                      <a href="tel:01452741234" className="text-white text-sm sm:text-base font-display hover:text-primary transition-colors">
+                      <a
+                        href="tel:01452741234"
+                        className="text-white text-sm sm:text-base font-display hover:text-primary transition-colors"
+                      >
                         01452 741234
                       </a>
                     </div>
-                    <span className="text-[11px] text-slate-400 block">Local Gloucestershire Team • Mon–Fri</span>
+                    <span className="text-[11px] text-slate-400 block">
+                      Local Gloucestershire Team • Mon–Fri
+                    </span>
                   </div>
                 </div>
               </div>
@@ -2696,11 +3258,15 @@ function BlogKnowledgeCentrePage() {
               {/* SECTION 10: QUICK RECAP CHECKLIST */}
               <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 space-y-3">
                 <h5 className="text-xs font-black uppercase tracking-wider text-emerald-950 font-display flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> 9. QUICK SAFETY RECAP CHECKLIST
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> 9. QUICK SAFETY RECAP
+                  CHECKLIST
                 </h5>
                 <div className="space-y-2">
                   {activeSafetyGuide.recapPoints.map((recap, idx) => (
-                    <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-[13px] text-emerald-950">
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2.5 text-xs sm:text-[13px] text-emerald-950"
+                    >
                       <div className="h-4 w-4 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 text-[10px] font-black mt-0.5">
                         ✓
                       </div>
@@ -2709,7 +3275,6 @@ function BlogKnowledgeCentrePage() {
                   ))}
                 </div>
               </div>
-
             </div>
 
             {/* 3. Sticky Fixed Footer with John Stayte Red Button */}

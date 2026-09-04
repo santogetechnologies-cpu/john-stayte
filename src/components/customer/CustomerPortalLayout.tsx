@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Menu,
   ShoppingCart,
+  Truck,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -29,21 +30,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { CustomerGlobalSearch } from "./CustomerGlobalSearch";
 import { CustomerNotificationsPopover } from "./CustomerNotificationsPopover";
+
+import type { LucideIcon } from "lucide-react";
 
 type NavItem = {
   title: string;
   href: string;
-  icon: any;
+  icon: LucideIcon | React.ElementType;
   badge?: string | number;
 };
 
@@ -61,6 +60,67 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
 
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeDeliveriesCount, setActiveDeliveriesCount] = useState<number>(0);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+
+  // Live real-time Supabase query for customer's active deliveries & unread notifications badge
+  useEffect(() => {
+    async function fetchBadgeCounts() {
+      try {
+        const { data: authUser } = await supabase.auth.getUser();
+        const currentUserId = authUser?.user?.id || user?.id;
+        const currentEmail = authUser?.user?.email || user?.email;
+        if (!currentUserId && !currentEmail) return;
+
+        // 1. Active Deliveries Count
+        const { count: delivCount, error: delivErr } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .or(`customer_id.eq.${currentUserId},customer_email.eq.${currentEmail}`)
+          .not("status", "in", '("Delivered","Cancelled")');
+
+        if (!delivErr && delivCount !== null) {
+          setActiveDeliveriesCount(delivCount);
+        }
+
+        // 2. Unread Notifications Count
+        if (currentUserId) {
+          const { count: notifCount, error: notifErr } = await supabase
+            .from("customer_notifications")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", currentUserId)
+            .eq("is_read", false);
+
+          if (!notifErr && notifCount !== null) {
+            setUnreadNotificationsCount(notifCount);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch customer badge counts:", e);
+      }
+    }
+
+    fetchBadgeCounts();
+
+    const channel = supabase
+      .channel("customer_portal_badges_channel")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        fetchBadgeCounts(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        fetchBadgeCounts(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "customer_notifications" },
+        () => fetchBadgeCounts(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const customerName = user?.name || "Customer Account";
   const customerEmail = user?.email || "";
@@ -74,12 +134,24 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
       groupLabel: "SHOPPING",
       items: [
         { title: "My Orders", href: "/account/orders", icon: ShoppingBag },
-        { title: "Wishlist", href: "/account/wishlist", icon: Heart, badge: wishlist.length > 0 ? wishlist.length : undefined },
+        {
+          title: "Active Deliveries",
+          href: "/account/deliveries",
+          icon: Truck,
+          badge: activeDeliveriesCount > 0 ? activeDeliveriesCount : undefined,
+        },
+        {
+          title: "Wishlist",
+          href: "/account/wishlist",
+          icon: Heart,
+          badge: wishlist.length > 0 ? wishlist.length : undefined,
+        },
       ],
     },
     {
       groupLabel: "ACCOUNT",
       items: [
+        { title: "Gas Application", href: "/account/application", icon: FileText },
         { title: "Invoices", href: "/account/invoices", icon: FileText },
         { title: "Addresses", href: "/account/addresses", icon: MapPin },
         { title: "Profile", href: "/account/profile", icon: User },
@@ -88,7 +160,12 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
     {
       groupLabel: "SUPPORT",
       items: [
-        { title: "Notifications", href: "/account/notifications", icon: Bell },
+        {
+          title: "Notifications",
+          href: "/account/notifications",
+          icon: Bell,
+          badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : undefined,
+        },
         { title: "Help & Support", href: "/account/support", icon: HelpCircle },
       ],
     },
@@ -100,6 +177,8 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
 
   const getBreadcrumb = () => {
     if (currentPath === "/account" || currentPath === "/account/") return "Dashboard";
+    if (currentPath.includes("deliveries")) return "Active Deliveries";
+    if (currentPath.includes("tracking")) return "Delivery Tracking";
     if (currentPath.includes("orders")) return "My Orders";
     if (currentPath.includes("wishlist")) return "Wishlist";
     if (currentPath.includes("invoices")) return "Invoices";
@@ -149,9 +228,7 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
                 {(!collapsed || isMobile) && item.badge && (
                   <span
                     className={`ml-auto px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                      isActive
-                        ? "bg-white/25 text-white"
-                        : "bg-primary/10 text-primary"
+                      isActive ? "bg-white/25 text-white" : "bg-primary/10 text-primary"
                     }`}
                   >
                     {item.badge}
@@ -192,7 +269,11 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
           {/* Mobile Sheet Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-lg h-9 w-9 hover:bg-slate-100">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden rounded-lg h-9 w-9 hover:bg-slate-100"
+              >
                 <Menu className="h-[18px] w-[18px] text-slate-600" />
               </Button>
             </SheetTrigger>
@@ -200,7 +281,9 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
               <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
                 <img src={logo} alt="JSS" className="h-8 w-8 rounded-lg" />
                 <div>
-                  <h2 className="font-display font-extrabold text-[13px] tracking-tight text-foreground">JSS CUSTOMER PORTAL</h2>
+                  <h2 className="font-display font-extrabold text-[13px] tracking-tight text-foreground">
+                    JSS CUSTOMER PORTAL
+                  </h2>
                   <p className="text-[10px] text-slate-400 font-medium">John Stayte Services</p>
                 </div>
               </div>
@@ -223,8 +306,7 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-medium -mt-0.5">
-                Account /{" "}
-                <span className="text-slate-700 font-semibold">{getBreadcrumb()}</span>
+                Account / <span className="text-slate-700 font-semibold">{getBreadcrumb()}</span>
               </p>
             </div>
           </Link>
@@ -308,24 +390,36 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
                 </div>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-54 rounded-xl p-1.5 shadow-lg border border-slate-200 bg-white">
+            <DropdownMenuContent
+              align="end"
+              className="w-54 rounded-xl p-1.5 shadow-lg border border-slate-200 bg-white"
+            >
               <DropdownMenuLabel className="px-2.5 py-2">
                 <p className="text-[12px] font-bold text-foreground">{customerName}</p>
                 <p className="text-[11px] text-slate-400 truncate font-medium">{customerEmail}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="my-1" />
               <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                <Link to="/account/profile" className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2">
+                <Link
+                  to="/account/profile"
+                  className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2"
+                >
                   <User className="h-3.5 w-3.5 text-slate-400" /> My Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                <Link to="/account/settings" className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2">
+                <Link
+                  to="/account/settings"
+                  className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2"
+                >
                   <Settings className="h-3.5 w-3.5 text-slate-400" /> Account Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-lg cursor-pointer">
-                <Link to="/" className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2">
+                <Link
+                  to="/"
+                  className="flex items-center gap-2.5 text-[12px] font-medium px-2.5 py-2"
+                >
                   <ExternalLink className="h-3.5 w-3.5 text-slate-400" /> View Public Site
                 </Link>
               </DropdownMenuItem>
@@ -357,19 +451,19 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
             className="absolute -right-3 top-5 z-30 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm flex items-center justify-center text-slate-400 hover:text-slate-700 hover:border-slate-300 transition-all duration-150 hover:scale-110"
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+            {collapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            )}
           </button>
 
-          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-            {renderNavItems(false)}
-          </div>
+          <div className="flex-1 overflow-y-auto py-4 px-3 space-y-1">{renderNavItems(false)}</div>
         </aside>
 
         {/* MAIN CONTENT AREA */}
         <main className="flex-1 min-w-0 overflow-y-auto p-5 sm:p-7 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-7 animate-rise">
-            {children}
-          </div>
+          <div className="max-w-7xl mx-auto space-y-7 animate-rise">{children}</div>
         </main>
       </div>
     </div>

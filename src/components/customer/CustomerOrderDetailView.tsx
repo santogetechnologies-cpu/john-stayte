@@ -36,12 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
@@ -64,7 +59,12 @@ const CANCELLATION_REASONS = [
 ];
 
 export function CustomerOrderDetailView() {
-  const { orderId } = useParams({ strict: false }) as { orderId?: string };
+  const params = useParams({ strict: false }) as { orderId?: string };
+  const orderId =
+    params?.orderId ||
+    (typeof window !== "undefined"
+      ? window.location.pathname.split("/account/orders/")[1]?.split("/")[0]?.split("?")[0]
+      : undefined);
   const { user, addToCart } = useStore();
   const navigate = useNavigate();
 
@@ -98,9 +98,7 @@ export function CustomerOrderDetailView() {
       const currentEmail = authUser?.user?.email || user?.email;
 
       // Query order by UUID id or order_number
-      let query = supabase
-        .from("orders")
-        .select("*, order_items(*), order_status_history(*)");
+      let query = supabase.from("orders").select("*, order_items(*), order_status_history(*)");
 
       if (orderId.includes("-") && orderId.length === 36) {
         query = query.eq("id", orderId);
@@ -206,7 +204,7 @@ export function CustomerOrderDetailView() {
           table: "orders",
           filter: `id=eq.${order.id}`,
         },
-        () => loadOrder()
+        () => loadOrder(),
       )
       .subscribe();
 
@@ -220,9 +218,7 @@ export function CustomerOrderDetailView() {
     if (!order) return 0;
     const status = order.status || "Pending";
     if (status === "Cancelled") return -1;
-    const idx = TRACKING_STEPS.findIndex(
-      (s) => s.key.toLowerCase() === status.toLowerCase()
-    );
+    const idx = TRACKING_STEPS.findIndex((s) => s.key.toLowerCase() === status.toLowerCase());
     return idx >= 0 ? idx : 0;
   }, [order]);
 
@@ -284,7 +280,7 @@ export function CustomerOrderDetailView() {
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">${gbp(item.unit_price * 0.2 * item.quantity)}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700;">${gbp(item.total_price)}</td>
         </tr>
-      `
+      `,
         )
         .join("");
 
@@ -544,9 +540,7 @@ export function CustomerOrderDetailView() {
           <AlertTriangle className="h-8 w-8 text-rose-500" />
         </div>
         <div className="space-y-1.5">
-          <h2 className="font-display font-extrabold text-xl text-slate-900">
-            Order Not Found
-          </h2>
+          <h2 className="font-display font-extrabold text-xl text-slate-900">Order Not Found</h2>
           <p className="text-xs text-slate-500 font-medium leading-relaxed">
             {error || "We couldn't locate this order in your customer account."}
           </p>
@@ -658,9 +652,21 @@ export function CustomerOrderDetailView() {
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Sync
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="rounded-full text-xs font-bold gap-1 border-primary/20 text-primary hover:bg-primary/10 h-8"
+            >
+              <Link to="/account/deliveries" search={{ orderId: order.id } as never}>
+                <Truck className="h-3.5 w-3.5" /> Full Delivery Tracker
+              </Link>
+            </Button>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Live Sync
+            </div>
           </div>
         </div>
 
@@ -670,11 +676,10 @@ export function CustomerOrderDetailView() {
             <div className="h-10 w-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100">
               <XCircle className="h-5 w-5" />
             </div>
-            <h3 className="font-display font-extrabold text-sm text-slate-900">
-              Order Cancelled
-            </h3>
+            <h3 className="font-display font-extrabold text-sm text-slate-900">Order Cancelled</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              {order.notes || "This order was cancelled. No delivery will be made, and allocated inventory has been restored."}
+              {order.notes ||
+                "This order was cancelled. No delivery will be made, and allocated inventory has been restored."}
             </p>
           </div>
         ) : (
@@ -699,7 +704,7 @@ export function CustomerOrderDetailView() {
                   const isUpcoming = currentStepIndex < idx;
 
                   const historyEntry = order.order_status_history?.find(
-                    (h: any) => h.status?.toLowerCase() === step.key.toLowerCase()
+                    (h: any) => h.status?.toLowerCase() === step.key.toLowerCase(),
                   );
 
                   return (
@@ -711,8 +716,8 @@ export function CustomerOrderDetailView() {
                             isCurrent
                               ? "bg-primary text-white ring-4 ring-primary/20 shadow-md scale-110"
                               : isCompleted
-                              ? "bg-emerald-600 text-white shadow-2xs"
-                              : "bg-white text-slate-400 border-2 border-slate-200"
+                                ? "bg-emerald-600 text-white shadow-2xs"
+                                : "bg-white text-slate-400 border-2 border-slate-200"
                           }`}
                         >
                           {isCompleted ? (
@@ -740,8 +745,8 @@ export function CustomerOrderDetailView() {
                           isCurrent
                             ? "text-primary"
                             : isCompleted
-                            ? "text-slate-900"
-                            : "text-slate-400"
+                              ? "text-slate-900"
+                              : "text-slate-400"
                         }`}
                       >
                         {step.label}
@@ -772,7 +777,7 @@ export function CustomerOrderDetailView() {
                 const isCurrent = currentStepIndex === idx;
 
                 const historyEntry = order.order_status_history?.find(
-                  (h: any) => h.status?.toLowerCase() === step.key.toLowerCase()
+                  (h: any) => h.status?.toLowerCase() === step.key.toLowerCase(),
                 );
 
                 return (
@@ -783,8 +788,8 @@ export function CustomerOrderDetailView() {
                         isCurrent
                           ? "bg-primary text-white ring-4 ring-primary/20"
                           : isCompleted
-                          ? "bg-emerald-600 text-white"
-                          : "bg-white text-slate-400 border border-slate-300"
+                            ? "bg-emerald-600 text-white"
+                            : "bg-white text-slate-400 border border-slate-300"
                       }`}
                     >
                       {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
@@ -793,7 +798,11 @@ export function CustomerOrderDetailView() {
                     <div className="flex items-center justify-between gap-2">
                       <p
                         className={`text-xs font-bold ${
-                          isCurrent ? "text-primary" : isCompleted ? "text-slate-900" : "text-slate-400"
+                          isCurrent
+                            ? "text-primary"
+                            : isCompleted
+                              ? "text-slate-900"
+                              : "text-slate-400"
                         }`}
                       >
                         {step.label}
@@ -809,9 +818,7 @@ export function CustomerOrderDetailView() {
                       )}
                     </div>
 
-                    <p className="text-[11px] text-slate-500 leading-snug">
-                      {step.desc}
-                    </p>
+                    <p className="text-[11px] text-slate-500 leading-snug">{step.desc}</p>
                   </div>
                 );
               })}
@@ -855,7 +862,10 @@ export function CustomerOrderDetailView() {
                       slug ? "group cursor-pointer" : ""
                     }`}
                   >
-                    <ItemWrapper {...(wrapperProps as any)} className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <ItemWrapper
+                      {...(wrapperProps as any)}
+                      className="flex items-center gap-3.5 min-w-0 flex-1"
+                    >
                       <div className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 p-1.5 flex items-center justify-center shrink-0 group-hover:border-slate-300 transition-colors">
                         {item.product_info?.image_url ? (
                           <img
@@ -876,7 +886,8 @@ export function CustomerOrderDetailView() {
                           {item.product_name}
                         </p>
                         <p className="text-[11px] text-slate-500 font-medium">
-                          Qty: <span className="font-bold text-slate-800">{item.quantity}</span> × {gbp(Number(item.unit_price))}
+                          Qty: <span className="font-bold text-slate-800">{item.quantity}</span> ×{" "}
+                          {gbp(Number(item.unit_price))}
                         </p>
                         {item.product_info?.category_slug && (
                           <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
@@ -890,9 +901,7 @@ export function CustomerOrderDetailView() {
                       <p className="font-display font-black text-sm text-slate-900">
                         {gbp(Number(item.total_price))}
                       </p>
-                      <p className="text-[10px] text-slate-400 font-medium">
-                        incl. VAT
-                      </p>
+                      <p className="text-[10px] text-slate-400 font-medium">incl. VAT</p>
                     </div>
                   </div>
                 );
@@ -1081,7 +1090,11 @@ export function CustomerOrderDetailView() {
                 key={p.id}
                 className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs flex flex-col justify-between space-y-3 hover:border-slate-300 hover:shadow-md transition-all"
               >
-                <Link to="/products/$slug" params={{ slug: p.slug }} className="space-y-2.5 block group">
+                <Link
+                  to="/products/$slug"
+                  params={{ slug: p.slug }}
+                  className="space-y-2.5 block group"
+                >
                   <div className="h-32 rounded-xl bg-slate-50 p-2 flex items-center justify-center overflow-hidden">
                     {p.image_url ? (
                       <img
@@ -1136,13 +1149,15 @@ export function CustomerOrderDetailView() {
         <DialogContent className="max-w-md rounded-3xl p-6 bg-white space-y-4">
           <DialogHeader>
             <DialogTitle className="text-lg font-black flex items-center gap-2 text-rose-600">
-              <AlertTriangle className="h-5 w-5" /> Cancel Order #{order.order_number || order.id.slice(0, 8)}?
+              <AlertTriangle className="h-5 w-5" /> Cancel Order #
+              {order.order_number || order.id.slice(0, 8)}?
             </DialogTitle>
           </DialogHeader>
 
           <div className="text-xs text-slate-600 space-y-3">
             <p>
-              Are you sure you want to cancel this order? Allocated stock will be restored to inventory and the status will update in Supabase.
+              Are you sure you want to cancel this order? Allocated stock will be restored to
+              inventory and your order status updated to Cancelled.
             </p>
 
             <div className="bg-slate-50 p-3 rounded-xl border font-bold text-slate-900">

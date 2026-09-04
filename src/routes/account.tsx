@@ -9,7 +9,8 @@ export const Route = createFileRoute("/account")({
       { title: "My Account | John Stayte Services" },
       {
         name: "description",
-        content: "Manage your JSS customer orders, delivery addresses, invoices, wishlist and support preferences.",
+        content:
+          "Manage your JSS customer orders, delivery addresses, invoices, wishlist and support preferences.",
       },
     ],
   }),

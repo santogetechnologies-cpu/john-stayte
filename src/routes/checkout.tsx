@@ -16,7 +16,10 @@ export const Route = createFileRoute("/checkout")({
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { name: "twitter:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
       { title: "Checkout | John Stayte Services" },
-      { name: "description", content: "Secure checkout for gas, fuel and appliance orders with account verification." },
+      {
+        name: "description",
+        content: "Secure checkout for gas, fuel and appliance orders with account verification.",
+      },
       { property: "og:title", content: "Checkout | John Stayte Services" },
       { property: "og:description", content: "Complete your John Stayte Services order." },
     ],
@@ -49,6 +52,38 @@ function Checkout() {
   const [phone, setPhone] = useState("");
   const [postcode, setPostcode] = useState("");
   const [address, setAddress] = useState("");
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+
+  // Automatically load and prefill customer's saved default address from Supabase
+  useEffect(() => {
+    async function loadCustomerAddresses() {
+      try {
+        const { data: authUser } = await supabase.auth.getUser();
+        if (!authUser?.user) return;
+
+        const { data: addrs } = await supabase
+          .from("customer_addresses")
+          .select("*")
+          .eq("user_id", authUser.user.id)
+          .order("is_default", { ascending: false });
+
+        if (addrs && addrs.length > 0) {
+          setSavedAddresses(addrs);
+          const defaultAddr = addrs.find((a: any) => a.is_default) || addrs[0];
+          if (defaultAddr) {
+            setAddress(defaultAddr.street || "");
+            setPostcode(defaultAddr.postcode || "");
+            if (defaultAddr.name && (!user?.name || user.name === "Customer")) {
+              setFullName(defaultAddr.name);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load saved customer addresses:", err);
+      }
+    }
+    loadCustomerAddresses();
+  }, [user]);
 
   const applyCoupon = async () => {
     const cleanCode = coupon.trim().toUpperCase();
@@ -72,7 +107,9 @@ function Checkout() {
 
       // Check min order amount
       if (dbCoupon.min_order_amount && subtotal < Number(dbCoupon.min_order_amount)) {
-        return toast.error(`Minimum order total of ${gbp(Number(dbCoupon.min_order_amount))} required for this coupon.`);
+        return toast.error(
+          `Minimum order total of ${gbp(Number(dbCoupon.min_order_amount))} required for this coupon.`,
+        );
       }
 
       // Check expiration
@@ -116,7 +153,9 @@ function Checkout() {
     }
 
     if (settings?.minOrderValue && subtotal < settings.minOrderValue) {
-      return toast.error(`A minimum order value of ${gbp(settings.minOrderValue)} is required to place an order.`);
+      return toast.error(
+        `A minimum order value of ${gbp(settings.minOrderValue)} is required to place an order.`,
+      );
     }
 
     if (!fullName || !email || !address || !postcode) {
@@ -158,7 +197,7 @@ function Checkout() {
           throw new Error(
             currentStock === 0
               ? `'${dbProduct.name}' is currently out of stock. Please update your basket.`
-              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`
+              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`,
           );
         }
 
@@ -202,7 +241,7 @@ function Checkout() {
         .single();
 
       if (orderErr || !newOrder) {
-        throw new Error(orderErr?.message || "Failed to create order record in Supabase.");
+        throw new Error(orderErr?.message || "Failed to process your order. Please try again.");
       }
 
       createdOrderId = newOrder.id;
@@ -350,43 +389,140 @@ function Checkout() {
 
   return (
     <SiteLayout>
-      <PageHero eyebrow="Checkout" title={user ? `Checkout, ${user.name.split(" ")[0]}` : "Guest checkout"} />
-      <form onSubmit={place} className="container-page grid gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <PageHero
+        eyebrow="Checkout"
+        title={user ? `Checkout, ${user.name.split(" ")[0]}` : "Guest checkout"}
+      />
+      <form
+        onSubmit={place}
+        className="container-page grid gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_380px]"
+      >
         <div className="space-y-5">
           <section className="surface-card p-7">
-            <h2 className="font-extrabold">Delivery details</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-extrabold">Delivery details</h2>
+              {savedAddresses.length > 0 && (
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                  Using saved address
+                </span>
+              )}
+            </div>
+
+            {savedAddresses.length > 1 && (
+              <div className="mt-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                <span className="text-[11px] font-bold text-slate-500 block">
+                  Select from saved addresses:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {savedAddresses.map((addr) => (
+                    <button
+                      key={addr.id}
+                      type="button"
+                      onClick={() => {
+                        setAddress(addr.street || "");
+                        setPostcode(addr.postcode || "");
+                        if (addr.name) setFullName(addr.name);
+                        toast.info(`Selected address: ${addr.label || addr.street}`);
+                      }}
+                      className={`px-3 py-1 text-xs font-bold rounded-full border transition-all ${
+                        address === addr.street
+                          ? "bg-primary text-white border-primary shadow-xs"
+                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >
+                      {addr.label || "Address"}: {addr.street.slice(0, 24)}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div>
                 <Label htmlFor="fn">Full name</Label>
-                <Input id="fn" required maxLength={100} value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5 rounded-full" />
+                <Input
+                  id="fn"
+                  required
+                  maxLength={100}
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="mt-1.5 rounded-full"
+                />
               </div>
               <div>
                 <Label htmlFor="em">Email</Label>
-                <Input id="em" type="email" required maxLength={255} value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 rounded-full" />
+                <Input
+                  id="em"
+                  type="email"
+                  required
+                  maxLength={255}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1.5 rounded-full"
+                />
               </div>
               <div>
                 <Label htmlFor="ph">Phone</Label>
-                <Input id="ph" required maxLength={20} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07700 900123" className="mt-1.5 rounded-full" />
+                <Input
+                  id="ph"
+                  required
+                  maxLength={20}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="07700 900123"
+                  className="mt-1.5 rounded-full"
+                />
               </div>
               <div>
                 <Label htmlFor="pc">Postcode</Label>
-                <Input id="pc" required maxLength={10} value={postcode} onChange={(e) => setPostcode(e.target.value)} placeholder="GL2 7LZ" className="mt-1.5 rounded-full" />
+                <Input
+                  id="pc"
+                  required
+                  maxLength={10}
+                  value={postcode}
+                  onChange={(e) => setPostcode(e.target.value)}
+                  placeholder="GL2 7LZ"
+                  className="mt-1.5 rounded-full"
+                />
               </div>
             </div>
             <div className="mt-4">
               <Label htmlFor="ad">Address</Label>
-              <Textarea id="ad" required maxLength={300} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street address & town..." className="mt-1.5 rounded-2xl" />
+              <Textarea
+                id="ad"
+                required
+                maxLength={300}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Street address & town..."
+                className="mt-1.5 rounded-2xl"
+              />
             </div>
           </section>
 
           <section className="surface-card p-7">
             <h2 className="font-extrabold">Payment details</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2"><Label htmlFor="cn">Card number</Label><Input id="cn" placeholder="4242 4242 4242 4242" maxLength={19} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="ex">Expiry</Label><Input id="ex" placeholder="12/29" maxLength={5} className="mt-1.5 rounded-full" /></div>
-              <div><Label htmlFor="cv">CVC</Label><Input id="cv" placeholder="123" maxLength={4} className="mt-1.5 rounded-full" /></div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="cn">Card number</Label>
+                <Input
+                  id="cn"
+                  placeholder="4242 4242 4242 4242"
+                  maxLength={19}
+                  className="mt-1.5 rounded-full"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ex">Expiry</Label>
+                <Input id="ex" placeholder="12/29" maxLength={5} className="mt-1.5 rounded-full" />
+              </div>
+              <div>
+                <Label htmlFor="cv">CVC</Label>
+                <Input id="cv" placeholder="123" maxLength={4} className="mt-1.5 rounded-full" />
+              </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Payment details encrypted. Order will be confirmed upon submission.</p>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Payment details encrypted. Order will be confirmed upon submission.
+            </p>
           </section>
         </div>
 
@@ -398,25 +534,63 @@ function Checkout() {
             <ul className="mt-4 space-y-2 text-sm">
               {lines.map((l) => (
                 <li key={l.slug} className="flex justify-between gap-3">
-                  <span className="min-w-0 truncate text-muted-foreground">{l.qty} × {l.product.name}</span>
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    {l.qty} × {l.product.name}
+                  </span>
                   <span className="font-semibold">{gbp(l.product.price * l.qty)}</span>
                 </li>
               ))}
             </ul>
           )}
           <div className="mt-4 flex gap-2">
-            <Input value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="Coupon code" maxLength={20} className="rounded-full" />
-            <Button type="button" variant="outline" className="rounded-full" onClick={applyCoupon}>Apply</Button>
+            <Input
+              value={coupon}
+              onChange={(e) => setCoupon(e.target.value)}
+              placeholder="Coupon code"
+              maxLength={20}
+              className="rounded-full"
+            />
+            <Button type="button" variant="outline" className="rounded-full" onClick={applyCoupon}>
+              Apply
+            </Button>
           </div>
           <dl className="mt-4 space-y-2 border-t pt-4 text-sm">
-            <div className="flex justify-between"><dt className="text-muted-foreground">Subtotal</dt><dd>{gbp(subtotal)}</dd></div>
-            {discount > 0 && <div className="flex justify-between text-primary"><dt>Discount</dt><dd>−{gbp(discount)}</dd></div>}
-            <div className="flex justify-between"><dt className="text-muted-foreground">Delivery</dt><dd>{shipping === 0 ? "Free" : gbp(shipping)}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted-foreground">VAT (20%)</dt><dd>{gbp(vat)}</dd></div>
-            <div className="flex justify-between border-t pt-2 text-base font-extrabold"><dt>Total</dt><dd>{gbp(Math.max(0, total - discount))}</dd></div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Subtotal</dt>
+              <dd>{gbp(subtotal)}</dd>
+            </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-primary">
+                <dt>Discount</dt>
+                <dd>−{gbp(discount)}</dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">Delivery</dt>
+              <dd>{shipping === 0 ? "Free" : gbp(shipping)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted-foreground">VAT (20%)</dt>
+              <dd>{gbp(vat)}</dd>
+            </div>
+            <div className="flex justify-between border-t pt-2 text-base font-extrabold">
+              <dt>Total</dt>
+              <dd>{gbp(Math.max(0, total - discount))}</dd>
+            </div>
           </dl>
-          <Button type="submit" size="lg" disabled={submitting || cartLoading || lines.length === 0} className="mt-6 w-full rounded-full gap-2">
-            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order...</> : "Place order"}
+          <Button
+            type="submit"
+            size="lg"
+            disabled={submitting || cartLoading || lines.length === 0}
+            className="mt-6 w-full rounded-full gap-2"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Placing Order...
+              </>
+            ) : (
+              "Place order"
+            )}
           </Button>
         </aside>
       </form>

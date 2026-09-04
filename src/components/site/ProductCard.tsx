@@ -19,7 +19,9 @@ export function ProductCard({ product }: { product: Product }) {
         onClick={() => toggleWishlist(product.slug)}
         className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border bg-background/90 backdrop-blur transition-colors hover:border-primary"
       >
-        <Heart className={cn("h-4 w-4", wished ? "fill-primary text-primary" : "text-muted-foreground")} />
+        <Heart
+          className={cn("h-4 w-4", wished ? "fill-primary text-primary" : "text-muted-foreground")}
+        />
       </button>
 
       {product.offer && (
@@ -56,7 +58,9 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="mt-3 flex items-end gap-2">
           <span className="text-lg font-extrabold">{gbp(product.price)}</span>
           {product.compareAt && (
-            <span className="pb-0.5 text-sm text-muted-foreground line-through">{gbp(product.compareAt)}</span>
+            <span className="pb-0.5 text-sm text-muted-foreground line-through">
+              {gbp(product.compareAt)}
+            </span>
           )}
         </div>
 

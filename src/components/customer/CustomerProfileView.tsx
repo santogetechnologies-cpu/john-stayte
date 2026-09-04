@@ -374,7 +374,9 @@ export function CustomerProfileView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/account" className="hover:text-primary transition-colors">Account</Link>
+            <Link to="/account" className="hover:text-primary transition-colors">
+              Account
+            </Link>
             <span>/</span>
             <span className="text-foreground font-bold">Profile</span>
           </div>
@@ -389,15 +391,20 @@ export function CustomerProfileView() {
 
       {loading ? (
         <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs font-bold text-muted-foreground shadow-xs flex items-center justify-center gap-2">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Querying profile details from Supabase...
+          <Loader2 className="h-5 w-5 text-primary animate-spin" /> Loading profile details...
         </div>
       ) : error ? (
         <div className="p-12 text-center space-y-3 surface-card rounded-3xl border bg-white shadow-xs">
           <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
-          <h3 className="font-bold text-sm text-foreground">Profile Query Error</h3>
+          <h3 className="font-bold text-sm text-foreground">Notice</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
-          <Button onClick={loadProfile} size="sm" variant="outline" className="rounded-full text-xs font-bold gap-1.5 mt-2">
-            <RotateCcw className="h-3.5 w-3.5" /> Retry Query
+          <Button
+            onClick={loadProfile}
+            size="sm"
+            variant="outline"
+            className="rounded-full text-xs font-bold gap-1.5 mt-2"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Retry
           </Button>
         </div>
       ) : (
@@ -432,7 +439,9 @@ export function CustomerProfileView() {
               </div>
 
               <div className="space-y-1.5 w-full">
-                <h2 className="font-black text-xl text-foreground truncate">{name || "Valued Customer"}</h2>
+                <h2 className="font-black text-xl text-foreground truncate">
+                  {name || "Valued Customer"}
+                </h2>
                 <p className="text-xs text-muted-foreground font-medium truncate">{email}</p>
               </div>
 
@@ -448,7 +457,8 @@ export function CustomerProfileView() {
                   variant="outline"
                   className="rounded-full text-xs font-bold gap-1.5 border-slate-200 hover:bg-slate-50"
                 >
-                  <Upload className="h-3.5 w-3.5 text-primary" /> {avatarUrl ? "Change Photo" : "Change Photo"}
+                  <Upload className="h-3.5 w-3.5 text-primary" />{" "}
+                  {avatarUrl ? "Change Photo" : "Change Photo"}
                 </Button>
 
                 {avatarUrl && (
@@ -468,7 +478,10 @@ export function CustomerProfileView() {
                 <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[10px] font-extrabold px-3 py-1">
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" /> Active Account
                 </Badge>
-                <Badge variant="outline" className="text-[10px] font-extrabold uppercase border-slate-200 px-3 py-1">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-extrabold uppercase border-slate-200 px-3 py-1"
+                >
                   <BadgeCheck className="h-3.5 w-3.5 mr-1 text-primary" /> Customer
                 </Badge>
               </div>
@@ -486,12 +499,20 @@ export function CustomerProfileView() {
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground font-medium">Member Since:</span>
                   <span className="font-bold text-slate-700">
-                    {createdAt ? new Date(createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "Aug 2026"}
+                    {createdAt
+                      ? new Date(createdAt).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "Aug 2026"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground font-medium">Email Verification:</span>
-                  <span className="font-bold text-blue-600">{emailVerified ? "Verified" : "Pending"}</span>
+                  <span className="font-bold text-blue-600">
+                    {emailVerified ? "Verified" : "Pending"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -578,7 +599,11 @@ export function CustomerProfileView() {
                     disabled={saving}
                     className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
                   >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {saving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
                     {saving ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
@@ -688,7 +713,11 @@ export function CustomerProfileView() {
                 disabled={uploadingPhoto || !selectedPhotoFile}
                 className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
               >
-                {uploadingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploadingPhoto ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
                 {uploadingPhoto ? "Uploading..." : "Upload Photo"}
               </Button>
             </div>
@@ -704,7 +733,8 @@ export function CustomerProfileView() {
               <AlertTriangle className="h-5 w-5 text-rose-600" /> Remove Profile Photo?
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Are you sure you want to remove your profile photo? Your account will use your initials instead.
+              Are you sure you want to remove your profile photo? Your account will use your
+              initials instead.
             </DialogDescription>
           </DialogHeader>
 
@@ -725,7 +755,11 @@ export function CustomerProfileView() {
               disabled={removingPhoto}
               className="rounded-full font-extrabold text-xs gap-1.5 px-6 shadow-md bg-rose-600 hover:bg-rose-700 text-white"
             >
-              {removingPhoto ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {removingPhoto ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
               {removingPhoto ? "Removing..." : "Remove Photo"}
             </Button>
           </div>
@@ -765,7 +799,11 @@ export function CustomerProfileView() {
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                 >
-                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -815,7 +853,11 @@ export function CustomerProfileView() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-3 text-slate-400 hover:text-slate-600"
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -844,7 +886,11 @@ export function CustomerProfileView() {
                 disabled={updatingPassword}
                 className="rounded-full font-extrabold text-xs gap-2 px-6 shadow-md bg-primary hover:bg-primary/90 text-white"
               >
-                {updatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                {updatingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}
                 {updatingPassword ? "Updating Password..." : "Update Password"}
               </Button>
             </div>

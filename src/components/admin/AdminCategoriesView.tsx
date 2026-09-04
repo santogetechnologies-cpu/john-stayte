@@ -21,12 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -79,16 +74,14 @@ export function AdminCategoriesView() {
 
       if (uploadErr) throw uploadErr;
 
-      const { data } = supabase.storage
-        .from("product-images")
-        .getPublicUrl(filePath);
+      const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
 
       setEditCategory((prev: any) => ({
         ...prev,
         image_url: data.publicUrl,
         image: data.publicUrl,
       }));
-      toast.success("Category image uploaded to Supabase Storage!");
+      toast.success("Category image uploaded!");
     } catch (err: any) {
       console.warn("Storage upload notice:", err.message);
       setEditCategory((prev: any) => ({
@@ -106,10 +99,11 @@ export function AdminCategoriesView() {
   const loadCategoryData = async () => {
     setLoading(true);
     try {
-      const [{ data: dbCats, error: catErr }, { data: dbProds, error: prodErr }] = await Promise.all([
-        supabase.from("categories").select("*").order("display_order", { ascending: true }),
-        supabase.from("products").select("id, category_slug, name"),
-      ]);
+      const [{ data: dbCats, error: catErr }, { data: dbProds, error: prodErr }] =
+        await Promise.all([
+          supabase.from("categories").select("*").order("display_order", { ascending: true }),
+          supabase.from("products").select("id, category_slug, name"),
+        ]);
 
       if (catErr) throw catErr;
       if (prodErr) throw prodErr;
@@ -148,9 +142,7 @@ export function AdminCategoriesView() {
   const categoriesWithProducts = categories.filter(
     (c) => (productCountMap[c.slug] || 0) > 0,
   ).length;
-  const emptyCategories = categories.filter(
-    (c) => (productCountMap[c.slug] || 0) === 0,
-  ).length;
+  const emptyCategories = categories.filter((c) => (productCountMap[c.slug] || 0) === 0).length;
 
   // Filtered Category List for Left Pane
   const filteredCategories = useMemo(() => {
@@ -196,7 +188,11 @@ export function AdminCategoriesView() {
   const handleNameChange = (nameVal: string) => {
     const updated = { ...editCategory, name: nameVal };
     if (!isEditMode) {
-      updated.slug = nameVal.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      updated.slug = nameVal
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
     }
     setEditCategory(updated);
   };
@@ -376,7 +372,11 @@ export function AdminCategoriesView() {
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
             Create your first category record in Supabase.
           </p>
-          <Button onClick={handleOpenCreate} size="sm" className="rounded-full font-bold text-xs gap-1.5 mt-2">
+          <Button
+            onClick={handleOpenCreate}
+            size="sm"
+            className="rounded-full font-bold text-xs gap-1.5 mt-2"
+          >
             <Plus className="h-4 w-4" /> Create Category
           </Button>
         </div>
@@ -423,7 +423,10 @@ export function AdminCategoriesView() {
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold truncate">{c.name}</p>
                           {c.is_active === false && (
-                            <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[9px] font-bold">
+                            <Badge
+                              variant="outline"
+                              className="bg-red-50 text-red-600 border-red-200 text-[9px] font-bold"
+                            >
                               Inactive
                             </Badge>
                           )}
@@ -444,8 +447,8 @@ export function AdminCategoriesView() {
                         isSelected
                           ? "bg-white/20 text-white border-white/30"
                           : count > 0
-                          ? "bg-blue-50 text-blue-700 border-blue-200"
-                          : "bg-slate-100 text-slate-500"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-slate-100 text-slate-500"
                       }`}
                     >
                       {count} products
@@ -466,9 +469,12 @@ export function AdminCategoriesView() {
                       <Layers className="h-6 w-6" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-black text-foreground">{selectedCategory.name}</h2>
+                      <h2 className="text-xl font-black text-foreground">
+                        {selectedCategory.name}
+                      </h2>
                       <p className="text-xs font-mono text-muted-foreground mt-0.5">
-                        Slug: /{selectedCategory.slug} • Order: #{selectedCategory.display_order || 1}
+                        Slug: /{selectedCategory.slug} • Order: #
+                        {selectedCategory.display_order || 1}
                       </p>
                     </div>
                   </div>
@@ -485,9 +491,13 @@ export function AdminCategoriesView() {
                       }`}
                     >
                       {selectedCategory.is_active === false ? (
-                        <><CheckCircle2 className="h-3.5 w-3.5" /> Activate</>
+                        <>
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Activate
+                        </>
                       ) : (
-                        <><XCircle className="h-3.5 w-3.5" /> Deactivate</>
+                        <>
+                          <XCircle className="h-3.5 w-3.5" /> Deactivate
+                        </>
                       )}
                     </Button>
 
@@ -513,30 +523,48 @@ export function AdminCategoriesView() {
 
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
-                    <p className="text-muted-foreground font-bold uppercase text-[10px]">Product Count</p>
-                    <p className="text-2xl font-black text-foreground">{selectedCategoryProductCount}</p>
-                    <p className="text-[11px] text-muted-foreground">Products assigned in database</p>
+                    <p className="text-muted-foreground font-bold uppercase text-[10px]">
+                      Product Count
+                    </p>
+                    <p className="text-2xl font-black text-foreground">
+                      {selectedCategoryProductCount}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Products assigned in database
+                    </p>
                   </div>
 
                   <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
-                    <p className="text-muted-foreground font-bold uppercase text-[10px]">Visibility State</p>
+                    <p className="text-muted-foreground font-bold uppercase text-[10px]">
+                      Visibility State
+                    </p>
                     <div className="pt-1">
                       {selectedCategory.is_active !== false ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-xs">
+                        <Badge
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-xs"
+                        >
                           Active on Customer Home
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 font-bold text-xs">
+                        <Badge
+                          variant="outline"
+                          className="bg-red-50 text-red-700 border-red-200 font-bold text-xs"
+                        >
                           Hidden from Store Front
                         </Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">Controlled via Supabase</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Controlled via Supabase
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs">
-                  <p className="font-bold text-muted-foreground uppercase text-[10px]">Description</p>
+                  <p className="font-bold text-muted-foreground uppercase text-[10px]">
+                    Description
+                  </p>
                   <p className="p-4 rounded-2xl border bg-slate-50/50 text-slate-700 leading-relaxed font-medium">
                     {selectedCategory.description || "No description provided for this category."}
                   </p>
@@ -544,7 +572,10 @@ export function AdminCategoriesView() {
 
                 <div className="pt-4 border-t flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">
-                    Icon: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">{selectedCategory.icon || "Flame"}</code>
+                    Icon:{" "}
+                    <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded">
+                      {selectedCategory.icon || "Flame"}
+                    </code>
                   </span>
 
                   <Button
@@ -588,7 +619,9 @@ export function AdminCategoriesView() {
               </div>
 
               <div>
-                <label className="font-bold text-muted-foreground">Category Slug (URL Identifier) *</label>
+                <label className="font-bold text-muted-foreground">
+                  Category Slug (URL Identifier) *
+                </label>
                 <Input
                   value={editCategory.slug}
                   onChange={(e) => setEditCategory({ ...editCategory, slug: e.target.value })}
@@ -623,7 +656,12 @@ export function AdminCategoriesView() {
                   <Input
                     type="number"
                     value={editCategory.display_order || 1}
-                    onChange={(e) => setEditCategory({ ...editCategory, display_order: parseInt(e.target.value) || 1 })}
+                    onChange={(e) =>
+                      setEditCategory({
+                        ...editCategory,
+                        display_order: parseInt(e.target.value) || 1,
+                      })
+                    }
                     className="mt-1 rounded-xl text-xs font-semibold"
                   />
                 </div>
@@ -634,25 +672,44 @@ export function AdminCategoriesView() {
                 <Textarea
                   rows={2}
                   value={editCategory.description || ""}
-                  onChange={(e) => setEditCategory({ ...editCategory, description: e.target.value })}
+                  onChange={(e) =>
+                    setEditCategory({ ...editCategory, description: e.target.value })
+                  }
                   placeholder="Short description of products in this category..."
                   className="mt-1 rounded-xl text-xs font-medium"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-muted-foreground">Category Image URL / Upload</label>
+                <label className="font-bold text-muted-foreground">
+                  Category Image URL / Upload
+                </label>
                 <div className="flex items-center gap-2 mt-1">
                   <Input
                     value={editCategory.image_url || editCategory.image || ""}
-                    onChange={(e) => setEditCategory({ ...editCategory, image_url: e.target.value, image: e.target.value })}
+                    onChange={(e) =>
+                      setEditCategory({
+                        ...editCategory,
+                        image_url: e.target.value,
+                        image: e.target.value,
+                      })
+                    }
                     placeholder="/calor-cylinders-hero.jpg or https://..."
                     className="rounded-xl text-xs flex-1"
                   />
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
                     <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50 transition-colors">
-                      {uploadingImage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                      {uploadingImage ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Upload className="h-3.5 w-3.5" />
+                      )}
                       Upload
                     </span>
                   </label>

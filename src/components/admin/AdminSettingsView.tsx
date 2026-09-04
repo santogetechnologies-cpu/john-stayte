@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
-import { Settings, Save, Loader2, Layers, ShieldCheck, Mail, Building, Truck, ShoppingBag, Bell } from "lucide-react";
+import {
+  Settings,
+  Save,
+  Loader2,
+  Layers,
+  ShieldCheck,
+  Mail,
+  Building,
+  Truck,
+  ShoppingBag,
+  Bell,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -53,8 +64,16 @@ export function AdminSettingsView() {
     setLoading(true);
     try {
       const [{ data: moduleBlock }, { data: settingsBlock }] = await Promise.all([
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "admin_modules_config").maybeSingle(),
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "admin_system_settings").maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "admin_modules_config")
+          .maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "admin_system_settings")
+          .maybeSingle(),
       ]);
 
       if (moduleBlock?.content) {
@@ -76,9 +95,11 @@ export function AdminSettingsView() {
           if (parsed.fuelVatRate) setFuelVatRate(String(parsed.fuelVatRate));
           if (parsed.minOrderValue) setMinOrderValue(String(parsed.minOrderValue));
           if (parsed.defaultShippingFee) setDefaultShippingFee(String(parsed.defaultShippingFee));
-          if (parsed.freeDeliveryThreshold) setFreeDeliveryThreshold(String(parsed.freeDeliveryThreshold));
+          if (parsed.freeDeliveryThreshold)
+            setFreeDeliveryThreshold(String(parsed.freeDeliveryThreshold));
           if (parsed.deliverySlaDays) setDeliverySlaDays(String(parsed.deliverySlaDays));
-          if (typeof parsed.autoApproveOrders === "boolean") setAutoApproveOrders(parsed.autoApproveOrders);
+          if (typeof parsed.autoApproveOrders === "boolean")
+            setAutoApproveOrders(parsed.autoApproveOrders);
           if (typeof parsed.emailAlerts === "boolean") setEmailAlerts(parsed.emailAlerts);
           if (typeof parsed.lowStockAlerts === "boolean") setLowStockAlerts(parsed.lowStockAlerts);
         } catch (e) {}
@@ -131,8 +152,11 @@ export function AdminSettingsView() {
 
       if (err1 || err2) throw new Error((err1 || err2)?.message);
 
-      await logAdminAuditAction("UPDATE_SETTINGS", "settings", "admin_config", { platformName, vatRate });
-      toast.success("System preferences saved to Supabase database!");
+      await logAdminAuditAction("UPDATE_SETTINGS", "settings", "admin_config", {
+        platformName,
+        vatRate,
+      });
+      toast.success("System preferences saved successfully!");
       window.dispatchEvent(new Event("admin_modules_updated"));
       window.dispatchEvent(new Event("admin_system_settings_updated"));
     } catch (err: any) {
@@ -152,7 +176,9 @@ export function AdminSettingsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Settings</span>
           </div>
@@ -160,7 +186,7 @@ export function AdminSettingsView() {
             <Settings className="h-7 w-7 text-primary" /> Enterprise System Settings
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Configure persisted business rules, tax rates, delivery SLAs, and module controls in Supabase.
+            Configure persisted business rules, tax rates, delivery SLAs, and module controls.
           </p>
         </div>
 
@@ -197,8 +223,13 @@ export function AdminSettingsView() {
         </TabsList>
 
         {/* 1. General & Business Information */}
-        <TabsContent value="general" className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs">
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">Business & Platform Information</h3>
+        <TabsContent
+          value="general"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+        >
+          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
+            Business & Platform Information
+          </h3>
           <div className="space-y-3 text-xs">
             <div>
               <Label className="font-bold text-slate-700">Platform Display Title</Label>
@@ -244,8 +275,13 @@ export function AdminSettingsView() {
         </TabsContent>
 
         {/* 2. Tax & VAT Rates */}
-        <TabsContent value="vat" className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs">
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">Tax & VAT Configuration</h3>
+        <TabsContent
+          value="vat"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+        >
+          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
+            Tax & VAT Configuration
+          </h3>
           <div className="space-y-3 text-xs">
             <div>
               <Label className="font-bold text-slate-700">Standard UK VAT Rate (%)</Label>
@@ -257,7 +293,9 @@ export function AdminSettingsView() {
               />
             </div>
             <div>
-              <Label className="font-bold text-slate-700">Reduced Domestic Gas & Fuel VAT Rate (%)</Label>
+              <Label className="font-bold text-slate-700">
+                Reduced Domestic Gas & Fuel VAT Rate (%)
+              </Label>
               <Input
                 type="number"
                 value={fuelVatRate}
@@ -269,8 +307,13 @@ export function AdminSettingsView() {
         </TabsContent>
 
         {/* 3. Order Settings */}
-        <TabsContent value="orders" className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs">
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">Order Rules & Thresholds</h3>
+        <TabsContent
+          value="orders"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+        >
+          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
+            Order Rules & Thresholds
+          </h3>
           <div className="space-y-3 text-xs">
             <div>
               <Label className="font-bold text-slate-700">Minimum Order Value (£)</Label>
@@ -283,8 +326,12 @@ export function AdminSettingsView() {
             </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border mt-2">
               <div>
-                <Label className="font-bold text-slate-700 cursor-pointer">Auto-approve Customer Orders</Label>
-                <p className="text-[11px] text-muted-foreground">Automatically mark new customer orders as Approved</p>
+                <Label className="font-bold text-slate-700 cursor-pointer">
+                  Auto-approve Customer Orders
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Automatically mark new customer orders as Approved
+                </p>
               </div>
               <Switch checked={autoApproveOrders} onCheckedChange={setAutoApproveOrders} />
             </div>
@@ -292,8 +339,13 @@ export function AdminSettingsView() {
         </TabsContent>
 
         {/* 4. Delivery Settings */}
-        <TabsContent value="delivery" className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs">
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">Logistics & Delivery SLAs</h3>
+        <TabsContent
+          value="delivery"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+        >
+          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
+            Logistics & Delivery SLAs
+          </h3>
           <div className="space-y-3 text-xs">
             <div>
               <Label className="font-bold text-slate-700">Default Shipping Fee (£)</Label>
@@ -326,20 +378,31 @@ export function AdminSettingsView() {
         </TabsContent>
 
         {/* 5. Notification Preferences */}
-        <TabsContent value="notifications" className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs">
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">System Notification Preferences</h3>
+        <TabsContent
+          value="notifications"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+        >
+          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
+            System Notification Preferences
+          </h3>
           <div className="space-y-3 text-xs">
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border">
               <div>
-                <Label className="font-bold text-slate-700 cursor-pointer">Admin Email Alerts</Label>
-                <p className="text-[11px] text-muted-foreground">Receive email alerts on critical operational events</p>
+                <Label className="font-bold text-slate-700 cursor-pointer">
+                  Admin Email Alerts
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Receive email alerts on critical operational events
+                </p>
               </div>
               <Switch checked={emailAlerts} onCheckedChange={setEmailAlerts} />
             </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border">
               <div>
                 <Label className="font-bold text-slate-700 cursor-pointer">Low Stock Alerts</Label>
-                <p className="text-[11px] text-muted-foreground">Trigger notification center alerts when stock &le; 5</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Trigger notification center alerts when stock &le; 5
+                </p>
               </div>
               <Switch checked={lowStockAlerts} onCheckedChange={setLowStockAlerts} />
             </div>
@@ -347,29 +410,53 @@ export function AdminSettingsView() {
         </TabsContent>
 
         {/* 6. Sidebar Module Control Matrix */}
-        <TabsContent value="modules" className="surface-card p-6 rounded-3xl border bg-white space-y-6 max-w-3xl shadow-xs">
+        <TabsContent
+          value="modules"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-6 max-w-3xl shadow-xs"
+        >
           <div>
-            <h3 className="text-base font-extrabold text-foreground">Admin Sidebar Module Availability Matrix</h3>
+            <h3 className="text-base font-extrabold text-foreground">
+              Admin Sidebar Module Availability Matrix
+            </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Control which operational, content, and system modules appear in the Admin portal sidebar.
+              Control which operational, content, and system modules appear in the Admin portal
+              sidebar.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
-              { key: "stations", title: "Autogas Stations", desc: "Depot & refilling station directory" },
+              {
+                key: "stations",
+                title: "Autogas Stations",
+                desc: "Depot & refilling station directory",
+              },
               { key: "reports", title: "Reports & Audits", desc: "Commercial sales & VAT reports" },
               { key: "analytics", title: "Revenue Analytics", desc: "Live interactive BI charts" },
-              { key: "cms", title: "CMS Content Manager", desc: "Content blocks & category management" },
+              {
+                key: "cms",
+                title: "CMS Content Manager",
+                desc: "Content blocks & category management",
+              },
               { key: "banners", title: "Banners", desc: "Homepage promotional banners" },
               { key: "blog", title: "Blog Posts", desc: "News & energy advisory guides" },
               { key: "faqs", title: "FAQs", desc: "Customer help center Q&A" },
-              { key: "notifications", title: "Notifications", desc: "Real-time admin notification center" },
+              {
+                key: "notifications",
+                title: "Notifications",
+                desc: "Real-time admin notification center",
+              },
               { key: "audit", title: "Audit Trail Logs", desc: "Immutable security & action logs" },
             ].map((m) => (
-              <div key={m.key} className="flex items-center justify-between p-4 rounded-2xl border bg-slate-50/50">
+              <div
+                key={m.key}
+                className="flex items-center justify-between p-4 rounded-2xl border bg-slate-50/50"
+              >
                 <div className="space-y-0.5">
-                  <Label htmlFor={`mod-${m.key}`} className="font-extrabold text-xs text-foreground cursor-pointer">
+                  <Label
+                    htmlFor={`mod-${m.key}`}
+                    className="font-extrabold text-xs text-foreground cursor-pointer"
+                  >
                     {m.title}
                   </Label>
                   <p className="text-[11px] text-muted-foreground">{m.desc}</p>

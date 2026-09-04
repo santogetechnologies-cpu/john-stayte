@@ -209,9 +209,7 @@ function CategoryLandingPage() {
     return (
       fallbackCategories.find((c) => c.slug === slug) || {
         slug,
-        name: slug
-          .replace(/-/g, " ")
-          .replace(/\b\w/g, (l) => l.toUpperCase()),
+        name: slug.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
         icon: "Flame",
         subs: [],
       }
@@ -240,7 +238,9 @@ function CategoryLandingPage() {
 
   // Brands present in this category
   const brands = useMemo(() => {
-    return Array.from(new Set(categoryProducts.map((p) => p.brand))).filter(Boolean).sort();
+    return Array.from(new Set(categoryProducts.map((p) => p.brand)))
+      .filter(Boolean)
+      .sort();
   }, [categoryProducts]);
 
   // Filtered explorer product list
@@ -345,7 +345,8 @@ function CategoryLandingPage() {
               </h1>
 
               <p className="text-sm sm:text-base text-slate-600 font-medium leading-relaxed max-w-xl">
-                Browse our complete range of bottled gas, propane, butane and patio cylinders available from John Stayte Services with fast local delivery across Gloucestershire.
+                Browse our complete range of bottled gas, propane, butane and patio cylinders
+                available from John Stayte Services with fast local delivery across Gloucestershire.
               </p>
 
               <div className="pt-2 flex flex-wrap items-center gap-3">
@@ -371,19 +372,25 @@ function CategoryLandingPage() {
                   <dt className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
                     Delivery
                   </dt>
-                  <dd className="mt-0.5 text-xs sm:text-sm font-extrabold text-slate-900">Next Working Day</dd>
+                  <dd className="mt-0.5 text-xs sm:text-sm font-extrabold text-slate-900">
+                    Next Working Day
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
                     Depot Radius
                   </dt>
-                  <dd className="mt-0.5 text-xs sm:text-sm font-extrabold text-slate-900">40 Miles</dd>
+                  <dd className="mt-0.5 text-xs sm:text-sm font-extrabold text-slate-900">
+                    40 Miles
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
                     Forecourts
                   </dt>
-                  <dd className="mt-0.5 text-xs sm:text-sm font-extrabold text-slate-900">3 Stations</dd>
+                  <dd className="mt-0.5 text-xs sm:text-sm font-extrabold text-slate-900">
+                    3 Stations
+                  </dd>
                 </div>
               </dl>
             </div>
@@ -468,7 +475,8 @@ function CategoryLandingPage() {
               Find the right gas for your application
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Explore our primary gas formulations for domestic heating, patio cooking, mobile leisure and commercial work.
+              Explore our primary gas formulations for domestic heating, patio cooking, mobile
+              leisure and commercial work.
             </p>
           </div>
 
@@ -499,7 +507,8 @@ function CategoryLandingPage() {
                     Propane Gas
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Operates in freezing temperatures down to -42°C. For outdoor heating, commercial catering & roofers.
+                    Operates in freezing temperatures down to -42°C. For outdoor heating, commercial
+                    catering & roofers.
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 border-t border-slate-100">
@@ -535,7 +544,8 @@ function CategoryLandingPage() {
                     Butane Gas
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Clean indoor burn operating above 5°C. The standard cylinder for portable mobile room heaters & camping.
+                    Clean indoor burn operating above 5°C. The standard cylinder for portable mobile
+                    room heaters & camping.
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 border-t border-slate-100">
@@ -571,7 +581,8 @@ function CategoryLandingPage() {
                     Patio Gas (27mm)
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Specially fitted with quick 27mm clip-on connection for instant hookup to gas BBQs and outdoor patio heaters.
+                    Specially fitted with quick 27mm clip-on connection for instant hookup to gas
+                    BBQs and outdoor patio heaters.
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 border-t border-slate-100">
@@ -604,7 +615,8 @@ function CategoryLandingPage() {
                     Cylinder Exchange
                   </h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                    Doorstep empties swap during delivery or exchange directly at Fromebridge, Wild Goose or Bridge stations.
+                    Doorstep empties swap during delivery or exchange directly at Fromebridge, Wild
+                    Goose or Bridge stations.
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-xs font-bold text-primary pt-2 border-t border-slate-100">
@@ -664,7 +676,7 @@ function CategoryLandingPage() {
                         "h-5 w-5",
                         wishlist.includes(activeFeatured.slug)
                           ? "fill-primary text-primary"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground",
                       )}
                     />
                   </button>
@@ -766,7 +778,8 @@ function CategoryLandingPage() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
-                        <CheckCircle2 className="mr-1.5 h-4 w-4 text-emerald-500" /> In Stock at Whitminster
+                        <CheckCircle2 className="mr-1.5 h-4 w-4 text-emerald-500" /> In Stock at
+                        Whitminster
                       </span>
                     )}
                   </div>
@@ -841,7 +854,8 @@ function CategoryLandingPage() {
                     onClick={scrollToCatalogue}
                     className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                   >
-                    View all {categoryProducts.length} gas products <ArrowRight className="h-3.5 w-3.5" />
+                    View all {categoryProducts.length} gas products{" "}
+                    <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
@@ -860,7 +874,7 @@ function CategoryLandingPage() {
                           "p-3 rounded-2xl border text-left flex items-center gap-3 transition-all duration-200",
                           isSelected
                             ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50",
                         )}
                       >
                         <div className="h-14 w-14 rounded-xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0">
@@ -875,12 +889,8 @@ function CategoryLandingPage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-extrabold text-slate-900 truncate">
-                            {p.name}
-                          </p>
-                          <p className="text-xs font-black text-primary mt-0.5">
-                            {gbp(p.price)}
-                          </p>
+                          <p className="text-xs font-extrabold text-slate-900 truncate">{p.name}</p>
+                          <p className="text-xs font-black text-primary mt-0.5">{gbp(p.price)}</p>
                         </div>
                         {isSelected && (
                           <span className="h-2.5 w-2.5 rounded-full bg-primary shrink-0" />
@@ -896,7 +906,10 @@ function CategoryLandingPage() {
       )}
 
       {/* 5. GAS PRODUCT EXPLORER ("Shop all gas") */}
-      <section id="catalogue-explorer" className="py-10 md:py-14 bg-white border-b border-slate-200/80">
+      <section
+        id="catalogue-explorer"
+        className="py-10 md:py-14 bg-white border-b border-slate-200/80"
+      >
         <div className="container-page space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
@@ -1004,7 +1017,9 @@ function CategoryLandingPage() {
                 variant="ghost"
                 size="sm"
                 className="h-7 text-xs font-bold text-primary hover:bg-primary/10 rounded-full px-2.5"
-                onClick={() => setParams({ q: undefined, sub: undefined, brand: undefined, inStock: undefined })}
+                onClick={() =>
+                  setParams({ q: undefined, sub: undefined, brand: undefined, inStock: undefined })
+                }
               >
                 Clear all
               </Button>
@@ -1015,17 +1030,13 @@ function CategoryLandingPage() {
           {loading ? (
             <div className="surface-card p-12 text-center rounded-3xl border bg-slate-50 space-y-3">
               <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
-              <p className="font-bold text-xs text-muted-foreground">
-                Loading gas products from database...
-              </p>
+              <p className="font-bold text-xs text-muted-foreground">Loading gas products...</p>
             </div>
           ) : explorerList.length === 0 ? (
             <div className="surface-card p-12 text-center rounded-3xl border bg-slate-50 space-y-4 max-w-lg mx-auto shadow-xs">
               <Package className="mx-auto h-10 w-10 text-slate-300" />
               <div className="space-y-1">
-                <h3 className="font-extrabold text-base text-slate-900">
-                  No gas products found
-                </h3>
+                <h3 className="font-extrabold text-base text-slate-900">No gas products found</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   No items matched your current filter or search criteria.
                 </p>
@@ -1079,7 +1090,8 @@ function CategoryLandingPage() {
                 Choosing the right gas for your requirements
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Selecting the right gas cylinder ensures optimal appliance efficiency, safety and all-weather performance. Here is how our primary gases compare:
+                Selecting the right gas cylinder ensures optimal appliance efficiency, safety and
+                all-weather performance. Here is how our primary gases compare:
               </p>
 
               <div className="space-y-3">
@@ -1088,9 +1100,12 @@ function CategoryLandingPage() {
                     P
                   </div>
                   <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">Propane (Red / Green)</h4>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                      Propane (Red / Green)
+                    </h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      37mbar screw-on (POL) or 27mm clip-on patio gas. High operating pressure ideal for outdoor temperatures below freezing.
+                      37mbar screw-on (POL) or 27mm clip-on patio gas. High operating pressure ideal
+                      for outdoor temperatures below freezing.
                     </p>
                   </div>
                 </div>
@@ -1102,7 +1117,8 @@ function CategoryLandingPage() {
                   <div>
                     <h4 className="text-xs sm:text-sm font-bold text-slate-900">Butane (Blue)</h4>
                     <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                      28mbar clip-on regulator. Highest energy density per cylinder volume, formulated specifically for indoor mobile room heaters.
+                      28mbar clip-on regulator. Highest energy density per cylinder volume,
+                      formulated specifically for indoor mobile room heaters.
                     </p>
                   </div>
                 </div>
@@ -1116,7 +1132,12 @@ function CategoryLandingPage() {
                 >
                   Explore Gas Products <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button asChild variant="outline" size="lg" className="rounded-full px-6 font-bold text-xs sm:text-sm">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="rounded-full px-6 font-bold text-xs sm:text-sm"
+                >
                   <Link to="/contact">Ask Our Specialists</Link>
                 </Button>
               </div>
@@ -1135,7 +1156,8 @@ function CategoryLandingPage() {
               </div>
               <h3 className="font-extrabold text-sm text-slate-900">Local Gas Delivery</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Dedicated Gloucestershire fleet delivering next working day across a 40-mile depot radius.
+                Dedicated Gloucestershire fleet delivering next working day across a 40-mile depot
+                radius.
               </p>
             </div>
 
@@ -1145,7 +1167,8 @@ function CategoryLandingPage() {
               </div>
               <h3 className="font-extrabold text-sm text-slate-900">100% Genuine Calor Gas</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Authorised official distributor with factory tamper-evident safety seals on every valve.
+                Authorised official distributor with factory tamper-evident safety seals on every
+                valve.
               </p>
             </div>
 
@@ -1155,7 +1178,8 @@ function CategoryLandingPage() {
               </div>
               <h3 className="font-extrabold text-sm text-slate-900">Doorstep & Station Swap</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Swap empty cylinders on your doorstep during delivery or at any of our 3 service stations.
+                Swap empty cylinders on your doorstep during delivery or at any of our 3 service
+                stations.
               </p>
             </div>
 
@@ -1222,7 +1246,11 @@ function CategoryLandingPage() {
           </div>
 
           <div className="text-center pt-2">
-            <Button asChild size="lg" className="rounded-full px-8 text-xs sm:text-sm font-bold shadow-xs">
+            <Button
+              asChild
+              size="lg"
+              className="rounded-full px-8 text-xs sm:text-sm font-bold shadow-xs"
+            >
               <Link to="/order-gas">
                 Start Gas Order Online <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -1244,13 +1272,19 @@ function CategoryLandingPage() {
                   Need help choosing the right gas?
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Our Gloucestershire team is on hand to answer technical questions and arrange custom delivery.
+                  Our Gloucestershire team is on hand to answer technical questions and arrange
+                  custom delivery.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 shrink-0">
-              <Button asChild variant="outline" size="sm" className="rounded-full font-bold text-xs">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full font-bold text-xs"
+              >
                 <Link to="/contact">Contact Us</Link>
               </Button>
               <Button asChild size="sm" className="rounded-full font-bold text-xs">

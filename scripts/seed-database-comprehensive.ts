@@ -21,7 +21,13 @@ async function seedDatabase() {
       slug: "gas",
       icon: "Flame",
       description: "Propane, Butane, Patio, Camping and Pub gas cylinders",
-      subcategories: ["Butane Cylinders", "Propane Cylinders", "Patio Cylinders", "Camping Gas", "Pub Gas"],
+      subcategories: [
+        "Butane Cylinders",
+        "Propane Cylinders",
+        "Patio Cylinders",
+        "Camping Gas",
+        "Pub Gas",
+      ],
       display_order: 1,
       is_active: true,
     },
@@ -65,7 +71,8 @@ async function seedDatabase() {
       name: "Gas Spares",
       slug: "gas-spares",
       icon: "Wrench",
-      description: "Low and high pressure regulators, gas hoses, jubilee clips, changeover valves and connectors",
+      description:
+        "Low and high pressure regulators, gas hoses, jubilee clips, changeover valves and connectors",
       subcategories: ["Regulators", "Hoses", "Clips", "Connectors", "Changeover Valves"],
       display_order: 6,
       is_active: true,
@@ -124,7 +131,13 @@ async function seedDatabase() {
       hours: "Mon–Sat 7:00–20:00 · Sun 8:00–18:00",
       autogas_available: true,
       maps_link: "https://maps.google.com/?q=Fromebridge+Service+Station+Whitminster",
-      services: ["Autogas LPG", "Cylinder Exchange", "Fuel Forecourt", "Convenience Store", "AdBlue"],
+      services: [
+        "Autogas LPG",
+        "Cylinder Exchange",
+        "Fuel Forecourt",
+        "Convenience Store",
+        "AdBlue",
+      ],
     },
     {
       name: "Wild Goose Garage",
@@ -160,36 +173,48 @@ async function seedDatabase() {
     {
       title: "How to Store Gas Cylinders Safely at Home",
       slug: "safe-cylinder-storage",
-      excerpt: "Essential UK safety rules for storing propane, butane and patio gas cylinders safely outdoors, upright and well-ventilated.",
-      content: "Safe storage of LPG cylinders helps protect your home, family and neighbours. Follow our 5-step leak protocol, upright positioning rules, and emergency guidelines.",
-      image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/gas-cylinder-safety-measures.jpg",
+      excerpt:
+        "Essential UK safety rules for storing propane, butane and patio gas cylinders safely outdoors, upright and well-ventilated.",
+      content:
+        "Safe storage of LPG cylinders helps protect your home, family and neighbours. Follow our 5-step leak protocol, upright positioning rules, and emergency guidelines.",
+      image_url:
+        "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/gas-cylinder-safety-measures.jpg",
       author_name: "John Stayte Safety Team",
       is_published: true,
     },
     {
       title: "Propane vs Butane: Which Cylinder Do You Need?",
       slug: "propane-vs-butane",
-      excerpt: "Understand the key differences between red propane and blue butane cylinders, including boiling points, operating temperatures and ideal appliances.",
-      content: "Choosing between red propane and blue butane is one of the most common questions our customers ask. While both are clean-burning LPG fuels, their distinct chemical properties dictate where and when each should be used.",
-      image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/guide-propane-vs-butane.jpg",
+      excerpt:
+        "Understand the key differences between red propane and blue butane cylinders, including boiling points, operating temperatures and ideal appliances.",
+      content:
+        "Choosing between red propane and blue butane is one of the most common questions our customers ask. While both are clean-burning LPG fuels, their distinct chemical properties dictate where and when each should be used.",
+      image_url:
+        "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/guide-propane-vs-butane.jpg",
       author_name: "John Stayte Technical Team",
       is_published: true,
     },
     {
       title: "Smokeless Fuel Rules & Ready to Burn Regulations for 2026",
       slug: "smokeless-fuel-rules",
-      excerpt: "What the latest UK domestic fuel regulations mean for your open fire, multi-fuel stove, log burner and smoke control areas in Gloucestershire.",
-      content: "Since the introduction of Defra Ready to Burn legislation, domestic heating fuel regulations in the UK have prioritized air quality. Understand compliant fuels, smoke control areas, and optimal stove burning.",
-      image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/guide-smokeless-fuel.jpg",
+      excerpt:
+        "What the latest UK domestic fuel regulations mean for your open fire, multi-fuel stove, log burner and smoke control areas in Gloucestershire.",
+      content:
+        "Since the introduction of Defra Ready to Burn legislation, domestic heating fuel regulations in the UK have prioritized air quality. Understand compliant fuels, smoke control areas, and optimal stove burning.",
+      image_url:
+        "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/guide-smokeless-fuel.jpg",
       author_name: "John Stayte Solid Fuel Specialists",
       is_published: true,
     },
     {
       title: "Getting the Best From Your First BBQ Burn & Grate Seasoning",
       slug: "bbq-first-burn",
-      excerpt: "How to season porcelain and cast iron grates, set up direct and indirect heat zones, and achieve consistent temperature on Char-Broil gas barbecues.",
-      content: "Unboxing a brand-new gas barbecue is exciting, but jumping straight into cooking without proper pre-commissioning is a missed opportunity. Learn how to burn off manufacturing oils, season cast-iron cooking grids, and master TRU-Infrared cooking.",
-      image_url: "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/char_broil_professionalpro3_1.jpg",
+      excerpt:
+        "How to season porcelain and cast iron grates, set up direct and indirect heat zones, and achieve consistent temperature on Char-Broil gas barbecues.",
+      content:
+        "Unboxing a brand-new gas barbecue is exciting, but jumping straight into cooking without proper pre-commissioning is a missed opportunity. Learn how to burn off manufacturing oils, season cast-iron cooking grids, and master TRU-Infrared cooking.",
+      image_url:
+        "https://wttchknauwvbfjatdscc.supabase.co/storage/v1/object/public/product-images/blog/char_broil_professionalpro3_1.jpg",
       author_name: "John Stayte Outdoor Living Team",
       is_published: true,
     },
@@ -240,21 +265,55 @@ async function seedDatabase() {
       section_key: "services_data",
       title: "Core Gas and Fuel Services",
       content: JSON.stringify([
-        { title: "Gas Delivery", desc: "Next-day cylinder delivery across Gloucestershire.", icon: "Truck" },
-        { title: "Bulk Supply", desc: "Scheduled bulk LPG for farms and estates.", icon: "Container" },
-        { title: "Commercial Gas", desc: "Pub, hospitality and catering gas contracts.", icon: "Building2" },
+        {
+          title: "Gas Delivery",
+          desc: "Next-day cylinder delivery across Gloucestershire.",
+          icon: "Truck",
+        },
+        {
+          title: "Bulk Supply",
+          desc: "Scheduled bulk LPG for farms and estates.",
+          icon: "Container",
+        },
+        {
+          title: "Commercial Gas",
+          desc: "Pub, hospitality and catering gas contracts.",
+          icon: "Building2",
+        },
         { title: "Domestic Supply", desc: "Home heating, cooking and patio gas.", icon: "Home" },
-        { title: "Cylinder Exchange", desc: "Swap empties at any of our stations.", icon: "RefreshCw" },
-        { title: "Emergency Delivery", desc: "Same-day emergency runs when you run dry.", icon: "Siren" },
+        {
+          title: "Cylinder Exchange",
+          desc: "Swap empties at any of our stations.",
+          icon: "RefreshCw",
+        },
+        {
+          title: "Emergency Delivery",
+          desc: "Same-day emergency runs when you run dry.",
+          icon: "Siren",
+        },
       ]),
     },
     {
       section_key: "testimonials_data",
       title: "Customer Testimonials",
       content: JSON.stringify([
-        { name: "Sarah H.", role: "Frampton on Severn", quote: "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless." },
-        { name: "The Bell Inn", role: "Pub customer", quote: "Our cellar gas has never run out since switching to JSS. The scheduling is spot on." },
-        { name: "Mark T.", role: "Smallholding, Cam", quote: "Coal, logs and animal feed in one delivery. Saves me two trips a week." },
+        {
+          name: "Sarah H.",
+          role: "Frampton on Severn",
+          quote:
+            "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless.",
+        },
+        {
+          name: "The Bell Inn",
+          role: "Pub customer",
+          quote:
+            "Our cellar gas has never run out since switching to JSS. The scheduling is spot on.",
+        },
+        {
+          name: "Mark T.",
+          role: "Smallholding, Cam",
+          quote: "Coal, logs and animal feed in one delivery. Saves me two trips a week.",
+        },
       ]),
     },
     {

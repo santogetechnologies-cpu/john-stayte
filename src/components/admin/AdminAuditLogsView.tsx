@@ -20,12 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 
 export function AdminAuditLogsView() {
@@ -60,11 +55,17 @@ export function AdminAuditLogsView() {
   }, []);
 
   const filteredLogs = logs.filter((l) => {
-    if (targetTypeFilter !== "all" && (l.target_type || "").toLowerCase() !== targetTypeFilter.toLowerCase()) {
+    if (
+      targetTypeFilter !== "all" &&
+      (l.target_type || "").toLowerCase() !== targetTypeFilter.toLowerCase()
+    ) {
       return false;
     }
 
-    if (actionFilter !== "all" && !(l.action || "").toLowerCase().includes(actionFilter.toLowerCase())) {
+    if (
+      actionFilter !== "all" &&
+      !(l.action || "").toLowerCase().includes(actionFilter.toLowerCase())
+    ) {
       return false;
     }
 
@@ -83,10 +84,14 @@ export function AdminAuditLogsView() {
   const getActionBadgeColor = (action: string) => {
     const act = (action || "").toUpperCase();
     if (act.includes("CREATE")) return "bg-emerald-100 text-emerald-800 border-emerald-200";
-    if (act.includes("UPDATE") || act.includes("EDIT")) return "bg-blue-100 text-blue-800 border-blue-200";
-    if (act.includes("DELETE") || act.includes("REMOVE")) return "bg-red-100 text-red-800 border-red-200";
-    if (act.includes("ENABLE") || act.includes("PUBLISH")) return "bg-teal-100 text-teal-800 border-teal-200";
-    if (act.includes("DISABLE") || act.includes("UNPUBLISH")) return "bg-amber-100 text-amber-800 border-amber-200";
+    if (act.includes("UPDATE") || act.includes("EDIT"))
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    if (act.includes("DELETE") || act.includes("REMOVE"))
+      return "bg-red-100 text-red-800 border-red-200";
+    if (act.includes("ENABLE") || act.includes("PUBLISH"))
+      return "bg-teal-100 text-teal-800 border-teal-200";
+    if (act.includes("DISABLE") || act.includes("UNPUBLISH"))
+      return "bg-amber-100 text-amber-800 border-amber-200";
     return "bg-slate-100 text-slate-800 border-slate-200";
   };
 
@@ -96,15 +101,17 @@ export function AdminAuditLogsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Audit Logs</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <ShieldCheck className="h-7 w-7 text-primary" /> Immutable Security Audit Trail ({logs.length})
+            <ShieldCheck className="h-7 w-7 text-primary" /> Security Audit Trail ({logs.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Real administrative activity, product/order/offer CUD, and configuration events logged in Supabase.
+            Administrative activity, product updates, and configuration events.
           </p>
         </div>
       </div>
@@ -160,7 +167,7 @@ export function AdminAuditLogsView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Querying audit records from Supabase...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading audit records...
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-16 text-center space-y-3">
@@ -187,14 +194,21 @@ export function AdminAuditLogsView() {
                   <TableCell className="text-xs text-muted-foreground font-medium whitespace-nowrap">
                     {new Date(l.created_at).toLocaleString("en-GB")}
                   </TableCell>
-                  <TableCell className="font-extrabold text-xs text-foreground">{l.actor_name}</TableCell>
+                  <TableCell className="font-extrabold text-xs text-foreground">
+                    {l.actor_name}
+                  </TableCell>
                   <TableCell>
-                    <Badge className={`font-extrabold text-[10px] border ${getActionBadgeColor(l.action)}`}>
+                    <Badge
+                      className={`font-extrabold text-[10px] border ${getActionBadgeColor(l.action)}`}
+                    >
                       {l.action}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="bg-slate-50 font-bold text-[10px] capitalize">
+                    <Badge
+                      variant="outline"
+                      className="bg-slate-50 font-bold text-[10px] capitalize"
+                    >
                       {l.target_type || "System"}
                     </Badge>
                   </TableCell>
@@ -225,20 +239,36 @@ export function AdminAuditLogsView() {
           {selectedLog && (
             <div className="space-y-3 text-xs pt-2">
               <div className="p-3 rounded-2xl bg-slate-50 border space-y-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Action & Actor</p>
-                <p className="font-black text-foreground">{selectedLog.action} by {selectedLog.actor_name}</p>
-                <p className="text-[11px] text-slate-500">{new Date(selectedLog.created_at).toLocaleString("en-GB")}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Action & Actor
+                </p>
+                <p className="font-black text-foreground">
+                  {selectedLog.action} by {selectedLog.actor_name}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {new Date(selectedLog.created_at).toLocaleString("en-GB")}
+                </p>
               </div>
 
               <div className="p-3 rounded-2xl bg-slate-50 border space-y-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">Target Entity</p>
-                <p className="font-extrabold text-foreground capitalize">Module: {selectedLog.target_type || "System"}</p>
-                {selectedLog.target_id && <p className="text-[11px] font-mono text-slate-600">ID: {selectedLog.target_id}</p>}
+                <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                  Target Entity
+                </p>
+                <p className="font-extrabold text-foreground capitalize">
+                  Module: {selectedLog.target_type || "System"}
+                </p>
+                {selectedLog.target_id && (
+                  <p className="text-[11px] font-mono text-slate-600">
+                    ID: {selectedLog.target_id}
+                  </p>
+                )}
               </div>
 
               {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
                 <div className="p-3 rounded-2xl bg-slate-50 border space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Metadata Payload</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                    Metadata Payload
+                  </p>
                   <pre className="text-[11px] bg-white p-2.5 rounded-xl border font-mono overflow-x-auto text-slate-700">
                     {JSON.stringify(selectedLog.metadata, null, 2)}
                   </pre>
@@ -246,7 +276,10 @@ export function AdminAuditLogsView() {
               )}
 
               <div className="flex justify-end pt-3">
-                <Button onClick={() => setSelectedLog(null)} className="rounded-full text-xs font-bold px-6">
+                <Button
+                  onClick={() => setSelectedLog(null)}
+                  className="rounded-full text-xs font-bold px-6"
+                >
                   Close
                 </Button>
               </div>

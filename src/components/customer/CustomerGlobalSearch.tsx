@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Search, ShoppingBag, Heart, MapPin, User, ChevronRight, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -38,10 +33,7 @@ export function CustomerGlobalSearch({
 
     async function fetchSearch() {
       try {
-        const [
-          { data: prods },
-          { data: ords },
-        ] = await Promise.all([
+        const [{ data: prods }, { data: ords }] = await Promise.all([
           supabase
             .from("products")
             .select("id, name, slug, brand, category_slug, price")
@@ -148,7 +140,9 @@ export function CustomerGlobalSearch({
                       >
                         <div>
                           <p className="text-xs font-bold">{p.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{p.brand} · £{Number(p.price).toFixed(2)}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {p.brand} · £{Number(p.price).toFixed(2)}
+                          </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </button>
@@ -172,7 +166,9 @@ export function CustomerGlobalSearch({
                       >
                         <div>
                           <p className="text-xs font-bold">#{o.order_number}</p>
-                          <p className="text-[11px] text-muted-foreground">£{Number(o.total).toFixed(2)} · {o.status}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            £{Number(o.total).toFixed(2)} · {o.status}
+                          </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </button>

@@ -1,4 +1,12 @@
-import { useState, useEffect, useMemo, useRef, useCallback, createContext, useContext } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  createContext,
+  useContext,
+} from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import useEmblaCarousel from "embla-carousel-react";
 import {
@@ -270,7 +278,7 @@ function TestimonialsCarousel({ customItems }: { customItems?: any[] }) {
               "rounded-full transition-all duration-300",
               selectedIndex === idx
                 ? "w-2.5 h-2.5 bg-primary scale-110"
-                : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
+                : "w-2 h-2 bg-slate-300 hover:bg-slate-400",
             )}
             aria-label={`Go to slide ${idx + 1}`}
           />
@@ -360,7 +368,8 @@ function BlogCarousel({ posts }: { posts: any[] }) {
                     <div className="p-5 sm:p-6 space-y-2.5">
                       <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
                         <span className="flex items-center gap-1.5 text-primary">
-                          <Clock className="h-3.5 w-3.5 text-primary" /> {typeof post.readingTime === "string" ? post.readingTime : "4 min read"}
+                          <Clock className="h-3.5 w-3.5 text-primary" />{" "}
+                          {typeof post.readingTime === "string" ? post.readingTime : "4 min read"}
                         </span>
                         <span className="text-slate-300">•</span>
                         <span className="flex items-center gap-1.5 text-slate-500">
@@ -377,7 +386,9 @@ function BlogCarousel({ posts }: { posts: any[] }) {
                         {typeof post.title === "string" ? post.title : String(post.title || "")}
                       </h3>
                       <p className="text-xs sm:text-[13px] text-slate-500 line-clamp-3 leading-relaxed">
-                        {typeof post.excerpt === "string" ? post.excerpt : String(post.excerpt || "")}
+                        {typeof post.excerpt === "string"
+                          ? post.excerpt
+                          : String(post.excerpt || "")}
                       </p>
                     </div>
                   </div>
@@ -406,7 +417,7 @@ function BlogCarousel({ posts }: { posts: any[] }) {
               "rounded-full transition-all duration-300",
               selectedIndex === idx
                 ? "w-2.5 h-2.5 bg-primary scale-110"
-                : "w-2 h-2 bg-slate-300 hover:bg-slate-400"
+                : "w-2 h-2 bg-slate-300 hover:bg-slate-400",
             )}
             aria-label={`Go to slide ${idx + 1}`}
           />
@@ -534,7 +545,10 @@ function TrustedBrandsSection() {
   const [isRevealed, setIsRevealed] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setIsRevealed(true);
       return;
     }
@@ -556,7 +570,7 @@ function TrustedBrandsSection() {
         {
           threshold: 0.15,
           rootMargin: "0px 0px -30px 0px",
-        }
+        },
       );
 
       observer.observe(el);
@@ -590,7 +604,8 @@ function TrustedBrandsSection() {
             Trusted Brands <span className="text-primary">We Stock</span>
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-            Certified supplier providing genuine cylinders, appliances and manufacturer-backed guarantees across Gloucestershire.
+            Certified supplier providing genuine cylinders, appliances and manufacturer-backed
+            guarantees across Gloucestershire.
           </p>
         </div>
 
@@ -610,9 +625,7 @@ function TrustedBrandsSection() {
                 willChange: "transform, opacity",
               }}
             >
-              <div
-                className="group bg-white rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all duration-200 p-4 sm:p-5 flex flex-col items-center justify-between min-h-[135px] sm:min-h-[145px] cursor-default select-none h-full"
-              >
+              <div className="group bg-white rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-slate-300 transition-all duration-200 p-4 sm:p-5 flex flex-col items-center justify-between min-h-[135px] sm:min-h-[145px] cursor-default select-none h-full">
                 <div className="w-full flex-1 flex items-center justify-center min-h-[64px] sm:min-h-[72px] px-2">
                   <img
                     src={brand.logo}
@@ -662,7 +675,10 @@ function ScrollRevealSection({
       return;
     }
 
-    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       setIsRevealed(true);
       return;
     }
@@ -684,7 +700,7 @@ function ScrollRevealSection({
         {
           threshold: [0.08, threshold],
           rootMargin: "0px 0px -25px 0px",
-        }
+        },
       );
 
       observer.observe(el);
@@ -744,25 +760,43 @@ function ScrollRevealItem({
 
   const initialTransform =
     variant === "eyebrow"
-      ? (isMobile ? "translateY(10px)" : "translateY(14px)")
+      ? isMobile
+        ? "translateY(10px)"
+        : "translateY(14px)"
       : variant === "heading"
-        ? (isMobile ? "translateY(16px)" : "translateY(24px)")
+        ? isMobile
+          ? "translateY(16px)"
+          : "translateY(24px)"
         : variant === "description" || variant === "cta"
-          ? (isMobile ? "translateY(14px)" : "translateY(20px)")
+          ? isMobile
+            ? "translateY(14px)"
+            : "translateY(20px)"
           : variant === "image"
-            ? (isMobile ? "scale(1.02)" : "scale(1.03)")
+            ? isMobile
+              ? "scale(1.02)"
+              : "scale(1.03)"
             : variant === "pill"
               ? "translateY(12px) scale(0.97)"
-              : (isMobile ? "translateY(20px) scale(0.98)" : "translateY(30px) scale(0.96)");
+              : isMobile
+                ? "translateY(20px) scale(0.98)"
+                : "translateY(30px) scale(0.96)";
 
   const duration =
     variant === "eyebrow" || variant === "heading"
-      ? (isMobile ? "500ms" : "600ms")
+      ? isMobile
+        ? "500ms"
+        : "600ms"
       : variant === "description" || variant === "cta"
-        ? (isMobile ? "520ms" : "620ms")
+        ? isMobile
+          ? "520ms"
+          : "620ms"
         : variant === "image"
-          ? (isMobile ? "550ms" : "700ms")
-          : (isMobile ? "520ms" : "600ms");
+          ? isMobile
+            ? "550ms"
+            : "700ms"
+          : isMobile
+            ? "520ms"
+            : "600ms";
 
   const effectiveDelay = isMobile ? Math.round(delay * 0.75) : delay;
 
@@ -902,7 +936,8 @@ function Home() {
   const [homeData, setHomeData] = useState<any>({
     heroEyebrow: "Family run since 1972",
     heroHeading: "Order your gas delivery with us today.",
-    heroSubtitle: "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call.",
+    heroSubtitle:
+      "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call.",
     deliveryBadge: "Next-Day Local Delivery Available",
     primaryCtaText: "Order Gas Online",
     primaryCtaLink: "/order-gas",
@@ -926,10 +961,7 @@ function Home() {
           { data: testBlock },
           { data: srvBlock },
         ] = await Promise.all([
-          supabase
-            .from("products")
-            .select("*")
-            .order("created_at", { ascending: false }),
+          supabase.from("products").select("*").order("created_at", { ascending: false }),
           supabase
             .from("categories")
             .select("*")
@@ -1105,9 +1137,12 @@ function Home() {
           title: typeof post.title === "string" ? post.title : String(post.title || ""),
           excerpt: typeof rawExcerpt === "string" ? rawExcerpt : String(rawExcerpt || ""),
           date: post.created_at,
-          image: typeof post.image_url === "string" ? post.image_url : (found?.heroImage || guideSafeStorage),
-          tag: typeof (found?.tag) === "string" ? found!.tag : "Safety Guide",
-          readingTime: typeof (found?.readingTime) === "string" ? found!.readingTime : "4 min read",
+          image:
+            typeof post.image_url === "string"
+              ? post.image_url
+              : found?.heroImage || guideSafeStorage,
+          tag: typeof found?.tag === "string" ? found!.tag : "Safety Guide",
+          readingTime: typeof found?.readingTime === "string" ? found!.readingTime : "4 min read",
         };
       });
     }
@@ -1169,7 +1204,10 @@ function Home() {
               }}
             >
               <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-[0.16em]">
-                <span className="h-2 w-2 rounded-full bg-primary" /> {typeof homeData?.heroEyebrow === "string" && homeData.heroEyebrow.trim() ? homeData.heroEyebrow : "Family run since 1972"}
+                <span className="h-2 w-2 rounded-full bg-primary" />{" "}
+                {typeof homeData?.heroEyebrow === "string" && homeData.heroEyebrow.trim()
+                  ? homeData.heroEyebrow
+                  : "Family run since 1972"}
               </span>
             </div>
 
@@ -1196,7 +1234,9 @@ function Home() {
                   homeData.heroHeading
                 )
               ) : (
-                <>Order your <span className="text-primary">gas delivery</span> with us today.</>
+                <>
+                  Order your <span className="text-primary">gas delivery</span> with us today.
+                </>
               )}
             </h1>
 
@@ -1229,9 +1269,14 @@ function Home() {
                 transitionDelay: "350ms",
               }}
             >
-              <Button asChild size="lg" className="rounded-full px-7 bg-primary hover:bg-primary/90 text-white shadow-md">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full px-7 bg-primary hover:bg-primary/90 text-white shadow-md"
+              >
                 <Link to={homeData?.primaryCtaLink || "/order-gas"}>
-                  {homeData?.primaryCtaText || "Order gas online"} <ArrowRight className="ml-2 h-4 w-4" />
+                  {homeData?.primaryCtaText || "Order gas online"}{" "}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               <Button
@@ -1257,7 +1302,9 @@ function Home() {
                   key={s.v}
                   style={{
                     opacity: heroMounted ? 1 : 0,
-                    transform: heroMounted ? "translateY(0px) scale(1)" : "translateY(20px) scale(0.96)",
+                    transform: heroMounted
+                      ? "translateY(0px) scale(1)"
+                      : "translateY(20px) scale(0.96)",
                     transitionProperty: "opacity, transform",
                     transitionDuration: "600ms",
                     transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
@@ -1267,8 +1314,12 @@ function Home() {
                   <div className="flex items-center gap-3">
                     <s.icon className="h-6 w-6 text-primary shrink-0 stroke-[1.75]" />
                     <div>
-                      <dt className="font-display text-2xl font-extrabold text-white leading-none">{s.k}</dt>
-                      <dd className="mt-1 text-[11px] font-bold uppercase tracking-wider text-white/60 leading-tight">{s.v}</dd>
+                      <dt className="font-display text-2xl font-extrabold text-white leading-none">
+                        {s.k}
+                      </dt>
+                      <dd className="mt-1 text-[11px] font-bold uppercase tracking-wider text-white/60 leading-tight">
+                        {s.v}
+                      </dd>
                     </div>
                   </div>
                 </div>
@@ -1298,7 +1349,8 @@ function Home() {
                     How Can We Help <span className="text-primary">Today?</span>
                   </h2>
                   <p className="text-sm sm:text-base text-slate-600 leading-relaxed pt-0.5">
-                    Select an action to order fuels, browse our local catalogue, find forecourts or speak with our team.
+                    Select an action to order fuels, browse our local catalogue, find forecourts or
+                    speak with our team.
                   </p>
                 </div>
               </ScrollRevealItem>
@@ -1309,7 +1361,8 @@ function Home() {
                   {
                     title: "Order Gas",
                     badge: "BOTTLED GAS & CYLINDERS",
-                    description: "Calor butane, propane & patio gas cylinders delivered direct to your door across Gloucestershire.",
+                    description:
+                      "Calor butane, propane & patio gas cylinders delivered direct to your door across Gloucestershire.",
                     cta: "Order Gas Online",
                     to: "/order-gas" as const,
                     image: truckImg,
@@ -1318,7 +1371,8 @@ function Home() {
                   {
                     title: "Shop Products",
                     badge: "MASTER CATALOGUE",
-                    description: "Browse our complete range of solid fuels, animal feed, baits, BBQ appliances & genuine spares.",
+                    description:
+                      "Browse our complete range of solid fuels, animal feed, baits, BBQ appliances & genuine spares.",
                     cta: "Browse Catalogue",
                     to: "/products" as const,
                     image: coalLogs,
@@ -1327,7 +1381,8 @@ function Home() {
                   {
                     title: "Find a Station",
                     badge: "3 FORECOURTS OPEN 7 DAYS",
-                    description: "Visit our service stations in Whitminster, Cambridge & Frampton on Severn for fuel & gas swap.",
+                    description:
+                      "Visit our service stations in Whitminster, Cambridge & Frampton on Severn for fuel & gas swap.",
                     cta: "View Locations",
                     to: "/filling-stations" as const,
                     image: stationImg,
@@ -1336,14 +1391,20 @@ function Home() {
                   {
                     title: "Help & Support",
                     badge: "LOCAL DIRECT CARE",
-                    description: "Speak directly with our Gloucestershire team for technical advice, delivery updates and enquiries.",
+                    description:
+                      "Speak directly with our Gloucestershire team for technical advice, delivery updates and enquiries.",
                     cta: "Get in Touch",
                     to: "/contact" as const,
                     image: supportPersonImg,
                     icon: MessageSquare,
                   },
                 ].map((action, idx) => (
-                  <ScrollRevealItem key={action.title} variant="card" delay={100 + idx * 100} className="h-full">
+                  <ScrollRevealItem
+                    key={action.title}
+                    variant="card"
+                    delay={100 + idx * 100}
+                    className="h-full"
+                  >
                     <Link
                       to={action.to}
                       className="group rounded-[22px] border border-slate-200/90 bg-white overflow-hidden flex flex-col hover:border-slate-300 hover:shadow-md transition-all duration-300 shadow-xs h-full"
@@ -1418,8 +1479,9 @@ function Home() {
                 ].map((item, idx) => (
                   <ScrollRevealItem key={item.title} variant="card" delay={500 + idx * 80}>
                     <div
-                      className={`flex items-start gap-3.5 ${idx !== 3 ? "lg:border-r lg:border-slate-200/80 lg:pr-6" : ""
-                        }`}
+                      className={`flex items-start gap-3.5 ${
+                        idx !== 3 ? "lg:border-r lg:border-slate-200/80 lg:pr-6" : ""
+                      }`}
                     >
                       <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 border border-primary/15">
                         <item.icon className="h-5 w-5" />
@@ -1461,7 +1523,8 @@ function Home() {
                     Browse by <span className="text-primary">Category</span>
                   </h2>
                   <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl">
-                    Explore our full range of products and everyday essentials, delivered direct across Gloucestershire.
+                    Explore our full range of products and everyday essentials, delivered direct
+                    across Gloucestershire.
                   </p>
                 </div>
 
@@ -1487,7 +1550,11 @@ function Home() {
                   </div>
 
                   {/* All Products Red Button */}
-                  <Button asChild size="default" className="rounded-full px-5 font-bold text-xs bg-primary hover:bg-primary/90 text-white shadow-xs">
+                  <Button
+                    asChild
+                    size="default"
+                    className="rounded-full px-5 font-bold text-xs bg-primary hover:bg-primary/90 text-white shadow-xs"
+                  >
                     <Link to="/products" className="flex items-center gap-1.5">
                       All Products <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
@@ -1499,7 +1566,7 @@ function Home() {
             {loadingCats ? (
               <div className="surface-card p-12 text-center text-xs font-bold text-muted-foreground rounded-3xl border bg-white">
                 <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
-                Loading categories from Supabase...
+                Loading categories...
               </div>
             ) : (
               <ScrollRevealItem variant="card" delay={150}>
@@ -1539,86 +1606,100 @@ function Home() {
                     pauseUntilRef.current = performance.now() + 2500;
                   }}
                 >
-                  <div
-                    ref={categoryTrackRef}
-                    className="flex gap-4 sm:gap-5 will-change-transform"
-                  >
-                    {[...dbCategories, ...dbCategories, ...dbCategories, ...dbCategories].map((c, idx) => {
-                      const Icon = iconMap[c.icon] || Flame;
-                      const categoryImagesMap: Record<string, string> = {
-                        gas: cylinderImg,
-                        "coal-logs": coalLogs,
-                        "fishing-baits": baitsImg,
-                        "animal-feed": animalFeedImg,
-                        "gas-appliances": bbqPro3,
-                        "gas-spares": heaterImg,
-                        garden: gardenImg,
-                        food: foodImg,
-                        trailers: trailersImg,
-                        workwear: workwearImg,
-                      };
-                      const categoryDescriptionsMap: Record<string, string> = {
-                        gas: "Butane, propane & patio gas cylinders for homes, businesses & outdoor use.",
-                        "coal-logs": "Smokeless coal, kiln-dried logs, kindling & firelighters for a warmer home.",
-                        "fishing-baits": "Groundbait, carp pellets & attractants for match & specimen anglers.",
-                        "animal-feed": "Premium feeds for horse, poultry, dogs, livestock & small animals.",
-                        "gas-appliances": "BBQs, accessories & outdoor essentials for garden cooking all year round.",
-                        "gas-spares": "Heaters, cookers & camping appliances for indoor & outdoor use.",
-                        garden: "Compost, soil, tools & everything you need for a thriving garden.",
-                        food: "Local farm produce, fresh bundles & Gloucestershire store essentials.",
-                        trailers: "Single axle & heavy-duty haulage trailers for domestic & commercial use.",
-                        workwear: "High-visibility waterproof jackets, heavy-duty trousers & PPE.",
-                      };
-                      const catImage = c.image_url || categoryImagesMap[c.slug] || coalLogs;
-                      const description = (typeof categoryDescriptionsMap[c.slug] === "string" ? categoryDescriptionsMap[c.slug] : (typeof c.description === "string" ? c.description : "")) || "Quality supplies with fast Gloucestershire delivery.";
+                  <div ref={categoryTrackRef} className="flex gap-4 sm:gap-5 will-change-transform">
+                    {[...dbCategories, ...dbCategories, ...dbCategories, ...dbCategories].map(
+                      (c, idx) => {
+                        const Icon = iconMap[c.icon] || Flame;
+                        const categoryImagesMap: Record<string, string> = {
+                          gas: cylinderImg,
+                          "coal-logs": coalLogs,
+                          "fishing-baits": baitsImg,
+                          "animal-feed": animalFeedImg,
+                          "gas-appliances": bbqPro3,
+                          "gas-spares": heaterImg,
+                          garden: gardenImg,
+                          food: foodImg,
+                          trailers: trailersImg,
+                          workwear: workwearImg,
+                        };
+                        const categoryDescriptionsMap: Record<string, string> = {
+                          gas: "Butane, propane & patio gas cylinders for homes, businesses & outdoor use.",
+                          "coal-logs":
+                            "Smokeless coal, kiln-dried logs, kindling & firelighters for a warmer home.",
+                          "fishing-baits":
+                            "Groundbait, carp pellets & attractants for match & specimen anglers.",
+                          "animal-feed":
+                            "Premium feeds for horse, poultry, dogs, livestock & small animals.",
+                          "gas-appliances":
+                            "BBQs, accessories & outdoor essentials for garden cooking all year round.",
+                          "gas-spares":
+                            "Heaters, cookers & camping appliances for indoor & outdoor use.",
+                          garden:
+                            "Compost, soil, tools & everything you need for a thriving garden.",
+                          food: "Local farm produce, fresh bundles & Gloucestershire store essentials.",
+                          trailers:
+                            "Single axle & heavy-duty haulage trailers for domestic & commercial use.",
+                          workwear:
+                            "High-visibility waterproof jackets, heavy-duty trousers & PPE.",
+                        };
+                        const catImage = c.image_url || categoryImagesMap[c.slug] || coalLogs;
+                        const description =
+                          (typeof categoryDescriptionsMap[c.slug] === "string"
+                            ? categoryDescriptionsMap[c.slug]
+                            : typeof c.description === "string"
+                              ? c.description
+                              : "") || "Quality supplies with fast Gloucestershire delivery.";
 
-                      return (
-                        <Link
-                          key={`${c.id || c.slug}-${idx}`}
-                          to="/categories/$slug"
-                          params={{ slug: c.slug }}
-                          className="group rounded-[22px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all duration-300 shadow-2xs w-[190px] sm:w-[210px] lg:w-[220px] shrink-0 h-full block cursor-pointer select-none"
-                        >
-                          {/* Top Image Area */}
-                          <div className="h-36 sm:h-40 overflow-hidden bg-slate-100 relative shrink-0">
-                            <img
-                              src={catImage}
-                              alt={c.name}
-                              className="w-full h-full object-cover object-center group-hover:scale-[1.035] transition-transform duration-300 rounded-t-[22px]"
-                              loading="lazy"
-                            />
+                        return (
+                          <Link
+                            key={`${c.id || c.slug}-${idx}`}
+                            to="/categories/$slug"
+                            params={{ slug: c.slug }}
+                            className="group rounded-[22px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all duration-300 shadow-2xs w-[190px] sm:w-[210px] lg:w-[220px] shrink-0 h-full block cursor-pointer select-none"
+                          >
+                            {/* Top Image Area */}
+                            <div className="h-36 sm:h-40 overflow-hidden bg-slate-100 relative shrink-0">
+                              <img
+                                src={catImage}
+                                alt={c.name}
+                                className="w-full h-full object-cover object-center group-hover:scale-[1.035] transition-transform duration-300 rounded-t-[22px]"
+                                loading="lazy"
+                              />
 
-                            {/* Top Left Floating Icon Badge */}
-                            <div className="absolute top-3 left-3 h-8 w-8 rounded-full bg-white text-primary flex items-center justify-center shadow-xs border border-slate-100 font-bold z-10">
-                              <Icon className="h-4 w-4" />
-                            </div>
-                          </div>
-
-                          {/* Bottom White Content Area */}
-                          <div className="p-4 sm:p-4.5 flex-1 flex flex-col justify-between space-y-3">
-                            <div>
-                              {/* Red Accent Line */}
-                              <div className="h-0.5 w-5 bg-primary rounded-full group-hover:w-8 transition-all duration-300 mb-2" />
-
-                              <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors duration-200 line-clamp-1">
-                                {typeof c.name === "string" ? c.name : String(c.name || "")}
-                              </h3>
-                              <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1 min-h-[34px]">
-                                {typeof description === "string" ? description : "Quality supplies with fast Gloucestershire delivery."}
-                              </p>
-                            </div>
-
-                            {/* CTA Button */}
-                            <div className="pt-2.5 border-t border-slate-100/90 flex items-center justify-start">
-                              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-white text-[11px] sm:text-xs font-extrabold shadow-2xs group-hover:bg-red-700 group-hover:shadow-xs group-hover:scale-[1.02] transition-all duration-200">
-                                <span>Shop now</span>
-                                <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white group-hover:translate-x-1 transition-transform duration-200" />
+                              {/* Top Left Floating Icon Badge */}
+                              <div className="absolute top-3 left-3 h-8 w-8 rounded-full bg-white text-primary flex items-center justify-center shadow-xs border border-slate-100 font-bold z-10">
+                                <Icon className="h-4 w-4" />
                               </div>
                             </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
+
+                            {/* Bottom White Content Area */}
+                            <div className="p-4 sm:p-4.5 flex-1 flex flex-col justify-between space-y-3">
+                              <div>
+                                {/* Red Accent Line */}
+                                <div className="h-0.5 w-5 bg-primary rounded-full group-hover:w-8 transition-all duration-300 mb-2" />
+
+                                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors duration-200 line-clamp-1">
+                                  {typeof c.name === "string" ? c.name : String(c.name || "")}
+                                </h3>
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-1 min-h-[34px]">
+                                  {typeof description === "string"
+                                    ? description
+                                    : "Quality supplies with fast Gloucestershire delivery."}
+                                </p>
+                              </div>
+
+                              {/* CTA Button */}
+                              <div className="pt-2.5 border-t border-slate-100/90 flex items-center justify-start">
+                                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary text-white text-[11px] sm:text-xs font-extrabold shadow-2xs group-hover:bg-red-700 group-hover:shadow-xs group-hover:scale-[1.02] transition-all duration-200">
+                                  <span>Shop now</span>
+                                  <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-white group-hover:translate-x-1 transition-transform duration-200" />
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        );
+                      },
+                    )}
                   </div>
                 </div>
               </ScrollRevealItem>
@@ -1667,7 +1748,10 @@ function Home() {
                       <option value="all">Categories: All</option>
                       {dbCategories && dbCategories.length > 0 ? (
                         dbCategories.map((c) => (
-                          <option key={c.id || c.slug} value={typeof c.slug === "string" ? c.slug : String(c.slug || "")}>
+                          <option
+                            key={c.id || c.slug}
+                            value={typeof c.slug === "string" ? c.slug : String(c.slug || "")}
+                          >
                             {typeof c.name === "string" ? c.name : String(c.name || "")}
                           </option>
                         ))
@@ -1714,7 +1798,7 @@ function Home() {
             {/* Large Horizontal Product Cards Showcase with Left & Right Arrow Navigation */}
             {displayedCatalogProducts.length === 0 ? (
               <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs text-muted-foreground font-bold">
-                Loading live products from Supabase...
+                Loading products...
               </div>
             ) : (
               <div className="relative w-full max-w-[1140px] mx-auto flex items-center justify-center gap-2 sm:gap-3.5 md:gap-5">
@@ -1736,27 +1820,38 @@ function Home() {
                     const isOutOfStock = Number(p.stock || 0) <= 0;
 
                     return (
-                      <ScrollRevealItem key={p.id || p.slug} variant="card" delay={120 + idx * 100} className="h-full">
-                        <div
-                          className="group rounded-[6px] border border-slate-200/90 bg-white overflow-hidden shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all duration-300 flex flex-col md:flex-row items-stretch h-full"
-                        >
+                      <ScrollRevealItem
+                        key={p.id || p.slug}
+                        variant="card"
+                        delay={120 + idx * 100}
+                        className="h-full"
+                      >
+                        <div className="group rounded-[6px] border border-slate-200/90 bg-white overflow-hidden shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all duration-300 flex flex-col md:flex-row items-stretch h-full">
                           {/* Left / Top - Product Image Area */}
                           <div className="w-full md:w-[48%] relative shrink-0 overflow-hidden aspect-square md:aspect-auto min-h-0 md:min-h-full bg-slate-100 flex items-center justify-center md:items-stretch">
                             {/* Top-Left Status Badge */}
                             <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 md:top-3.5 md:left-3.5 z-10">
                               {idx === 0 ? (
                                 <span className="inline-flex items-center gap-1 md:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 rounded-full bg-primary text-white text-[9px] sm:text-[10px] md:text-[11px] font-extrabold shadow-sm">
-                                  <Award className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5" /> <span className="hidden sm:inline">Best Seller</span><span className="sm:hidden">Best</span>
+                                  <Award className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5" />{" "}
+                                  <span className="hidden sm:inline">Best Seller</span>
+                                  <span className="sm:hidden">Best</span>
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 md:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[9px] sm:text-[10px] md:text-[11px] font-extrabold shadow-sm backdrop-blur-xs">
-                                  <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5 text-emerald-600" /> <span className="hidden sm:inline">In Stock</span><span className="sm:hidden">Stock</span>
+                                  <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5 text-emerald-600" />{" "}
+                                  <span className="hidden sm:inline">In Stock</span>
+                                  <span className="sm:hidden">Stock</span>
                                 </span>
                               )}
                             </div>
 
                             {/* Product Photo */}
-                            <Link to="/products/$slug" params={{ slug: p.slug }} className="block w-full h-full flex items-center justify-center">
+                            <Link
+                              to="/products/$slug"
+                              params={{ slug: p.slug }}
+                              className="block w-full h-full flex items-center justify-center"
+                            >
                               <img
                                 src={cleanImageUrl(p.image, p.slug)}
                                 alt={p.name}
@@ -1783,13 +1878,24 @@ function Home() {
                                   onClick={() => toggleWishlist(p.slug)}
                                   className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors cursor-pointer shrink-0"
                                 >
-                                  <Heart className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4.5 md:w-4.5 transition-colors", wished ? "fill-primary text-primary" : "text-slate-400 hover:text-primary")} />
+                                  <Heart
+                                    className={cn(
+                                      "h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4.5 md:w-4.5 transition-colors",
+                                      wished
+                                        ? "fill-primary text-primary"
+                                        : "text-slate-400 hover:text-primary",
+                                    )}
+                                  />
                                 </button>
                               </div>
 
                               {/* Product Title */}
                               <h3 className="mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-2xl font-extrabold text-slate-900 tracking-tight leading-tight sm:leading-snug line-clamp-2">
-                                <Link to="/products/$slug" params={{ slug: p.slug }} className="hover:text-primary transition-colors">
+                                <Link
+                                  to="/products/$slug"
+                                  params={{ slug: p.slug }}
+                                  className="hover:text-primary transition-colors"
+                                >
                                   {typeof p.name === "string" ? p.name : String(p.name || "")}
                                 </Link>
                               </h3>
@@ -1797,7 +1903,9 @@ function Home() {
                               {/* Rating Row */}
                               <div className="mt-1 sm:mt-1.5 md:mt-2.5 flex items-center gap-1 text-[10px] sm:text-[11px] md:text-xs font-medium text-slate-500">
                                 <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                                <span className="font-bold text-slate-700">{p.rating ? p.rating.toFixed(1) : "5.0"}</span>
+                                <span className="font-bold text-slate-700">
+                                  {p.rating ? p.rating.toFixed(1) : "5.0"}
+                                </span>
                                 <span className="text-slate-400">({p.reviews || 0})</span>
                               </div>
 
@@ -1917,7 +2025,8 @@ function Home() {
                   {/* Main Heading */}
                   <div>
                     <h2 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-slate-900 tracking-tight leading-[1.1]">
-                      Need gas delivered directly to <span className="text-primary">your door?</span>
+                      Need gas delivered directly to{" "}
+                      <span className="text-primary">your door?</span>
                     </h2>
 
                     {/* Small Red Horizontal Accent Line */}
@@ -1926,7 +2035,8 @@ function Home() {
 
                   {/* Supporting Paragraph */}
                   <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-xl">
-                    Order your Calor butane, propane, patio gas and pub cylinders online and arrange fast, reliable local delivery from John Stayte Services across Gloucestershire.
+                    Order your Calor butane, propane, patio gas and pub cylinders online and arrange
+                    fast, reliable local delivery from John Stayte Services across Gloucestershire.
                   </p>
 
                   {/* Action Buttons Row */}
@@ -1982,7 +2092,8 @@ function Home() {
                   Our Core Services
                 </h2>
                 <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl">
-                  Comprehensive fuel, cylinder exchange, and appliance solutions for domestic and commercial clients.
+                  Comprehensive fuel, cylinder exchange, and appliance solutions for domestic and
+                  commercial clients.
                 </p>
               </div>
             </ScrollRevealItem>
@@ -2017,7 +2128,13 @@ function Home() {
                         {safeStr(dbServices[0]?.title, "Gas Cylinder Delivery")}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        {safeStr(dbServices[0]?.desc, safeStr(dbServices[0]?.description, "Reliable bottled gas delivery for homes and businesses across Gloucestershire."))}
+                        {safeStr(
+                          dbServices[0]?.desc,
+                          safeStr(
+                            dbServices[0]?.description,
+                            "Reliable bottled gas delivery for homes and businesses across Gloucestershire.",
+                          ),
+                        )}
                       </p>
                     </div>
 
@@ -2060,7 +2177,13 @@ function Home() {
                         {safeStr(dbServices[1]?.title, "Forecourts & Filling Stations")}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        {safeStr(dbServices[1]?.desc, safeStr(dbServices[1]?.description, "Fuel, autogas and cylinder exchange at our local service stations."))}
+                        {safeStr(
+                          dbServices[1]?.desc,
+                          safeStr(
+                            dbServices[1]?.description,
+                            "Fuel, autogas and cylinder exchange at our local service stations.",
+                          ),
+                        )}
                       </p>
                     </div>
 
@@ -2086,7 +2209,10 @@ function Home() {
                   <div className="relative h-56 sm:h-64 bg-[#f3f4f6] overflow-hidden flex items-center justify-center p-4">
                     <img
                       src={dbServices[2]?.image || heaterImg}
-                      alt={safeStr(dbServices[2]?.title, "Gas heaters, appliances and genuine spares")}
+                      alt={safeStr(
+                        dbServices[2]?.title,
+                        "Gas heaters, appliances and genuine spares",
+                      )}
                       className="max-h-[190px] sm:max-h-[210px] w-auto object-contain group-hover:scale-[1.04] transition-transform duration-500"
                       loading="lazy"
                     />
@@ -2104,7 +2230,13 @@ function Home() {
                         {safeStr(dbServices[2]?.title, "Gas Appliances & Spares")}
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        {safeStr(dbServices[2]?.desc, safeStr(dbServices[2]?.description, "Quality appliances, regulators, hoses and genuine replacement parts."))}
+                        {safeStr(
+                          dbServices[2]?.desc,
+                          safeStr(
+                            dbServices[2]?.description,
+                            "Quality appliances, regulators, hoses and genuine replacement parts.",
+                          ),
+                        )}
                       </p>
                     </div>
 
@@ -2140,7 +2272,8 @@ function Home() {
                   Why Customers Trust Us <span className="text-primary">Since 1972</span>
                 </h2>
                 <p className="why-trust-desc text-xs sm:text-sm text-slate-600 leading-relaxed mt-2 max-w-lg mx-auto">
-                  Over five decades supplying Gloucestershire with dependable fuels, appliances and local service.
+                  Over five decades supplying Gloucestershire with dependable fuels, appliances and
+                  local service.
                 </p>
               </div>
             </ScrollRevealItem>
@@ -2168,7 +2301,8 @@ function Home() {
                       Family-Run Business
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-[220px] mx-auto">
-                      Independent and established in 1972, bringing personal accountability and care to every order.
+                      Independent and established in 1972, bringing personal accountability and care
+                      to every order.
                     </p>
                   </div>
                 </ScrollRevealItem>
@@ -2184,7 +2318,8 @@ function Home() {
                       Dedicated Fleet
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-[220px] mx-auto">
-                      Our own local delivery drivers serving households, farms and businesses across a 40-mile radius.
+                      Our own local delivery drivers serving households, farms and businesses across
+                      a 40-mile radius.
                     </p>
                   </div>
                 </ScrollRevealItem>
@@ -2200,7 +2335,8 @@ function Home() {
                       3 Local Forecourts
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-[220px] mx-auto">
-                      Physical service stations open 7 days a week for immediate gas bottle exchanges and supplies.
+                      Physical service stations open 7 days a week for immediate gas bottle
+                      exchanges and supplies.
                     </p>
                   </div>
                 </ScrollRevealItem>
@@ -2216,7 +2352,8 @@ function Home() {
                       Direct Human Support
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-[220px] mx-auto">
-                      Real, knowledgeable people in Gloucestershire on hand to answer questions and resolve enquiries.
+                      Real, knowledgeable people in Gloucestershire on hand to answer questions and
+                      resolve enquiries.
                     </p>
                   </div>
                 </ScrollRevealItem>
@@ -2238,7 +2375,8 @@ function Home() {
                     <div className="h-0.5 w-4 bg-primary rounded-full mb-1" />
                     <h3 className="font-black text-xs text-slate-900">Family-Run Business</h3>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      Independent and established in 1972, bringing personal accountability and care to every order.
+                      Independent and established in 1972, bringing personal accountability and care
+                      to every order.
                     </p>
                   </div>
                 </div>
@@ -2254,7 +2392,8 @@ function Home() {
                     <div className="h-0.5 w-4 bg-primary rounded-full mb-1" />
                     <h3 className="font-black text-xs text-slate-900">Dedicated Fleet</h3>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      Our own local delivery drivers serving households, farms and businesses across a 40-mile radius.
+                      Our own local delivery drivers serving households, farms and businesses across
+                      a 40-mile radius.
                     </p>
                   </div>
                 </div>
@@ -2270,7 +2409,8 @@ function Home() {
                     <div className="h-0.5 w-4 bg-primary rounded-full mb-1" />
                     <h3 className="font-black text-xs text-slate-900">3 Local Forecourts</h3>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      Physical service stations open 7 days a week for immediate gas bottle exchanges and supplies.
+                      Physical service stations open 7 days a week for immediate gas bottle
+                      exchanges and supplies.
                     </p>
                   </div>
                 </div>
@@ -2286,7 +2426,8 @@ function Home() {
                     <div className="h-0.5 w-4 bg-primary rounded-full mb-1" />
                     <h3 className="font-black text-xs text-slate-900">Direct Human Support</h3>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      An experienced local team on hand to answer technical questions and arrange flexible orders.
+                      An experienced local team on hand to answer technical questions and arrange
+                      flexible orders.
                     </p>
                   </div>
                 </div>
@@ -2308,7 +2449,11 @@ function Home() {
           <ScrollRevealSection>
             <div className="filling-stations-layout grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
               {/* LEFT COLUMN: Section Info & 3 Benefit Items (~4 cols) */}
-              <ScrollRevealItem variant="heading" delay={0} className="filling-stations-info lg:col-span-4 space-y-6">
+              <ScrollRevealItem
+                variant="heading"
+                delay={0}
+                className="filling-stations-info lg:col-span-4 space-y-6"
+              >
                 <div>
                   <p className="filling-stations-eyebrow text-xs font-extrabold uppercase tracking-[0.2em] text-primary mb-2">
                     FORECOURT LOCATIONS
@@ -2318,7 +2463,8 @@ function Home() {
                   </h2>
                   <div className="h-0.5 w-10 bg-primary rounded-full mt-3 mb-3.5" />
                   <p className="filling-stations-desc text-sm text-slate-600 leading-relaxed max-w-md">
-                    Visit our physical locations for cylinder exchange, autogas and forecourt essentials.
+                    Visit our physical locations for cylinder exchange, autogas and forecourt
+                    essentials.
                   </p>
                 </div>
 
@@ -2330,7 +2476,9 @@ function Home() {
                       <Fuel className="h-5 w-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-extrabold text-slate-900">3 Convenient Locations</h4>
+                      <h4 className="text-sm font-extrabold text-slate-900">
+                        3 Convenient Locations
+                      </h4>
                       <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                         Across Gloucestershire for all your fuel and gas needs.
                       </p>
@@ -2390,10 +2538,13 @@ function Home() {
                     const hoursParts = (s.hours || "").split(" · ");
 
                     return (
-                      <ScrollRevealItem key={s.name || idx} variant="card" delay={100 + idx * 100} className="h-full">
-                        <div
-                          className="filling-station-card rounded-[22px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 group h-full"
-                        >
+                      <ScrollRevealItem
+                        key={s.name || idx}
+                        variant="card"
+                        delay={100 + idx * 100}
+                        className="h-full"
+                      >
+                        <div className="filling-station-card rounded-[22px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 group h-full">
                           <div>
                             {/* Station Image Area Container */}
                             <div className="relative">
@@ -2428,7 +2579,11 @@ function Home() {
                               <ul className="space-y-2.5 text-xs text-slate-600">
                                 <li className="flex items-start gap-2.5">
                                   <MapPin className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
-                                  <span className="leading-relaxed">{typeof s.address === "string" ? s.address : String(s.address || "")}</span>
+                                  <span className="leading-relaxed">
+                                    {typeof s.address === "string"
+                                      ? s.address
+                                      : String(s.address || "")}
+                                  </span>
                                 </li>
                                 <li className="flex items-center gap-2.5">
                                   <Phone className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -2453,7 +2608,11 @@ function Home() {
 
                           {/* Bottom Full-Width Pale-Red Action Strip */}
                           <a
-                            href={s.maps || s.maps_link || `https://maps.google.com/?q=${encodeURIComponent(s.name + " " + s.address)}`}
+                            href={
+                              s.maps ||
+                              s.maps_link ||
+                              `https://maps.google.com/?q=${encodeURIComponent(s.name + " " + s.address)}`
+                            }
                             target="_blank"
                             rel="noreferrer noopener"
                             className="filling-station-action-strip bg-primary/5 hover:bg-primary/10 border-t border-primary/10 text-primary text-xs font-extrabold py-3.5 px-5 flex items-center justify-between transition-colors group/cta"
@@ -2507,7 +2666,15 @@ function Home() {
                   desc: "Order cylinders online quickly and easily.",
                   to: "/order-gas",
                   icon: (props: React.SVGProps<SVGSVGElement>) => (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      {...props}
+                    >
                       <rect x="7" y="7" width="10" height="14" rx="3" />
                       <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
                       <path d="M10 4h4" />
@@ -2554,12 +2721,17 @@ function Home() {
               ].map((card, idx) => {
                 const Icon = card.icon;
                 return (
-                  <ScrollRevealItem key={card.title} variant="card" delay={100 + idx * 80} className="h-full">
+                  <ScrollRevealItem
+                    key={card.title}
+                    variant="card"
+                    delay={100 + idx * 80}
+                    className="h-full"
+                  >
                     <Link
                       to={card.to}
                       className={cn(
                         "group bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between border-b-[3px] h-full",
-                        card.borderBottomColor
+                        card.borderBottomColor,
                       )}
                     >
                       <div className="flex items-start gap-4">
@@ -2582,7 +2754,8 @@ function Home() {
                       {/* Red CTA Text */}
                       <div className="mt-5 pt-1">
                         <span className="text-xs sm:text-sm font-bold text-primary flex items-center gap-1.5 transition-all group-hover:gap-2">
-                          Get help <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                          Get help{" "}
+                          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                         </span>
                       </div>
                     </Link>
@@ -2677,7 +2850,8 @@ function Home() {
                   TESTIMONIALS
                 </span>
                 <h2 className="text-3xl sm:text-4xl lg:text-[40px] font-extrabold text-slate-900 tracking-tight leading-tight">
-                  Don’t take our word for it!<br />
+                  Don’t take our word for it!
+                  <br />
                   Hear it from <span className="text-primary">our partners.</span>
                 </h2>
               </div>
@@ -2709,7 +2883,8 @@ function Home() {
           <ScrollRevealItem variant="card" delay={0}>
             <div className="container-page max-w-2xl space-y-6 pb-8 sm:pb-10">
               <p className="text-sm sm:text-base text-slate-700 font-medium leading-relaxed">
-                Order online today for dependable next-day delivery across Gloucestershire, or visit any of our three forecourts.
+                Order online today for dependable next-day delivery across Gloucestershire, or visit
+                any of our three forecourts.
               </p>
 
               <div className="flex flex-wrap items-center justify-center gap-3.5 sm:gap-4">

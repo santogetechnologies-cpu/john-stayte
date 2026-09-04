@@ -179,10 +179,7 @@ export function CustomerAddressesView() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("customer_addresses")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.from("customer_addresses").delete().eq("id", id);
 
       if (error) throw error;
       toast.success("Address removed successfully");
@@ -203,10 +200,7 @@ export function CustomerAddressesView() {
         .update({ is_default: false })
         .eq("user_id", authUser.user.id);
 
-      await supabase
-        .from("customer_addresses")
-        .update({ is_default: true })
-        .eq("id", id);
+      await supabase.from("customer_addresses").update({ is_default: true }).eq("id", id);
 
       toast.success("Default delivery address updated!");
       await loadAddresses();
@@ -217,7 +211,12 @@ export function CustomerAddressesView() {
 
   const getLabelIcon = (lbl: string) => {
     const l = (lbl || "").toLowerCase();
-    if (l.includes("work") || l.includes("office") || l.includes("business") || l.includes("depot")) {
+    if (
+      l.includes("work") ||
+      l.includes("office") ||
+      l.includes("business") ||
+      l.includes("depot")
+    ) {
       return <Building className="h-4 w-4" />;
     }
     return <Home className="h-4 w-4" />;
@@ -249,7 +248,8 @@ export function CustomerAddressesView() {
             </div>
 
             <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-              Manage where we deliver your gas cylinders, solid fuels, and store products across Gloucestershire.
+              Manage where we deliver your gas cylinders, solid fuels, and store products across
+              Gloucestershire.
             </p>
           </div>
 
@@ -270,9 +270,7 @@ export function CustomerAddressesView() {
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
           <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
-          <p className="text-xs text-slate-500 font-bold">
-            Loading your delivery addresses from Supabase...
-          </p>
+          <p className="text-xs text-slate-500 font-bold">Loading your delivery addresses...</p>
         </div>
       ) : addresses.length === 0 ? (
         /* EMPTY STATE */
@@ -286,7 +284,8 @@ export function CustomerAddressesView() {
               No delivery addresses yet
             </h2>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Add a delivery address to ensure fast 1-click checkout and seamless direct fleet deliveries to your home, business or farm.
+              Add a delivery address to ensure fast 1-click checkout and seamless direct fleet
+              deliveries to your home, business or farm.
             </p>
           </div>
 
@@ -403,9 +402,7 @@ export function CustomerAddressesView() {
           <form onSubmit={handleSave} className="space-y-4 pt-3 text-xs">
             {/* Address Label Chips */}
             <div className="space-y-1.5">
-              <Label className="font-bold text-slate-700 text-xs">
-                Address Type / Label
-              </Label>
+              <Label className="font-bold text-slate-700 text-xs">Address Type / Label</Label>
               <div className="flex items-center gap-2 flex-wrap">
                 {["Home", "Work", "Farm", "Depot", "Other"].map((lbl) => (
                   <button
@@ -520,8 +517,10 @@ export function CustomerAddressesView() {
                   <>
                     <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Saving...
                   </>
+                ) : editingId ? (
+                  "Update Address"
                 ) : (
-                  editingId ? "Update Address" : "Save Address"
+                  "Save Address"
                 )}
               </Button>
             </div>
@@ -539,7 +538,8 @@ export function CustomerAddressesView() {
               Delete Delivery Address?
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 font-medium">
-              Are you sure you want to remove this delivery address from your account? This action cannot be undone.
+              Are you sure you want to remove this delivery address from your account? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
 

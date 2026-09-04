@@ -46,7 +46,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { getBlogPostBySlug, getRelatedBlogPosts, type BlogPost, type BlogSection } from "@/data/blog";
+import {
+  getBlogPostBySlug,
+  getRelatedBlogPosts,
+  type BlogPost,
+  type BlogSection,
+} from "@/data/blog";
 import { cn } from "@/lib/utils";
 
 // High-resolution photographic assets for visual storytelling
@@ -87,7 +92,9 @@ export const Route = createFileRoute("/blog/$slug")({
         <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
           <BookOpen className="h-8 w-8" />
         </div>
-        <h1 className="text-3xl font-extrabold text-slate-900 font-display">Safety Guide Not Found</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900 font-display">
+          Safety Guide Not Found
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
           The safety guide you requested could not be located. It may have been moved or updated.
         </p>
@@ -117,7 +124,14 @@ const TABLE_OF_CONTENTS = [
   { id: "emergency-numbers", label: "9. Emergency Contacts" },
 ];
 
-function GeneralBlogPostView({ post, onNewsletterSubmit, newsletterEmail, setNewsletterEmail, subscribing, subscribed }: {
+function GeneralBlogPostView({
+  post,
+  onNewsletterSubmit,
+  newsletterEmail,
+  setNewsletterEmail,
+  subscribing,
+  subscribed,
+}: {
   post: BlogPost;
   onNewsletterSubmit: (e: React.FormEvent) => Promise<void>;
   newsletterEmail: string;
@@ -148,13 +162,23 @@ function GeneralBlogPostView({ post, onNewsletterSubmit, newsletterEmail, setNew
               <BreadcrumbList>
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/" className="text-slate-500 hover:text-primary transition-colors font-medium">Home</Link>
+                    <Link
+                      to="/"
+                      className="text-slate-500 hover:text-primary transition-colors font-medium"
+                    >
+                      Home
+                    </Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link to="/blog" className="text-slate-500 hover:text-primary transition-colors font-medium">Knowledge Centre</Link>
+                    <Link
+                      to="/blog"
+                      className="text-slate-500 hover:text-primary transition-colors font-medium"
+                    >
+                      Knowledge Centre
+                    </Link>
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
@@ -179,11 +203,18 @@ function GeneralBlogPostView({ post, onNewsletterSubmit, newsletterEmail, setNew
 
             <div className="pt-3 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/80 text-xs text-slate-500 font-semibold">
               <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-slate-400" /> {post.readingTime || "4 min read"}</span>
+                <span className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-slate-400" />{" "}
+                  {post.readingTime || "4 min read"}
+                </span>
                 <span>•</span>
-                <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-slate-400" /> {post.date}</span>
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-slate-400" /> {post.date}
+                </span>
                 <span>•</span>
-                <span className="text-slate-700 font-bold">{post.author?.name || "John Stayte Team"}</span>
+                <span className="text-slate-700 font-bold">
+                  {post.author?.name || "John Stayte Team"}
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -265,19 +296,35 @@ function GeneralBlogPostView({ post, onNewsletterSubmit, newsletterEmail, setNew
           {/* Action CTAs */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div>
-              <h4 className="text-lg font-black text-slate-900 font-display">Need Gas or Fuel Advice in Gloucestershire?</h4>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1">Our certified team is on hand 6 days a week to help with products and deliveries.</p>
+              <h4 className="text-lg font-black text-slate-900 font-display">
+                Need Gas or Fuel Advice in Gloucestershire?
+              </h4>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                Our certified team is on hand 6 days a week to help with products and deliveries.
+              </p>
             </div>
-            <Button asChild className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white font-bold shrink-0">
-              <Link to="/contact">Speak to our team <ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+            <Button
+              asChild
+              className="rounded-full px-6 bg-primary hover:bg-primary/90 text-white font-bold shrink-0"
+            >
+              <Link to="/contact">
+                Speak to our team <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
             </Button>
           </div>
 
           {/* Stay Informed Newsletter */}
           <section className="rounded-[28px] border border-slate-200/90 bg-white p-8 text-center space-y-4 shadow-xs">
-            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-display">Stay Informed with Safety & Energy News</h3>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">Get occasional safety updates and seasonal fuel guidance directly to your inbox.</p>
-            <form onSubmit={onNewsletterSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 font-display">
+              Stay Informed with Safety & Energy News
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
+              Get occasional safety updates and seasonal fuel guidance directly to your inbox.
+            </p>
+            <form
+              onSubmit={onNewsletterSubmit}
+              className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-md mx-auto pt-2"
+            >
               <Input
                 type="email"
                 placeholder="Your email address"
@@ -292,7 +339,13 @@ function GeneralBlogPostView({ post, onNewsletterSubmit, newsletterEmail, setNew
                 disabled={subscribing || subscribed}
                 className="h-11 rounded-full px-6 text-xs font-black font-display bg-primary hover:bg-primary/90 text-white shrink-0 shadow-xs gap-1.5 w-full sm:w-auto"
               >
-                {subscribing ? <Loader2 className="h-4 w-4 animate-spin" /> : subscribed ? "Subscribed" : "Subscribe"}
+                {subscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : subscribed ? (
+                  "Subscribed"
+                ) : (
+                  "Subscribe"
+                )}
               </Button>
             </form>
           </section>
@@ -311,7 +364,11 @@ function BlogPostPage() {
       try {
         const [{ data: tablePost }, { data: blockData }] = await Promise.all([
           supabase.from("cms_blog_posts").select("*").eq("slug", slug).maybeSingle(),
-          supabase.from("cms_content_blocks").select("content").eq("section_key", "blog_posts_data").maybeSingle(),
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "blog_posts_data")
+            .maybeSingle(),
         ]);
 
         if (tablePost) {
@@ -364,15 +421,15 @@ function BlogPostPage() {
           "Always keep cylinders stored upright on a level surface",
           "Ensure adequate natural ventilation in all storage areas",
           "Keep away from sources of ignition, electrical sparks and flames",
-          "Inspect connections and flexible hoses regularly for wear"
+          "Inspect connections and flexible hoses regularly for wear",
         ],
         sections: [
           {
             id: "main-content",
             title: "Article Overview",
             content: dbPost.content || dbPost.excerpt || "",
-          }
-        ]
+          },
+        ],
       } as BlogPost;
     }
     return fallback;
@@ -420,12 +477,18 @@ function BlogPostPage() {
           }
         }
         if (!list.some((item: any) => item.email === cleanEmail)) {
-          const updated = [...list, { email: cleanEmail, source: "safety_guide", subscribed_at: new Date().toISOString() }];
-          await supabase.from("cms_content_blocks").upsert({
-            section_key: "newsletter_subscribers_data",
-            title: "Newsletter Subscribers List",
-            content: JSON.stringify(updated),
-          }, { onConflict: "section_key" });
+          const updated = [
+            ...list,
+            { email: cleanEmail, source: "safety_guide", subscribed_at: new Date().toISOString() },
+          ];
+          await supabase.from("cms_content_blocks").upsert(
+            {
+              section_key: "newsletter_subscribers_data",
+              title: "Newsletter Subscribers List",
+              content: JSON.stringify(updated),
+            },
+            { onConflict: "section_key" },
+          );
         }
       } catch {}
 
@@ -447,7 +510,8 @@ function BlogPostPage() {
   useEffect(() => {
     const handleScroll = () => {
       const totalScroll = document.documentElement.scrollTop;
-      const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const windowHeight =
+        document.documentElement.scrollHeight - document.documentElement.clientHeight;
       if (windowHeight > 0) {
         const scrollPercent = (totalScroll / windowHeight) * 100;
         setScrollProgress(Math.min(100, Math.max(0, scrollPercent)));
@@ -529,18 +593,19 @@ function BlogPostPage() {
           {/* Subtle Ambient Red Glow */}
           <div className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[350px] bg-red-500/[0.03] rounded-full blur-3xl pointer-events-none z-0" />
 
-          <div className="container-page max-w-7xl relative z-10">
+          <div className="container-page max-w-[88rem] relative z-10">
             <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-14 items-center">
-              
               {/* Left Column: Content (approx 45% desktop width) */}
               <div className="lg:col-span-5 xl:col-span-5 space-y-5 sm:space-y-6 text-left">
-                
                 {/* Breadcrumbs */}
                 <Breadcrumb className="text-xs text-slate-500">
                   <BreadcrumbList>
                     <BreadcrumbItem>
                       <BreadcrumbLink asChild>
-                        <Link to="/" className="text-slate-500 hover:text-primary transition-colors font-medium">
+                        <Link
+                          to="/"
+                          className="text-slate-500 hover:text-primary transition-colors font-medium"
+                        >
                           Home
                         </Link>
                       </BreadcrumbLink>
@@ -548,7 +613,10 @@ function BlogPostPage() {
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
                       <BreadcrumbLink asChild>
-                        <Link to="/blog" className="text-slate-500 hover:text-primary transition-colors font-medium">
+                        <Link
+                          to="/blog"
+                          className="text-slate-500 hover:text-primary transition-colors font-medium"
+                        >
                           Knowledge Centre
                         </Link>
                       </BreadcrumbLink>
@@ -575,7 +643,8 @@ function BlogPostPage() {
 
                 {/* Short Description */}
                 <p className="text-slate-600 text-base sm:text-lg leading-relaxed font-normal max-w-xl">
-                  Clear, practical steps for gas leaks, gas fires, cylinder problems and other LPG emergencies.
+                  Clear, practical steps for gas leaks, gas fires, cylinder problems and other LPG
+                  emergencies.
                 </p>
 
                 {/* Topic Pills (Hidden on mobile, visible on tablet/desktop) */}
@@ -635,7 +704,6 @@ function BlogPostPage() {
                   <span>•</span>
                   <span className="text-slate-700 font-bold">John Stayte Safety Team</span>
                 </div>
-
               </div>
 
               {/* Right Column: Hero Image (approx 55% desktop width) */}
@@ -650,7 +718,6 @@ function BlogPostPage() {
                   />
                 </div>
               </div>
-
             </div>
           </div>
         </header>
@@ -666,7 +733,12 @@ function BlogPostPage() {
               <BookOpen className="h-4 w-4 text-primary" />
               On This Page: {TABLE_OF_CONTENTS.find((t) => t.id === activeSection)?.label || "Menu"}
             </span>
-            <ChevronDown className={cn("h-4 w-4 text-slate-500 transition-transform", mobileMenuOpen && "rotate-180")} />
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-slate-500 transition-transform",
+                mobileMenuOpen && "rotate-180",
+              )}
+            />
           </button>
           {mobileMenuOpen && (
             <div className="mt-2 p-2 bg-white rounded-2xl border border-slate-200 shadow-xl space-y-1 max-h-80 overflow-y-auto">
@@ -677,7 +749,9 @@ function BlogPostPage() {
                   onClick={() => scrollToSection(item.id)}
                   className={cn(
                     "w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors cursor-pointer",
-                    activeSection === item.id ? "bg-red-50 text-primary font-black" : "text-slate-700 hover:bg-slate-100"
+                    activeSection === item.id
+                      ? "bg-red-50 text-primary font-black"
+                      : "text-slate-700 hover:bg-slate-100",
                   )}
                 >
                   {item.label}
@@ -688,12 +762,10 @@ function BlogPostPage() {
         </div>
 
         {/* Main Editorial Container */}
-        <div className="container-page max-w-7xl pt-10 sm:pt-14 pb-8 sm:pb-12">
+        <div className="container-page max-w-[88rem] pt-10 sm:pt-14 pb-8 sm:pb-12">
           <div className="grid gap-12 lg:grid-cols-[1fr_300px] lg:items-start">
-            
             {/* Main Editorial Stream with High Vertical Spacing */}
             <main className="space-y-20 lg:space-y-28 min-w-0 text-left">
-              
               {/* =========================================================================
                   SECTION 1 — GAS LEAK (Editorial Split Layout with 3 Stacked Images)
               ========================================================================= */}
@@ -702,7 +774,6 @@ function BlogPostPage() {
                     On desktop (lg): 12-col grid with 3 images on left (col 1-5, spanning rows 1-2)
                     and Header (col 6-12, row 1) + 5 Cards (col 6-12, row 2) on right */}
                 <div className="flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:gap-x-10 lg:gap-y-6 lg:items-start">
-                  
                   {/* 1. Header Block: Label + Heading + Description (First on Mobile, Top-Right on Desktop) */}
                   <div className="space-y-2 text-left lg:col-start-6 lg:col-span-7 lg:row-start-1">
                     <span className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-1.5 font-display">
@@ -712,7 +783,9 @@ function BlogPostPage() {
                       Think You Have a Gas Leak?
                     </h2>
                     <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                      If you detect the distinctive smell of gas, hear a hissing noise, or feel unwell near an appliance, follow this strict 5-step emergency sequence immediately.
+                      If you detect the distinctive smell of gas, hear a hissing noise, or feel
+                      unwell near an appliance, follow this strict 5-step emergency sequence
+                      immediately.
                     </p>
                   </div>
 
@@ -805,7 +878,6 @@ function BlogPostPage() {
                       );
                     })}
                   </div>
-
                 </div>
               </section>
 
@@ -814,7 +886,6 @@ function BlogPostPage() {
               ========================================================================= */}
               <section id="gas-fire-action" className="scroll-mt-28 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-10 items-stretch">
-                  
                   {/* Left Column: 3-Image Vertical Stack */}
                   <div className="lg:col-span-5 flex flex-col justify-between gap-3.5 sm:gap-4">
                     {/* Image 1: Gas stove with visible flame */}
@@ -858,7 +929,8 @@ function BlogPostPage() {
                         If Gas Has Caught Fire
                       </h2>
                       <p className="text-sm sm:text-base text-slate-700 leading-relaxed font-medium">
-                        Never fight a gas cylinder fire yourself. Gas escaping under high pressure creates extreme thermal radiation and risk of explosion.
+                        Never fight a gas cylinder fire yourself. Gas escaping under high pressure
+                        creates extreme thermal radiation and risk of explosion.
                       </p>
                     </div>
 
@@ -869,7 +941,8 @@ function BlogPostPage() {
                           <Ban className="h-4 w-4 shrink-0" /> DO NOT APPROACH
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Do not approach a burning cylinder or any equipment subjected to radiant heat.
+                          Do not approach a burning cylinder or any equipment subjected to radiant
+                          heat.
                         </p>
                       </div>
 
@@ -878,16 +951,19 @@ function BlogPostPage() {
                           <Ban className="h-4 w-4 shrink-0" /> DO NOT MOVE CYLINDER
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Never carry or drag a heated or burning gas bottle. High pressure weakens hot metal.
+                          Never carry or drag a heated or burning gas bottle. High pressure weakens
+                          hot metal.
                         </p>
                       </div>
 
                       <div className="p-4 rounded-2xl bg-white border border-red-200/90 shadow-2xs space-y-1.5 text-left">
                         <div className="flex items-center gap-2 text-emerald-800 font-black text-sm font-display">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> EVACUATE THE AREA
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" /> EVACUATE
+                          THE AREA
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Move all people and animals outdoors immediately behind solid masonry cover.
+                          Move all people and animals outdoors immediately behind solid masonry
+                          cover.
                         </p>
                       </div>
 
@@ -896,7 +972,8 @@ function BlogPostPage() {
                           <PhoneCall className="h-4 w-4 shrink-0" /> CALL 999 FROM DISTANCE
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Inform the 999 operator that pressurized LPG cylinders are present on site.
+                          Inform the 999 operator that pressurized LPG cylinders are present on
+                          site.
                         </p>
                       </div>
                     </div>
@@ -914,7 +991,6 @@ function BlogPostPage() {
                       </a>
                     </div>
                   </div>
-
                 </div>
               </section>
 
@@ -923,7 +999,6 @@ function BlogPostPage() {
               ========================================================================= */}
               <section id="cylinder-leaking" className="scroll-mt-28 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-                  
                   {/* Left: Leaking LPG Cylinder Image (Clean Standalone Visual) */}
                   <div className="lg:col-span-5 relative aspect-[4/3] sm:aspect-[16/11] lg:aspect-square w-full rounded-[28px] overflow-hidden bg-slate-100 shadow-sm border border-slate-200/80">
                     <img
@@ -944,7 +1019,8 @@ function BlogPostPage() {
                         Cylinder Leaking?
                       </h2>
                       <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                        If a cylinder is hissing or leaking gas around the valve, neck spindle, or regulator connection:
+                        If a cylinder is hissing or leaking gas around the valve, neck spindle, or
+                        regulator connection:
                       </p>
                     </div>
 
@@ -982,9 +1058,7 @@ function BlogPostPage() {
                           <h3 className="font-black text-base text-slate-900 font-display">
                             {item.title}
                           </h3>
-                          <p className="text-xs text-slate-600 leading-relaxed">
-                            {item.desc}
-                          </p>
+                          <p className="text-xs text-slate-600 leading-relaxed">{item.desc}</p>
                         </div>
                       ))}
                     </div>
@@ -996,11 +1070,11 @@ function BlogPostPage() {
                         <strong className="font-black text-amber-950 font-display uppercase tracking-wide">
                           Safety Warning:{" "}
                         </strong>
-                        Never attempt to repair, dismantle, or force a leaking cylinder, valve spindle, pressure regulator, or hose yourself.
+                        Never attempt to repair, dismantle, or force a leaking cylinder, valve
+                        spindle, pressure regulator, or hose yourself.
                       </div>
                     </div>
                   </div>
-
                 </div>
               </section>
 
@@ -1009,7 +1083,6 @@ function BlogPostPage() {
               ========================================================================= */}
               <section id="damaged-cylinder" className="scroll-mt-28 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-                  
                   {/* Left: Damaged vs Good Cylinder Comparison Image (Fully Contained & Visible) */}
                   <div className="lg:col-span-5 w-full">
                     <div className="relative aspect-[626/664] w-full max-w-[420px] sm:max-w-[480px] lg:max-w-none mx-auto rounded-2xl sm:rounded-[28px] overflow-hidden bg-stone-100/80 shadow-sm border border-slate-200/80 flex items-center justify-center">
@@ -1032,7 +1105,8 @@ function BlogPostPage() {
                         Do Not Use a Damaged Cylinder
                       </h2>
                       <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                        Damaged cylinders can fail catastrophically under internal pressure. Inspect every cylinder for these critical red-flag defects:
+                        Damaged cylinders can fail catastrophically under internal pressure. Inspect
+                        every cylinder for these critical red-flag defects:
                       </p>
                     </div>
 
@@ -1067,7 +1141,8 @@ function BlogPostPage() {
                             STOP — DO NOT USE DAMAGED EQUIPMENT
                           </h3>
                           <p className="text-xs text-red-100">
-                            Isolate the cylinder outdoors and contact John Stayte Services for safe exchange.
+                            Isolate the cylinder outdoors and contact John Stayte Services for safe
+                            exchange.
                           </p>
                         </div>
                       </div>
@@ -1079,7 +1154,6 @@ function BlogPostPage() {
                       </a>
                     </div>
                   </div>
-
                 </div>
               </section>
 
@@ -1089,7 +1163,6 @@ function BlogPostPage() {
               <section id="cylinder-heat-exposure" className="scroll-mt-28 space-y-8">
                 <div className="rounded-[32px] border border-amber-200/90 bg-amber-50/40 p-6 sm:p-8 lg:p-10 shadow-xs">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    
                     <div className="lg:col-span-5 relative aspect-[16/10] sm:aspect-[16/11] lg:aspect-auto h-full min-h-[260px] rounded-[24px] overflow-hidden bg-slate-100 border border-amber-200/80 shadow-2xs">
                       <img
                         src={safetyStorageHeatImg}
@@ -1108,26 +1181,35 @@ function BlogPostPage() {
                           Cylinder Exposed to Heat?
                         </h2>
                         <p className="text-sm sm:text-base text-slate-700 leading-relaxed">
-                          When an LPG bottle is subjected to direct fire or intense radiant heat, internal pressure rises exponentially.
+                          When an LPG bottle is subjected to direct fire or intense radiant heat,
+                          internal pressure rises exponentially.
                         </p>
                       </div>
 
                       <div className="space-y-2.5 text-xs sm:text-sm text-slate-800 font-medium">
                         <div className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-amber-200/70">
                           <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-                          <span><strong>Move people away immediately:</strong> Keep a safe perimeter of at least 50–100 metres behind cover.</span>
+                          <span>
+                            <strong>Move people away immediately:</strong> Keep a safe perimeter of
+                            at least 50–100 metres behind cover.
+                          </span>
                         </div>
                         <div className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-amber-200/70">
                           <Ban className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                          <span><strong>Do not touch or move the cylinder:</strong> Structural integrity is compromised when steel is heated.</span>
+                          <span>
+                            <strong>Do not touch or move the cylinder:</strong> Structural integrity
+                            is compromised when steel is heated.
+                          </span>
                         </div>
                         <div className="flex items-start gap-2.5 p-3 bg-white rounded-xl border border-amber-200/70">
                           <PhoneCall className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                          <span><strong>Call 999 if immediate danger exists:</strong> State clearly that heated LPG cylinders are involved.</span>
+                          <span>
+                            <strong>Call 999 if immediate danger exists:</strong> State clearly that
+                            heated LPG cylinders are involved.
+                          </span>
                         </div>
                       </div>
                     </div>
-
                   </div>
                 </div>
               </section>
@@ -1137,7 +1219,6 @@ function BlogPostPage() {
               ========================================================================= */}
               <section id="carbon-monoxide-danger" className="scroll-mt-28 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-                  
                   {/* Left: Modern Home CO Detector Image */}
                   <div className="lg:col-span-5 relative aspect-[4/3] sm:aspect-[16/11] lg:aspect-square w-full rounded-[28px] overflow-hidden bg-slate-100 shadow-sm border border-slate-200/80">
                     <img
@@ -1160,7 +1241,8 @@ function BlogPostPage() {
                         Carbon Monoxide — The Silent Danger
                       </h2>
                       <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                        Carbon Monoxide (CO) has no smell, taste, or colour. It starves the body of oxygen without warning.
+                        Carbon Monoxide (CO) has no smell, taste, or colour. It starves the body of
+                        oxygen without warning.
                       </p>
                     </div>
 
@@ -1185,7 +1267,9 @@ function BlogPostPage() {
                             <strong className="block text-xs font-black text-slate-900 font-display">
                               {sym.label}
                             </strong>
-                            <span className="text-[11px] text-slate-500 font-medium">{sym.sub}</span>
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              {sym.sub}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1197,11 +1281,12 @@ function BlogPostPage() {
                         <Wind className="h-5 w-5 text-amber-700" /> GET INTO FRESH AIR IMMEDIATELY
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-                        If you suspect CO poisoning, leave the building into fresh outdoor air right away, seek emergency medical care (dial 999 or 111), and do not re-enter until approved by specialists.
+                        If you suspect CO poisoning, leave the building into fresh outdoor air right
+                        away, seek emergency medical care (dial 999 or 111), and do not re-enter
+                        until approved by specialists.
                       </p>
                     </div>
                   </div>
-
                 </div>
               </section>
 
@@ -1210,7 +1295,6 @@ function BlogPostPage() {
               ========================================================================= */}
               <section id="appliance-warning-signs" className="scroll-mt-28 space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-                  
                   {/* Left: Gas Hob Flame Diagnostic Image */}
                   <div className="lg:col-span-5 relative aspect-[4/3] sm:aspect-[16/11] lg:aspect-square w-full rounded-[28px] overflow-hidden bg-slate-100 shadow-sm border border-slate-200/80">
                     <img
@@ -1234,19 +1318,38 @@ function BlogPostPage() {
                         Know the Warning Signs
                       </h2>
                       <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                        Never continue using a faulty appliance. Watch for these hazardous operational indicators:
+                        Never continue using a faulty appliance. Watch for these hazardous
+                        operational indicators:
                       </p>
                     </div>
 
                     {/* 6 Visual Indicators Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {[
-                        { title: "Unusual Flame", desc: "Lazy yellow or floppy orange flame instead of crisp blue." },
-                        { title: "Soot & Staining", desc: "Dark black marks forming on or above the appliance." },
-                        { title: "Pilot Outages", desc: "Pilot light repeatedly goes out or pops when lighting." },
-                        { title: "Unusual Smell", desc: "Acrid, burning, or pungent smell while running." },
-                        { title: "Unusual Noises", desc: "Loud popping, roaring, or hissing sounds." },
-                        { title: "Heavy Condensation", desc: "Excessive moisture building on room windows." },
+                        {
+                          title: "Unusual Flame",
+                          desc: "Lazy yellow or floppy orange flame instead of crisp blue.",
+                        },
+                        {
+                          title: "Soot & Staining",
+                          desc: "Dark black marks forming on or above the appliance.",
+                        },
+                        {
+                          title: "Pilot Outages",
+                          desc: "Pilot light repeatedly goes out or pops when lighting.",
+                        },
+                        {
+                          title: "Unusual Smell",
+                          desc: "Acrid, burning, or pungent smell while running.",
+                        },
+                        {
+                          title: "Unusual Noises",
+                          desc: "Loud popping, roaring, or hissing sounds.",
+                        },
+                        {
+                          title: "Heavy Condensation",
+                          desc: "Excessive moisture building on room windows.",
+                        },
                       ].map((sign, idx) => (
                         <div
                           key={idx}
@@ -1262,12 +1365,14 @@ function BlogPostPage() {
 
                     <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-4 text-xs font-bold text-slate-800">
                       <span>Turn off unsafe appliances &amp; book a Gas Safe inspection.</span>
-                      <a href="tel:01452741234" className="text-primary hover:underline font-display shrink-0">
+                      <a
+                        href="tel:01452741234"
+                        className="text-primary hover:underline font-display shrink-0"
+                      >
                         01452 741234 →
                       </a>
                     </div>
                   </div>
-
                 </div>
               </section>
 
@@ -1275,23 +1380,23 @@ function BlogPostPage() {
                   SECTION 8 — EMERGENCY DECISION FLOW INFOGRAPHIC
               ========================================================================= */}
               <section id="emergency-decision-flow" className="scroll-mt-28 space-y-6 sm:space-y-8">
-                
                 {/* Header */}
                 <div className="space-y-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.2em] text-primary flex items-center gap-1.5 font-display">
                     <HelpCircle className="h-4 w-4 text-primary" /> DECISION INFOGRAPHIC
                   </span>
                   <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-tight font-display">
-                    What Should I Do? — <span className="text-primary">Emergency Decision Flow</span>
+                    What Should I Do? —{" "}
+                    <span className="text-primary">Emergency Decision Flow</span>
                   </h2>
                   <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                    Follow the visual flowchart below to immediately identify the safest course of action.
+                    Follow the visual flowchart below to immediately identify the safest course of
+                    action.
                   </p>
                 </div>
 
                 {/* Main Visual Decision Flow Container */}
                 <div className="rounded-[28px] sm:rounded-[32px] border border-slate-200/90 bg-white p-5 sm:p-7 lg:p-9 shadow-xs space-y-8 text-left">
-                  
                   {/* Part 1: Core Emergency Sequence (Connected Nodes) */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -1354,14 +1459,16 @@ function BlogPostPage() {
                                 "p-4 sm:p-4.5 rounded-2xl border transition-all relative z-10 flex flex-col justify-between h-full group",
                                 isPrimary
                                   ? "bg-gradient-to-b from-red-600 to-red-700 border-red-600 text-white shadow-xs hover:shadow-md hover:to-red-800"
-                                  : "bg-slate-50/80 hover:bg-white border-slate-200/90 text-slate-900 shadow-2xs hover:border-slate-300 hover:shadow-xs"
+                                  : "bg-slate-50/80 hover:bg-white border-slate-200/90 text-slate-900 shadow-2xs hover:border-slate-300 hover:shadow-xs",
                               )}
                             >
                               <div className="flex items-center justify-between gap-2 mb-3">
                                 <span
                                   className={cn(
                                     "px-2.5 py-0.5 rounded-md text-[10px] font-black font-display tracking-wider",
-                                    isPrimary ? "bg-white/20 text-white" : "bg-slate-200/80 text-slate-700"
+                                    isPrimary
+                                      ? "bg-white/20 text-white"
+                                      : "bg-slate-200/80 text-slate-700",
                                   )}
                                 >
                                   STEP {node.step}
@@ -1369,7 +1476,9 @@ function BlogPostPage() {
                                 <div
                                   className={cn(
                                     "h-7 w-7 rounded-lg flex items-center justify-center shrink-0",
-                                    isPrimary ? "bg-white/15 text-white" : "bg-white border border-slate-200/80 text-slate-700 shadow-2xs"
+                                    isPrimary
+                                      ? "bg-white/15 text-white"
+                                      : "bg-white border border-slate-200/80 text-slate-700 shadow-2xs",
                                   )}
                                 >
                                   <IconC className="h-3.5 w-3.5" />
@@ -1380,7 +1489,7 @@ function BlogPostPage() {
                                 <h3
                                   className={cn(
                                     "font-black text-xs sm:text-[13px] tracking-tight font-display",
-                                    isPrimary ? "text-white" : "text-slate-900"
+                                    isPrimary ? "text-white" : "text-slate-900",
                                   )}
                                 >
                                   {node.title}
@@ -1388,7 +1497,7 @@ function BlogPostPage() {
                                 <p
                                   className={cn(
                                     "text-[11px] leading-tight font-medium",
-                                    isPrimary ? "text-red-100" : "text-slate-500"
+                                    isPrimary ? "text-red-100" : "text-slate-500",
                                   )}
                                 >
                                   {node.subtitle}
@@ -1435,7 +1544,6 @@ function BlogPostPage() {
 
                   {/* Part 2: Specific Emergency Scenarios (3 Distinct Branch Cards) */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-                    
                     {/* Scenario Card A: Fire Involved (Red) */}
                     <div className="p-5 sm:p-6 rounded-2xl sm:rounded-[22px] bg-red-50/60 border border-red-200/90 space-y-4 hover:border-red-300 hover:shadow-xs transition-all flex flex-col justify-between group">
                       <div className="space-y-3">
@@ -1451,7 +1559,8 @@ function BlogPostPage() {
                           <span>Fire Involved?</span>
                         </h3>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          When active flames or extreme radiant heat are threatening pressurized gas bottles.
+                          When active flames or extreme radiant heat are threatening pressurized gas
+                          bottles.
                         </p>
                       </div>
 
@@ -1486,7 +1595,8 @@ function BlogPostPage() {
                           <span>Cylinder Damaged?</span>
                         </h3>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          For physical bottle dents, heavy rust, distorted foot rings, or damaged spindles.
+                          For physical bottle dents, heavy rust, distorted foot rings, or damaged
+                          spindles.
                         </p>
                       </div>
 
@@ -1521,7 +1631,8 @@ function BlogPostPage() {
                           <span>CO Symptoms?</span>
                         </h3>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          For unexplained headaches, dizziness, nausea, confusion, or breathless sensations.
+                          For unexplained headaches, dizziness, nausea, confusion, or breathless
+                          sensations.
                         </p>
                       </div>
 
@@ -1540,9 +1651,7 @@ function BlogPostPage() {
                         </div>
                       </div>
                     </div>
-
                   </div>
-
                 </div>
               </section>
 
@@ -1558,7 +1667,8 @@ function BlogPostPage() {
                     Emergency Support
                   </h2>
                   <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-                    Always place emergency calls from an open-air safe location outside the property.
+                    Always place emergency calls from an open-air safe location outside the
+                    property.
                   </p>
                 </div>
 
@@ -1573,7 +1683,9 @@ function BlogPostPage() {
                         <h3 className="font-black text-lg text-slate-900 font-display">
                           John Stayte Services
                         </h3>
-                        <p className="text-xs text-slate-500">Technical advice &amp; cylinder recovery</p>
+                        <p className="text-xs text-slate-500">
+                          Technical advice &amp; cylinder recovery
+                        </p>
                       </div>
                     </div>
                     <a
@@ -1597,7 +1709,9 @@ function BlogPostPage() {
                         <h3 className="font-black text-lg text-white font-display">
                           Immediate Danger / Active Fire
                         </h3>
-                        <p className="text-xs text-slate-400">UK Emergency Services (Fire / Police)</p>
+                        <p className="text-xs text-slate-400">
+                          UK Emergency Services (Fire / Police)
+                        </p>
                       </div>
                     </div>
                     <a
@@ -1612,7 +1726,6 @@ function BlogPostPage() {
                   </div>
                 </div>
               </section>
-
             </main>
 
             {/* Sticky Sidebar (Desktop On This Page Navigation) */}
@@ -1632,14 +1745,16 @@ function BlogPostPage() {
                         "w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between group cursor-pointer",
                         activeSection === item.id
                           ? "bg-red-50 text-primary font-black shadow-2xs"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
                       )}
                     >
                       <span className="truncate pr-2">{item.label}</span>
                       <ChevronRight
                         className={cn(
                           "h-3.5 w-3.5 shrink-0 transition-transform",
-                          activeSection === item.id ? "text-primary translate-x-0.5" : "text-slate-300 opacity-0 group-hover:opacity-100"
+                          activeSection === item.id
+                            ? "text-primary translate-x-0.5"
+                            : "text-slate-300 opacity-0 group-hover:opacity-100",
                         )}
                       />
                     </button>
@@ -1674,7 +1789,7 @@ function BlogPostPage() {
         {/* =========================================================================
             NEWSLETTER / STAY INFORMED SECTION (Directly Above Footer)
         ========================================================================= */}
-        <div className="container-page max-w-7xl pt-4 pb-12 sm:pb-16">
+        <div className="container-page max-w-[88rem] pt-4 pb-12 sm:pb-16">
           <section className="rounded-[28px] sm:rounded-[36px] border border-slate-200/90 bg-white p-7 sm:p-10 lg:p-12 space-y-5 shadow-xs text-center max-w-3xl mx-auto">
             <div className="space-y-1.5">
               <span className="text-xs font-black uppercase tracking-[0.2em] text-primary font-display">

@@ -31,18 +31,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
 export function ManagerSettingsView() {
   const { user, logout } = useStore();
-  const [activeTab, setActiveTab] = useState<"account" | "preferences" | "operations" | "security">("account");
+  const [activeTab, setActiveTab] = useState<"account" | "preferences" | "operations" | "security">(
+    "account",
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -90,7 +87,9 @@ export function ManagerSettingsView() {
             .single();
 
           if (profile) {
-            setFullName(profile.full_name || authUser.user.user_metadata?.full_name || user?.name || "");
+            setFullName(
+              profile.full_name || authUser.user.user_metadata?.full_name || user?.name || "",
+            );
             setPhone(profile.phone || "07700 900123");
           } else {
             setFullName(user?.name || "");
@@ -177,9 +176,7 @@ export function ManagerSettingsView() {
           <span>/</span>
           <span className="text-foreground font-bold">Settings</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-          Settings
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Settings</h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
           Manage your manager account, preferences and operational settings.
         </p>
@@ -228,7 +225,9 @@ export function ManagerSettingsView() {
               >
                 <div
                   className={`p-2 rounded-xl border shrink-0 ${
-                    isActive ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-100 text-slate-600"
+                    isActive
+                      ? "bg-white/10 border-white/20 text-white"
+                      : "bg-slate-50 border-slate-100 text-slate-600"
                   }`}
                 >
                   <tab.icon className="h-4 w-4" />
@@ -253,9 +252,7 @@ export function ManagerSettingsView() {
           {loading ? (
             <div className="surface-card p-12 rounded-3xl border bg-white text-center space-y-3">
               <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
-              <p className="text-xs font-bold text-muted-foreground">
-                Loading profile settings from Supabase...
-              </p>
+              <p className="text-xs font-bold text-muted-foreground">Loading profile settings...</p>
             </div>
           ) : (
             <>
@@ -357,8 +354,7 @@ export function ManagerSettingsView() {
                           disabled={saving}
                           className="rounded-full font-bold text-xs gap-1.5 shadow-md"
                         >
-                          <Save className="h-4 w-4" />{" "}
-                          {saving ? "Saving..." : "Save Changes"}
+                          <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}
                         </Button>
                       </div>
                     </form>
@@ -483,7 +479,9 @@ export function ManagerSettingsView() {
 
                   <div className="space-y-4 text-xs">
                     <div>
-                      <label className="font-bold text-muted-foreground">Default Depot Station</label>
+                      <label className="font-bold text-muted-foreground">
+                        Default Depot Station
+                      </label>
                       <Select value={defaultDepot} onValueChange={setDefaultDepot}>
                         <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10">
                           <SelectValue />
@@ -501,7 +499,9 @@ export function ManagerSettingsView() {
                     </div>
 
                     <div>
-                      <label className="font-bold text-muted-foreground">Primary Delivery Region</label>
+                      <label className="font-bold text-muted-foreground">
+                        Primary Delivery Region
+                      </label>
                       <Select value={deliveryArea} onValueChange={setDeliveryArea}>
                         <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10">
                           <SelectValue />
@@ -518,7 +518,9 @@ export function ManagerSettingsView() {
                     </div>
 
                     <div>
-                      <label className="font-bold text-muted-foreground">Default Dispatch Slot</label>
+                      <label className="font-bold text-muted-foreground">
+                        Default Dispatch Slot
+                      </label>
                       <Select value={timeSlot} onValueChange={setTimeSlot}>
                         <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10">
                           <SelectValue />
@@ -552,7 +554,9 @@ export function ManagerSettingsView() {
                   {/* Security Overview */}
                   <div className="surface-card p-6 rounded-3xl border bg-white space-y-6 shadow-2xs">
                     <div>
-                      <h2 className="text-base font-black text-foreground">Password & Authentication</h2>
+                      <h2 className="text-base font-black text-foreground">
+                        Password & Authentication
+                      </h2>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         Manage your account credentials through Supabase Auth.
                       </p>

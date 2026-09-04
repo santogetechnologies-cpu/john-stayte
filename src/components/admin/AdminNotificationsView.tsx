@@ -59,15 +59,10 @@ export function AdminNotificationsView() {
 
   const markAsRead = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("id", id);
+      const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
 
       if (error) throw error;
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
       toast.success("Notification marked as read");
       window.dispatchEvent(new Event("admin_modules_updated"));
     } catch (err: any) {
@@ -86,9 +81,7 @@ export function AdminNotificationsView() {
         .in("id", unreadIds);
 
       if (error) throw error;
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: true }))
-      );
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       toast.success("All notifications marked as read");
       window.dispatchEvent(new Event("admin_modules_updated"));
     } catch (err: any) {
@@ -130,9 +123,12 @@ export function AdminNotificationsView() {
   const getCategoryIcon = (category: string | null) => {
     const cat = (category || "").toLowerCase();
     if (cat.includes("order")) return <ShoppingBag className="h-4 w-4 text-blue-600" />;
-    if (cat.includes("stock") || cat.includes("inventory")) return <Package className="h-4 w-4 text-amber-600" />;
-    if (cat.includes("delivery") || cat.includes("logistics")) return <Truck className="h-4 w-4 text-cyan-600" />;
-    if (cat.includes("security") || cat.includes("audit")) return <ShieldCheck className="h-4 w-4 text-purple-600" />;
+    if (cat.includes("stock") || cat.includes("inventory"))
+      return <Package className="h-4 w-4 text-amber-600" />;
+    if (cat.includes("delivery") || cat.includes("logistics"))
+      return <Truck className="h-4 w-4 text-cyan-600" />;
+    if (cat.includes("security") || cat.includes("audit"))
+      return <ShieldCheck className="h-4 w-4 text-purple-600" />;
     return <Bell className="h-4 w-4 text-slate-600" />;
   };
 
@@ -142,7 +138,9 @@ export function AdminNotificationsView() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/admin" className="hover:text-primary transition-colors">Admin</Link>
+            <Link to="/admin" className="hover:text-primary transition-colors">
+              Admin
+            </Link>
             <span>/</span>
             <span className="text-foreground">Notifications</span>
           </div>
@@ -211,7 +209,8 @@ export function AdminNotificationsView() {
       <div className="space-y-3">
         {loading ? (
           <div className="surface-card p-12 text-center text-xs font-bold text-muted-foreground flex items-center justify-center gap-2 rounded-3xl border bg-white">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Querying Supabase notification records...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Querying Supabase notification
+            records...
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="surface-card p-16 text-center rounded-3xl border bg-white space-y-3">
@@ -228,28 +227,41 @@ export function AdminNotificationsView() {
               <div
                 key={n.id}
                 className={`surface-card p-5 rounded-3xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs ${
-                  isUnread ? "bg-amber-50/40 border-amber-200/80" : "bg-white border-slate-200/70 opacity-90"
+                  isUnread
+                    ? "bg-amber-50/40 border-amber-200/80"
+                    : "bg-white border-slate-200/70 opacity-90"
                 }`}
               >
                 <div className="flex items-start gap-3.5">
-                  <div className={`p-2.5 rounded-2xl border shrink-0 mt-0.5 ${
-                    isUnread ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"
-                  }`}>
+                  <div
+                    className={`p-2.5 rounded-2xl border shrink-0 mt-0.5 ${
+                      isUnread
+                        ? "bg-amber-100 text-amber-800 border-amber-200"
+                        : "bg-slate-100 text-slate-600 border-slate-200"
+                    }`}
+                  >
                     {getCategoryIcon(n.category)}
                   </div>
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-extrabold text-sm text-foreground">{typeof n.title === "string" ? n.title : String(n.title || "Notification")}</span>
+                      <span className="font-extrabold text-sm text-foreground">
+                        {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
+                      </span>
                       {isUnread && (
                         <Badge className="bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.2 rounded uppercase">
                           New Alert
                         </Badge>
                       )}
-                      <Badge variant="outline" className="bg-white text-slate-600 text-[10px] font-bold">
+                      <Badge
+                        variant="outline"
+                        className="bg-white text-slate-600 text-[10px] font-bold"
+                      >
                         {typeof n.category === "string" ? n.category : "System"}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{typeof n.message === "string" ? n.message : String(n.message || "")}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {typeof n.message === "string" ? n.message : String(n.message || "")}
+                    </p>
                     <p className="text-[10px] font-medium text-slate-400">
                       {new Date(n.created_at).toLocaleString("en-GB")}
                     </p>

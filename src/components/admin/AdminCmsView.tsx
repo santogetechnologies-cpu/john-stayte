@@ -40,35 +40,105 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 
 export const DEFAULT_SERVICES = [
-  { id: "srv-1", title: "Gas Delivery", desc: "Next-day cylinder delivery across Gloucestershire to homes, farms and commercial premises.", icon: "Truck", image: "/service_gas_delivery.jpg", status: "Active" },
-  { id: "srv-2", title: "Bulk Supply", desc: "Scheduled bulk LPG for farms and large estates with automated telemetry monitoring.", icon: "Container", image: "/service_bulk_supply.jpg", status: "Active" },
-  { id: "srv-3", title: "Commercial Gas", desc: "Pub, hospitality and industrial catering gas contracts with scheduled replenishment and 30-day invoicing.", icon: "Building2", image: "/service_commercial_gas.jpg", status: "Active" },
-  { id: "srv-4", title: "Domestic Supply", desc: "Home heating, cooking and barbecue patio gas with prompt doorstep empty cylinder swap.", icon: "Home", image: "/service_domestic_supply.jpg", status: "Active" },
-  { id: "srv-5", title: "Cylinder Exchange", desc: "Swap empty bottles instantly at any of our three forecourt depots in Fromebridge, Cambridge and Frampton.", icon: "RefreshCw", image: "/service_cylinder_exchange.jpg", status: "Active" },
-  { id: "srv-6", title: "Emergency Delivery", desc: "Same-day emergency fuel runs when your tank or heating runs dry during cold snaps.", icon: "Siren", image: "/service_emergency_delivery.jpg", status: "Active" },
+  {
+    id: "srv-1",
+    title: "Gas Delivery",
+    desc: "Next-day cylinder delivery across Gloucestershire to homes, farms and commercial premises.",
+    icon: "Truck",
+    image: "/service_gas_delivery.jpg",
+    status: "Active",
+  },
+  {
+    id: "srv-2",
+    title: "Bulk Supply",
+    desc: "Scheduled bulk LPG for farms and large estates with automated telemetry monitoring.",
+    icon: "Container",
+    image: "/service_bulk_supply.jpg",
+    status: "Active",
+  },
+  {
+    id: "srv-3",
+    title: "Commercial Gas",
+    desc: "Pub, hospitality and industrial catering gas contracts with scheduled replenishment and 30-day invoicing.",
+    icon: "Building2",
+    image: "/service_commercial_gas.jpg",
+    status: "Active",
+  },
+  {
+    id: "srv-4",
+    title: "Domestic Supply",
+    desc: "Home heating, cooking and barbecue patio gas with prompt doorstep empty cylinder swap.",
+    icon: "Home",
+    image: "/service_domestic_supply.jpg",
+    status: "Active",
+  },
+  {
+    id: "srv-5",
+    title: "Cylinder Exchange",
+    desc: "Swap empty bottles instantly at any of our three forecourt depots in Fromebridge, Cambridge and Frampton.",
+    icon: "RefreshCw",
+    image: "/service_cylinder_exchange.jpg",
+    status: "Active",
+  },
+  {
+    id: "srv-6",
+    title: "Emergency Delivery",
+    desc: "Same-day emergency fuel runs when your tank or heating runs dry during cold snaps.",
+    icon: "Siren",
+    image: "/service_emergency_delivery.jpg",
+    status: "Active",
+  },
 ];
 
 export const DEFAULT_REVIEWS = [
-  { id: "rev-1", name: "Sarah H.", role: "Frampton on Severn", quote: "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless service.", rating: 5, status: "Published" },
-  { id: "rev-2", name: "The Bell Inn", role: "Pub Customer", quote: "Our cellar gas has never run out since switching to JSS. The scheduling and changeovers are spot on.", rating: 5, status: "Published" },
-  { id: "rev-3", name: "Mark T.", role: "Smallholding, Cam", quote: "Coal, logs and animal feed delivered all in one delivery. Saves me two long vehicle trips a week.", rating: 5, status: "Published" },
-  { id: "rev-4", name: "David P.", role: "Stroud Customer", quote: "Excellent advice on regulator fittings and very friendly delivery driver who carried the bottle into position.", rating: 5, status: "Published" },
+  {
+    id: "rev-1",
+    name: "Sarah H.",
+    role: "Frampton on Severn",
+    quote:
+      "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless service.",
+    rating: 5,
+    status: "Published",
+  },
+  {
+    id: "rev-2",
+    name: "The Bell Inn",
+    role: "Pub Customer",
+    quote:
+      "Our cellar gas has never run out since switching to JSS. The scheduling and changeovers are spot on.",
+    rating: 5,
+    status: "Published",
+  },
+  {
+    id: "rev-3",
+    name: "Mark T.",
+    role: "Smallholding, Cam",
+    quote:
+      "Coal, logs and animal feed delivered all in one delivery. Saves me two long vehicle trips a week.",
+    rating: 5,
+    status: "Published",
+  },
+  {
+    id: "rev-4",
+    name: "David P.",
+    role: "Stroud Customer",
+    quote:
+      "Excellent advice on regulator fittings and very friendly delivery driver who carried the bottle into position.",
+    rating: 5,
+    status: "Published",
+  },
 ];
 
 export const DEFAULT_HOME_CMS = {
   heroEyebrow: "Family run since 1972",
   heroHeading: "Order your gas delivery with us today.",
-  heroSubtitle: "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call.",
+  heroSubtitle:
+    "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call.",
   deliveryBadge: "Next-Day Local Delivery Available",
   primaryCtaText: "Order Gas Online",
   primaryCtaLink: "/order-gas",
@@ -83,10 +153,13 @@ export const DEFAULT_HOME_CMS = {
 export const DEFAULT_ABOUT_CMS = {
   heroEyebrow: "ABOUT JOHN STAYTE SERVICES",
   heroHeading: "Keeping Gloucestershire moving, warm and well-equipped since 1972.",
-  heroSubtitle: "More than 50 years of dependable fuel delivery, bottled gas, solid fuels, animal feed, country essentials and forecourt services from a family business that puts customer service first.",
+  heroSubtitle:
+    "More than 50 years of dependable fuel delivery, bottled gas, solid fuels, animal feed, country essentials and forecourt services from a family business that puts customer service first.",
   heritageTitle: "A family business built on local trust since 1972",
-  heritageBody: "From a single delivery lorry in Whitminster to a modern logistics fleet and three forecourt operations across Gloucestershire, John Stayte Services has remained dedicated to personal service, dependable supply, and genuine customer care.",
-  depotInfo: "Headquartered at Fromebridge with three forecourt locations in Fromebridge, Cambridge, and Frampton on Severn.",
+  heritageBody:
+    "From a single delivery lorry in Whitminster to a modern logistics fleet and three forecourt operations across Gloucestershire, John Stayte Services has remained dedicated to personal service, dependable supply, and genuine customer care.",
+  depotInfo:
+    "Headquartered at Fromebridge with three forecourt locations in Fromebridge, Cambridge, and Frampton on Severn.",
 };
 
 export function AdminCmsView() {
@@ -137,10 +210,26 @@ export function AdminCmsView() {
         { data: offerData },
         { data: bannerData },
       ] = await Promise.all([
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "home_data").maybeSingle(),
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "about_data").maybeSingle(),
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "services_data").maybeSingle(),
-        supabase.from("cms_content_blocks").select("content").eq("section_key", "testimonials_data").maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "home_data")
+          .maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "about_data")
+          .maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "services_data")
+          .maybeSingle(),
+        supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "testimonials_data")
+          .maybeSingle(),
         supabase.from("offers").select("*").order("created_at", { ascending: false }),
         supabase.from("cms_banners").select("*").order("created_at", { ascending: false }),
       ]);
@@ -164,29 +253,40 @@ export function AdminCmsView() {
             dbParsed.heroHeading !== DEFAULT_HOME_CMS.heroHeading ||
             dbParsed.heroSubtitle !== DEFAULT_HOME_CMS.heroSubtitle
           ) {
-            await supabase.from("cms_content_blocks").upsert({
-              section_key: "home_data",
-              title: "Homepage Editorial Content",
-              content: JSON.stringify(fixedCms),
-            }, { onConflict: "section_key" });
+            await supabase.from("cms_content_blocks").upsert(
+              {
+                section_key: "home_data",
+                title: "Homepage Editorial Content",
+                content: JSON.stringify(fixedCms),
+              },
+              { onConflict: "section_key" },
+            );
           }
         } catch {}
       } else {
-        await supabase.from("cms_content_blocks").upsert({
-          section_key: "home_data",
-          title: "Home Page Content",
-          content: JSON.stringify(DEFAULT_HOME_CMS),
-        }, { onConflict: "section_key" });
+        await supabase.from("cms_content_blocks").upsert(
+          {
+            section_key: "home_data",
+            title: "Home Page Content",
+            content: JSON.stringify(DEFAULT_HOME_CMS),
+          },
+          { onConflict: "section_key" },
+        );
       }
 
       if (aboutBlock?.content) {
-        try { setAboutCms({ ...DEFAULT_ABOUT_CMS, ...JSON.parse(aboutBlock.content) }); } catch {}
+        try {
+          setAboutCms({ ...DEFAULT_ABOUT_CMS, ...JSON.parse(aboutBlock.content) });
+        } catch {}
       } else {
-        await supabase.from("cms_content_blocks").upsert({
-          section_key: "about_data",
-          title: "About Page Content",
-          content: JSON.stringify(DEFAULT_ABOUT_CMS),
-        }, { onConflict: "section_key" });
+        await supabase.from("cms_content_blocks").upsert(
+          {
+            section_key: "about_data",
+            title: "About Page Content",
+            content: JSON.stringify(DEFAULT_ABOUT_CMS),
+          },
+          { onConflict: "section_key" },
+        );
       }
 
       if (srvBlock?.content) {
@@ -195,11 +295,14 @@ export function AdminCmsView() {
           if (Array.isArray(parsed) && parsed.length > 0) setServices(parsed);
         } catch {}
       } else {
-        await supabase.from("cms_content_blocks").upsert({
-          section_key: "services_data",
-          title: "Services Catalog",
-          content: JSON.stringify(DEFAULT_SERVICES),
-        }, { onConflict: "section_key" });
+        await supabase.from("cms_content_blocks").upsert(
+          {
+            section_key: "services_data",
+            title: "Services Catalog",
+            content: JSON.stringify(DEFAULT_SERVICES),
+          },
+          { onConflict: "section_key" },
+        );
       }
 
       if (revBlock?.content) {
@@ -208,32 +311,45 @@ export function AdminCmsView() {
           if (Array.isArray(parsed) && parsed.length > 0) setReviews(parsed);
         } catch {}
       } else {
-        await supabase.from("cms_content_blocks").upsert({
-          section_key: "testimonials_data",
-          title: "Customer Reviews",
-          content: JSON.stringify(DEFAULT_REVIEWS),
-        }, { onConflict: "section_key" });
+        await supabase.from("cms_content_blocks").upsert(
+          {
+            section_key: "testimonials_data",
+            title: "Customer Reviews",
+            content: JSON.stringify(DEFAULT_REVIEWS),
+          },
+          { onConflict: "section_key" },
+        );
       }
 
-      setOffers(offerData && offerData.length > 0 ? offerData : [
-        {
-          id: "off-1",
-          title: "Propane Cylinder Summer Discount",
-          description: "10% off all 19kg and 47kg Calor propane cylinders with coupon code JSS10",
-          discount_percentage: 10,
-          is_active: true,
-        },
-      ]);
+      setOffers(
+        offerData && offerData.length > 0
+          ? offerData
+          : [
+              {
+                id: "off-1",
+                title: "Propane Cylinder Summer Discount",
+                description:
+                  "10% off all 19kg and 47kg Calor propane cylinders with coupon code JSS10",
+                discount_percentage: 10,
+                is_active: true,
+              },
+            ],
+      );
 
-      setBanners(bannerData && bannerData.length > 0 ? bannerData : [
-        {
-          id: "ban-1",
-          title: "Summer Fuel Promo",
-          message: "Order online today for guaranteed next-day Gloucestershire delivery. Use code JSS10 for 10% off.",
-          link_url: "/offers",
-          is_active: true,
-        },
-      ]);
+      setBanners(
+        bannerData && bannerData.length > 0
+          ? bannerData
+          : [
+              {
+                id: "ban-1",
+                title: "Summer Fuel Promo",
+                message:
+                  "Order online today for guaranteed next-day Gloucestershire delivery. Use code JSS10 for 10% off.",
+                link_url: "/offers",
+                is_active: true,
+              },
+            ],
+      );
     } catch (err: any) {
       console.error("CMS data load error:", err);
     } finally {
@@ -251,14 +367,19 @@ export function AdminCmsView() {
     try {
       window.dispatchEvent(new CustomEvent("cms_home_updated", { detail: homeCms }));
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "home_data",
-        title: "Homepage Editorial Content",
-        content: JSON.stringify(homeCms),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "home_data",
+          title: "Homepage Editorial Content",
+          content: JSON.stringify(homeCms),
+        },
+        { onConflict: "section_key" },
+      );
 
-      await logAdminAuditAction("UPDATE_HOME_CMS", "cms", "home_data", { heading: homeCms.heroHeading });
-      toast.success("Homepage content saved to Supabase!");
+      await logAdminAuditAction("UPDATE_HOME_CMS", "cms", "home_data", {
+        heading: homeCms.heroHeading,
+      });
+      toast.success("Homepage content saved successfully!");
     } catch (err: any) {
       toast.error("Failed to save homepage CMS: " + err.message);
     } finally {
@@ -272,14 +393,19 @@ export function AdminCmsView() {
     try {
       window.dispatchEvent(new CustomEvent("cms_about_updated", { detail: aboutCms }));
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "about_data",
-        title: "About Page Editorial Content",
-        content: JSON.stringify(aboutCms),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "about_data",
+          title: "About Page Editorial Content",
+          content: JSON.stringify(aboutCms),
+        },
+        { onConflict: "section_key" },
+      );
 
-      await logAdminAuditAction("UPDATE_ABOUT_CMS", "cms", "about_data", { heading: aboutCms.heroHeading });
-      toast.success("About page content saved to Supabase!");
+      await logAdminAuditAction("UPDATE_ABOUT_CMS", "cms", "about_data", {
+        heading: aboutCms.heroHeading,
+      });
+      toast.success("About page content saved successfully!");
     } catch (err: any) {
       toast.error("Failed to save about CMS: " + err.message);
     } finally {
@@ -310,13 +436,16 @@ export function AdminCmsView() {
     if (!file) return;
     setUploadingServiceImg(true);
     try {
-      const fileName = `service-${Date.now()}.${file.name.split(".").pop()}`;
+      const fileExt = file.name.split(".").pop();
+      const fileName = `service_${Date.now()}.${fileExt}`;
       const filePath = `services/${fileName}`;
-      const { error: uploadErr } = await supabase.storage.from("product-images").upload(filePath, file, { upsert: true });
+      const { error: uploadErr } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file, { upsert: true });
       if (uploadErr) throw uploadErr;
       const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
       setServiceImage(data.publicUrl);
-      toast.success("Service image uploaded to Supabase Storage!");
+      toast.success("Service image uploaded!");
     } catch (err: any) {
       setServiceImage(URL.createObjectURL(file));
       toast.success("Image selected for service!");
@@ -346,13 +475,18 @@ export function AdminCmsView() {
       setServices(updatedList);
       window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: updatedList }));
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "services_data",
-        title: "Core Gas and Fuel Services",
-        content: JSON.stringify(updatedList),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "services_data",
+          title: "Core Gas and Fuel Services",
+          content: JSON.stringify(updatedList),
+        },
+        { onConflict: "section_key" },
+      );
 
-      toast.success(editingService ? "Service updated in Supabase!" : "New service added to Supabase!");
+      toast.success(
+        editingService ? "Service updated successfully!" : "New service added successfully!",
+      );
       setServiceModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save service: " + err.message);
@@ -368,13 +502,16 @@ export function AdminCmsView() {
       setServices(updatedList);
       window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: updatedList }));
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "services_data",
-        title: "Core Gas and Fuel Services",
-        content: JSON.stringify(updatedList),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "services_data",
+          title: "Core Gas and Fuel Services",
+          content: JSON.stringify(updatedList),
+        },
+        { onConflict: "section_key" },
+      );
 
-      toast.success("Service removed!");
+      toast.success("Service deleted!");
     } catch (err: any) {
       toast.error("Failed to delete service: " + err.message);
     }
@@ -419,13 +556,20 @@ export function AdminCmsView() {
 
       setReviews(updatedList);
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "testimonials_data",
-        title: "Customer Testimonials",
-        content: JSON.stringify(updatedList),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "testimonials_data",
+          title: "Customer Testimonials",
+          content: JSON.stringify(updatedList),
+        },
+        { onConflict: "section_key" },
+      );
 
-      toast.success(editingReview ? "Testimonial updated in Supabase!" : "New testimonial published to Supabase!");
+      toast.success(
+        editingReview
+          ? "Testimonial updated successfully!"
+          : "New testimonial published successfully!",
+      );
       setReviewModalOpen(false);
     } catch (err: any) {
       toast.error("Failed to save testimonial: " + err.message);
@@ -440,11 +584,14 @@ export function AdminCmsView() {
       const updatedList = reviews.filter((r) => r.id !== id);
       setReviews(updatedList);
 
-      await supabase.from("cms_content_blocks").upsert({
-        section_key: "testimonials_data",
-        title: "Customer Testimonials",
-        content: JSON.stringify(updatedList),
-      }, { onConflict: "section_key" });
+      await supabase.from("cms_content_blocks").upsert(
+        {
+          section_key: "testimonials_data",
+          title: "Customer Testimonials",
+          content: JSON.stringify(updatedList),
+        },
+        { onConflict: "section_key" },
+      );
 
       toast.success("Review deleted!");
     } catch (err: any) {
@@ -458,32 +605,53 @@ export function AdminCmsView() {
         <div>
           <div className="flex items-center gap-2">
             <Layers className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">Content Management System (CMS)</h1>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              Content Management System (CMS)
+            </h1>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Centralized database control for Home, About, Core Services, Customer Reviews, Offers and Banners.
+            Centralized database control for Home, About, Core Services, Customer Reviews, Offers
+            and Banners.
           </p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-slate-100/80 p-1 rounded-2xl flex-wrap">
-          <TabsTrigger value="home" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="home"
+            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
+          >
             <HomeIcon className="h-3.5 w-3.5 text-primary" /> Home Page CMS
           </TabsTrigger>
-          <TabsTrigger value="about" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="about"
+            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
+          >
             <Info className="h-3.5 w-3.5 text-primary" /> About Page CMS
           </TabsTrigger>
-          <TabsTrigger value="services" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="services"
+            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
+          >
             <Briefcase className="h-3.5 w-3.5 text-primary" /> Services ({services.length})
           </TabsTrigger>
-          <TabsTrigger value="reviews" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="reviews"
+            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
+          >
             <MessageSquareQuote className="h-3.5 w-3.5 text-primary" /> Reviews ({reviews.length})
           </TabsTrigger>
-          <TabsTrigger value="offers" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="offers"
+            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
+          >
             <Tag className="h-3.5 w-3.5 text-primary" /> Offers & Promos ({offers.length})
           </TabsTrigger>
-          <TabsTrigger value="banners" className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="banners"
+            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
+          >
             <ImageIcon className="h-3.5 w-3.5 text-primary" /> Header Banners ({banners.length})
           </TabsTrigger>
         </TabsList>
@@ -493,11 +661,23 @@ export function AdminCmsView() {
           <div className="surface-card rounded-3xl border border-slate-200/80 bg-white p-6 space-y-5 shadow-xs">
             <div className="flex justify-between items-center pb-4 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-black text-slate-900">Homepage Hero & Section Headers</h3>
-                <p className="text-xs text-slate-500">Live headlines, intro copy, delivery badges and CTA buttons</p>
+                <h3 className="text-base font-black text-slate-900">
+                  Homepage Hero & Section Headers
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Live headlines, intro copy, delivery badges and CTA buttons
+                </p>
               </div>
-              <Button onClick={handleSaveHomeCms} disabled={submitting} className="rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
-                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <Button
+                onClick={handleSaveHomeCms}
+                disabled={submitting}
+                className="rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+              >
+                {submitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
                 Save Homepage Content
               </Button>
             </div>
@@ -547,7 +727,9 @@ export function AdminCmsView() {
             </div>
 
             <div className="pt-4 border-t border-slate-100">
-              <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider mb-3">Homepage Trust Stats</h4>
+              <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider mb-3">
+                Homepage Trust Stats
+              </h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <Label className="text-[11px] font-bold">Years Active</Label>
@@ -592,10 +774,20 @@ export function AdminCmsView() {
             <div className="flex justify-between items-center pb-4 border-b border-slate-100">
               <div>
                 <h3 className="text-base font-black text-slate-900">About Page Company Content</h3>
-                <p className="text-xs text-slate-500">Manage 1972 company heritage, mission statement and depot details</p>
+                <p className="text-xs text-slate-500">
+                  Manage 1972 company heritage, mission statement and depot details
+                </p>
               </div>
-              <Button onClick={handleSaveAboutCms} disabled={submitting} className="rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
-                {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <Button
+                onClick={handleSaveAboutCms}
+                disabled={submitting}
+                className="rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+              >
+                {submitting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
                 Save About Content
               </Button>
             </div>
@@ -651,17 +843,28 @@ export function AdminCmsView() {
         <TabsContent value="services" className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Core Website Services ({services.length})</h3>
-              <p className="text-xs text-slate-500">Displayed across `/services` and homepage feature grid</p>
+              <h3 className="text-sm font-bold text-slate-900">
+                Core Website Services ({services.length})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Displayed across `/services` and homepage feature grid
+              </p>
             </div>
-            <Button onClick={() => handleOpenServiceModal()} size="sm" className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+            <Button
+              onClick={() => handleOpenServiceModal()}
+              size="sm"
+              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+            >
               <Plus className="h-3.5 w-3.5" /> Add Service
             </Button>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((s) => (
-              <div key={s.id} className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5 flex flex-col justify-between shadow-xs hover:border-slate-300 transition-all">
+              <div
+                key={s.id}
+                className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5 flex flex-col justify-between shadow-xs hover:border-slate-300 transition-all"
+              >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="p-2 rounded-xl bg-primary/10 text-primary font-bold text-xs">
@@ -676,14 +879,30 @@ export function AdminCmsView() {
                       <img src={s.image} alt={s.title} className="h-full w-full object-cover" />
                     </div>
                   )}
-                  <h4 className="font-bold text-slate-900 text-sm">{typeof s.title === "string" ? s.title : String(s.title || "")}</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{typeof (s.desc || s.description) === "string" ? (s.desc || s.description) : String(s.desc || s.description || "")}</p>
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    {typeof s.title === "string" ? s.title : String(s.title || "")}
+                  </h4>
+                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
+                    {typeof (s.desc || s.description) === "string"
+                      ? s.desc || s.description
+                      : String(s.desc || s.description || "")}
+                  </p>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
-                  <Button variant="ghost" size="sm" onClick={() => handleOpenServiceModal(s)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenServiceModal(s)}
+                    className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
+                  >
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteService(s.id)} className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteService(s.id)}
+                    className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -696,17 +915,28 @@ export function AdminCmsView() {
         <TabsContent value="reviews" className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Customer Testimonials ({reviews.length})</h3>
-              <p className="text-xs text-slate-500">Live reviews shown in customer trust sections and about pages</p>
+              <h3 className="text-sm font-bold text-slate-900">
+                Customer Testimonials ({reviews.length})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Live reviews shown in customer trust sections and about pages
+              </p>
             </div>
-            <Button onClick={() => handleOpenReviewModal()} size="sm" className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+            <Button
+              onClick={() => handleOpenReviewModal()}
+              size="sm"
+              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+            >
               <Plus className="h-3.5 w-3.5" /> Add Review
             </Button>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             {reviews.map((r) => (
-              <div key={r.id} className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5 flex flex-col justify-between shadow-xs">
+              <div
+                key={r.id}
+                className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5 flex flex-col justify-between shadow-xs"
+              >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1 text-amber-500">
@@ -718,17 +948,33 @@ export function AdminCmsView() {
                       {r.status || "Published"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-slate-700 italic leading-relaxed">"{typeof r.quote === "string" ? r.quote : String(r.quote || "")}"</p>
+                  <p className="text-xs text-slate-700 italic leading-relaxed">
+                    "{typeof r.quote === "string" ? r.quote : String(r.quote || "")}"
+                  </p>
                   <div>
-                    <p className="text-xs font-bold text-slate-900">{typeof r.name === "string" ? r.name : String(r.name || "")}</p>
-                    <p className="text-[11px] text-slate-400">{typeof r.role === "string" ? r.role : "Gloucestershire Customer"}</p>
+                    <p className="text-xs font-bold text-slate-900">
+                      {typeof r.name === "string" ? r.name : String(r.name || "")}
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      {typeof r.role === "string" ? r.role : "Gloucestershire Customer"}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 mt-3">
-                  <Button variant="ghost" size="sm" onClick={() => handleOpenReviewModal(r)} className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleOpenReviewModal(r)}
+                    className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
+                  >
                     <Edit2 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteReview(r.id)} className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteReview(r.id)}
+                    className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -758,9 +1004,17 @@ export function AdminCmsView() {
               <TableBody className="text-xs">
                 {offers.map((o) => (
                   <TableRow key={o.id}>
-                    <td className="font-bold text-slate-900">{typeof o.title === "string" ? o.title : String(o.title || "")}</td>
-                    <td className="text-slate-500 max-w-sm">{typeof o.description === "string" ? o.description : String(o.description || "")}</td>
-                    <td className="font-mono font-bold text-primary">{o.discount_percentage ? `${o.discount_percentage}%` : "Special"}</td>
+                    <td className="font-bold text-slate-900">
+                      {typeof o.title === "string" ? o.title : String(o.title || "")}
+                    </td>
+                    <td className="text-slate-500 max-w-sm">
+                      {typeof o.description === "string"
+                        ? o.description
+                        : String(o.description || "")}
+                    </td>
+                    <td className="font-mono font-bold text-primary">
+                      {o.discount_percentage ? `${o.discount_percentage}%` : "Special"}
+                    </td>
                     <td>
                       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
                         {o.is_active ? "Active" : "Disabled"}
@@ -777,7 +1031,9 @@ export function AdminCmsView() {
         <TabsContent value="banners" className="space-y-4">
           <div className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-slate-900">Header Announcement Banners ({banners.length})</h3>
+              <h3 className="text-sm font-bold text-slate-900">
+                Header Announcement Banners ({banners.length})
+              </h3>
               <Button asChild size="sm" className="rounded-full text-xs font-bold">
                 <Link to="/admin/banners">Open Banner Editor →</Link>
               </Button>
@@ -794,8 +1050,12 @@ export function AdminCmsView() {
               <TableBody className="text-xs">
                 {banners.map((b) => (
                   <TableRow key={b.id}>
-                    <td className="font-bold text-slate-900">{typeof b.title === "string" ? b.title : String(b.title || "")}</td>
-                    <td className="text-slate-500 max-w-md">{typeof b.message === "string" ? b.message : String(b.message || "")}</td>
+                    <td className="font-bold text-slate-900">
+                      {typeof b.title === "string" ? b.title : String(b.title || "")}
+                    </td>
+                    <td className="text-slate-500 max-w-md">
+                      {typeof b.message === "string" ? b.message : String(b.message || "")}
+                    </td>
                     <td className="font-mono text-primary">{b.link_url || "/offers"}</td>
                     <td>
                       <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
@@ -858,9 +1118,18 @@ export function AdminCmsView() {
                     className="rounded-xl text-xs flex-1"
                   />
                   <label className="cursor-pointer">
-                    <input type="file" accept="image/*" onChange={handleUploadServiceImage} className="hidden" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUploadServiceImage}
+                      className="hidden"
+                    />
                     <span className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50">
-                      {uploadingServiceImg ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                      {uploadingServiceImg ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Upload className="h-3 w-3" />
+                      )}
                     </span>
                   </label>
                 </div>
@@ -873,10 +1142,18 @@ export function AdminCmsView() {
             )}
           </div>
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-            <Button variant="ghost" onClick={() => setServiceModalOpen(false)} className="rounded-full text-xs font-bold">
+            <Button
+              variant="ghost"
+              onClick={() => setServiceModalOpen(false)}
+              className="rounded-full text-xs font-bold"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveService} disabled={submitting} className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+            <Button
+              onClick={handleSaveService}
+              disabled={submitting}
+              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+            >
               {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {editingService ? "Save Service" : "Add Service"}
             </Button>
@@ -936,10 +1213,18 @@ export function AdminCmsView() {
             </div>
           </div>
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-            <Button variant="ghost" onClick={() => setReviewModalOpen(false)} className="rounded-full text-xs font-bold">
+            <Button
+              variant="ghost"
+              onClick={() => setReviewModalOpen(false)}
+              className="rounded-full text-xs font-bold"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveReview} disabled={submitting} className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5">
+            <Button
+              onClick={handleSaveReview}
+              disabled={submitting}
+              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+            >
               {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {editingReview ? "Save Review" : "Publish Review"}
             </Button>

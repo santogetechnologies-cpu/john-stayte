@@ -25,12 +25,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -100,7 +95,7 @@ export function CustomerInvoicesView() {
       setOrders(realOrders);
     } catch (err: any) {
       console.error("Invoices query error:", err);
-      setError(err.message || "Failed to query invoices from Supabase");
+      setError(err.message || "Failed to load invoices");
     } finally {
       setLoading(false);
     }
@@ -160,7 +155,7 @@ export function CustomerInvoicesView() {
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">${gbp(item.unit_price * 0.2 * item.quantity)}</td>
           <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700;">${gbp(item.total_price)}</td>
         </tr>
-      `
+      `,
         )
         .join("");
 
@@ -321,7 +316,8 @@ export function CustomerInvoicesView() {
             </h1>
 
             <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-              View and download official VAT tax invoices for your commercial and domestic orders with John Stayte Services.
+              View and download official VAT tax invoices for your commercial and domestic orders
+              with John Stayte Services.
             </p>
           </div>
 
@@ -391,11 +387,7 @@ export function CustomerInvoicesView() {
             </div>
           </div>
           <p className="text-xl sm:text-2xl font-display font-black text-slate-900 leading-none truncate">
-            {loading
-              ? "..."
-              : latestInvoice
-              ? `INV-${latestInvoice.order_number}`
-              : "None"}
+            {loading ? "..." : latestInvoice ? `INV-${latestInvoice.order_number}` : "None"}
           </p>
           <p className="text-[11px] text-slate-500 font-medium mt-1">
             {latestInvoice
@@ -415,14 +407,12 @@ export function CustomerInvoicesView() {
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
           <Loader2 className="mx-auto h-7 w-7 text-primary animate-spin" />
-          <p className="text-xs text-slate-500 font-bold">
-            Loading your VAT invoices from Supabase...
-          </p>
+          <p className="text-xs text-slate-500 font-bold">Loading your VAT invoices...</p>
         </div>
       ) : error ? (
         <div className="p-10 text-center space-y-3 bg-white rounded-2xl border border-slate-200/90 shadow-xs">
           <AlertTriangle className="mx-auto h-9 w-9 text-rose-500" />
-          <h3 className="font-bold text-sm text-slate-900">Database Query Error</h3>
+          <h3 className="font-bold text-sm text-slate-900">Notice</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">{error}</p>
           <Button
             onClick={loadCustomerInvoices}
@@ -440,11 +430,10 @@ export function CustomerInvoicesView() {
             <FileText className="h-8 w-8 text-slate-400" />
           </div>
           <div className="space-y-1.5 max-w-sm mx-auto">
-            <h2 className="font-display font-extrabold text-lg text-slate-900">
-              No invoices yet
-            </h2>
+            <h2 className="font-display font-extrabold text-lg text-slate-900">No invoices yet</h2>
             <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Official VAT tax invoices will appear here automatically when you place orders with John Stayte Services.
+              Official VAT tax invoices will appear here automatically when you place orders with
+              John Stayte Services.
             </p>
           </div>
           <div className="pt-2">
@@ -505,10 +494,7 @@ export function CustomerInvoicesView() {
                   });
 
                   return (
-                    <TableRow
-                      key={order.id}
-                      className="hover:bg-slate-50/50 transition-colors"
-                    >
+                    <TableRow key={order.id} className="hover:bg-slate-50/50 transition-colors">
                       {/* Invoice # */}
                       <TableCell className="pl-6 py-4">
                         <div className="flex items-center gap-2">
@@ -538,9 +524,7 @@ export function CustomerInvoicesView() {
                       </TableCell>
 
                       {/* Status */}
-                      <TableCell className="py-4">
-                        {getStatusBadge(order.status)}
-                      </TableCell>
+                      <TableCell className="py-4">{getStatusBadge(order.status)}</TableCell>
 
                       {/* Subtotal */}
                       <TableCell className="py-4 text-right text-xs font-medium text-slate-600">
@@ -630,17 +614,13 @@ export function CustomerInvoicesView() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                         Subtotal
                       </span>
-                      <span className="font-semibold text-slate-700">
-                        {gbp(subtotal)}
-                      </span>
+                      <span className="font-semibold text-slate-700">{gbp(subtotal)}</span>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                         VAT (20%)
                       </span>
-                      <span className="font-semibold text-slate-700">
-                        {gbp(vatAmount)}
-                      </span>
+                      <span className="font-semibold text-slate-700">{gbp(vatAmount)}</span>
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
@@ -695,17 +675,31 @@ export function CustomerInvoicesView() {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="font-black text-base text-primary">JOHN STAYTE SERVICES</h2>
-                  <p className="text-[11px] text-slate-500 font-medium">Whitminster Depot, Gloucestershire, GL2 7NY</p>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">VAT Reg No: GB 123 4567 89</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Whitminster Depot, Gloucestershire, GL2 7NY
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                    VAT Reg No: GB 123 4567 89
+                  </p>
                 </div>
 
                 <div className="sm:text-right">
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold mb-1">
+                  <Badge
+                    variant="outline"
+                    className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold mb-1"
+                  >
                     Official Tax Invoice
                   </Badge>
-                  <p className="font-mono font-black text-sm text-slate-900">Ref: #{selectedInvoiceOrder.order_number}</p>
+                  <p className="font-mono font-black text-sm text-slate-900">
+                    Ref: #{selectedInvoiceOrder.order_number}
+                  </p>
                   <p className="text-[11px] text-slate-500">
-                    Date: {new Date(selectedInvoiceOrder.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                    Date:{" "}
+                    {new Date(selectedInvoiceOrder.created_at).toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
                   </p>
                 </div>
               </div>
@@ -713,20 +707,33 @@ export function CustomerInvoicesView() {
               {/* Billed To Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border border-slate-200/80 bg-white">
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Customer Information</p>
-                  <p className="font-black text-sm text-slate-900 mt-1">{selectedInvoiceOrder.customer_name || user?.name}</p>
-                  <p className="text-slate-500">{selectedInvoiceOrder.customer_email || user?.email}</p>
-                  <p className="text-slate-500">{selectedInvoiceOrder.customer_phone || "Phone on file"}</p>
+                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                    Customer Information
+                  </p>
+                  <p className="font-black text-sm text-slate-900 mt-1">
+                    {selectedInvoiceOrder.customer_name || user?.name}
+                  </p>
+                  <p className="text-slate-500">
+                    {selectedInvoiceOrder.customer_email || user?.email}
+                  </p>
+                  <p className="text-slate-500">
+                    {selectedInvoiceOrder.customer_phone || "Phone on file"}
+                  </p>
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Delivery & Billing Address</p>
+                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                    Delivery & Billing Address
+                  </p>
                   <p className="font-semibold text-slate-800 mt-1">
-                    {typeof selectedInvoiceOrder.delivery_address === "object" && selectedInvoiceOrder.delivery_address !== null
+                    {typeof selectedInvoiceOrder.delivery_address === "object" &&
+                    selectedInvoiceOrder.delivery_address !== null
                       ? `${selectedInvoiceOrder.delivery_address.street || ""}, ${selectedInvoiceOrder.delivery_address.postcode || ""}`
                       : selectedInvoiceOrder.delivery_address || "Gloucestershire Delivery Address"}
                   </p>
-                  <p className="text-[11px] text-emerald-700 font-bold mt-1">Payment Status: Paid in Full</p>
+                  <p className="text-[11px] text-emerald-700 font-bold mt-1">
+                    Payment Status: Paid in Full
+                  </p>
                 </div>
               </div>
 
@@ -751,11 +758,17 @@ export function CustomerInvoicesView() {
 
                       return (
                         <TableRow key={item.id}>
-                          <TableCell className="font-bold text-xs text-slate-900">{item.product_name}</TableCell>
+                          <TableCell className="font-bold text-xs text-slate-900">
+                            {item.product_name}
+                          </TableCell>
                           <TableCell className="text-center font-bold">{qty}</TableCell>
                           <TableCell className="text-right">{gbp(uPrice)}</TableCell>
-                          <TableCell className="text-right text-slate-500">{gbp(itemVat)}</TableCell>
-                          <TableCell className="text-right font-black text-slate-900">{gbp(itemTotal)}</TableCell>
+                          <TableCell className="text-right text-slate-500">
+                            {gbp(itemVat)}
+                          </TableCell>
+                          <TableCell className="text-right font-black text-slate-900">
+                            {gbp(itemTotal)}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -767,15 +780,23 @@ export function CustomerInvoicesView() {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 max-w-xs ml-auto text-right">
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500 font-medium">Subtotal (excl. VAT):</span>
-                  <span className="font-bold text-slate-900">{gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total))}</span>
+                  <span className="font-bold text-slate-900">
+                    {gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total))}
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500 font-medium">VAT (Standard 20%):</span>
-                  <span className="font-bold text-slate-900">{gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total) * 0.2)}</span>
+                  <span className="font-bold text-slate-900">
+                    {gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total) * 0.2)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500 font-medium">Carriage / Delivery:</span>
-                  <span className="font-bold text-slate-900">{selectedInvoiceOrder.shipping_fee === 0 ? "FREE" : gbp(Number(selectedInvoiceOrder.shipping_fee || 0))}</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedInvoiceOrder.shipping_fee === 0
+                      ? "FREE"
+                      : gbp(Number(selectedInvoiceOrder.shipping_fee || 0))}
+                  </span>
                 </div>
                 <div className="flex justify-between text-base font-black text-primary border-t border-slate-200 pt-1.5 mt-1">
                   <span>Total Paid:</span>
@@ -785,7 +806,11 @@ export function CustomerInvoicesView() {
 
               {/* Actions Footer */}
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                <Button variant="ghost" onClick={() => setViewInvoiceModalOpen(false)} className="rounded-xl text-xs font-bold">
+                <Button
+                  variant="ghost"
+                  onClick={() => setViewInvoiceModalOpen(false)}
+                  className="rounded-xl text-xs font-bold"
+                >
                   Close
                 </Button>
                 <Button
