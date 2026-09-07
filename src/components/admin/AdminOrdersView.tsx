@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { gbp } from "@/lib/store";
+import { gbp, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { REFILL_STATUS_STEPS, RefillStatusKey, advanceRefillStatus } from "@/lib/cylinder-service";
@@ -447,8 +447,17 @@ export function AdminOrdersView() {
                       {/* Amount & Payment */}
                       <TableCell className="text-xs">
                         <div className="font-black text-foreground">{gbp(Number(o.total))}</div>
-                        <div className="text-[10px] font-bold text-emerald-600">
-                          {o.payment_status || "Paid"} ({o.payment_method || "Online"})
+                        <div className="text-[10px] font-bold flex items-center gap-1">
+                          <span
+                            className={cn(
+                              o.payment_status === "Paid" ? "text-emerald-600" : "text-amber-600",
+                            )}
+                          >
+                            {o.payment_status || "Pending"}
+                          </span>
+                          <span className="text-slate-400 font-medium">
+                            • {getOrderPaymentMethod(o)}
+                          </span>
                         </div>
                       </TableCell>
 
@@ -818,7 +827,22 @@ export function AdminOrdersView() {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500">Payment:</span>
-                  <span className="text-emerald-600">{selectedOrder.payment_status || "Paid"}</span>
+                  <span>
+                    <span
+                      className={cn(
+                        "font-extrabold",
+                        selectedOrder.payment_status === "Paid"
+                          ? "text-emerald-600"
+                          : "text-amber-600",
+                      )}
+                    >
+                      {selectedOrder.payment_status || "Pending"}
+                    </span>
+                    <span className="text-slate-500 font-medium">
+                      {" "}
+                      ({getOrderPaymentMethod(selectedOrder)})
+                    </span>
+                  </span>
                 </div>
               </div>
             </div>

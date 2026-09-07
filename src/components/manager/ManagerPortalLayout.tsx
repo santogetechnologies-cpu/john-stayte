@@ -6,6 +6,7 @@ import {
   Truck,
   PackageCheck,
   Users,
+  UserCheck,
   HelpCircle,
   MessageSquare,
   BarChart3,
@@ -54,6 +55,7 @@ type NavItem = {
   badgeKey?:
     | "pendingOrders"
     | "processingOrders"
+    | "unassignedDeliveries"
     | "outForDelivery"
     | "delayedDeliveries"
     | "lowStock"
@@ -85,6 +87,17 @@ const managerNavGroups: NavGroup[] = [
         href: "/manager/orders?status=Processing",
         icon: PackageCheck,
         badgeKey: "processingOrders",
+      },
+      {
+        title: "Delivery Assignment",
+        href: "/manager/delivery-assignment",
+        icon: UserCheck,
+        badgeKey: "unassignedDeliveries",
+      },
+      {
+        title: "Delivery Agents",
+        href: "/manager/delivery-agents",
+        icon: Users,
       },
     ],
   },
@@ -167,6 +180,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
   const [counts, setCounts] = useState<{
     pendingOrders?: number;
     processingOrders?: number;
+    unassignedDeliveries?: number;
     outForDelivery?: number;
     delayedDeliveries?: number;
     lowStock?: number;
@@ -178,6 +192,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
       const [
         { count: pendingCount },
         { data: processingData },
+        { count: unassignedCount },
         { count: delayedCount },
         { count: outCount },
         { data: lowStockData },
@@ -185,6 +200,10 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
       ] = await Promise.all([
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
         supabase.from("orders").select("id, status").or("status.eq.Approved,status.eq.Packed"),
+        supabase
+          .from("delivery_assignments")
+          .select("*", { count: "exact", head: true })
+          .or("driver_name.eq.Unassigned,agent_id.is.null"),
         supabase
           .from("delivery_assignments")
           .select("*", { count: "exact", head: true })
@@ -203,6 +222,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
       setCounts({
         pendingOrders: pendingCount || 0,
         processingOrders: processingData?.length || 0,
+        unassignedDeliveries: unassignedCount || 0,
         delayedDeliveries: delayedCount || 0,
         outForDelivery: outCount || 0,
         lowStock: lowStockData?.length || 0,

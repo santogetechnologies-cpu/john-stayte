@@ -135,7 +135,33 @@ export function SiteHeader() {
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
 
   const dashPath =
-    user?.role === "admin" ? "/admin" : user?.role === "manager" ? "/manager" : "/account";
+    user?.role === "admin"
+      ? "/admin"
+      : user?.role === "manager"
+        ? "/manager"
+        : user?.role === "delivery_agent"
+          ? "/delivery"
+          : "/account";
+
+  const roleLabel =
+    user?.role === "delivery_agent"
+      ? "Delivery Agent Account"
+      : user?.role === "admin"
+        ? "Administrator"
+        : user?.role === "manager"
+          ? "Operations Manager"
+          : "Customer Account";
+
+  const portalLabel =
+    user?.role === "delivery_agent"
+      ? "Delivery Portal"
+      : user?.role === "admin"
+        ? "Admin Control Center"
+        : user?.role === "manager"
+          ? "Manager Portal"
+          : "My Account";
+
+  const PortalIcon = user?.role === "delivery_agent" ? Truck : LayoutDashboard;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,7 +246,7 @@ export function SiteHeader() {
             size="icon"
             className="hidden rounded-full sm:inline-flex"
           >
-            <Link to={user ? "/account/wishlist" : "/login"} aria-label="Wishlist">
+            <Link to={user ? (user.role === "customer" ? "/account/wishlist" : dashPath) : "/login"} aria-label="Wishlist">
               <Heart className="h-5 w-5" />
               {wishlist.length > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
@@ -239,12 +265,15 @@ export function SiteHeader() {
                   <ChevronDown className="ml-1 h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="capitalize">{user.role} account</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5 border-border shadow-xl">
+                <DropdownMenuLabel className="px-3 py-2">
+                  <p className="font-extrabold text-xs text-foreground truncate">{user.name}</p>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-wider mt-0.5">{roleLabel}</p>
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="rounded-xl font-bold text-xs py-2 cursor-pointer">
                   <Link to={dashPath}>
-                    <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard
+                    <PortalIcon className="mr-2 h-4 w-4 text-primary" /> {portalLabel}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -252,6 +281,7 @@ export function SiteHeader() {
                     logout();
                     navigate({ to: "/" });
                   }}
+                  className="rounded-xl font-bold text-xs py-2 text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                 >
                   <LogOut className="mr-2 h-4 w-4" /> Sign out
                 </DropdownMenuItem>
@@ -321,13 +351,38 @@ export function SiteHeader() {
                     </Link>
                   ))}
                 </div>
-                <div className="mt-4 grid gap-2 border-t pt-4">
-                  <Button asChild variant="outline" className="rounded-full">
-                    <Link to="/login" onClick={() => setOpen(false)}>
-                      Sign in
-                    </Link>
-                  </Button>
-                </div>
+                {user ? (
+                  <div className="mt-4 grid gap-2 border-t pt-4">
+                    <div className="px-3 py-2 rounded-xl bg-surface border border-border/60">
+                      <p className="font-extrabold text-xs text-foreground truncate">{user.name}</p>
+                      <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{roleLabel}</p>
+                    </div>
+                    <Button asChild className="rounded-full font-bold text-xs gap-2">
+                      <Link to={dashPath} onClick={() => setOpen(false)}>
+                        <PortalIcon className="h-4 w-4" /> {portalLabel}
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setOpen(false);
+                        logout();
+                        navigate({ to: "/" });
+                      }}
+                      className="rounded-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 gap-2 cursor-pointer"
+                    >
+                      <LogOut className="h-4 w-4" /> Sign out
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-4 grid gap-2 border-t pt-4">
+                    <Button asChild variant="outline" className="rounded-full font-bold text-xs">
+                      <Link to="/login" onClick={() => setOpen(false)}>
+                        Sign in
+                      </Link>
+                    </Button>
+                  </div>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

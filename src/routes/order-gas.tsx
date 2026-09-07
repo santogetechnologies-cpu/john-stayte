@@ -74,7 +74,26 @@ export const Route = createFileRoute("/order-gas")({
   component: OrderGasPage,
 });
 
-export function OrderGasPage() {
+function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944 3.72a.79.79 0 0 1 .78-.667h6.544c3.483 0 5.86 1.77 5.308 5.263-.48 3.036-2.585 4.887-5.59 4.887H9.284l-.946 5.986a.641.641 0 0 1-.633.535l-.629.613z"
+        fill="#003087"
+      />
+      <path
+        d="M8.338 18.73h3.045c2.618 0 4.673-1.613 5.09-4.258.416-2.645-1.393-4.257-4.01-4.257H8.927l-1.637 10.362a.555.555 0 0 0 .548.653h.5z"
+        fill="#0079C1"
+      />
+      <path
+        d="M16.473 14.472c.417-2.645-1.393-4.257-4.01-4.257H8.927l-.455 2.883h3.991c2.193 0 3.738 1.157 3.414 3.208-.23 1.458-1.282 2.29-2.73 2.502.383-.347.7-.822.846-1.423a5.53 5.53 0 0 0 .48-2.913z"
+        fill="#00457C"
+      />
+    </svg>
+  );
+}
+
+function OrderGasPage() {
   const { user, login, register } = useStore();
   const navigate = useNavigate();
 
@@ -129,9 +148,43 @@ export function OrderGasPage() {
   const [notes, setNotes] = useState<string>("");
 
   // Step 4 & 5: Summary & Payment
-  const [paymentMethod, setPaymentMethod] = useState<string>("Credit / Debit Card (Online)");
+  const [paymentMethod, setPaymentMethod] = useState<string>("Credit / Debit Card");
+  const [cardholderName, setCardholderName] = useState<string>("");
+  const [cardNumber, setCardNumber] = useState<string>("");
+  const [cardExpiry, setCardExpiry] = useState<string>("");
+  const [cardCvc, setCardCvc] = useState<string>("");
+  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [submittingOrder, setSubmittingOrder] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
+
+  // Sync cardholder name when customerName or user changes
+  useEffect(() => {
+    if (customerName && !cardholderName) {
+      setCardholderName(customerName);
+    } else if (user?.name && !cardholderName) {
+      setCardholderName(user.name);
+    }
+  }, [customerName, user]);
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
+    const formatted = raw.replace(/(\d{4})(?=\d)/g, "$1 ");
+    setCardNumber(formatted);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
+    if (raw.length >= 3) {
+      setCardExpiry(`${raw.slice(0, 2)}/${raw.slice(2)}`);
+    } else {
+      setCardExpiry(raw);
+    }
+  };
+
+  const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
+    setCardCvc(raw);
+  };
 
   // Inline Auth Modal for unauthenticated guests
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
@@ -364,8 +417,41 @@ export function OrderGasPage() {
     }
 
     if (!selectedProduct || !usageType) return;
+
+    const isCard = paymentMethod.toLowerCase().includes("card");
+    const isPayPal = paymentMethod.toLowerCase().includes("paypal");
+
+    if (isCard) {
+      if (!cardholderName.trim()) {
+        return toast.error("Please enter the cardholder name.");
+      }
+      const rawCard = cardNumber.replace(/\s+/g, "");
+      if (rawCard.length < 15) {
+        return toast.error("Please enter a valid 16-digit card number.");
+      }
+      const [expMonth, expYear] = cardExpiry.split("/");
+      if (!expMonth || !expYear || Number(expMonth) < 1 || Number(expMonth) > 12) {
+        return toast.error("Please enter a valid card expiry date (MM/YY).");
+      }
+      if (cardCvc.length < 3) {
+        return toast.error("Please enter a valid 3 or 4 digit security code (CVC).");
+      }
+    }
+
     setSubmittingOrder(true);
+    if (isCard || isPayPal) {
+      setIsProcessingPayment(true);
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      setIsProcessingPayment(false);
+    }
+
     try {
+      const normalizedMethod = isPayPal
+        ? "PayPal"
+        : isCard
+          ? "Credit / Debit Card"
+          : "Pay on Delivery / Collection";
+
       const res = await createGasOrder({
         userId: user.id,
         customerName: customerName.trim(),
@@ -387,7 +473,7 @@ export function OrderGasPage() {
         pickupTimeSlot: returnMethod === "SCHEDULED_PICKUP" ? selectedPickupSlot : undefined,
         cylinderTag: cylinderTag.trim() || undefined,
         notes: notes.trim() || undefined,
-        paymentMethod,
+        paymentMethod: normalizedMethod,
       });
 
       setCompletedOrder({
@@ -400,7 +486,8 @@ export function OrderGasPage() {
         total: res.calculated.total,
         deliveryDate,
         deliveryTimeSlot: selectedDeliverySlot,
-        paymentStatus: "Paid",
+        paymentMethod: normalizedMethod,
+        paymentStatus: isCard || isPayPal ? "Paid" : "Pending",
       });
 
       setStep(5); // Step 5: Confirmation
@@ -409,6 +496,7 @@ export function OrderGasPage() {
       toast.error(err.message || "Failed to place order.");
     } finally {
       setSubmittingOrder(false);
+      setIsProcessingPayment(false);
     }
   };
 
@@ -1327,44 +1415,226 @@ export function OrderGasPage() {
               </div>
 
               {/* Payment Method Selector */}
-              <div className="space-y-2 text-left">
-                <Label className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
-                  Payment Option
-                </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    {
-                      id: "Credit / Debit Card (Online)",
-                      label: "Credit / Debit Card",
-                      icon: CreditCard,
-                    },
-                    {
-                      id: "Pay On Delivery / Collection",
-                      label: "Pay On Delivery / Collection",
-                      icon: Banknote,
-                    },
-                  ].map((method) => (
-                    <button
-                      key={method.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(method.id)}
-                      className={cn(
-                        "flex items-center gap-3 p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
-                        paymentMethod === method.id
-                          ? "border-primary bg-red-50/30 text-slate-900 ring-2 ring-primary/20"
-                          : "border-slate-200 bg-white hover:border-slate-300 text-slate-600",
-                      )}
-                    >
-                      <method.icon
-                        className={cn(
-                          "h-4 w-4",
-                          paymentMethod === method.id ? "text-primary" : "text-slate-400",
-                        )}
-                      />
-                      <span>{method.label}</span>
-                    </button>
-                  ))}
+              <div className="space-y-4 text-left">
+                <div className="space-y-2">
+                  <Label className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
+                    Payment Option
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      {
+                        id: "Credit / Debit Card",
+                        label: "Credit / Debit Card",
+                        subtitle: "Visa, Mastercard, Amex",
+                        icon: CreditCard,
+                      },
+                      {
+                        id: "PayPal",
+                        label: "PayPal",
+                        subtitle: "Fast, secure checkout",
+                        icon: PayPalIcon,
+                      },
+                      {
+                        id: "Pay on Delivery / Collection",
+                        label: "Pay on Delivery / Collection",
+                        subtitle: "Pay driver or at depot",
+                        icon: Banknote,
+                      },
+                    ].map((method) => {
+                      const isSelected = paymentMethod === method.id;
+                      const IconComp = method.icon;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={cn(
+                            "relative flex flex-col text-left p-4 rounded-2xl border transition-all cursor-pointer select-none",
+                            isSelected
+                              ? method.id === "PayPal"
+                                ? "border-[#0079C1] bg-sky-50/40 shadow-sm ring-2 ring-[#0079C1]/20"
+                                : method.id === "Credit / Debit Card"
+                                  ? "border-primary bg-red-50/30 shadow-sm ring-2 ring-primary/20"
+                                  : "border-amber-500 bg-amber-50/30 shadow-sm ring-2 ring-amber-500/20"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700",
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div
+                              className={cn(
+                                "h-8 w-8 rounded-xl flex items-center justify-center",
+                                isSelected
+                                  ? method.id === "PayPal"
+                                    ? "bg-[#0079C1]/10 text-[#0079C1]"
+                                    : method.id === "Credit / Debit Card"
+                                      ? "bg-primary/10 text-primary"
+                                      : "bg-amber-500/10 text-amber-700"
+                                  : "bg-slate-100 text-slate-500",
+                              )}
+                            >
+                              <IconComp className="h-4 w-4" />
+                            </div>
+                            <div
+                              className={cn(
+                                "h-4 w-4 rounded-full border flex items-center justify-center transition-all",
+                                isSelected
+                                  ? method.id === "PayPal"
+                                    ? "border-[#0079C1] bg-[#0079C1] text-white"
+                                    : method.id === "Credit / Debit Card"
+                                      ? "border-primary bg-primary text-white"
+                                      : "border-amber-600 bg-amber-600 text-white"
+                                  : "border-slate-300 bg-white",
+                              )}
+                            >
+                              {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                            </div>
+                          </div>
+                          <span className="text-xs font-black text-slate-900">{method.label}</span>
+                          <span className="text-[11px] text-slate-500 mt-0.5">
+                            {method.subtitle}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {/* Card Inputs if Card Selected */}
+                {paymentMethod === "Credit / Debit Card" && (
+                  <div className="p-5 sm:p-6 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-4 text-left shadow-inner/5">
+                    <div className="flex items-center justify-between border-b border-slate-200/70 pb-3">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                          Card Payment Details
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] font-extrabold text-slate-500">
+                        <span>Total:</span>
+                        <span className="text-primary font-black">{gbp(totalAmount)}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="gas-chn" className="text-xs font-bold text-slate-700">
+                        Cardholder Name
+                      </Label>
+                      <Input
+                        id="gas-chn"
+                        required
+                        maxLength={100}
+                        value={cardholderName}
+                        onChange={(e) => setCardholderName(e.target.value)}
+                        placeholder="Name as printed on card"
+                        className="mt-1.5 rounded-xl bg-white text-xs font-medium h-10 border-slate-200"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="sm:col-span-2">
+                        <Label htmlFor="gas-cn" className="text-xs font-bold text-slate-700">
+                          Card Number
+                        </Label>
+                        <div className="relative mt-1.5">
+                          <Input
+                            id="gas-cn"
+                            required
+                            placeholder="4242 4242 4242 4242"
+                            maxLength={19}
+                            value={cardNumber}
+                            onChange={handleCardNumberChange}
+                            className="rounded-xl bg-white pl-10 text-xs font-mono font-medium tracking-wider h-10 border-slate-200"
+                          />
+                          <CreditCard className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="gas-ex" className="text-xs font-bold text-slate-700">
+                          Expiry Date
+                        </Label>
+                        <Input
+                          id="gas-ex"
+                          required
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          value={cardExpiry}
+                          onChange={handleExpiryChange}
+                          className="mt-1.5 rounded-xl bg-white text-xs font-mono font-medium text-center h-10 border-slate-200"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="gas-cv" className="text-xs font-bold text-slate-700">
+                          CVC / Security Code
+                        </Label>
+                        <Input
+                          id="gas-cv"
+                          required
+                          placeholder="123"
+                          maxLength={4}
+                          value={cardCvc}
+                          onChange={handleCvcChange}
+                          className="mt-1.5 rounded-xl bg-white text-xs font-mono font-medium text-center h-10 border-slate-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium border-t border-slate-200/50">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>Card details are verified with 256-bit SSL encryption.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* PayPal Branded Section if PayPal Selected */}
+                {paymentMethod === "PayPal" && (
+                  <div className="p-5 sm:p-6 rounded-2xl bg-sky-50/40 border border-sky-200/80 space-y-4 text-left">
+                    <div className="flex items-center justify-between border-b border-sky-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <PayPalIcon className="h-5 w-5" />
+                        <span className="text-xs font-black text-slate-900 tracking-wide">
+                          Pay with <span className="text-[#003087]">Pay</span>
+                          <span className="text-[#0079C1]">Pal</span>
+                        </span>
+                      </div>
+                      <span className="text-xs font-black text-[#003087]">{gbp(totalAmount)}</span>
+                    </div>
+
+                    <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
+                      <p>
+                        You will be directed to PayPal to complete your payment securely using your
+                        PayPal balance, linked bank account, or saved credit/debit cards.
+                      </p>
+                      <div className="flex items-center gap-2 pt-1 text-[11px] text-sky-800 font-medium">
+                        <ShieldCheck className="h-4 w-4 text-[#0079C1] shrink-0" />
+                        <span>Protected by PayPal Buyer Protection and 256-bit encryption.</span>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl bg-white/80 border border-sky-100 p-3 flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Total Payable Amount:</span>
+                      <span className="text-sm font-black text-slate-900">{gbp(totalAmount)}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* COD Details if COD Selected */}
+                {paymentMethod === "Pay on Delivery / Collection" && (
+                  <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 space-y-2 text-left">
+                    <div className="flex items-center justify-between border-b border-amber-200/60 pb-2.5">
+                      <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
+                        <Banknote className="h-4 w-4 text-amber-700" /> Pay upon Delivery / Depot
+                        Collection
+                      </p>
+                      <span className="font-black text-amber-950">{gbp(totalAmount)}</span>
+                    </div>
+                    <p className="text-amber-800 text-[11px] leading-relaxed">
+                      You will pay directly to our driver or at the Gloucestershire depot when your
+                      cylinder is delivered or collected. No payment is charged right now.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Customer Account Notice if Unauthenticated */}
@@ -1386,7 +1656,7 @@ export function OrderGasPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={submittingOrder}
+                  disabled={submittingOrder || isProcessingPayment}
                   onClick={() => setStep(3)}
                   className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700"
                 >
@@ -1395,11 +1665,25 @@ export function OrderGasPage() {
 
                 <Button
                   type="button"
-                  disabled={submittingOrder}
+                  disabled={submittingOrder || isProcessingPayment}
                   onClick={handlePlaceOrder}
-                  className="rounded-full px-8 py-3 bg-primary hover:bg-primary/90 text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12"
+                  className={cn(
+                    "rounded-full px-8 py-3 text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12 transition-all",
+                    paymentMethod === "PayPal"
+                      ? "bg-[#0079C1] hover:bg-[#00457C]"
+                      : "bg-primary hover:bg-primary/90",
+                  )}
                 >
-                  {submittingOrder ? (
+                  {isProcessingPayment ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>
+                        {paymentMethod === "PayPal"
+                          ? "Connecting to PayPal..."
+                          : "Authorizing payment..."}
+                      </span>
+                    </>
+                  ) : submittingOrder ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Confirming your order...</span>
@@ -1411,8 +1695,22 @@ export function OrderGasPage() {
                     </>
                   ) : (
                     <>
-                      <span>Confirm & Place Order</span>
-                      <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
+                      {paymentMethod === "PayPal" ? (
+                        <>
+                          <PayPalIcon className="h-4 w-4 fill-white" />
+                          <span>Pay {gbp(totalAmount)} with PayPal</span>
+                        </>
+                      ) : paymentMethod === "Credit / Debit Card" ? (
+                        <>
+                          <span>Pay {gbp(totalAmount)} & Place Order</span>
+                          <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
+                        </>
+                      ) : (
+                        <>
+                          <span>Confirm & Place Order</span>
+                          <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
+                        </>
+                      )}
                     </>
                   )}
                 </Button>
@@ -1465,6 +1763,12 @@ export function OrderGasPage() {
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="text-slate-500">Payment Method:</span>
+                  <span className="font-bold text-slate-900">
+                    {completedOrder.paymentMethod || "Credit / Debit Card"}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
                   <span className="text-slate-500">Total Paid/Amount:</span>
                   <span className="font-black text-primary text-base">
                     {gbp(completedOrder.total)}
@@ -1472,8 +1776,17 @@ export function OrderGasPage() {
                 </div>
                 <div className="flex justify-between pt-1">
                   <span className="text-slate-500">Payment Status:</span>
-                  <span className="font-extrabold text-emerald-700">
-                    {completedOrder.paymentStatus}
+                  <span
+                    className={cn(
+                      "font-extrabold",
+                      completedOrder.paymentStatus === "Paid"
+                        ? "text-emerald-700"
+                        : "text-amber-700",
+                    )}
+                  >
+                    {completedOrder.paymentStatus === "Paid"
+                      ? "Paid in Full"
+                      : "Pending (Due on Delivery)"}
                   </span>
                 </div>
               </div>

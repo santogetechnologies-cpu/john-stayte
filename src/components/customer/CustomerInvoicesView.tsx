@@ -34,8 +34,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { gbp, useStore } from "@/lib/store";
+import { gbp, useStore, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 
 export function CustomerInvoicesView() {
   const { user } = useStore();
@@ -731,8 +732,19 @@ export function CustomerInvoicesView() {
                       ? `${selectedInvoiceOrder.delivery_address.street || ""}, ${selectedInvoiceOrder.delivery_address.postcode || ""}`
                       : selectedInvoiceOrder.delivery_address || "Gloucestershire Delivery Address"}
                   </p>
-                  <p className="text-[11px] text-emerald-700 font-bold mt-1">
-                    Payment Status: Paid in Full
+                  <p
+                    className={cn(
+                      "text-[11px] font-bold mt-1",
+                      selectedInvoiceOrder.payment_status === "Paid"
+                        ? "text-emerald-700"
+                        : "text-amber-700",
+                    )}
+                  >
+                    Payment Status:{" "}
+                    {selectedInvoiceOrder.payment_status === "Paid"
+                      ? "Paid in Full"
+                      : "Payment Due on Delivery"}{" "}
+                    ({getOrderPaymentMethod(selectedInvoiceOrder)})
                   </p>
                 </div>
               </div>

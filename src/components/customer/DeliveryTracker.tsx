@@ -14,29 +14,35 @@ import {
   ArrowLeft,
   ChevronRight,
   ExternalLink,
+  ShieldCheck,
+  Flame,
+  KeyRound,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
+import { getCustomerDeliveryOtp } from "@/lib/delivery-agent-service";
+import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 
-interface MeeshoDeliveryTrackerProps {
+export interface DeliveryTrackerProps {
   order: any;
   deliveryAssignment?: any;
   productInfo?: any;
   onClose?: () => void;
 }
 
-export function MeeshoDeliveryTracker({
+export function DeliveryTracker({
   order: initialOrder,
   deliveryAssignment: initialAssignment,
   productInfo: initialProductInfo,
   onClose,
-}: MeeshoDeliveryTrackerProps) {
+}: DeliveryTrackerProps) {
   const [order, setOrder] = useState<any>(initialOrder);
   const [assignment, setAssignment] = useState<any>(initialAssignment);
   const [productInfo, setProductInfo] = useState<any>(initialProductInfo);
+  const [customerOtp, setCustomerOtp] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -68,6 +74,18 @@ export function MeeshoDeliveryTracker({
     loadProduct();
   }, [order, productInfo]);
 
+  // Load customer OTP for verification
+  useEffect(() => {
+    async function loadOtp() {
+      if (!order?.id) return;
+      try {
+        const code = await getCustomerDeliveryOtp(order.id);
+        setCustomerOtp(code);
+      } catch {}
+    }
+    loadOtp();
+  }, [order?.id, assignment]);
+
   // Real-time Supabase subscription on this order & delivery assignment
   useEffect(() => {
     if (!order?.id) return;
@@ -89,13 +107,16 @@ export function MeeshoDeliveryTracker({
           .maybeSingle();
 
         if (updatedAssignment) setAssignment(updatedAssignment);
+
+        const code = await getCustomerDeliveryOtp(order.id);
+        setCustomerOtp(code);
       } catch (e) {
         console.warn("Realtime order update error:", e);
       }
     };
 
     const channel = supabase
-      .channel(`customer_meesho_tracking_${order.id}`)
+      .channel(`customer_delivery_tracking_${order.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders", filter: `id=eq.${order.id}` },
@@ -372,7 +393,7 @@ export function MeeshoDeliveryTracker({
           <button
             onClick={handleManualRefresh}
             disabled={refreshing}
-            className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
             title="Refresh status"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin text-primary" : ""}`} />
@@ -380,7 +401,7 @@ export function MeeshoDeliveryTracker({
         </div>
       </div>
 
-      {/* 2. Meesho-Style Product Info Card */}
+      {/* 2. Product Info Card */}
       <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-slate-50/80 border border-slate-100">
         <div className="h-16 w-16 rounded-xl border border-slate-200/80 bg-white overflow-hidden shrink-0 flex items-center justify-center p-1">
           <img
@@ -463,7 +484,45 @@ export function MeeshoDeliveryTracker({
         </div>
       )}
 
-      {/* 4. The Simple Meesho Status Timeline */}
+      {/* Cylinder Exchange Informational Notice (Requirement 22) */}
+      {(() => {
+        const req = getOrderCylinderExchangeRequirement(order);
+        if (req.required && currentStageIndex !== 4 && !isCancelled) {
+          return (
+            <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                <Flame className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>Empty Cylinder Ready for Collection</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+                Please keep your empty cylinder ready for collection when your order is delivered.
+              </p>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Customer 6-Digit Delivery OTP Card (Requirement 12) */}
+      {customerOtp && currentStageIndex !== 4 && !isCancelled && (
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-white to-blue-50/80 border border-indigo-200/90 text-center space-y-2.5 shadow-2xs">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-950">
+            <KeyRound className="h-4 w-4 text-indigo-600" />
+            <span>Delivery Verification Code</span>
+          </div>
+          <p className="text-[11px] text-indigo-800 font-medium max-w-xs mx-auto">
+            Please share this 6-digit OTP with your driver upon arrival to authorize cylinder drop-off:
+          </p>
+          <div className="inline-block px-5 py-2 rounded-xl bg-white border border-indigo-300 font-mono font-black text-2xl tracking-[0.25em] text-indigo-950 shadow-xs">
+            {customerOtp}
+          </div>
+          <p className="text-[10px] text-indigo-600 font-semibold">
+            Single-use code · Share with driver upon handover
+          </p>
+        </div>
+      )}
+
+      {/* 4. Status Timeline */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-2xs space-y-4">
         <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 pb-1">
           Delivery Status
@@ -476,7 +535,6 @@ export function MeeshoDeliveryTracker({
           </div>
         ) : (
           <div className="relative pl-6 py-1 space-y-6">
-            {/* Thin slender connecting line (NOT huge line) */}
             <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-slate-200 z-0" />
 
             {timelineSteps.map((step, idx) => {
@@ -486,7 +544,6 @@ export function MeeshoDeliveryTracker({
 
               return (
                 <div key={step.title} className="relative flex items-start gap-3.5 z-10">
-                  {/* Small clean status indicator/check */}
                   <div className="relative -ml-[21px] shrink-0">
                     <div
                       className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
@@ -507,7 +564,6 @@ export function MeeshoDeliveryTracker({
                     </div>
                   </div>
 
-                  {/* Step Title & Timestamp */}
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-center justify-between gap-2">
                       <p

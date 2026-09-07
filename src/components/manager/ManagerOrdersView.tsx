@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ShoppingBag, Search, Eye, Filter, X, Clock, PackageCheck } from "lucide-react";
+import { ShoppingBag, Search, Eye, Filter, X, Clock, PackageCheck, Truck, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -373,11 +373,82 @@ export function ManagerOrdersView() {
                 <SheetTitle className="font-black text-lg">
                   Order #{selectedOrder.order_number || selectedOrder.id.slice(0, 8)}
                 </SheetTitle>
+                <p className="text-muted-foreground text-[11px]">
+                  Placed on {new Date(selectedOrder.created_at).toLocaleString("en-GB")}
+                </p>
               </SheetHeader>
+
+              {/* DELIVERY ASSIGNMENT SECTION */}
+              <div className="p-4 rounded-2xl border bg-slate-50/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-primary" /> Delivery Assignment
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`font-bold text-[10px] ${
+                      selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {selectedOrder.assigned_driver &&
+                    selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                      ? "Assigned"
+                      : "Unassigned"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Assigned Driver / Agent</p>
+                    <p className="font-extrabold text-foreground text-sm mt-0.5">
+                      {selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? selectedOrder.assigned_driver
+                        : "No Driver Assigned"}
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="rounded-full text-xs font-bold gap-1 bg-primary hover:bg-primary/90 shadow-2xs"
+                  >
+                    <Link to="/manager/delivery-assignment">
+                      {selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? "Reassign"
+                        : "Assign Agent"}{" "}
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
               <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
                 <p className="font-bold text-foreground">Customer</p>
                 <p className="text-muted-foreground">{selectedOrder.customer_name}</p>
                 <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+                {selectedOrder.shipping_address && (
+                  <p className="text-muted-foreground mt-1">{selectedOrder.shipping_address}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-bold text-foreground">Order Items</p>
+                {selectedOrder.order_items?.map((item: any) => (
+                  <div key={item.id} className="flex justify-between py-1 border-b border-slate-100 last:border-0">
+                    <span>
+                      {item.product_name} x {item.quantity}
+                    </span>
+                    <span className="font-bold">{gbp(Number(item.total_price))}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-2 flex justify-between font-black text-foreground">
+                  <span>Total Amount</span>
+                  <span>{gbp(Number(selectedOrder.total))}</span>
+                </div>
               </div>
             </div>
           )}

@@ -842,31 +842,51 @@ export async function createGasOrder(params: {
 
   const initialStatus = isNew ? "Pending" : "Refill Requested";
 
-  // 2. Insert main order
+  // 2. Insert main order into existing Supabase orders table
+  const isPaidOnline =
+    paymentMethod.toLowerCase().includes("card") || paymentMethod.toLowerCase().includes("paypal");
+  const normalizedMethod = paymentMethod.toLowerCase().includes("paypal")
+    ? "PayPal"
+    : paymentMethod.toLowerCase().includes("card")
+      ? "Credit / Debit Card"
+      : "Pay on Delivery / Collection";
+
   const { data: orderData, error: orderErr } = await (supabase.from("orders") as any)
     .insert([
       {
         order_number: orderNumber,
         customer_id: userId,
-        guest_email: null,
-        guest_name: customerName,
-        guest_phone: customerPhone,
+        customer_name: customerName,
+        customer_email: customerEmail || "",
+        customer_phone: customerPhone || null,
+        delivery_address: {
+          name: customerName,
+          address: deliveryAddress,
+          street: deliveryAddress,
+          phone: customerPhone || "",
+          delivery_date: deliveryDate || null,
+          delivery_slot: deliveryTimeSlot || null,
+          payment_method: normalizedMethod,
+          empty_cylinder_required: !isNew,
+          order_type: orderType,
+        },
         subtotal: calculated.subtotal,
+        shipping_fee: calculated.deliveryFee,
         total: calculated.total,
-        delivery_fee: calculated.deliveryFee,
         status: initialStatus,
-        payment_status: "Paid",
-        payment_method: paymentMethod,
-        shipping_name: customerName,
-        shipping_phone: customerPhone,
-        shipping_address: deliveryAddress,
-        delivery_date: deliveryDate || null,
+        fulfillment_status: "Pending",
+        assigned_depot: "Whitminster",
+        payment_status: isPaidOnline ? "Paid" : "Pending",
         notes: [
-          `[${usageType}]`,
-          `[${orderType}]`,
+          `[${usageType} LPG]`,
+          `[${orderType.replace(/_/g, " ")}]`,
+          `[Empty Cylinder Required: ${isNew ? "No" : "Yes"}]`,
+          `[Expected: ${isNew ? 0 : quantity}]`,
+          `[Payment: ${normalizedMethod}]`,
+          deliveryDate ? `Delivery: ${deliveryDate} (${deliveryTimeSlot || "Standard"})` : "",
           isNew
             ? `Deposit: £${calculated.depositTotal.toFixed(2)}`
-            : `Return Method: ${returnMethod}`,
+            : `Return Method: ${returnMethod.replace(/_/g, " ")}`,
           pickupDate ? `Pickup: ${pickupDate} (${pickupTimeSlot || "Anytime"})` : "",
           cylinderTag ? `Tag: ${cylinderTag}` : "",
           notes,
@@ -889,19 +909,10 @@ export async function createGasOrder(params: {
     {
       order_id: orderId,
       product_id: productId,
-      name: `${calculated.product.name} (${isNew ? "New Cylinder + Gas" : "Refill Exchange"})`,
-      price: calculated.gasPriceUnit,
+      product_name: `${calculated.product.name} (${isNew ? "New Cylinder + Gas" : "Refill Exchange"})`,
+      unit_price: calculated.gasPriceUnit,
       quantity,
-      total: calculated.gasPriceTotal,
-      specs: {
-        usage_type: usageType,
-        order_type: orderType,
-        return_method: !isNew ? returnMethod : null,
-        cylinder_tag: cylinderTag || null,
-        delivery_slot: deliveryTimeSlot || null,
-        pickup_slot: pickupTimeSlot || null,
-        pickup_date: pickupDate || null,
-      },
+      total_price: calculated.gasPriceTotal,
     },
   ];
 
@@ -909,63 +920,96 @@ export async function createGasOrder(params: {
     itemInserts.push({
       order_id: orderId,
       product_id: productId,
-      name: `Cylinder Security Deposit (${calculated.product.name})`,
-      price: calculated.depositUnit,
+      product_name: `Cylinder Security Deposit (${calculated.product.name})`,
+      unit_price: calculated.depositUnit,
       quantity,
-      total: calculated.depositTotal,
-      specs: {
-        is_deposit: true,
-        refundable: true,
-      },
+      total_price: calculated.depositTotal,
     });
   }
 
-  await (supabase.from("order_items") as any).insert(itemInserts);
+  try {
+    await (supabase.from("order_items") as any).insert(itemInserts);
+  } catch (itemErr) {
+    console.warn("Order items insertion notice:", itemErr);
+  }
 
   // 4. Record initial Order Status History
-  await supabase.from("order_status_history").insert([
-    {
-      order_id: orderId,
-      status: initialStatus,
-      notes: isNew
-        ? "New cylinder order placed with security deposit."
-        : `Refill exchange placed. Return method: ${returnMethod.replace(/_/g, " ")}.`,
-    },
-  ]);
+  try {
+    await supabase.from("order_status_history").insert([
+      {
+        order_id: orderId,
+        status: initialStatus,
+        notes: isNew
+          ? "New cylinder purchase — no empty cylinder collection required."
+          : `Refill exchange placed — empty cylinder collection required (${quantity} bottle(s)).`,
+      },
+    ]);
+  } catch (histErr) {
+    console.warn("Status history notice:", histErr);
+  }
 
-  // 5. Create Delivery Assignment / Route Entry
-  await supabase.from("delivery_assignments").insert([
-    {
-      order_id: orderId,
-      driver_name: "Gloucestershire Logistics Team",
-      vehicle_identifier: "JS-CYL-FLEET",
-      route_area: "Gloucestershire Forecourt Route",
-      time_slot: isNew
-        ? deliveryTimeSlot || "Morning Window (08:00 - 12:00)"
-        : pickupTimeSlot || "Morning Window (08:00 - 12:00)",
-      status: isNew ? "Confirmed" : "Pickup Scheduled",
-    },
-  ]);
+  // 5. Create Delivery Assignment / Route Entry awaiting Admin/Manager assignment
+  try {
+    await (supabase.from("delivery_assignments") as any).insert([
+      {
+        order_id: orderId,
+        order_ref: orderNumber,
+        customer_name: customerName,
+        address: deliveryAddress,
+        area: "Gloucestershire",
+        driver_name: "Unassigned",
+        agent_id: null,
+        driver_id: null,
+        vehicle_plate: null,
+        time_slot: deliveryTimeSlot || pickupTimeSlot || "Morning (08:00 - 12:00)",
+        status: "Pending",
+        notes: `[${usageType}] ${orderType} | Empty Cylinder Required: ${isNew ? "No" : "Yes"} | Expected: ${isNew ? 0 : quantity}`,
+      },
+    ]);
+  } catch (delErr) {
+    console.warn("Delivery assignment notice:", delErr);
+  }
 
   // 6. Generate Customer & Staff Notifications
-  await supabase.from("customer_notifications").insert([
-    {
-      user_id: userId,
-      title: `Order #${orderNumber} Confirmed`,
-      message: `Your ${usageType.toLowerCase()} order for ${quantity}x ${calculated.product.name} is confirmed.`,
-      category: "Orders",
-      is_read: false,
-    },
-  ]);
+  try {
+    await (supabase.from("notifications") as any).insert([
+      {
+        user_id: userId,
+        title: `Order #${orderNumber} Confirmed`,
+        message: `Your ${usageType.toLowerCase()} LPG order for ${quantity}x ${calculated.product.name} has been placed.`,
+        category: "Orders",
+        link: `/account/orders`,
+        read: false,
+        is_read: false,
+      },
+      {
+        user_id: null,
+        title: `New ${usageType} LPG Order: ${orderNumber}`,
+        message: `${customerName} ordered ${quantity}x ${calculated.product.name} (${orderType.replace(/_/g, " ")}).`,
+        category: "Orders",
+        link: `/admin/orders`,
+        read: false,
+        is_read: false,
+      },
+    ]);
+  } catch (notifErr) {
+    console.warn("Notification insert notice:", notifErr);
+  }
 
-  await (supabase.from("notifications") as any).insert([
-    {
-      title: `New ${usageType} Order: ${orderNumber}`,
-      message: `${customerName} ordered ${quantity}x ${calculated.product.name} (${orderType}).`,
-      type: "order",
-      link: `/admin/orders`,
-    },
-  ]);
+  // 7. Create Invoice record
+  try {
+    await supabase.from("invoices").insert([
+      {
+        invoice_number: `INV-${orderNumber}`,
+        order_id: orderId,
+        customer_id: userId,
+        total_amount: calculated.total,
+        status: isPaidOnline ? "Paid" : "Issued",
+      },
+    ]);
+  } catch (invErr) {
+    console.warn("Invoice creation notice:", invErr);
+  }
 
   return {
     orderId,

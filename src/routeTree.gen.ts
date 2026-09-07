@@ -17,6 +17,7 @@ import { Route as BlogRouteImport } from './routes/blog'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as FillingStationsRouteImport } from './routes/filling-stations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManagerRouteImport } from './routes/manager'
@@ -32,6 +33,7 @@ import { Route as AccountInvoicesRouteImport } from './routes/account.invoices'
 import { Route as AccountNotificationsRouteImport } from './routes/account.notifications'
 import { Route as AccountOrdersRouteImport } from './routes/account.orders'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
+import { Route as AccountReturnsRouteImport } from './routes/account.returns'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
 import { Route as AccountSupportRouteImport } from './routes/account.support'
 import { Route as AccountTrackingRouteImport } from './routes/account.tracking'
@@ -47,6 +49,7 @@ import { Route as AdminCmsRouteImport } from './routes/admin.cms'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin.deliveries'
+import { Route as AdminDeliveryAgentsRouteImport } from './routes/admin.delivery-agents'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin.enquiries'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
@@ -64,9 +67,21 @@ import { Route as AdminStationsRouteImport } from './routes/admin.stations'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
+import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
+import { Route as DeliveryCompletedRouteImport } from './routes/delivery.completed'
+import { Route as DeliveryDeliveriesRouteImport } from './routes/delivery.deliveries'
+import { Route as DeliveryIssuesRouteImport } from './routes/delivery.issues'
+import { Route as DeliveryMyDeliveriesRouteImport } from './routes/delivery.my-deliveries'
+import { Route as DeliveryNotificationsRouteImport } from './routes/delivery.notifications'
+import { Route as DeliveryProfileRouteImport } from './routes/delivery.profile'
+import { Route as DeliveryReturnsRouteImport } from './routes/delivery.returns'
+import { Route as DeliverySupportRouteImport } from './routes/delivery.support'
+import { Route as DeliveryTodayRouteImport } from './routes/delivery.today'
 import { Route as ManagerIndexRouteImport } from './routes/manager.index'
 import { Route as ManagerCustomersRouteImport } from './routes/manager.customers'
 import { Route as ManagerDeliveriesRouteImport } from './routes/manager.deliveries'
+import { Route as ManagerDeliveryAgentsRouteImport } from './routes/manager.delivery-agents'
+import { Route as ManagerDeliveryAssignmentRouteImport } from './routes/manager.delivery-assignment'
 import { Route as ManagerEnquiriesRouteImport } from './routes/manager.enquiries'
 import { Route as ManagerInventoryRouteImport } from './routes/manager.inventory'
 import { Route as ManagerNotificationsRouteImport } from './routes/manager.notifications'
@@ -122,6 +137,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryRoute = DeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FillingStationsRoute = FillingStationsRouteImport.update({
@@ -199,6 +219,11 @@ const AccountProfileRoute = AccountProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AccountRoute,
 } as any)
+const AccountReturnsRoute = AccountReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => AccountRoute,
+} as any)
 const AccountSettingsRoute = AccountSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -272,6 +297,11 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
   id: '/deliveries',
   path: '/deliveries',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliveryAgentsRoute = AdminDeliveryAgentsRouteImport.update({
+  id: '/delivery-agents',
+  path: '/delivery-agents',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
@@ -359,6 +389,56 @@ const CategoriesSlugRoute = CategoriesSlugRouteImport.update({
   path: '/categories/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeliveryIndexRoute = DeliveryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryCompletedRoute = DeliveryCompletedRouteImport.update({
+  id: '/completed',
+  path: '/completed',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryDeliveriesRoute = DeliveryDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryIssuesRoute = DeliveryIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryMyDeliveriesRoute = DeliveryMyDeliveriesRouteImport.update({
+  id: '/my-deliveries',
+  path: '/my-deliveries',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryNotificationsRoute = DeliveryNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryProfileRoute = DeliveryProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryReturnsRoute = DeliveryReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliverySupportRoute = DeliverySupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryTodayRoute = DeliveryTodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => DeliveryRoute,
+} as any)
 const ManagerIndexRoute = ManagerIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -374,6 +454,17 @@ const ManagerDeliveriesRoute = ManagerDeliveriesRouteImport.update({
   path: '/deliveries',
   getParentRoute: () => ManagerRoute,
 } as any)
+const ManagerDeliveryAgentsRoute = ManagerDeliveryAgentsRouteImport.update({
+  id: '/delivery-agents',
+  path: '/delivery-agents',
+  getParentRoute: () => ManagerRoute,
+} as any)
+const ManagerDeliveryAssignmentRoute =
+  ManagerDeliveryAssignmentRouteImport.update({
+    id: '/delivery-assignment',
+    path: '/delivery-assignment',
+    getParentRoute: () => ManagerRoute,
+  } as any)
 const ManagerEnquiriesRoute = ManagerEnquiriesRouteImport.update({
   id: '/enquiries',
   path: '/enquiries',
@@ -464,6 +555,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
@@ -478,6 +570,7 @@ export interface FileRoutesByFullPath {
   '/account/notifications': typeof AccountNotificationsRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/account/profile': typeof AccountProfileRoute
+  '/account/returns': typeof AccountReturnsRoute
   '/account/settings': typeof AccountSettingsRoute
   '/account/support': typeof AccountSupportRoute
   '/account/tracking': typeof AccountTrackingRoute
@@ -492,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -508,8 +602,19 @@ export interface FileRoutesByFullPath {
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/delivery/completed': typeof DeliveryCompletedRoute
+  '/delivery/deliveries': typeof DeliveryDeliveriesRoute
+  '/delivery/issues': typeof DeliveryIssuesRoute
+  '/delivery/my-deliveries': typeof DeliveryMyDeliveriesRoute
+  '/delivery/notifications': typeof DeliveryNotificationsRoute
+  '/delivery/profile': typeof DeliveryProfileRoute
+  '/delivery/returns': typeof DeliveryReturnsRoute
+  '/delivery/support': typeof DeliverySupportRoute
+  '/delivery/today': typeof DeliveryTodayRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
+  '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
+  '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
@@ -523,6 +628,7 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/delivery/': typeof DeliveryIndexRoute
   '/manager/': typeof ManagerIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/account/orders/$orderId': typeof AccountOrdersOrderIdRoute
@@ -549,6 +655,7 @@ export interface FileRoutesByTo {
   '/account/invoices': typeof AccountInvoicesRoute
   '/account/notifications': typeof AccountNotificationsRoute
   '/account/profile': typeof AccountProfileRoute
+  '/account/returns': typeof AccountReturnsRoute
   '/account/settings': typeof AccountSettingsRoute
   '/account/support': typeof AccountSupportRoute
   '/account/tracking': typeof AccountTrackingRoute
@@ -563,6 +670,7 @@ export interface FileRoutesByTo {
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -579,8 +687,19 @@ export interface FileRoutesByTo {
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/delivery/completed': typeof DeliveryCompletedRoute
+  '/delivery/deliveries': typeof DeliveryDeliveriesRoute
+  '/delivery/issues': typeof DeliveryIssuesRoute
+  '/delivery/my-deliveries': typeof DeliveryMyDeliveriesRoute
+  '/delivery/notifications': typeof DeliveryNotificationsRoute
+  '/delivery/profile': typeof DeliveryProfileRoute
+  '/delivery/returns': typeof DeliveryReturnsRoute
+  '/delivery/support': typeof DeliverySupportRoute
+  '/delivery/today': typeof DeliveryTodayRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
+  '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
+  '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
@@ -594,6 +713,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
   '/blog': typeof BlogIndexRoute
+  '/delivery': typeof DeliveryIndexRoute
   '/manager': typeof ManagerIndexRoute
   '/products': typeof ProductsIndexRoute
   '/account/orders/$orderId': typeof AccountOrdersOrderIdRoute
@@ -612,6 +732,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
@@ -626,6 +747,7 @@ export interface FileRoutesById {
   '/account/notifications': typeof AccountNotificationsRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/account/profile': typeof AccountProfileRoute
+  '/account/returns': typeof AccountReturnsRoute
   '/account/settings': typeof AccountSettingsRoute
   '/account/support': typeof AccountSupportRoute
   '/account/tracking': typeof AccountTrackingRoute
@@ -640,6 +762,7 @@ export interface FileRoutesById {
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -656,8 +779,19 @@ export interface FileRoutesById {
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/delivery/completed': typeof DeliveryCompletedRoute
+  '/delivery/deliveries': typeof DeliveryDeliveriesRoute
+  '/delivery/issues': typeof DeliveryIssuesRoute
+  '/delivery/my-deliveries': typeof DeliveryMyDeliveriesRoute
+  '/delivery/notifications': typeof DeliveryNotificationsRoute
+  '/delivery/profile': typeof DeliveryProfileRoute
+  '/delivery/returns': typeof DeliveryReturnsRoute
+  '/delivery/support': typeof DeliverySupportRoute
+  '/delivery/today': typeof DeliveryTodayRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
+  '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
+  '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
@@ -671,6 +805,7 @@ export interface FileRoutesById {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/delivery/': typeof DeliveryIndexRoute
   '/manager/': typeof ManagerIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/account/orders/$orderId': typeof AccountOrdersOrderIdRoute
@@ -690,6 +825,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/delivery'
     | '/filling-stations'
     | '/login'
     | '/manager'
@@ -704,6 +840,7 @@ export interface FileRouteTypes {
     | '/account/notifications'
     | '/account/orders'
     | '/account/profile'
+    | '/account/returns'
     | '/account/settings'
     | '/account/support'
     | '/account/tracking'
@@ -718,6 +855,7 @@ export interface FileRouteTypes {
     | '/admin/coupons'
     | '/admin/customers'
     | '/admin/deliveries'
+    | '/admin/delivery-agents'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -734,8 +872,19 @@ export interface FileRouteTypes {
     | '/admin/stations'
     | '/blog/$slug'
     | '/categories/$slug'
+    | '/delivery/completed'
+    | '/delivery/deliveries'
+    | '/delivery/issues'
+    | '/delivery/my-deliveries'
+    | '/delivery/notifications'
+    | '/delivery/profile'
+    | '/delivery/returns'
+    | '/delivery/support'
+    | '/delivery/today'
     | '/manager/customers'
     | '/manager/deliveries'
+    | '/manager/delivery-agents'
+    | '/manager/delivery-assignment'
     | '/manager/enquiries'
     | '/manager/inventory'
     | '/manager/notifications'
@@ -749,6 +898,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/blog/'
+    | '/delivery/'
     | '/manager/'
     | '/products/'
     | '/account/orders/$orderId'
@@ -775,6 +925,7 @@ export interface FileRouteTypes {
     | '/account/invoices'
     | '/account/notifications'
     | '/account/profile'
+    | '/account/returns'
     | '/account/settings'
     | '/account/support'
     | '/account/tracking'
@@ -789,6 +940,7 @@ export interface FileRouteTypes {
     | '/admin/coupons'
     | '/admin/customers'
     | '/admin/deliveries'
+    | '/admin/delivery-agents'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -805,8 +957,19 @@ export interface FileRouteTypes {
     | '/admin/stations'
     | '/blog/$slug'
     | '/categories/$slug'
+    | '/delivery/completed'
+    | '/delivery/deliveries'
+    | '/delivery/issues'
+    | '/delivery/my-deliveries'
+    | '/delivery/notifications'
+    | '/delivery/profile'
+    | '/delivery/returns'
+    | '/delivery/support'
+    | '/delivery/today'
     | '/manager/customers'
     | '/manager/deliveries'
+    | '/manager/delivery-agents'
+    | '/manager/delivery-assignment'
     | '/manager/enquiries'
     | '/manager/inventory'
     | '/manager/notifications'
@@ -820,6 +983,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/blog'
+    | '/delivery'
     | '/manager'
     | '/products'
     | '/account/orders/$orderId'
@@ -837,6 +1001,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/delivery'
     | '/filling-stations'
     | '/login'
     | '/manager'
@@ -851,6 +1016,7 @@ export interface FileRouteTypes {
     | '/account/notifications'
     | '/account/orders'
     | '/account/profile'
+    | '/account/returns'
     | '/account/settings'
     | '/account/support'
     | '/account/tracking'
@@ -865,6 +1031,7 @@ export interface FileRouteTypes {
     | '/admin/coupons'
     | '/admin/customers'
     | '/admin/deliveries'
+    | '/admin/delivery-agents'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -881,8 +1048,19 @@ export interface FileRouteTypes {
     | '/admin/stations'
     | '/blog/$slug'
     | '/categories/$slug'
+    | '/delivery/completed'
+    | '/delivery/deliveries'
+    | '/delivery/issues'
+    | '/delivery/my-deliveries'
+    | '/delivery/notifications'
+    | '/delivery/profile'
+    | '/delivery/returns'
+    | '/delivery/support'
+    | '/delivery/today'
     | '/manager/customers'
     | '/manager/deliveries'
+    | '/manager/delivery-agents'
+    | '/manager/delivery-assignment'
     | '/manager/enquiries'
     | '/manager/inventory'
     | '/manager/notifications'
@@ -896,6 +1074,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/blog/'
+    | '/delivery/'
     | '/manager/'
     | '/products/'
     | '/account/orders/$orderId'
@@ -914,6 +1093,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
+  DeliveryRoute: typeof DeliveryRouteWithChildren
   FillingStationsRoute: typeof FillingStationsRoute
   LoginRoute: typeof LoginRoute
   ManagerRoute: typeof ManagerRouteWithChildren
@@ -982,6 +1162,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery': {
+      id: '/delivery'
+      path: '/delivery'
+      fullPath: '/delivery'
+      preLoaderRoute: typeof DeliveryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/filling-stations': {
@@ -1089,6 +1276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountProfileRouteImport
       parentRoute: typeof AccountRoute
     }
+    '/account/returns': {
+      id: '/account/returns'
+      path: '/returns'
+      fullPath: '/account/returns'
+      preLoaderRoute: typeof AccountReturnsRouteImport
+      parentRoute: typeof AccountRoute
+    }
     '/account/settings': {
       id: '/account/settings'
       path: '/settings'
@@ -1192,6 +1386,13 @@ declare module '@tanstack/react-router' {
       path: '/deliveries'
       fullPath: '/admin/deliveries'
       preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/delivery-agents': {
+      id: '/admin/delivery-agents'
+      path: '/delivery-agents'
+      fullPath: '/admin/delivery-agents'
+      preLoaderRoute: typeof AdminDeliveryAgentsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/enquiries': {
@@ -1313,6 +1514,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoriesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/delivery/': {
+      id: '/delivery/'
+      path: '/'
+      fullPath: '/delivery/'
+      preLoaderRoute: typeof DeliveryIndexRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/completed': {
+      id: '/delivery/completed'
+      path: '/completed'
+      fullPath: '/delivery/completed'
+      preLoaderRoute: typeof DeliveryCompletedRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/deliveries': {
+      id: '/delivery/deliveries'
+      path: '/deliveries'
+      fullPath: '/delivery/deliveries'
+      preLoaderRoute: typeof DeliveryDeliveriesRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/issues': {
+      id: '/delivery/issues'
+      path: '/issues'
+      fullPath: '/delivery/issues'
+      preLoaderRoute: typeof DeliveryIssuesRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/my-deliveries': {
+      id: '/delivery/my-deliveries'
+      path: '/my-deliveries'
+      fullPath: '/delivery/my-deliveries'
+      preLoaderRoute: typeof DeliveryMyDeliveriesRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/notifications': {
+      id: '/delivery/notifications'
+      path: '/notifications'
+      fullPath: '/delivery/notifications'
+      preLoaderRoute: typeof DeliveryNotificationsRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/profile': {
+      id: '/delivery/profile'
+      path: '/profile'
+      fullPath: '/delivery/profile'
+      preLoaderRoute: typeof DeliveryProfileRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/returns': {
+      id: '/delivery/returns'
+      path: '/returns'
+      fullPath: '/delivery/returns'
+      preLoaderRoute: typeof DeliveryReturnsRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/support': {
+      id: '/delivery/support'
+      path: '/support'
+      fullPath: '/delivery/support'
+      preLoaderRoute: typeof DeliverySupportRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/today': {
+      id: '/delivery/today'
+      path: '/today'
+      fullPath: '/delivery/today'
+      preLoaderRoute: typeof DeliveryTodayRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
     '/manager/': {
       id: '/manager/'
       path: '/'
@@ -1332,6 +1603,20 @@ declare module '@tanstack/react-router' {
       path: '/deliveries'
       fullPath: '/manager/deliveries'
       preLoaderRoute: typeof ManagerDeliveriesRouteImport
+      parentRoute: typeof ManagerRoute
+    }
+    '/manager/delivery-agents': {
+      id: '/manager/delivery-agents'
+      path: '/delivery-agents'
+      fullPath: '/manager/delivery-agents'
+      preLoaderRoute: typeof ManagerDeliveryAgentsRouteImport
+      parentRoute: typeof ManagerRoute
+    }
+    '/manager/delivery-assignment': {
+      id: '/manager/delivery-assignment'
+      path: '/delivery-assignment'
+      fullPath: '/manager/delivery-assignment'
+      preLoaderRoute: typeof ManagerDeliveryAssignmentRouteImport
       parentRoute: typeof ManagerRoute
     }
     '/manager/enquiries': {
@@ -1471,6 +1756,7 @@ interface AccountRouteChildren {
   AccountNotificationsRoute: typeof AccountNotificationsRoute
   AccountOrdersRoute: typeof AccountOrdersRouteWithChildren
   AccountProfileRoute: typeof AccountProfileRoute
+  AccountReturnsRoute: typeof AccountReturnsRoute
   AccountSettingsRoute: typeof AccountSettingsRoute
   AccountSupportRoute: typeof AccountSupportRoute
   AccountTrackingRoute: typeof AccountTrackingRoute
@@ -1486,6 +1772,7 @@ const AccountRouteChildren: AccountRouteChildren = {
   AccountNotificationsRoute: AccountNotificationsRoute,
   AccountOrdersRoute: AccountOrdersRouteWithChildren,
   AccountProfileRoute: AccountProfileRoute,
+  AccountReturnsRoute: AccountReturnsRoute,
   AccountSettingsRoute: AccountSettingsRoute,
   AccountSupportRoute: AccountSupportRoute,
   AccountTrackingRoute: AccountTrackingRoute,
@@ -1507,6 +1794,7 @@ interface AdminRouteChildren {
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminDeliveryAgentsRoute: typeof AdminDeliveryAgentsRoute
   AdminEnquiriesRoute: typeof AdminEnquiriesRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
@@ -1538,6 +1826,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCouponsRoute: AdminCouponsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminDeliveryAgentsRoute: AdminDeliveryAgentsRoute,
   AdminEnquiriesRoute: AdminEnquiriesRoute,
   AdminFaqsRoute: AdminFaqsRoute,
   AdminInventoryRoute: AdminInventoryRoute,
@@ -1572,9 +1861,41 @@ const BlogRouteChildren: BlogRouteChildren = {
 
 const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
+interface DeliveryRouteChildren {
+  DeliveryCompletedRoute: typeof DeliveryCompletedRoute
+  DeliveryDeliveriesRoute: typeof DeliveryDeliveriesRoute
+  DeliveryIssuesRoute: typeof DeliveryIssuesRoute
+  DeliveryMyDeliveriesRoute: typeof DeliveryMyDeliveriesRoute
+  DeliveryNotificationsRoute: typeof DeliveryNotificationsRoute
+  DeliveryProfileRoute: typeof DeliveryProfileRoute
+  DeliveryReturnsRoute: typeof DeliveryReturnsRoute
+  DeliverySupportRoute: typeof DeliverySupportRoute
+  DeliveryTodayRoute: typeof DeliveryTodayRoute
+  DeliveryIndexRoute: typeof DeliveryIndexRoute
+}
+
+const DeliveryRouteChildren: DeliveryRouteChildren = {
+  DeliveryCompletedRoute: DeliveryCompletedRoute,
+  DeliveryDeliveriesRoute: DeliveryDeliveriesRoute,
+  DeliveryIssuesRoute: DeliveryIssuesRoute,
+  DeliveryMyDeliveriesRoute: DeliveryMyDeliveriesRoute,
+  DeliveryNotificationsRoute: DeliveryNotificationsRoute,
+  DeliveryProfileRoute: DeliveryProfileRoute,
+  DeliveryReturnsRoute: DeliveryReturnsRoute,
+  DeliverySupportRoute: DeliverySupportRoute,
+  DeliveryTodayRoute: DeliveryTodayRoute,
+  DeliveryIndexRoute: DeliveryIndexRoute,
+}
+
+const DeliveryRouteWithChildren = DeliveryRoute._addFileChildren(
+  DeliveryRouteChildren,
+)
+
 interface ManagerRouteChildren {
   ManagerCustomersRoute: typeof ManagerCustomersRoute
   ManagerDeliveriesRoute: typeof ManagerDeliveriesRoute
+  ManagerDeliveryAgentsRoute: typeof ManagerDeliveryAgentsRoute
+  ManagerDeliveryAssignmentRoute: typeof ManagerDeliveryAssignmentRoute
   ManagerEnquiriesRoute: typeof ManagerEnquiriesRoute
   ManagerInventoryRoute: typeof ManagerInventoryRoute
   ManagerNotificationsRoute: typeof ManagerNotificationsRoute
@@ -1590,6 +1911,8 @@ interface ManagerRouteChildren {
 const ManagerRouteChildren: ManagerRouteChildren = {
   ManagerCustomersRoute: ManagerCustomersRoute,
   ManagerDeliveriesRoute: ManagerDeliveriesRoute,
+  ManagerDeliveryAgentsRoute: ManagerDeliveryAgentsRoute,
+  ManagerDeliveryAssignmentRoute: ManagerDeliveryAssignmentRoute,
   ManagerEnquiriesRoute: ManagerEnquiriesRoute,
   ManagerInventoryRoute: ManagerInventoryRoute,
   ManagerNotificationsRoute: ManagerNotificationsRoute,
@@ -1614,6 +1937,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
+  DeliveryRoute: DeliveryRouteWithChildren,
   FillingStationsRoute: FillingStationsRoute,
   LoginRoute: LoginRoute,
   ManagerRoute: ManagerRouteWithChildren,

@@ -86,26 +86,37 @@ export function CustomerProfileView() {
     setError(null);
     try {
       const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser?.user) {
-        throw new Error("You must be logged in to view your profile.");
+      const rawUid = authUser?.user?.id || user?.id;
+      const isUuid = rawUid && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUid);
+      const currentUid = isUuid ? rawUid : null;
+      const currentEmail = authUser?.user?.email || user?.email;
+
+      if (!currentUid && !currentEmail) {
+        setLoading(false);
+        return;
       }
 
-      setEmail(authUser.user.email || "");
-      setCreatedAt(authUser.user.created_at || null);
-      setEmailVerified(Boolean(authUser.user.email_confirmed_at || authUser.user.confirmed_at));
+      setEmail(currentEmail || "");
+      if (authUser?.user) {
+        setCreatedAt(authUser.user.created_at || null);
+        setEmailVerified(Boolean(authUser.user.email_confirmed_at || authUser.user.confirmed_at));
+      }
 
-      const { data: profile, error: profErr } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", authUser.user.id)
-        .single();
+      let profileQuery = supabase.from("profiles").select("*");
+      if (currentUid) {
+        profileQuery = profileQuery.eq("id", currentUid);
+      } else if (currentEmail) {
+        profileQuery = profileQuery.eq("email", currentEmail);
+      }
+
+      const { data: profile, error: profErr } = await profileQuery.maybeSingle();
 
       if (profErr && profErr.code !== "PGRST116") {
-        throw profErr;
+        console.warn("Notice querying customer profile:", profErr);
       }
 
       if (profile) {
-        setName(profile.full_name || "");
+        setName(profile.full_name || user?.name || "");
         setPhone(profile.phone || "");
         setRole(profile.role || "customer");
         setStatus(profile.status || "Active");
@@ -118,10 +129,13 @@ export function CustomerProfileView() {
             : {};
         setRawPrefs(prefs);
         setAvatarUrl(prefs.avatar_url || null);
+      } else if (user) {
+        setName(user.name || "");
+        setRole(user.role || "customer");
       }
     } catch (err: any) {
-      console.error("Profile query error:", err);
-      setError(err.message || "Failed to query customer profile");
+      console.warn("Profile load notice:", err);
+      setError(err?.message || "Failed to query customer profile");
     } finally {
       setLoading(false);
     }

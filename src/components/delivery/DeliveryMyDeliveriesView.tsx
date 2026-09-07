@@ -1,0 +1,451 @@
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+  Truck,
+  Search,
+  Filter,
+  X,
+  MapPin,
+  Phone,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Flame,
+  ExternalLink,
+  Loader2,
+  PackageCheck,
+  AlertTriangle,
+  RotateCcw,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useStore, gbp } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
+import { getAgentAssignedDeliveries } from "@/lib/delivery-agent-service";
+import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
+import { DeliveryWorkflowModal } from "./DeliveryWorkflowModal";
+import { cn } from "@/lib/utils";
+
+interface DeliveryMyDeliveriesViewProps {
+  initialFilter?: string;
+}
+
+export function DeliveryMyDeliveriesView({ initialFilter = "all" }: DeliveryMyDeliveriesViewProps) {
+  const { user } = useStore();
+  const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>(initialFilter);
+  const [selectedDelivery, setSelectedDelivery] = useState<any | null>(null);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+
+  const loadDeliveries = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getAgentAssignedDeliveries({
+        email: user?.email,
+        name: user?.name,
+        id: user?.id,
+      });
+      setDeliveries(data || []);
+    } catch (err: any) {
+      console.error("Failed to load agent deliveries:", err);
+      toast.error("Failed to load delivery list");
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadDeliveries();
+
+    const channelName = `delivery_my_deliveries_realtime_${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+        loadDeliveries(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadDeliveries(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadDeliveries]);
+
+  // Auto-focus and open workflow modal if orderId search param is provided
+  useEffect(() => {
+    if (typeof window === "undefined" || deliveries.length === 0) return;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetOrderId = urlParams.get("orderId");
+      if (targetOrderId) {
+        const found = deliveries.find((d) => {
+          const ordId = (d.order_id || "").toLowerCase();
+          const ordRef = (d.order_ref || "").toLowerCase();
+          const pOrdId = (d.orders?.id || "").toLowerCase();
+          const pOrdNum = (d.orders?.order_number || "").toLowerCase();
+          const q = targetOrderId.toLowerCase();
+          return (
+            d.id === targetOrderId ||
+            ordId === q ||
+            ordRef === q ||
+            pOrdId === q ||
+            pOrdNum === q
+          );
+        });
+
+        if (found) {
+          setSelectedDelivery(found);
+          setWorkflowOpen(true);
+        }
+      }
+    } catch {}
+  }, [deliveries]);
+
+  // Filter and Search logic
+  const filteredDeliveries = useMemo(() => {
+    return deliveries.filter((d) => {
+      const o = d.orders || {};
+      const status = (d.status || "").toLowerCase();
+      const customerName = (o.customer_name || "").toLowerCase();
+      const orderNum = (o.order_number || d.id).toLowerCase();
+      const routeArea = (d.route_area || "").toLowerCase();
+
+      // Search match
+      const q = searchQuery.toLowerCase().trim();
+      const matchesSearch =
+        !q || customerName.includes(q) || orderNum.includes(q) || routeArea.includes(q);
+
+      if (!matchesSearch) return false;
+
+      // Status filter
+      if (statusFilter === "all") return true;
+      if (statusFilter === "assigned") return status === "assigned";
+      if (statusFilter === "accepted") return status === "accepted";
+      if (statusFilter === "out_for_delivery")
+        return (
+          status === "out for delivery" ||
+          status === "arrived" ||
+          status === "customer verified" ||
+          status === "cylinder handed over"
+        );
+      if (statusFilter === "arrived") return status === "arrived";
+      if (statusFilter === "verification_required")
+        return status === "verification required" || (d.notes && d.notes.includes("Empty Return"));
+      if (statusFilter === "delivered") return status === "delivered" || status === "completed";
+      if (statusFilter === "exception")
+        return status === "exception" || (d.notes && d.notes.includes("[Exception:"));
+
+      return true;
+    });
+  }, [deliveries, searchQuery, statusFilter]);
+
+  const filterTabs = [
+    { id: "all", label: `All (${deliveries.length})` },
+    {
+      id: "assigned",
+      label: `Assigned (${deliveries.filter((d) => (d.status || "").toLowerCase() === "assigned").length})`,
+    },
+    {
+      id: "accepted",
+      label: `Accepted (${deliveries.filter((d) => (d.status || "").toLowerCase() === "accepted").length})`,
+    },
+    {
+      id: "out_for_delivery",
+      label: `Out for Delivery (${deliveries.filter((d) => ["out for delivery", "arrived", "customer verified"].includes((d.status || "").toLowerCase())).length})`,
+    },
+    {
+      id: "delivered",
+      label: `Delivered (${deliveries.filter((d) => ["delivered", "completed"].includes((d.status || "").toLowerCase())).length})`,
+    },
+    {
+      id: "exception",
+      label: `Exceptions (${deliveries.filter((d) => (d.status || "").toLowerCase() === "exception" || (d.notes && d.notes.includes("[Exception:"))).length})`,
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 leading-tight">
+            Assigned Delivery Routes
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">
+            Manage your daily cylinder drops, customer verifications, and empty cylinder verifications.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadDeliveries}
+            className="rounded-full text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-3.5 cursor-pointer"
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Tabs & Search Bar */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-4 shadow-xs space-y-3">
+        {/* Search */}
+        <div className="relative w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by order number, customer name, or delivery location..."
+            className="pl-10 pr-9 rounded-2xl bg-slate-50 border-slate-200 text-xs h-10 font-medium"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+          {filterTabs.map((tab) => (
+            <Button
+              key={tab.id}
+              size="sm"
+              variant={statusFilter === tab.id ? "default" : "outline"}
+              onClick={() => setStatusFilter(tab.id)}
+              className={cn(
+                "rounded-full text-xs font-bold h-8 px-3.5 shrink-0 transition-all cursor-pointer",
+                statusFilter === tab.id
+                  ? "bg-red-600 text-white shadow-xs"
+                  : "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50",
+              )}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Delivery Cards Grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="bg-white rounded-3xl border border-slate-200/80 p-5 space-y-3 animate-pulse shadow-xs"
+            >
+              <div className="h-4 bg-slate-100 rounded-md w-1/3" />
+              <div className="h-5 bg-slate-100 rounded-md w-2/3" />
+              <div className="h-4 bg-slate-100 rounded-md w-full" />
+              <div className="h-9 bg-slate-100 rounded-full w-full" />
+            </div>
+          ))}
+        </div>
+      ) : filteredDeliveries.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-12 text-center shadow-xs space-y-3">
+          <Truck className="mx-auto h-10 w-10 text-slate-300" />
+          <h3 className="font-display font-bold text-base text-slate-900">
+            {searchQuery
+              ? "No deliveries match your search"
+              : statusFilter === "delivered"
+                ? "No completed deliveries yet."
+                : statusFilter !== "all"
+                  ? "No deliveries match this filter"
+                  : "No assigned deliveries"}
+          </h3>
+          <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+            {searchQuery || statusFilter !== "all"
+              ? "Try resetting your search query or switching status filters."
+              : "Your assigned delivery routes will be listed here."}
+          </p>
+          {(searchQuery || statusFilter !== "all") && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchQuery("");
+                setStatusFilter("all");
+              }}
+              className="rounded-full text-xs font-bold mt-2"
+            >
+              Reset Filters
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredDeliveries.map((d) => {
+            const o = d.orders || {};
+            const items = o.order_items || [];
+            const status = d.status || "Assigned";
+
+            let address = "Gloucestershire";
+            if (o.delivery_address) {
+              if (typeof o.delivery_address === "string") address = o.delivery_address;
+              else {
+                const a = o.delivery_address;
+                address = [a.line1 || a.street, a.city, a.postcode || a.postal_code]
+                  .filter(Boolean)
+                  .join(", ");
+              }
+            }
+
+            const statusColor =
+              status === "Delivered"
+                ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                : status === "Exception"
+                  ? "bg-rose-100 text-rose-800 border-rose-300"
+                  : status === "Out for Delivery"
+                    ? "bg-orange-100 text-orange-800 border-orange-300"
+                    : status === "Arrived"
+                      ? "bg-indigo-100 text-indigo-800 border-indigo-300"
+                      : "bg-blue-100 text-blue-800 border-blue-300";
+
+            return (
+              <div
+                key={d.id}
+                className="group bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between space-y-4"
+              >
+                <div className="space-y-3">
+                  {/* Top Header */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono font-black text-xs text-slate-900">
+                      #{o.order_number || d.id.slice(0, 8)}
+                    </span>
+                    <Badge
+                      className={cn(
+                        "text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border shadow-none",
+                        statusColor,
+                      )}
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+
+                  {/* Customer and Contact */}
+                  <div className="space-y-1">
+                    <h3 className="font-display font-extrabold text-sm text-slate-900 group-hover:text-red-600 transition-colors">
+                      {o.customer_name || "Customer"}
+                    </h3>
+                    <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
+                      <span className="flex items-center gap-1">
+                        <Phone className="h-3 w-3 text-slate-400" />{" "}
+                        {o.customer_phone || "07700 900123"}
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-500">
+                        {d.time_slot || "Morning Slot"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Delivery Drop-off Address */}
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 font-medium flex items-start gap-1.5 leading-snug">
+                    <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
+                    <span className="line-clamp-2">{address}</span>
+                  </div>
+
+                  {/* Cylinder Items Details */}
+                  {(() => {
+                    const req = getOrderCylinderExchangeRequirement(d);
+                    return (
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between font-bold text-slate-800">
+                          <span className="flex items-center gap-1.5 truncate">
+                            <Flame className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                            {items.length > 0 ? items[0].product_name : "LPG Cylinder 47kg"}
+                          </span>
+                          <span className="shrink-0">{gbp(o.total || 75.99)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                          <span>
+                            Empty Cylinder:{" "}
+                            {req.required ? (
+                              <strong className="text-amber-700">
+                                Required ({req.expectedQuantity})
+                              </strong>
+                            ) : (
+                              <strong className="text-emerald-700">No (New Purchase)</strong>
+                            )}
+                          </span>
+                          <span className="text-emerald-600 font-bold">Paid Online</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Bottom Actions: Call, Navigate, Advance Workflow */}
+                <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                  <a
+                    href={`tel:${o.customer_phone || "07700900123"}`}
+                    className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shrink-0"
+                    title="Call Customer"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors shrink-0"
+                    title="Navigate in Google Maps"
+                  >
+                    <MapPin className="h-4 w-4" />
+                  </a>
+
+                  {(() => {
+                    const req = getOrderCylinderExchangeRequirement(d);
+                    return (
+                      <Button
+                        onClick={() => {
+                          setSelectedDelivery(d);
+                          setWorkflowOpen(true);
+                        }}
+                        className={cn(
+                          "flex-1 rounded-full font-bold text-xs h-9 shadow-xs transition-all cursor-pointer",
+                          status === "Delivered"
+                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            : "bg-red-600 hover:bg-red-700 text-white shadow-red-600/10 hover:shadow-md",
+                        )}
+                      >
+                        {status === "Assigned" && "Accept"}
+                        {status === "Accepted" && "Start Delivery"}
+                        {status === "Out for Delivery" && "Mark Arrived"}
+                        {status === "Arrived" && "Verify Customer"}
+                        {status === "Customer Verified" && "Handover"}
+                        {status === "Cylinder Handed Over" &&
+                          (req.required ? "Verify Return" : "Confirm")}
+                        {status === "Empty Cylinder Verified" && "Confirm"}
+                        {status === "Delivered" && "Details"}
+                        {status === "Exception" && "Review Issue"}
+                      </Button>
+                    );
+                  })()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Interactive Workflow Modal */}
+      <DeliveryWorkflowModal
+        delivery={selectedDelivery}
+        open={workflowOpen}
+        onOpenChange={setWorkflowOpen}
+        onWorkflowComplete={loadDeliveries}
+      />
+    </div>
+  );
+}

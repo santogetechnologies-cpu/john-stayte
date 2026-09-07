@@ -75,7 +75,14 @@ function LoginPage() {
   // Role routing
   const redirectByRole = (role: string) => {
     navigate({
-      to: role === "admin" ? "/admin" : role === "manager" ? "/manager" : "/account",
+      to:
+        role === "admin"
+          ? "/admin"
+          : role === "manager"
+            ? "/manager"
+            : role === "delivery_agent"
+              ? "/delivery"
+              : "/account",
     });
   };
 

@@ -42,19 +42,30 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
+import { normalizeReviewRecord } from "@/lib/review-service";
 
 interface ReviewRecord {
   id: string;
   product_id: string;
+  order_id?: string | null;
   user_id: string;
   user_name: string;
   rating: number;
+  product_quality_rating?: number | null;
+  delivery_agent_rating?: number | null;
+  delivery_agent_id?: string | null;
+  delivery_agent_name?: string | null;
   comment: string | null;
+  status?: string | null;
   created_at: string;
   product?: {
     name: string;
     slug: string;
     image_url: string | null;
+  };
+  order?: {
+    order_number: string;
+    id: string;
   };
 }
 
@@ -63,6 +74,7 @@ export function AdminReviewsView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [ratingFilter, setRatingFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedReview, setSelectedReview] = useState<ReviewRecord | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -70,14 +82,24 @@ export function AdminReviewsView() {
   const loadReviews = async () => {
     setLoading(true);
     try {
-      // Fetch reviews with joined product information
+      // Fetch reviews with joined product information safely
+      let rawReviews: any[] = [];
       const { data, error } = await supabase
         .from("reviews")
         .select("*, product:products(name, slug, image_url)")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setReviews((data as any) || []);
+      if (!error && data) {
+        rawReviews = data;
+      } else {
+        const { data: fallbackData } = await supabase
+          .from("reviews")
+          .select("*")
+          .order("created_at", { ascending: false });
+        rawReviews = fallbackData || [];
+      }
+
+      setReviews(rawReviews.map(normalizeReviewRecord));
     } catch (err: any) {
       console.error("Failed to load reviews:", err);
       toast.error("Failed to load reviews: " + err.message);
@@ -105,16 +127,30 @@ export function AdminReviewsView() {
   // Filtered reviews
   const filteredReviews = useMemo(() => {
     return reviews.filter((r) => {
+      const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
-        (r.user_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (r.comment || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (r.product?.name || "").toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        (r.user_name || "").toLowerCase().includes(q) ||
+        (r.comment || "").toLowerCase().includes(q) ||
+        (r.product?.name || "").toLowerCase().includes(q) ||
+        (r.delivery_agent_name || "").toLowerCase().includes(q) ||
+        (r.order?.order_number || "").toLowerCase().includes(q);
 
-      const matchesRating = ratingFilter === "all" ? true : r.rating === parseInt(ratingFilter, 10);
+      let matchesRating = true;
+      if (ratingFilter !== "all") {
+        matchesRating = Math.round(r.rating) === parseInt(ratingFilter, 10);
+      }
 
-      return matchesSearch && matchesRating;
+      let matchesType = true;
+      if (typeFilter === "product") {
+        matchesType = Boolean(r.product_quality_rating || r.product_id);
+      } else if (typeFilter === "delivery") {
+        matchesType = Boolean(r.delivery_agent_rating || r.delivery_agent_name);
+      }
+
+      return matchesSearch && matchesRating && matchesType;
     });
-  }, [reviews, searchQuery, ratingFilter]);
+  }, [reviews, searchQuery, ratingFilter, typeFilter]);
 
   // Key performance metrics
   const stats = useMemo(() => {
@@ -220,15 +256,26 @@ export function AdminReviewsView() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by customer, product, or comment..."
+            placeholder="Search customer, product, order ref, or driver..."
             className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-36 rounded-full text-xs bg-slate-50 border-slate-200">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="product">Product Reviews</SelectItem>
+              <SelectItem value="delivery">Delivery Reviews</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Select value={ratingFilter} onValueChange={setRatingFilter}>
-            <SelectTrigger className="w-40 rounded-full text-xs bg-slate-50 border-slate-200">
+            <SelectTrigger className="w-36 rounded-full text-xs bg-slate-50 border-slate-200">
               <SelectValue placeholder="All Ratings" />
             </SelectTrigger>
             <SelectContent>
@@ -254,7 +301,7 @@ export function AdminReviewsView() {
             <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground/30" />
             <h3 className="font-bold text-sm text-foreground">No customer reviews found</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Reviews submitted by customers on product pages will appear here.
+              Reviews submitted by customers for delivered orders will appear here.
             </p>
           </div>
         ) : (
@@ -262,9 +309,10 @@ export function AdminReviewsView() {
             <TableHeader className="bg-slate-50/80">
               <TableRow>
                 <TableHead className="font-bold text-xs">Customer</TableHead>
-                <TableHead className="font-bold text-xs">Product</TableHead>
-                <TableHead className="font-bold text-xs">Rating</TableHead>
-                <TableHead className="font-bold text-xs">Comment</TableHead>
+                <TableHead className="font-bold text-xs">Product & Order</TableHead>
+                <TableHead className="font-bold text-xs">Overall Rating</TableHead>
+                <TableHead className="font-bold text-xs">Quality / Agent</TableHead>
+                <TableHead className="font-bold text-xs">Written Feedback</TableHead>
                 <TableHead className="font-bold text-xs">Date</TableHead>
                 <TableHead className="font-bold text-xs text-right">Actions</TableHead>
               </TableRow>
@@ -289,24 +337,32 @@ export function AdminReviewsView() {
                   </TableCell>
 
                   <TableCell className="text-xs font-semibold text-foreground">
-                    {r.product ? (
-                      <Link
-                        to={`/products/${r.product.slug}` as any}
-                        target="_blank"
-                        className="flex items-center gap-1.5 hover:text-primary transition-colors group"
-                      >
-                        <span className="truncate max-w-[180px]">
-                          {typeof r.product.name === "string"
-                            ? r.product.name
-                            : String(r.product.name || "")}
+                    <div className="space-y-0.5">
+                      {r.product ? (
+                        <Link
+                          to={`/products/${r.product.slug}` as any}
+                          target="_blank"
+                          className="flex items-center gap-1.5 hover:text-primary transition-colors group"
+                        >
+                          <span className="truncate max-w-[160px]">
+                            {typeof r.product.name === "string"
+                              ? r.product.name
+                              : String(r.product.name || "")}
+                          </span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary shrink-0" />
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          Product #{r.product_id.slice(0, 8)}
                         </span>
-                        <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-primary shrink-0" />
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">
-                        Product #{r.product_id.slice(0, 8)}
-                      </span>
-                    )}
+                      )}
+
+                      {r.order?.order_number && (
+                        <span className="inline-block text-[10px] text-slate-500 font-mono bg-slate-100 px-1.5 py-0.2 rounded border">
+                          Order #{r.order.order_number}
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
 
                   <TableCell className="text-xs">
@@ -322,6 +378,37 @@ export function AdminReviewsView() {
                         ))}
                       </span>
                       <span className="font-extrabold text-[11px] ml-1">{r.rating}/5</span>
+                    </div>
+                  </TableCell>
+
+                  <TableCell className="text-xs">
+                    <div className="space-y-1">
+                      {r.product_quality_rating && (
+                        <div className="flex items-center gap-1 text-[11px] text-slate-700 font-semibold">
+                          <span className="text-muted-foreground text-[10px]">Quality:</span>
+                          <span className="font-bold flex items-center gap-0.5">
+                            <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                            {r.product_quality_rating}/5
+                          </span>
+                        </div>
+                      )}
+                      {(r.delivery_agent_rating || r.delivery_agent_name) && (
+                        <div className="flex items-center gap-1 text-[11px] text-slate-700 font-semibold">
+                          <span className="text-muted-foreground text-[10px]">Agent:</span>
+                          <span className="font-bold flex items-center gap-0.5">
+                            <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                            {r.delivery_agent_rating || "-"}/5
+                          </span>
+                          {r.delivery_agent_name && (
+                            <span className="text-[10px] text-slate-500 truncate max-w-[90px]">
+                              ({r.delivery_agent_name})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {!r.product_quality_rating && !r.delivery_agent_rating && (
+                        <span className="text-[11px] text-slate-400">Standard</span>
+                      )}
                     </div>
                   </TableCell>
 

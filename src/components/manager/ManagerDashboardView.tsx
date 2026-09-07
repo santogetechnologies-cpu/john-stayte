@@ -5,6 +5,7 @@ import {
   Truck,
   PackageCheck,
   Users,
+  UserCheck,
   AlertTriangle,
   Clock,
   CheckCircle2,
@@ -17,6 +18,7 @@ import {
   FileText,
   MessageSquare,
   AlertOctagon,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -40,6 +42,7 @@ import {
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { getDeliveryAgents, type DeliveryAgentRecord } from "@/lib/delivery-agent-service";
 
 export function ManagerDashboardView() {
   const { user } = useStore();
@@ -50,6 +53,7 @@ export function ManagerDashboardView() {
   const [orders, setOrders] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any[]>([]);
   const [deliveries, setDeliveries] = useState<any[]>([]);
+  const [agents, setAgents] = useState<DeliveryAgentRecord[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
@@ -61,6 +65,7 @@ export function ManagerDashboardView() {
         { data: dbInventory },
         { data: dbDeliveries },
         { data: dbTickets },
+        agentsData,
       ] = await Promise.all([
         supabase
           .from("orders")
@@ -69,12 +74,14 @@ export function ManagerDashboardView() {
         supabase.from("inventory").select("*, products(*)"),
         supabase.from("delivery_assignments").select("*"),
         supabase.from("support_tickets").select("*"),
+        getDeliveryAgents(),
       ]);
 
       setOrders(dbOrders || []);
       setInventory(dbInventory || []);
       setDeliveries(dbDeliveries || []);
       setTickets(dbTickets || []);
+      setAgents(agentsData || []);
     } catch (err) {
       console.error("Failed to load manager dashboard data:", err);
     } finally {
@@ -115,6 +122,11 @@ export function ManagerDashboardView() {
   const outForDeliveryCount = deliveries.filter((d) => d.status === "Out for Delivery").length;
   const deliveredTodayCount = orders.filter((o) => o.status === "Delivered").length;
   const delayedDeliveriesCount = deliveries.filter((d) => d.status === "Delayed").length;
+  const unassignedDeliveriesCount = deliveries.filter((d) => {
+    const dName = (d.driver_name || "").toLowerCase().trim();
+    return !d.agent_id || !dName || dName === "unassigned";
+  }).length;
+  const activeDeliveryAgentsCount = agents.filter((a) => a.status.toLowerCase() === "active").length;
   const lowStockCount = inventory.filter((i) => i.current_stock < i.reorder_threshold).length;
   const openEnquiriesCount = tickets.filter(
     (t) => t.status === "Open" || t.status === "In Progress",
@@ -203,8 +215,18 @@ export function ManagerDashboardView() {
       </div>
 
       {/* 2. TODAY'S OPERATIONAL SUMMARY KPIS (PROMINENT FROSTED GLASS CARDS) */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         {[
+          {
+            label: "Unassigned Deliveries",
+            val: unassignedDeliveriesCount,
+            sub: "Requires agent assignment",
+            tag: "Action Req",
+            icon: UserCheck,
+            href: "/manager/delivery-assignment?filter=unassigned",
+            iconBg: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+            tagCls: "bg-amber-50 text-amber-700 border-amber-200/60",
+          },
           {
             label: "Orders Assigned",
             val: ordersAssignedCount,
@@ -216,22 +238,22 @@ export function ManagerDashboardView() {
             tagCls: "bg-blue-50 text-blue-700 border-blue-200/60",
           },
           {
+            label: "Active Delivery Agents",
+            val: activeDeliveryAgentsCount,
+            sub: "On-duty depot drivers",
+            tag: "Drivers Ready",
+            icon: Users,
+            href: "/manager/delivery-agents",
+            iconBg: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+            tagCls: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+          },
+          {
             label: "Pending Approval",
             val: pendingApprovalCount,
             sub: "Awaiting depot review",
-            tag: "Action Req",
+            tag: "Review",
             icon: Clock,
             href: "/manager/orders?status=Pending",
-            iconBg: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-            tagCls: "bg-amber-50 text-amber-700 border-amber-200/60",
-          },
-          {
-            label: "Processing",
-            val: processingCount,
-            sub: "Approved & being packed",
-            tag: "In Prep",
-            icon: PackageCheck,
-            href: "/manager/orders?status=Processing",
             iconBg: "bg-purple-500/10 text-purple-600 border-purple-500/20",
             tagCls: "bg-purple-50 text-purple-700 border-purple-200/60",
           },
@@ -252,8 +274,8 @@ export function ManagerDashboardView() {
             tag: "Completed",
             icon: CheckCircle2,
             href: "/manager/deliveries?status=delivered",
-            iconBg: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-            tagCls: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+            iconBg: "bg-teal-500/10 text-teal-600 border-teal-500/20",
+            tagCls: "bg-teal-50 text-teal-700 border-teal-200/60",
           },
           {
             label: "Delayed Deliveries",
@@ -264,6 +286,16 @@ export function ManagerDashboardView() {
             href: "/manager/deliveries?status=delayed",
             iconBg: "bg-rose-500/10 text-rose-600 border-rose-500/20",
             tagCls: "bg-rose-50 text-rose-700 border-rose-200/60",
+          },
+          {
+            label: "Processing",
+            val: processingCount,
+            sub: "Approved & being packed",
+            tag: "In Prep",
+            icon: PackageCheck,
+            href: "/manager/orders?status=Processing",
+            iconBg: "bg-sky-500/10 text-sky-600 border-sky-500/20",
+            tagCls: "bg-sky-50 text-sky-700 border-sky-200/60",
           },
           {
             label: "Low Stock Items",
@@ -296,94 +328,85 @@ export function ManagerDashboardView() {
                 {kpi.label}
               </span>
               <div
-                className={`h-10 w-10 sm:h-11 sm:w-11 rounded-2xl flex items-center justify-center border shadow-2xs transition-transform group-hover:scale-105 ${kpi.iconBg}`}
+                className={`flex h-8 w-8 items-center justify-center rounded-2xl border ${kpi.iconBg} shadow-2xs group-hover:scale-110 transition-transform`}
               >
-                <kpi.icon className="h-5 w-5" />
+                <kpi.icon className="h-4 w-4" />
               </div>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <div className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
                 {kpi.val}
-              </p>
-              <div className="flex items-center gap-1.5 mt-2">
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[11px] font-medium text-slate-400 truncate max-w-[120px]">
+                  {kpi.sub}
+                </span>
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-extrabold text-[10px] border ${kpi.tagCls}`}
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${kpi.tagCls}`}
                 >
                   {kpi.tag}
                 </span>
-                <span className="text-[11px] text-slate-500 font-medium truncate">{kpi.sub}</span>
               </div>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* 3. DISPATCH & ORDERS QUEUE */}
+      {/* 3. MAIN DASHBOARD CONTENT */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left 2 Cols: Today's Orders Queue */}
-        <div className="lg:col-span-2 surface-card p-6 rounded-3xl border bg-white space-y-4">
-          <div className="flex items-center justify-between border-b pb-4">
-            <div>
-              <h2 className="text-base font-black text-foreground">
-                Today's Dispatch & Orders Queue
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Real orders assigned to depot dispatch
-              </p>
+        {/* LEFT COLUMN: RECENT DISPATCH QUEUE */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="surface-card p-6 rounded-3xl border bg-white space-y-4">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h2 className="text-base font-black text-foreground">Depot Dispatch Queue</h2>
+                <p className="text-xs text-muted-foreground">
+                  Orders requiring verification, packing, and driver assignment.
+                </p>
+              </div>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-full text-xs font-bold gap-1"
+              >
+                <Link to="/manager/orders">
+                  View All <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </Button>
             </div>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="rounded-full text-xs font-bold gap-1 text-primary hover:bg-primary/10"
-            >
-              <Link to="/manager/orders">
-                View All Orders ({orders.length}) <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
 
-          <div className="overflow-hidden rounded-2xl border">
             {loading ? (
               <div className="p-8 text-center text-xs text-muted-foreground font-bold">
-                Loading orders...
+                Loading live queue...
               </div>
             ) : orders.length === 0 ? (
-              <div className="p-12 text-center space-y-2 bg-slate-50/50">
-                <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground/30" />
-                <p className="text-xs font-bold text-foreground">No orders found</p>
-                <p className="text-[11px] text-muted-foreground">
-                  No assigned orders are in the dispatch queue.
-                </p>
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                No active orders in depot queue.
               </div>
             ) : (
               <Table>
-                <TableHeader className="bg-slate-50">
+                <TableHeader className="bg-slate-50/50">
                   <TableRow>
-                    <TableHead className="font-bold text-xs">Order ID</TableHead>
+                    <TableHead className="font-bold text-xs">Order</TableHead>
                     <TableHead className="font-bold text-xs">Customer</TableHead>
                     <TableHead className="font-bold text-xs">Total</TableHead>
                     <TableHead className="font-bold text-xs">Status</TableHead>
-                    <TableHead className="font-bold text-xs text-right">Action</TableHead>
+                    <TableHead className="font-bold text-xs text-right">Quick Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {orders.slice(0, 5).map((o) => (
                     <TableRow
                       key={o.id}
+                      className="cursor-pointer hover:bg-slate-50/60"
                       onClick={() => setSelectedOrder(o)}
-                      className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                     >
-                      <TableCell className="font-extrabold text-xs text-foreground">
+                      <TableCell className="font-mono font-bold text-xs">
                         #{o.order_number || o.id.slice(0, 8)}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        <p className="font-bold text-foreground">{o.customer_name}</p>
-                        <p className="text-[11px] text-muted-foreground">{o.customer_email}</p>
-                      </TableCell>
-                      <TableCell className="font-extrabold text-xs text-foreground">
-                        {gbp(Number(o.total))}
-                      </TableCell>
+                      <TableCell className="text-xs font-semibold">{o.customer_name}</TableCell>
+                      <TableCell className="font-bold text-xs">{gbp(Number(o.total))}</TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
@@ -403,7 +426,7 @@ export function ManagerDashboardView() {
                           <Button
                             size="sm"
                             onClick={(e) => handleApprove(o.id, e)}
-                            className="rounded-full text-[11px] font-bold h-7 px-3 bg-emerald-600 hover:bg-emerald-700 text-white"
+                            className="h-7 text-[11px] font-bold rounded-full bg-emerald-600 hover:bg-emerald-700 text-white"
                           >
                             Approve
                           </Button>
@@ -411,9 +434,9 @@ export function ManagerDashboardView() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="rounded-full text-[11px] font-bold h-7 px-3 text-muted-foreground"
+                            className="h-7 text-[11px] font-bold text-primary"
                           >
-                            Details
+                            Inspect
                           </Button>
                         )}
                       </TableCell>
@@ -425,29 +448,29 @@ export function ManagerDashboardView() {
           </div>
         </div>
 
-        {/* Right Col: Quick Manager Actions & Inventory Alerts */}
+        {/* RIGHT COLUMN: QUICK SHORTCUTS & ALERTS */}
         <div className="space-y-6">
           <div className="surface-card p-6 rounded-3xl border bg-white space-y-4">
-            <h2 className="text-base font-black text-foreground">Manager Quick Actions</h2>
+            <h2 className="text-sm font-black text-foreground border-b pb-3">Manager Dispatch Actions</h2>
             <div className="grid grid-cols-2 gap-2.5">
               {[
                 {
-                  label: "Orders Queue",
-                  href: "/manager/orders",
-                  icon: ShoppingBag,
+                  label: "Assign Deliveries",
+                  href: "/manager/delivery-assignment",
+                  icon: UserCheck,
+                  color: "text-amber-600 bg-amber-50",
+                },
+                {
+                  label: "Delivery Agents",
+                  href: "/manager/delivery-agents",
+                  icon: Users,
                   color: "text-blue-600 bg-blue-50",
                 },
                 {
-                  label: "Truck Dispatch",
+                  label: "All Deliveries",
                   href: "/manager/deliveries",
                   icon: Truck,
-                  color: "text-purple-600 bg-purple-50",
-                },
-                {
-                  label: "Stock Control",
-                  href: "/manager/inventory",
-                  icon: PackageCheck,
-                  color: "text-amber-600 bg-amber-50",
+                  color: "text-indigo-600 bg-indigo-50",
                 },
                 {
                   label: "Customer List",
@@ -554,10 +577,61 @@ export function ManagerDashboardView() {
                 </p>
               </div>
 
+              {/* DELIVERY ASSIGNMENT SECTION */}
+              <div className="p-4 rounded-2xl border bg-slate-50/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-primary" /> Delivery Assignment
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`font-bold text-[10px] ${
+                      selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {selectedOrder.assigned_driver &&
+                    selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                      ? "Assigned"
+                      : "Unassigned"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Assigned Driver / Agent</p>
+                    <p className="font-extrabold text-foreground text-sm mt-0.5">
+                      {selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? selectedOrder.assigned_driver
+                        : "No Driver Assigned"}
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="rounded-full text-xs font-bold gap-1 bg-primary hover:bg-primary/90 shadow-2xs"
+                  >
+                    <Link to="/manager/delivery-assignment">
+                      {selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? "Reassign"
+                        : "Assign Agent"}{" "}
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
               <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
                 <p className="font-bold text-foreground">Customer</p>
                 <p className="text-muted-foreground">{selectedOrder.customer_name}</p>
                 <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+                {selectedOrder.shipping_address && (
+                  <p className="text-muted-foreground">{selectedOrder.shipping_address}</p>
+                )}
               </div>
 
               <div className="space-y-2">

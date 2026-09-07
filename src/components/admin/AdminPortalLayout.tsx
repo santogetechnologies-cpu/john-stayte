@@ -86,6 +86,7 @@ const adminNavGroups: NavGroup[] = [
         badgeColor: "bg-amber-100 text-amber-800 font-extrabold",
       },
       { title: "Deliveries", href: "/admin/deliveries", icon: Truck },
+      { title: "Delivery Agents", href: "/admin/delivery-agents", icon: UserCheck },
       { title: "Applications", href: "/admin/applications", icon: FileText },
       {
         title: "Inventory",
