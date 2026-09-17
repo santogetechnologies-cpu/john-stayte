@@ -181,7 +181,7 @@ export const OrderGasHeroNetworkMesh: React.FC = () => {
           const waveZ = prefersReducedMotion
             ? 0
             : Math.sin(c * 0.28 + time * 0.9) * Math.cos(r * 0.34 + time * 0.7) * 44 +
-              Math.sin((c + r) * 0.18 + time * 0.5) * 24;
+            Math.sin((c + r) * 0.18 + time * 0.5) * 24;
 
           const x1 = rawX * cosY - waveZ * sinY;
           const z1 = waveZ * cosY + rawX * sinY;

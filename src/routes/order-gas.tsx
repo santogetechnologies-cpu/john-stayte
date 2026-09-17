@@ -748,36 +748,6 @@ function OrderGasPage() {
         <section className="relative w-full overflow-hidden bg-[#080b11] py-8 sm:py-10 md:py-14 min-h-[580px] sm:min-h-[620px] lg:min-h-[640px] flex items-center border-b border-slate-800/80 shadow-2xl">
           <OrderGasHeroNetworkMesh />
 
-          {/* Floating Micro-Content Accents (Background Composition) */}
-          <div className="absolute top-6 right-8 lg:right-24 hidden md:block text-left text-[9px] font-black tracking-[0.2em] text-slate-500/50 uppercase leading-tight select-none pointer-events-none z-10">
-            <div>ENERGY</div>
-            <div>FOR EVERYDAY</div>
-            <div>LIFE</div>
-            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 opacity-80" />
-          </div>
-
-          <div className="absolute top-10 right-6 hidden xl:block text-left text-[9px] font-black tracking-[0.2em] text-slate-500/40 uppercase leading-tight select-none pointer-events-none z-10">
-            <div>HOMES</div>
-            <div>BUSINESSES</div>
-            <div>INDUSTRY</div>
-            <div>COMMUNITIES</div>
-            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 opacity-80" />
-          </div>
-
-          <div className="absolute bottom-6 left-6 hidden sm:block text-left text-[9px] font-black tracking-[0.2em] text-slate-500/50 uppercase leading-tight select-none pointer-events-none z-10">
-            <div>SAFE</div>
-            <div>RELIABLE</div>
-            <div>SUSTAINABLE</div>
-            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 opacity-80" />
-          </div>
-
-          <div className="absolute bottom-6 right-6 hidden sm:block text-right text-[9px] font-black tracking-[0.2em] text-slate-500/50 uppercase leading-tight select-none pointer-events-none z-10">
-            <div>SUPPORTING</div>
-            <div>A BRIGHTER</div>
-            <div>TOMORROW</div>
-            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 ml-auto opacity-80" />
-          </div>
-
           <div className="container-page max-w-[88rem] px-3.5 sm:px-6 relative z-10 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
 
@@ -788,6 +758,25 @@ function OrderGasPage() {
                 <div className="inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-950/50 backdrop-blur-md px-3 sm:px-3.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider sm:tracking-[0.2em] text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                   <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
                   <span>{shopGasCms.heroEyebrow || "OFFICIAL CALOR GAS DISTRIBUTOR"}</span>
+                </div>
+
+                {/* Main Hero Title with Real Typewriter Animation in JSS Red */}
+                <div className="relative pt-1 select-none w-full">
+                  {/* Invisible Ghost Header: Strictly locks dimensions to prevent layout shifts while typing */}
+                  <h1
+                    aria-hidden="true"
+                    className="text-xl sm:text-3xl md:text-4xl lg:text-[44px] xl:text-[46px] font-black text-transparent tracking-tight leading-[1.1] font-display uppercase pointer-events-none opacity-0 select-none break-words"
+                  >
+                    {shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS"}
+                  </h1>
+
+                  {/* Real Letter-by-Letter Animated Typed Heading in Pure White (No Cursor) */}
+                  <h1
+                    className="absolute top-0 left-0 right-0 pt-1 text-xl sm:text-3xl md:text-4xl lg:text-[44px] xl:text-[46px] font-black text-white tracking-tight leading-[1.1] font-display uppercase break-words"
+                    aria-label={shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS"}
+                  >
+                    {typedHeading}
+                  </h1>
                 </div>
 
                 {/* Animated Editorial Vertical Headline Stack (Matching Reference) */}
@@ -808,25 +797,6 @@ function OrderGasPage() {
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Main Hero Title with Real Typewriter Animation in JSS Red */}
-                <div className="relative pt-2 select-none w-full">
-                  {/* Invisible Ghost Header: Strictly locks dimensions to prevent layout shifts while typing */}
-                  <h1
-                    aria-hidden="true"
-                    className="text-xl sm:text-3xl md:text-4xl lg:text-[44px] xl:text-[46px] font-black text-transparent tracking-tight leading-[1.1] font-display uppercase pointer-events-none opacity-0 select-none break-words"
-                  >
-                    {shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS"}
-                  </h1>
-
-                  {/* Real Letter-by-Letter Animated Typed Heading in Pure White (No Cursor) */}
-                  <h1
-                    className="absolute top-0 left-0 right-0 pt-2 text-xl sm:text-3xl md:text-4xl lg:text-[44px] xl:text-[46px] font-black text-white tracking-tight leading-[1.1] font-display uppercase break-words"
-                    aria-label={shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS"}
-                  >
-                    {typedHeading}
-                  </h1>
                 </div>
 
                 {/* Supporting Description */}

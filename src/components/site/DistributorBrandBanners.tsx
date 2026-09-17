@@ -2,36 +2,38 @@ import React from "react";
 
 export function DistributorBrandBanners() {
   return (
-    <div aria-label="Authorised Gas Partners" className="w-full flex justify-center lg:justify-end">
-      {/* 3D Keyframe Floating Motion */}
+    <div aria-label="Authorised Gas & Forecourt Partners" className="w-full flex justify-center lg:justify-end">
+      {/* 3D Keyframe Subtle Floating & Breathing Motion */}
       <style>{`
-        @keyframes float-hero-3d-brands {
+        @keyframes float-hero-4-brands {
           0%, 100% {
             transform: translateY(0px);
           }
           50% {
-            transform: translateY(-8px);
+            transform: translateY(-6px);
           }
         }
 
         .animate-float-hero-brands {
-          animation: float-hero-3d-brands 6s ease-in-out infinite;
+          animation: float-hero-4-brands 7s ease-in-out infinite;
         }
       `}</style>
 
-      {/* 3D Floating Brand Visual Showcase (EXACTLY MATCHING REFERENCE 2) */}
-      <div className="relative w-full max-w-[560px] sm:max-w-[620px] md:max-w-[680px] lg:max-w-[700px] xl:max-w-[740px] flex items-center justify-center select-none py-1 group">
+      {/* 3D Floating 4-Brand Visual Showcase (Slightly increased size ~10%) */}
+      <div className="relative w-full max-w-[520px] sm:max-w-[580px] md:max-w-[620px] lg:max-w-[590px] xl:max-w-[660px] flex items-center justify-center select-none py-1 group">
         
-        {/* Soft Volumetric Atmosphere Glows Behind Logos */}
-        <div className="absolute top-1/2 left-[28%] -translate-x-1/2 -translate-y-1/2 w-48 sm:w-64 h-48 sm:h-64 bg-red-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
-        <div className="absolute top-1/2 right-[28%] translate-x-1/2 -translate-y-1/2 w-48 sm:w-64 h-48 sm:h-64 bg-blue-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
+        {/* Soft Volumetric Atmosphere Glows Behind Pedestals */}
+        <div className="absolute top-[25%] left-[25%] -translate-x-1/2 -translate-y-1/2 w-52 sm:w-64 h-52 sm:h-64 bg-red-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute top-[25%] right-[25%] translate-x-1/2 -translate-y-1/2 w-52 sm:w-64 h-52 sm:h-64 bg-blue-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute bottom-[25%] left-[25%] -translate-x-1/2 translate-y-1/2 w-52 sm:w-60 h-52 sm:h-60 bg-red-600/12 rounded-full blur-3xl pointer-events-none -z-10" />
+        <div className="absolute bottom-[25%] right-[25%] translate-x-1/2 translate-y-1/2 w-52 sm:w-60 h-52 sm:h-60 bg-red-600/12 rounded-full blur-3xl pointer-events-none -z-10" />
 
-        {/* Exact High-Resolution 3D Brand Render Asset */}
-        <div className="relative z-10 w-full animate-float-hero-brands transition-transform duration-500 hover:scale-[1.02]">
+        {/* Exact High-Resolution 4-Brand Visual Asset */}
+        <div className="relative z-10 w-full animate-float-hero-brands transition-transform duration-500 hover:scale-[1.015]">
           <img
-            src="/order-gas-brands-3d.png"
-            alt="Authorised Calor Gas & Air Liquide Premium 3D Brand Showcase"
-            className="w-full h-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]"
+            src="/brands/order-gas-brands-4-showcase.jpg"
+            alt="Authorised Calor, Air Liquide, Texaco & BOC Gases Partner Showcase"
+            className="w-full h-auto object-contain rounded-2xl drop-shadow-[0_20px_45px_rgba(0,0,0,0.85)]"
             loading="eager"
             decoding="async"
           />
@@ -40,4 +42,5 @@ export function DistributorBrandBanners() {
     </div>
   );
 }
+
 
