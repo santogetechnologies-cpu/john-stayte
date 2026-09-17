@@ -40,7 +40,7 @@ export function DeliveryPortalLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen grid place-items-center bg-slate-50 font-sans">
         <div className="flex flex-col items-center gap-3 text-slate-500 text-xs font-semibold">
           <Loader2 className="h-6 w-6 animate-spin text-red-600" />
-          <span>Verifying Delivery Agent session...</span>
+          <span>Verifying Driver session...</span>
         </div>
       </div>
     );
@@ -52,9 +52,9 @@ export function DeliveryPortalLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen grid place-items-center bg-slate-50 px-4 font-sans">
         <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
           <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
-          <h1 className="text-xl font-bold font-display text-slate-900">Delivery Agent Portal</h1>
+          <h1 className="text-xl font-bold font-display text-slate-900">Driver Portal</h1>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Please sign in using your authorized Delivery Driver credentials to access dispatch
+            Please sign in using your authorized Driver credentials to access dispatch
             routes and cylinder verification.
           </p>
           <Button

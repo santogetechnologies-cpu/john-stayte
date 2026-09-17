@@ -31,9 +31,9 @@ import {
 const navLinks = [
   { to: "/", label: "Home" },
   { to: "/about", label: "About" },
-  { to: "/products", label: "Shop" },
-  { to: "/order-gas", label: "Order Gas" },
+  { to: "/order-gas", label: "Shop & Order Gas" },
   { to: "/filling-stations", label: "Filling Stations" },
+  { to: "/auto-gas", label: "Auto Gas" },
   { to: "/services", label: "Services" },
   { to: "/offers", label: "Offers" },
   { to: "/blog", label: "Blog" },
@@ -49,12 +49,12 @@ function isLinkActive(linkTo: string, currentPath: string): boolean {
     return currentPath === "/";
   }
 
-  if (linkTo === "/products") {
+  if (linkTo === "/order-gas") {
     return (
+      currentPath === "/order-gas" ||
+      currentPath.startsWith("/order-gas/") ||
       currentPath === "/products" ||
-      currentPath.startsWith("/products/") ||
-      currentPath.startsWith("/product/") ||
-      currentPath.startsWith("/categories/")
+      currentPath.startsWith("/products/")
     );
   }
 
@@ -145,7 +145,7 @@ export function SiteHeader() {
 
   const roleLabel =
     user?.role === "delivery_agent"
-      ? "Delivery Agent Account"
+      ? "Driver Account"
       : user?.role === "admin"
         ? "Administrator"
         : user?.role === "manager"
@@ -199,10 +199,10 @@ export function SiteHeader() {
             </p>
           )}
           <a
-            href="tel:01452741234"
+            href="tel:+441453822859"
             className="flex items-center gap-2 hover:text-primary shrink-0 ml-4"
           >
-            <Phone className="h-3.5 w-3.5" /> 01452 741234
+            <Phone className="h-3.5 w-3.5" /> +44 (0)1453 822859
           </a>
         </div>
       </div>

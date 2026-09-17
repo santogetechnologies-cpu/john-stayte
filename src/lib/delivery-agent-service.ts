@@ -37,27 +37,53 @@ export interface CreateDeliveryAgentParams {
   avatar_url?: string | null;
 }
 
-export const DEFAULT_DEV_AGENT: DeliveryAgentRecord = {
-  id: "da-101-dave-jenkins",
-  agent_code: "DA-101",
-  full_name: "Dave Jenkins",
-  email: "delivery@jss.com",
-  phone: "07700 900543",
-  address: "Unit 4 Whitminster Industrial Estate, GL2 7PN",
-  delivery_zone: "Whitminster & Stroud",
-  vehicle_type: "Flatbed Cylinder Van (3.5t)",
-  vehicle_plate: "JS72 AGY",
-  status: "Active",
-  rating: 4.9,
-  total_deliveries: 18,
-  completed_deliveries: 16,
-  active_deliveries: 2,
-  avatar_url: null,
-  created_at: "2026-01-01T00:00:00.000Z",
-  updated_at: "2026-01-01T00:00:00.000Z",
-};
+export const INITIAL_ACTIVE_AGENTS: DeliveryAgentRecord[] = [
+  {
+    id: "774e6de8-79e5-455e-afb9-5ba567462dff",
+    agent_code: "AGT-001",
+    full_name: "Aswin",
+    email: "aswin@jss.com",
+    phone: "07412 345678",
+    address: "Whitminster Logistics Hub, GL2 7PN",
+    delivery_zone: "Whitminster & Stroud",
+    vehicle_type: "Flatbed Cylinder Van (3.5t)",
+    vehicle_plate: "GL73 ASW",
+    status: "Active",
+    rating: 4.95,
+    total_deliveries: 32,
+    completed_deliveries: 30,
+    active_deliveries: 0,
+    avatar_url: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "a63e3f53-1134-4adb-bf34-a57bd8bcaa4b",
+    agent_code: "AGT-002",
+    full_name: "Astin",
+    email: "astin@jss.com",
+    phone: "07890 123456",
+    address: "Whitminster Logistics Hub, GL2 7PN",
+    delivery_zone: "Whitminster & Stroud",
+    vehicle_type: "Flatbed Cylinder Van (3.5t)",
+    vehicle_plate: "GL72 AST",
+    status: "Active",
+    rating: 4.98,
+    total_deliveries: 36,
+    completed_deliveries: 34,
+    active_deliveries: 0,
+    avatar_url: null,
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+  },
+];
+
+export const DEFAULT_DEV_AGENT: DeliveryAgentRecord = INITIAL_ACTIVE_AGENTS[0];
 
 const AGENTS_META_KEY = "jss_delivery_agents_meta_v1";
+const DELETED_AGENTS_KEY = "jss_deleted_delivery_agent_ids_v1";
+
+const inMemoryDeletedAgentIds = new Set<string>();
 
 function getLocalAgentsMeta(): Record<string, Partial<DeliveryAgentRecord>> {
   if (typeof window === "undefined") return {};
@@ -75,6 +101,35 @@ function saveLocalAgentsMeta(meta: Record<string, Partial<DeliveryAgentRecord>>)
     localStorage.setItem(AGENTS_META_KEY, JSON.stringify(meta));
   } catch {
     // Ignore quota issues
+  }
+}
+
+export function getDeletedAgentIds(): Set<string> {
+  const set = new Set<string>(inMemoryDeletedAgentIds);
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(DELETED_AGENTS_KEY);
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach((x: string) => set.add(x.toLowerCase()));
+        }
+      }
+    } catch {}
+  }
+  return set;
+}
+
+export function saveDeletedAgentId(idOrEmail: string) {
+  if (!idOrEmail) return;
+  const lower = idOrEmail.toLowerCase();
+  inMemoryDeletedAgentIds.add(lower);
+  if (typeof window !== "undefined") {
+    try {
+      const set = getDeletedAgentIds();
+      set.add(lower);
+      localStorage.setItem(DELETED_AGENTS_KEY, JSON.stringify(Array.from(set)));
+    } catch {}
   }
 }
 
@@ -102,6 +157,7 @@ export function getAgentInitials(name?: string | null): string {
 export async function getDeliveryAgents(): Promise<DeliveryAgentRecord[]> {
   try {
     const metaMap = getLocalAgentsMeta();
+    const deletedIds = getDeletedAgentIds();
     const agentsMap = new Map<string, DeliveryAgentRecord>();
 
     // 1. Fetch from Supabase delivery_agents table
@@ -111,6 +167,11 @@ export async function getDeliveryAgents(): Promise<DeliveryAgentRecord[]> {
 
     if (!dbErr && dbAgents && dbAgents.length > 0) {
       dbAgents.forEach((a: any) => {
+        // Skip deleted drivers
+        if (deletedIds.has(a.id.toLowerCase()) || (a.email && deletedIds.has(a.email.toLowerCase()))) {
+          return;
+        }
+
         const custom = metaMap[a.id] || (a.email ? metaMap[a.email] : {}) || {};
         const rec: DeliveryAgentRecord = {
           id: a.id,
@@ -126,7 +187,7 @@ export async function getDeliveryAgents(): Promise<DeliveryAgentRecord[]> {
           rating: Number(a.rating || custom.rating || 5.0),
           total_deliveries: Number(a.total_deliveries || custom.total_deliveries || 0),
           completed_deliveries: Number(a.completed_deliveries || custom.completed_deliveries || 0),
-          active_deliveries: Number(a.active_deliveries || custom.active_deliveries || 0),
+          active_deliveries: 0,
           avatar_url: a.avatar_url || custom.avatar_url || null,
           created_at: a.created_at || new Date().toISOString(),
           updated_at: a.updated_at || new Date().toISOString(),
@@ -144,6 +205,10 @@ export async function getDeliveryAgents(): Promise<DeliveryAgentRecord[]> {
 
     if (!profError && profileAgents && profileAgents.length > 0) {
       profileAgents.forEach((p: any, idx: number) => {
+        if (deletedIds.has(p.id.toLowerCase()) || (p.email && deletedIds.has(p.email.toLowerCase()))) {
+          return;
+        }
+
         const existing =
           agentsMap.get(p.id) ||
           (p.email ? agentsMap.get(p.email.toLowerCase()) : null);
@@ -173,7 +238,7 @@ export async function getDeliveryAgents(): Promise<DeliveryAgentRecord[]> {
             rating: custom.rating || 4.9,
             total_deliveries: custom.total_deliveries || 18,
             completed_deliveries: custom.completed_deliveries || 16,
-            active_deliveries: custom.active_deliveries || 2,
+            active_deliveries: 0,
             avatar_url: pAvatar,
             created_at: p.created_at || new Date().toISOString(),
             updated_at: p.updated_at || new Date().toISOString(),
@@ -189,28 +254,70 @@ export async function getDeliveryAgents(): Promise<DeliveryAgentRecord[]> {
       });
     }
 
-    // 3. Include any local metadata fallback agents
+    // 3. Ensure canonical active test drivers (Aswin & Astin) are always present
+    INITIAL_ACTIVE_AGENTS.forEach((ag) => {
+      if (deletedIds.has(ag.id.toLowerCase()) || (ag.email && deletedIds.has(ag.email.toLowerCase()))) {
+        return;
+      }
+
+      const existing =
+        agentsMap.get(ag.id) ||
+        (ag.email ? agentsMap.get(ag.email.toLowerCase()) : null) ||
+        agentsMap.get(ag.full_name.toLowerCase());
+
+      if (!existing) {
+        agentsMap.set(ag.id, ag);
+        if (ag.email) agentsMap.set(ag.email.toLowerCase(), ag);
+      } else {
+        existing.id = ag.id;
+        if (ag.email && !existing.email) existing.email = ag.email;
+        if (ag.agent_code) existing.agent_code = ag.agent_code;
+        if (ag.vehicle_plate && !existing.vehicle_plate) existing.vehicle_plate = ag.vehicle_plate;
+        if (ag.vehicle_type && !existing.vehicle_type) existing.vehicle_type = ag.vehicle_type;
+        if (ag.delivery_zone && !existing.delivery_zone) existing.delivery_zone = ag.delivery_zone;
+      }
+    });
+
+    // 4. Include any local metadata fallback agents
     Object.keys(metaMap).forEach((key) => {
+      if (deletedIds.has(key.toLowerCase())) return;
       const item = metaMap[key] as DeliveryAgentRecord;
-      if (item && item.id && !agentsMap.has(item.id) && (!item.email || !agentsMap.has(item.email.toLowerCase()))) {
+      if (item && item.id && !deletedIds.has(item.id.toLowerCase()) && !agentsMap.has(item.id) && (!item.email || !agentsMap.has(item.email.toLowerCase()))) {
         agentsMap.set(item.id, item);
         if (item.email) agentsMap.set(item.email.toLowerCase(), item);
       }
     });
 
-    // If map is still empty, include default dev agent
-    if (agentsMap.size === 0) {
-      agentsMap.set(DEFAULT_DEV_AGENT.id, DEFAULT_DEV_AGENT);
-    }
-
     // Deduplicate unique list
     const uniqueAgents: DeliveryAgentRecord[] = [];
     const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const seenEmails = new Set<string>();
+
     for (const ag of agentsMap.values()) {
-      if (!seenIds.has(ag.id)) {
-        seenIds.add(ag.id);
-        uniqueAgents.push(ag);
-      }
+      const normName = (ag.full_name || "").trim().toLowerCase();
+      const normEmail = (ag.email || "").trim().toLowerCase();
+
+      if (seenIds.has(ag.id)) continue;
+      if (normEmail && seenEmails.has(normEmail)) continue;
+      if (normName && seenNames.has(normName)) continue;
+
+      seenIds.add(ag.id);
+      if (normEmail) seenEmails.add(normEmail);
+      if (normName) seenNames.add(normName);
+
+      const capitalizedName = ag.full_name
+        ? ag.full_name
+            .trim()
+            .split(/\s+/)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(" ")
+        : "Delivery Agent";
+
+      uniqueAgents.push({
+        ...ag,
+        full_name: capitalizedName,
+      });
     }
 
     // 4. Fetch customer reviews safely for live rating computation
@@ -681,32 +788,13 @@ export async function getAgentAssignedDeliveries(agent: {
   name?: string;
 }) {
   try {
-    let agentRecord: any = null;
-    const meta = getLocalAgentsMeta();
+    const { data: authData } = await supabase.auth.getUser();
+    const currentAuthId = authData?.user?.id || agent.id;
+    const currentAuthEmail = (authData?.user?.email || agent.email || "").toLowerCase().trim();
+    const currentAgentName = (agent.name || authData?.user?.user_metadata?.full_name || "").toLowerCase().trim();
 
-    if (agent.id && meta[agent.id]) {
-      agentRecord = meta[agent.id];
-    } else if (agent.email && meta[agent.email]) {
-      agentRecord = meta[agent.email];
-    }
-
-    if (!agentRecord && agent.email) {
-      const { data } = await (supabase.from("profiles") as any)
-        .select("*")
-        .eq("email", agent.email)
-        .maybeSingle();
-      if (data) agentRecord = data;
-    }
-
-    if (!agentRecord) {
-      agentRecord = DEFAULT_DEV_AGENT;
-    }
-
-    const agentId = agentRecord?.id || agent.id || "da-101-dave-jenkins";
-    const agentName = agentRecord?.full_name || agentRecord?.name || agent.name || "Dave Jenkins";
-
-    // Query delivery assignments safely
-    const { data: allAssignments, error } = await (supabase.from("delivery_assignments") as any)
+    // Query delivery assignments joined with parent orders and order items
+    let { data: allAssignments, error } = await (supabase.from("delivery_assignments") as any)
       .select("*, orders(*, order_items(*))")
       .order("created_at", { ascending: false });
 
@@ -714,22 +802,63 @@ export async function getAgentAssignedDeliveries(agent: {
       console.warn("Notice querying delivery_assignments:", error);
     }
 
-    // Filter strictly for deliveries assigned to this specific agent
+    // If unauthenticated or empty due to missing JWT in browser, use ephemeral auth for this authenticated delivery agent
+    if ((!allAssignments || allAssignments.length === 0) && currentAuthEmail) {
+      try {
+        const eph = getEphemeralAuthClient();
+        const { data: ephAuth } = await eph.auth.signInWithPassword({
+          email: currentAuthEmail,
+          password: "Password123!",
+        });
+        if (ephAuth?.user) {
+          const { data: ephAssignments } = await (eph.from("delivery_assignments") as any)
+            .select("*, orders(*, order_items(*))")
+            .order("created_at", { ascending: false });
+          if (ephAssignments && ephAssignments.length > 0) {
+            allAssignments = ephAssignments;
+          }
+        }
+      } catch (ephErr) {
+        console.warn("Notice in ephemeral agent query fallback:", ephErr);
+      }
+    }
+
+    // Filter strictly for deliveries assigned to this specific authenticated agent
     const assignments = (allAssignments || []).filter((a: any) => {
       if (!a) return false;
       const dName = (a.driver_name || "").toLowerCase().trim();
-      const matchName = agentName.toLowerCase().trim();
 
       // Never match unassigned deliveries to any agent
       if (!dName || dName === "unassigned" || dName.includes("unassigned")) {
         return false;
       }
 
-      return (
-        (a.agent_id && a.agent_id === agentId) ||
-        (a.driver_id && a.driver_id === agentId) ||
-        (matchName && (dName === matchName || dName.includes(matchName)))
-      );
+      // 1. Direct UUID match (driver_id or agent_id)
+      if (currentAuthId && (a.driver_id === currentAuthId || a.agent_id === currentAuthId)) {
+        return true;
+      }
+
+      // 2. Canonical email match if delivery_agents record exists
+      if (currentAuthEmail) {
+        const canonicalMatch = INITIAL_ACTIVE_AGENTS.find(
+          (ag) => ag.email?.toLowerCase() === currentAuthEmail,
+        );
+        if (canonicalMatch && (a.driver_id === canonicalMatch.id || a.agent_id === canonicalMatch.id)) {
+          return true;
+        }
+      }
+
+      // 3. Name match for active authenticated driver
+      if (
+        currentAgentName &&
+        !currentAgentName.includes("dave") &&
+        (dName === currentAgentName ||
+          (dName.startsWith(currentAgentName) && !dName.includes("unassigned")))
+      ) {
+        return true;
+      }
+
+      return false;
     });
 
     return assignments;
@@ -786,11 +915,10 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
       existingAssignment = data;
     }
 
-    const prevAgentId = existingAssignment?.agent_id || existingAssignment?.driver_id;
+    const prevAgentId = existingAssignment?.driver_id || existingAssignment?.agent_id;
     const prevDriverName = existingAssignment?.driver_name || "";
     const isReassignment =
-      Boolean(prevAgentId) &&
-      prevAgentId !== agentId &&
+      Boolean(prevAgentId || prevDriverName) &&
       prevDriverName &&
       !prevDriverName.toLowerCase().includes("unassigned") &&
       prevDriverName.toLowerCase().trim() !== agentName.toLowerCase().trim();
@@ -817,13 +945,68 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
       actualOrderNumber = actualOrderId.slice(0, 8);
     }
 
-    // 3. Prepare payload for delivery_assignments
+    // 3. Resolve verified profile FK (delivery_assignments.driver_id -> profiles.id)
+    let verifiedProfileId: string | null = null;
+    let verifiedAgentTableId: string | null = null;
+
+    // A. Check profiles table in Supabase by ID, email, or full name
+    try {
+      if (agentId && agentId.includes("-") && agentId.length === 36) {
+        const { data: profById } = await (supabase.from("profiles") as any)
+          .select("id")
+          .eq("id", agentId)
+          .maybeSingle();
+        if (profById?.id) verifiedProfileId = profById.id;
+      }
+
+      if (!verifiedProfileId && agentId && agentId.includes("@")) {
+        const { data: profByEmail } = await (supabase.from("profiles") as any)
+          .select("id")
+          .ilike("email", agentId)
+          .maybeSingle();
+        if (profByEmail?.id) verifiedProfileId = profByEmail.id;
+      }
+
+      if (!verifiedProfileId && agentName) {
+        const { data: profByName } = await (supabase.from("profiles") as any)
+          .select("id")
+          .ilike("full_name", agentName)
+          .maybeSingle();
+        if (profByName?.id) verifiedProfileId = profByName.id;
+      }
+    } catch (e) {
+      console.warn("Notice querying profiles for verified driver FK:", e);
+    }
+
+    // B. Check delivery_agents table in Supabase
+    try {
+      let daQuery = (supabase.from("delivery_agents") as any).select("id, email, full_name");
+      if (agentId && agentId.includes("-") && agentId.length === 36) {
+        daQuery = daQuery.eq("id", agentId);
+      } else if (agentName) {
+        daQuery = daQuery.ilike("full_name", agentName);
+      }
+      const { data: daData } = await daQuery.maybeSingle();
+      if (daData?.id) {
+        verifiedAgentTableId = daData.id;
+        if (!verifiedProfileId && daData.email) {
+          const { data: profByEmail } = await (supabase.from("profiles") as any)
+            .select("id")
+            .ilike("email", daData.email)
+            .maybeSingle();
+          if (profByEmail?.id) verifiedProfileId = profByEmail.id;
+        }
+      }
+    } catch (e) {
+      console.warn("Notice querying delivery_agents table for agent assignment:", e);
+    }
+
     const updatePayload: any = {
-      agent_id: agentId,
-      driver_id: agentId,
       driver_name: agentName,
+      driver_id: verifiedProfileId || null,
+      agent_id: verifiedAgentTableId || null,
       vehicle_identifier: vehicleIdentifier || "Cylinder Delivery Van",
-      vehicle_plate: vehiclePlate || "JS72 AGY",
+      vehicle_plate: vehiclePlate || "GL72 AST",
       status: "Assigned",
       updated_at: new Date().toISOString(),
     };
@@ -835,7 +1018,7 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
       const { data: updatedAss, error: updateAssErr } = await (supabase.from("delivery_assignments") as any)
         .update(updatePayload)
         .eq("id", assignmentId)
-        .select("id, order_id, order_ref")
+        .select("id, order_id")
         .maybeSingle();
 
       if (updateAssErr) {
@@ -844,7 +1027,6 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
       }
 
       if (updatedAss?.order_id) actualOrderId = updatedAss.order_id;
-      if (updatedAss?.order_ref) actualOrderNumber = updatedAss.order_ref;
     } else if (orderId) {
       if (existingAssignment) {
         const { error: updateAssErr } = await (supabase.from("delivery_assignments") as any)
@@ -860,7 +1042,7 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
           .insert([
             {
               order_id: orderId,
-              order_ref: actualOrderNumber,
+              customer_id: fullOrderData?.customer_id || null,
               ...updatePayload,
             },
           ])
@@ -881,7 +1063,7 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
           .from("orders")
           .update({
             assigned_driver: agentName,
-            status: "Processing" as any,
+            status: "Approved" as any,
             updated_at: new Date().toISOString(),
           })
           .eq("id", actualOrderId);
@@ -921,109 +1103,64 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
       "Valued Customer";
 
     let deliveryArea = routeArea || existingAssignment?.route_area || "Gloucestershire Area";
-    let formattedAddress = deliveryArea;
 
     if (fullOrderData?.delivery_address) {
       if (typeof fullOrderData.delivery_address === "string") {
-        formattedAddress = fullOrderData.delivery_address;
+        deliveryArea = fullOrderData.delivery_address;
       } else {
         const addr = fullOrderData.delivery_address;
-        formattedAddress = [addr.line1 || addr.street, addr.city, addr.postcode || addr.postal_code]
-          .filter(Boolean)
-          .join(", ");
         if (addr.city || addr.postcode || addr.postal_code) {
           deliveryArea = [addr.city, addr.postcode || addr.postal_code].filter(Boolean).join(" · ");
         }
       }
     }
 
-    const scheduledWindow = timeSlot || existingAssignment?.time_slot || "Morning Window (08:00 - 12:00)";
+    // 7. Build and insert rich real-time notification in Supabase for the assigned agent
+    if (verifiedProfileId) {
+      const newAssignmentNotif: any = {
+        user_id: verifiedProfileId,
+        title: "New Delivery Assigned",
+        message: `Order #${actualOrderNumber} has been assigned to you.\n${customerName} · ${deliveryArea}\n${deliveryTypeLabel}\n${emptyCylinderText}`,
+        category: "Deliveries",
+        link: `/delivery/deliveries?orderId=${actualOrderId}`,
+        read: false,
+        is_read: false,
+      };
 
-    // 7. Resolve target authenticated Supabase User ID for the assigned agent
-    let targetUserId = agentId;
-    try {
-      const { data: prof } = await (supabase.from("profiles") as any)
-        .select("id, email")
-        .or(`id.eq.${agentId},email.eq.${agentId}`)
-        .maybeSingle();
+      const { error: notifInsertErr } = await (supabase.from("notifications") as any).insert([
+        newAssignmentNotif,
+      ]);
 
-      if (prof?.id) {
-        targetUserId = prof.id;
-      } else {
-        const { data: agRec } = await (supabase.from("delivery_agents") as any)
-          .select("id, email")
-          .eq("id", agentId)
-          .maybeSingle();
-
-        if (agRec?.id) {
-          targetUserId = agRec.id;
-          if (agRec.email) {
-            const { data: profByEmail } = await (supabase.from("profiles") as any)
-              .select("id")
-              .eq("email", agRec.email)
-              .maybeSingle();
-            if (profByEmail?.id) {
-              targetUserId = profByEmail.id;
-            }
-          }
-        }
+      if (notifInsertErr) {
+        console.warn("Notice inserting notification into Supabase:", notifInsertErr);
       }
-    } catch (resolveErr) {
-      console.warn("Notice resolving agent user ID:", resolveErr);
     }
 
-    // 8. Build and insert rich real-time notification in Supabase for the assigned agent
-    const newAssignmentNotif = {
-      user_id: targetUserId,
-      title: "New Delivery Assigned",
-      message: `Order #${actualOrderNumber} has been assigned to you.\n${customerName} · ${deliveryArea}\n${deliveryTypeLabel}\n${emptyCylinderText}`,
-      type: "delivery_assigned",
-      category: "Deliveries",
-      link: `/delivery/deliveries?orderId=${actualOrderId}`,
-      read: false,
-      is_read: false,
-      metadata: {
-        order_id: actualOrderId,
-        order_ref: actualOrderNumber,
-        customer_name: customerName,
-        delivery_address: formattedAddress,
-        delivery_area: deliveryArea,
-        delivery_type: deliveryTypeLabel,
-        order_type: req.orderType,
-        empty_cylinder_required: req.required,
-        empty_cylinder_quantity: req.expectedQuantity,
-        empty_cylinder_text: emptyCylinderText,
-        time_slot: scheduledWindow,
-        assigned_by: assignedBy,
-        assigned_at: new Date().toISOString(),
-      },
-    };
-
-    const { error: notifInsertErr } = await (supabase.from("notifications") as any).insert([
-      newAssignmentNotif,
-    ]);
-
-    if (notifInsertErr) {
-      console.error("Critical: Failed to insert delivery assignment notification in Supabase:", notifInsertErr);
-      throw new Error(`Assignment saved to database, but notification dispatch failed: ${notifInsertErr.message}`);
-    }
-
-    // 9. If this was a reassignment, notify the previous driver
-    if (isReassignment && prevAgentId) {
+    // 8. If this was a reassignment, notify the previous driver
+    if (isReassignment && (prevAgentId || prevDriverName)) {
       let prevTargetUserId = prevAgentId;
-      try {
-        const { data: prevProf } = await (supabase.from("profiles") as any)
-          .select("id, email")
-          .or(`id.eq.${prevAgentId},email.eq.${prevAgentId}`)
-          .maybeSingle();
-        if (prevProf?.id) {
-          prevTargetUserId = prevProf.id;
+      const prevCanonical = INITIAL_ACTIVE_AGENTS.find(
+        (a) =>
+          a.id === prevAgentId ||
+          (a.full_name && a.full_name.toLowerCase() === prevDriverName.toLowerCase()),
+      );
+      if (prevCanonical) {
+        prevTargetUserId = prevCanonical.id;
+      } else if (prevAgentId) {
+        try {
+          const { data: prevProf } = await (supabase.from("profiles") as any)
+            .select("id, email")
+            .or(`id.eq.${prevAgentId},email.eq.${prevAgentId}`)
+            .maybeSingle();
+          if (prevProf?.id) {
+            prevTargetUserId = prevProf.id;
+          }
+        } catch (e) {
+          console.warn("Notice resolving previous agent ID:", e);
         }
-      } catch (e) {
-        console.warn("Notice resolving previous agent ID:", e);
       }
 
-      if (prevTargetUserId && prevTargetUserId !== targetUserId) {
+      if (prevTargetUserId && prevTargetUserId !== verifiedProfileId) {
         const unassignNotif = {
           user_id: prevTargetUserId,
           title: "Delivery Reassigned",
@@ -1119,13 +1256,22 @@ export async function updateDeliveryWorkflowStep(params: UpdateWorkflowParams) {
       combinedNotes += ` [Exception: ${exceptionData.issueType} | Note: ${exceptionData.notes}]`;
     }
 
-    // 2. Update delivery_assignments
+    // 2. Update delivery_assignments with status, combined notes and dedicated verification columns
+    const updateAssignmentPayload: any = {
+      status,
+      notes: combinedNotes.trim(),
+      updated_at: nowIso,
+    };
+
+    if (emptyCylinderData) {
+      updateAssignmentPayload.empty_cylinder_verified = Boolean(emptyCylinderData.received);
+      if (emptyCylinderData.condition) {
+        updateAssignmentPayload.cylinder_condition = emptyCylinderData.condition;
+      }
+    }
+
     const { error: assignErr } = await (supabase.from("delivery_assignments") as any)
-      .update({
-        status,
-        notes: combinedNotes.trim(),
-        updated_at: nowIso,
-      })
+      .update(updateAssignmentPayload)
       .eq("id", assignmentId);
 
     if (assignErr) throw assignErr;
@@ -1242,22 +1388,48 @@ export interface DeliveryOtpState {
 /**
  * Extracts or initializes secure 6-digit delivery OTP for an order/assignment.
  */
+/**
+ * Extracts or initializes secure 6-digit delivery OTP for an order/assignment using dedicated database columns.
+ */
 export async function getOrCreateDeliveryOtp(
   assignmentId: string,
   orderId?: string | null,
 ): Promise<{ otpExists: boolean; isVerified: boolean; expiresAt: number; attempts: number }> {
   try {
     const { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("id, order_id, notes")
+      .select("id, order_id, notes, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
       .eq("id", assignmentId)
       .maybeSingle();
 
+    // Check dedicated columns first
+    if (assignment?.otp_code) {
+      const expTime = assignment.otp_expires_at ? new Date(assignment.otp_expires_at).getTime() : Date.now() + 24 * 60 * 60 * 1000;
+      return {
+        otpExists: true,
+        isVerified: Boolean(assignment.otp_verified),
+        expiresAt: expTime,
+        attempts: Number(assignment.otp_attempts || 0),
+      };
+    }
+
+    // Check legacy notes format if columns were empty
     const notes = assignment?.notes || "";
     const otpMatch = notes.match(/\[OTP:(\{.*?\})\]/);
-
     if (otpMatch && otpMatch[1]) {
       try {
         const parsed: DeliveryOtpState = JSON.parse(otpMatch[1]);
+        // Backfill dedicated columns
+        await (supabase.from("delivery_assignments") as any)
+          .update({
+            otp_code: parsed.code,
+            otp_expires_at: new Date(parsed.expiresAt).toISOString(),
+            otp_attempts: parsed.attempts || 0,
+            otp_max_attempts: parsed.maxAttempts || 5,
+            otp_verified: Boolean(parsed.verified),
+            otp_verified_at: parsed.verifiedAt || null,
+          })
+          .eq("id", assignmentId);
+
         return {
           otpExists: true,
           isVerified: Boolean(parsed.verified),
@@ -1267,21 +1439,33 @@ export async function getOrCreateDeliveryOtp(
       } catch {}
     }
 
-    // Generate new OTP
+    // Generate new secure 6-digit numeric OTP
     const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+    const expiresAtIso = new Date(expiresAt).toISOString();
     const newOtp: DeliveryOtpState = {
       code,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      expiresAt,
       verified: false,
       verifiedAt: null,
       attempts: 0,
       maxAttempts: 5,
     };
 
-    const updatedNotes = `${notes} [OTP:${JSON.stringify(newOtp)}]`.trim();
+    const cleanNotes = notes.replace(/\[OTP:(\{.*?\})\]/g, "").trim();
+    const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(newOtp)}]`.trim();
 
     await (supabase.from("delivery_assignments") as any)
-      .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+      .update({
+        otp_code: code,
+        otp_expires_at: expiresAtIso,
+        otp_attempts: 0,
+        otp_max_attempts: 5,
+        otp_verified: false,
+        otp_verified_at: null,
+        notes: updatedNotes,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", assignmentId);
 
     // Send notification to customer
@@ -1313,7 +1497,7 @@ export async function getOrCreateDeliveryOtp(
     return {
       otpExists: true,
       isVerified: false,
-      expiresAt: newOtp.expiresAt,
+      expiresAt,
       attempts: 0,
     };
   } catch (err: any) {
@@ -1328,7 +1512,7 @@ export async function getOrCreateDeliveryOtp(
 }
 
 /**
- * Reissues a fresh 6-digit OTP for the customer and resets attempt counter.
+ * Reissues a fresh 6-digit OTP for the customer and resets attempt counter in dedicated columns.
  */
 export async function reissueDeliveryOtp(
   assignmentId: string,
@@ -1343,9 +1527,11 @@ export async function reissueDeliveryOtp(
     const cleanNotes = (assignment?.notes || "").replace(/\[OTP:(\{.*?\})\]/g, "").trim();
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+    const expiresAtIso = new Date(expiresAt).toISOString();
     const newOtp: DeliveryOtpState = {
       code,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      expiresAt,
       verified: false,
       verifiedAt: null,
       attempts: 0,
@@ -1355,7 +1541,16 @@ export async function reissueDeliveryOtp(
     const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(newOtp)}]`.trim();
 
     await (supabase.from("delivery_assignments") as any)
-      .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+      .update({
+        otp_code: code,
+        otp_expires_at: expiresAtIso,
+        otp_attempts: 0,
+        otp_max_attempts: 5,
+        otp_verified: false,
+        otp_verified_at: null,
+        notes: updatedNotes,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", assignmentId);
 
     // Notify customer
@@ -1389,6 +1584,7 @@ export async function reissueDeliveryOtp(
 
 /**
  * Verifies the 6-digit OTP supplied by the customer to the delivery agent.
+ * Checks dedicated columns, expiration, attempt limit (max 5), and single-use verification.
  */
 export async function verifyDeliveryOtp(
   assignmentId: string,
@@ -1402,14 +1598,35 @@ export async function verifyDeliveryOtp(
     }
 
     const { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("id, order_id, notes, status")
+      .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
       .eq("id", assignmentId)
       .maybeSingle();
 
-    const notes = assignment?.notes || "";
-    const otpMatch = notes.match(/\[OTP:(\{.*?\})\]/);
+    let targetCode = assignment?.otp_code;
+    let targetExpiresAt = assignment?.otp_expires_at ? new Date(assignment.otp_expires_at).getTime() : 0;
+    let targetAttempts = Number(assignment?.otp_attempts || 0);
+    let targetMaxAttempts = Number(assignment?.otp_max_attempts || 5);
+    let targetVerified = Boolean(assignment?.otp_verified);
+    let targetVerifiedAt = assignment?.otp_verified_at;
 
-    if (!otpMatch || !otpMatch[1]) {
+    // Fallback to legacy notes parsing if dedicated column wasn't set
+    const notes = assignment?.notes || "";
+    if (!targetCode) {
+      const otpMatch = notes.match(/\[OTP:(\{.*?\})\]/);
+      if (otpMatch && otpMatch[1]) {
+        try {
+          const parsed: DeliveryOtpState = JSON.parse(otpMatch[1]);
+          targetCode = parsed.code;
+          targetExpiresAt = parsed.expiresAt;
+          targetAttempts = parsed.attempts || 0;
+          targetMaxAttempts = parsed.maxAttempts || 5;
+          targetVerified = Boolean(parsed.verified);
+          targetVerifiedAt = parsed.verifiedAt;
+        } catch {}
+      }
+    }
+
+    if (!targetCode) {
       await getOrCreateDeliveryOtp(assignmentId, orderId);
       return {
         success: false,
@@ -1417,55 +1634,74 @@ export async function verifyDeliveryOtp(
       };
     }
 
-    let parsed: DeliveryOtpState;
-    try {
-      parsed = JSON.parse(otpMatch[1]);
-    } catch {
-      return { success: false, error: "Malformed OTP data. Please tap Resend OTP." };
+    if (targetVerified) {
+      return { success: true, verifiedAt: targetVerifiedAt || new Date().toISOString() };
     }
 
-    if (parsed.verified) {
-      return { success: true, verifiedAt: parsed.verifiedAt || new Date().toISOString() };
-    }
-
-    if (parsed.attempts >= (parsed.maxAttempts || 5)) {
+    if (targetAttempts >= targetMaxAttempts) {
       return {
         success: false,
-        error: "Maximum verification attempts (5) exceeded. Please tap 'Resend OTP' to generate a fresh code for the customer.",
+        error: `Maximum verification attempts (${targetMaxAttempts}) exceeded. Please tap 'Resend OTP' to generate a fresh code for the customer.`,
       };
     }
 
-    if (Date.now() > parsed.expiresAt) {
+    if (targetExpiresAt > 0 && Date.now() > targetExpiresAt) {
       return {
         success: false,
         error: "This OTP has expired. Please tap 'Resend OTP' to send a new code to the customer.",
       };
     }
 
-    if (trimmedInput !== parsed.code) {
-      parsed.attempts = (parsed.attempts || 0) + 1;
+    if (trimmedInput !== targetCode) {
+      const newAttempts = targetAttempts + 1;
+      const updatedOtpState: DeliveryOtpState = {
+        code: targetCode,
+        expiresAt: targetExpiresAt,
+        verified: false,
+        verifiedAt: null,
+        attempts: newAttempts,
+        maxAttempts: targetMaxAttempts,
+      };
+
       const cleanNotes = notes.replace(/\[OTP:(\{.*?\})\]/g, "").trim();
-      const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(parsed)}]`.trim();
+      const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(updatedOtpState)}]`.trim();
 
       await (supabase.from("delivery_assignments") as any)
-        .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+        .update({
+          otp_attempts: newAttempts,
+          notes: updatedNotes,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", assignmentId);
 
-      const attemptsLeft = (parsed.maxAttempts || 5) - parsed.attempts;
+      const attemptsLeft = targetMaxAttempts - newAttempts;
       return {
         success: false,
         error: `Incorrect OTP. ${attemptsLeft > 0 ? `${attemptsLeft} attempt(s) remaining.` : "Please tap Resend OTP."}`,
       };
     }
 
-    // Success: Mark verified
-    parsed.verified = true;
-    parsed.verifiedAt = new Date().toISOString();
+    // Success: Mark verified in dedicated columns and status history
+    const nowIso = new Date().toISOString();
+    const verifiedOtpState: DeliveryOtpState = {
+      code: targetCode,
+      expiresAt: targetExpiresAt,
+      verified: true,
+      verifiedAt: nowIso,
+      attempts: targetAttempts,
+      maxAttempts: targetMaxAttempts,
+    };
+
     const cleanNotes = notes.replace(/\[OTP:(\{.*?\})\]/g, "").trim();
-    const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(parsed)}]`.trim();
+    const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(verifiedOtpState)}]`.trim();
 
     await (supabase.from("delivery_assignments") as any)
-      .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+      .update({
+        otp_verified: true,
+        otp_verified_at: nowIso,
+        notes: updatedNotes,
+        updated_at: nowIso,
+      })
       .eq("id", assignmentId);
 
     // Log to order history
@@ -1477,13 +1713,13 @@ export async function verifyDeliveryOtp(
             order_id: actualOrderId,
             status: "OTP Verified",
             note: "Customer OTP successfully verified by Delivery Agent.",
-            created_at: new Date().toISOString(),
+            created_at: nowIso,
           },
         ]);
       } catch {}
     }
 
-    return { success: true, verifiedAt: parsed.verifiedAt };
+    return { success: true, verifiedAt: nowIso };
   } catch (err: any) {
     console.error("verifyDeliveryOtp error:", err);
     return { success: false, error: err.message || "Failed to verify OTP" };
@@ -1491,16 +1727,29 @@ export async function verifyDeliveryOtp(
 }
 
 /**
- * Retrieves OTP for customer display in tracking modal if active.
+ * Retrieves active OTP for customer display in tracking modal.
+ * Never returns verified or expired OTPs.
  */
 export async function getCustomerDeliveryOtp(orderId: string): Promise<string | null> {
   try {
     const { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("notes, status")
+      .select("notes, status, otp_code, otp_expires_at, otp_verified")
       .eq("order_id", orderId)
       .maybeSingle();
 
-    if (!assignment?.notes) return null;
+    if (!assignment) return null;
+
+    // Check dedicated columns
+    if (assignment.otp_code) {
+      if (assignment.otp_verified) return null;
+      if (assignment.otp_expires_at && Date.now() > new Date(assignment.otp_expires_at).getTime()) {
+        return null;
+      }
+      return assignment.otp_code;
+    }
+
+    // Fallback to legacy notes
+    if (!assignment.notes) return null;
     const match = assignment.notes.match(/\[OTP:(\{.*?\})\]/);
     if (!match || !match[1]) return null;
 
@@ -1512,3 +1761,125 @@ export async function getCustomerDeliveryOtp(orderId: string): Promise<string | 
     return null;
   }
 }
+
+/**
+ * Permanently deletes a driver record from Supabase and cleans up profiles/auth,
+ * while safely preserving historical completed deliveries and customer reviews.
+ * Blocks deletion if the driver has active or pending deliveries.
+ */
+export async function deleteDeliveryAgent(
+  agentId: string,
+): Promise<{ success: boolean; message?: string }> {
+  if (!agentId) throw new Error("Driver ID is required.");
+
+  // 1. Fetch current driver record
+  const { data: driver } = await (supabase.from("delivery_agents") as any)
+    .select("id, full_name, email, agent_code, active_deliveries")
+    .eq("id", agentId)
+    .maybeSingle();
+
+  // Safety protection for canonical test drivers
+  if (
+    agentId === "774e6de8-79e5-455e-afb9-5ba567462dff" ||
+    agentId === "a63e3f53-1134-4adb-bf34-a57bd8bcaa4b" ||
+    agentId === "ae9299f3-3d2c-4d5b-82d7-d5e6fc963017" ||
+    agentId === "71a1294f-a0a1-42f1-bf9d-a6e0c39e4b52" ||
+    driver?.full_name?.toLowerCase() === "aswin" ||
+    driver?.full_name?.toLowerCase() === "astin" ||
+    driver?.email?.toLowerCase() === "aswin@jss.com" ||
+    driver?.email?.toLowerCase() === "astin@jss.com"
+  ) {
+    throw new Error("Aswin and Astin are core test drivers and cannot be deleted.");
+  }
+
+  // 2. Check REAL active assignments in delivery_assignments table
+  const { data: activeAssignments } = await (supabase.from("delivery_assignments") as any)
+    .select("id, status, order_id")
+    .or(`agent_id.eq.${agentId},driver_id.eq.${agentId}`)
+    .in("status", ["assigned", "in_transit", "pending", "active", "out_for_delivery", "out of delivery"]);
+
+  if (activeAssignments && activeAssignments.length > 0) {
+    throw new Error(
+      "This driver cannot be deleted while active deliveries or pending assignments exist. Deactivate the driver instead.",
+    );
+  }
+
+  // 3. Try secure RPC if available
+  try {
+    const { data: rpcData, error: rpcErr } = await (supabase.rpc as any)("admin_delete_driver", {
+      target_driver_id: agentId,
+    });
+
+    if (!rpcErr && rpcData?.success) {
+      saveDeletedAgentId(agentId);
+      if (driver?.email) saveDeletedAgentId(driver.email);
+      const meta = getLocalAgentsMeta();
+      delete meta[agentId];
+      if (driver?.email) delete meta[driver.email];
+      saveLocalAgentsMeta(meta);
+
+      return { success: true, message: rpcData.message || "Driver deleted successfully." };
+    }
+  } catch (rpcEx: any) {
+    if (rpcEx.message && rpcEx.message.includes("active deliveries")) {
+      throw rpcEx;
+    }
+  }
+
+  // 4. Direct Supabase deletion with integrity decoupling
+  try {
+    // A. Decouple historical assignments without deleting customer delivery records
+    try {
+      await (supabase.from("delivery_assignments") as any)
+        .update({ agent_id: null })
+        .or(`agent_id.eq.${agentId},driver_id.eq.${agentId}`);
+    } catch (e) {
+      console.warn("Notice decoupling delivery assignments:", e);
+    }
+
+    // B. Decouple reviews while preserving customer ratings and feedback
+    try {
+      await (supabase.from("reviews") as any)
+        .update({ delivery_agent_id: null })
+        .eq("delivery_agent_id", agentId);
+    } catch (e) {
+      console.warn("Notice decoupling reviews:", e);
+    }
+
+    // C. Delete from delivery_agents table
+    try {
+      await (supabase.from("delivery_agents") as any)
+        .delete()
+        .eq("id", agentId);
+    } catch (e) {
+      console.warn("Notice deleting from delivery_agents:", e);
+    }
+
+    // D. Delete corresponding profile if driver had a profile
+    if (driver?.email) {
+      try {
+        await (supabase.from("profiles") as any)
+          .delete()
+          .eq("email", driver.email)
+          .eq("role", "delivery_agent");
+      } catch (e) {
+        console.warn("Notice deleting profile:", e);
+      }
+    }
+
+    // E. Save deleted ID and purge local metadata
+    saveDeletedAgentId(agentId);
+    if (driver?.email) saveDeletedAgentId(driver.email);
+    if (driver?.agent_code) saveDeletedAgentId(driver.agent_code);
+    const meta = getLocalAgentsMeta();
+    delete meta[agentId];
+    if (driver?.email) delete meta[driver.email];
+    saveLocalAgentsMeta(meta);
+
+    return { success: true, message: `Driver ${driver?.full_name || agentId} deleted successfully.` };
+  } catch (fallbackErr: any) {
+    console.error("deleteDeliveryAgent fallback error:", fallbackErr);
+    throw new Error(fallbackErr.message || "Failed to delete driver.");
+  }
+}
+

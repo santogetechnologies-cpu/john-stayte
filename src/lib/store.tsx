@@ -10,6 +10,7 @@ import {
 import { type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
+import { INITIAL_ACTIVE_AGENTS } from "@/lib/delivery-agent-service";
 
 export type Role = "customer" | "manager" | "admin" | "delivery_agent";
 export type User = { id?: string; name: string; email: string; role: Role; avatar?: string };
@@ -71,6 +72,67 @@ function usePersisted<T>(key: string, initial: T) {
     if (loaded) localStorage.setItem(key, JSON.stringify(value));
   }, [key, value, loaded]);
   return [value, setValue] as const;
+}
+
+function resolveUserRole(
+  uid?: string,
+  email?: string | null,
+  metadataRole?: string | null,
+  profileRole?: string | null,
+): Role {
+  const normEmail = (email || "").trim().toLowerCase();
+
+  // 1. Direct match with canonical active delivery agents (Aswin & Astin)
+  const isDeliveryAgent = INITIAL_ACTIVE_AGENTS.some(
+    (ag) =>
+      (uid && ag.id === uid) ||
+      (ag.email && ag.email.toLowerCase() === normEmail) ||
+      (ag.full_name && ag.full_name.toLowerCase() === normEmail),
+  );
+  if (isDeliveryAgent) {
+    return "delivery_agent";
+  }
+
+  // 2. Explicit elevated role in Supabase Auth user_metadata
+  if (
+    metadataRole === "delivery_agent" ||
+    metadataRole === "manager" ||
+    metadataRole === "admin"
+  ) {
+    return metadataRole as Role;
+  }
+
+  // 3. Explicit elevated role in Supabase profiles table
+  if (
+    profileRole === "delivery_agent" ||
+    profileRole === "manager" ||
+    profileRole === "admin"
+  ) {
+    return profileRole as Role;
+  }
+
+  return "customer";
+}
+
+function resolveUserName(
+  email?: string | null,
+  metadataName?: string | null,
+  profileName?: string | null,
+): string {
+  const normEmail = (email || "").trim().toLowerCase();
+  const matchedAgent = INITIAL_ACTIVE_AGENTS.find(
+    (ag) => ag.email?.toLowerCase() === normEmail,
+  );
+  if (matchedAgent?.full_name) {
+    return matchedAgent.full_name;
+  }
+  if (metadataName && metadataName.trim()) {
+    return metadataName.trim();
+  }
+  if (profileName && profileName.trim() && profileName !== email) {
+    return profileName.trim();
+  }
+  return email ? email.split("@")[0] : "User";
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -196,20 +258,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const fetchSessionUser = async (session: any) => {
       try {
         if (!session?.user?.id) {
-          try {
-            const raw = localStorage.getItem("jss.auth_user");
-            if (raw) {
-              const u = JSON.parse(raw);
-              if (u && u.email && u.role) {
-                setUser(u);
-                return;
-              }
-            }
-          } catch {}
           setUser(null);
+          try {
+            localStorage.removeItem("jss.auth_user");
+          } catch {}
           return;
         }
-
         const currentUid = session.user.id;
 
         try {
@@ -219,10 +273,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .eq("id", currentUid)
             .maybeSingle();
 
-          let resolvedRole: Role =
-            (profile?.role as Role) ||
-            (session.user.user_metadata?.role as Role) ||
-            "customer";
+          let resolvedRole: Role = resolveUserRole(
+            currentUid,
+            session.user.email,
+            session.user.user_metadata?.role,
+            profile?.role,
+          );
 
           // If role is still customer, check delivery_agents table by id or email
           if (resolvedRole === "customer") {
@@ -249,34 +305,34 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
           const u: User = {
             id: currentUid,
-            name:
-              profile?.full_name ||
-              session.user.user_metadata?.full_name ||
-              session.user.email?.split("@")[0] ||
-              "Customer",
+            name: resolveUserName(
+              session.user.email,
+              session.user.user_metadata?.full_name,
+              profile?.full_name,
+            ),
             email: session.user.email || "",
             role: resolvedRole,
             avatar: userAvatar,
           };
           setUser(u);
-          try {
-            localStorage.setItem("jss.auth_user", JSON.stringify(u));
-          } catch {}
         } catch {
-          let resolvedRole: Role = (session.user.user_metadata?.role as Role) || "customer";
+          let resolvedRole: Role = resolveUserRole(
+            currentUid,
+            session.user.email,
+            session.user.user_metadata?.role,
+            null,
+          );
           const u: User = {
             id: currentUid,
-            name:
-              session.user.user_metadata?.full_name ||
-              session.user.email?.split("@")[0] ||
-              "Customer",
+            name: resolveUserName(
+              session.user.email,
+              session.user.user_metadata?.full_name,
+              null,
+            ),
             email: session.user.email || "",
             role: resolvedRole,
           };
           setUser(u);
-          try {
-            localStorage.setItem("jss.auth_user", JSON.stringify(u));
-          } catch {}
         }
 
         // Sync Supabase-backed Wishlist for authenticated user
@@ -313,153 +369,79 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (email, password) => {
       const cleanEmail = email.trim();
 
+      if (!cleanEmail || !password) {
+        return { ok: false, error: "Please enter both email address and password." };
+      }
+
       try {
-        let authRes = await supabase.auth.signInWithPassword({
+        const authRes = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
         });
 
-        // 1. Check if email matches a registered delivery agent in delivery_agents or profiles
-        let dbAgent: any = null;
-        let dbProfile: any = null;
-
-        try {
-          const [{ data: agentData }, { data: profileData }] = await Promise.all([
-            (supabase.from("delivery_agents") as any)
-              .select("*")
-              .ilike("email", cleanEmail)
-              .maybeSingle(),
-            (supabase.from("profiles") as any)
-              .select("*")
-              .ilike("email", cleanEmail)
-              .maybeSingle(),
-          ]);
-          dbAgent = agentData;
-          dbProfile = profileData;
-        } catch {
-          // ignore
+        // If Supabase authentication failed (wrong password, account not found, etc.)
+        if (authRes.error || !authRes.data?.user?.id) {
+          return {
+            ok: false,
+            error: authRes.error?.message || "Invalid email or password.",
+          };
         }
 
-        const isDeliveryAgent = Boolean(
-          dbAgent || (dbProfile && dbProfile.role === "delivery_agent"),
+        // Supabase Auth genuinely succeeded
+        const uid = authRes.data.user.id;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", uid)
+          .maybeSingle();
+
+        let resolvedRole: Role = resolveUserRole(
+          uid,
+          authRes.data.user.email || cleanEmail,
+          authRes.data.user.user_metadata?.role,
+          profile?.role,
         );
 
-        // 2. Self-heal delivery agent account if first-time or password mismatch in dev
-        if (authRes.error && isDeliveryAgent) {
-          try {
-            const signUpRes = await supabase.auth.signUp({
-              email: cleanEmail,
-              password,
-              options: {
-                data: {
-                  full_name:
-                    dbAgent?.full_name ||
-                    dbProfile?.full_name ||
-                    cleanEmail.split("@")[0],
-                  role: "delivery_agent",
-                  phone: dbAgent?.phone || dbProfile?.phone || null,
-                },
-              },
-            });
-
-            if (!signUpRes.error && signUpRes.data.user?.id) {
-              authRes = await supabase.auth.signInWithPassword({
-                email: cleanEmail,
-                password,
-              });
-            }
-          } catch {
-            // ignore
-          }
-
-          // If authRes is still not fulfilled, provide robust delivery agent session
-          if (authRes.error || !authRes.data?.user?.id) {
-            const agentName =
-              dbAgent?.full_name ||
-              dbProfile?.full_name ||
-              cleanEmail.split("@")[0];
-
-            const agentId =
-              dbAgent?.id ||
-              dbProfile?.id ||
-              `da-${cleanEmail.replace(/[^a-zA-Z0-9]/g, "-")}`;
-
-            // Sync into profiles table
-            try {
-              await (supabase.from("profiles") as any).upsert({
-                id: agentId,
-                full_name: agentName,
-                email: cleanEmail,
-                phone: dbAgent?.phone || dbProfile?.phone || null,
-                role: "delivery_agent",
-                status: "active",
-                updated_at: new Date().toISOString(),
-              });
-            } catch {}
-
-            const u: User = {
-              id: agentId,
-              name: agentName,
-              email: cleanEmail,
-              role: "delivery_agent",
-            };
-            setUser(u);
-            try {
-              localStorage.setItem("jss.auth_user", JSON.stringify(u));
-            } catch {}
-            return { ok: true, user: u };
-          }
-        }
-
-        // 3. If Supabase Auth is successful
-        if (authRes.data?.user?.id) {
-          const uid = authRes.data.user.id;
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", uid)
+        // Check if user is registered in delivery_agents table
+        if (resolvedRole === "customer") {
+          const { data: da } = await (supabase.from("delivery_agents") as any)
+            .select("id")
+            .or(`id.eq.${uid},email.ilike.${cleanEmail}`)
             .maybeSingle();
-
-          let resolvedRole: Role =
-            (profile?.role as Role) ||
-            (authRes.data.user.user_metadata?.role as Role) ||
-            (isDeliveryAgent ? "delivery_agent" : "customer");
-
-          if (isDeliveryAgent) {
+          if (da) {
             resolvedRole = "delivery_agent";
-            if (profile && profile.role !== "delivery_agent") {
-              await (supabase.from("profiles") as any)
-                .update({ role: "delivery_agent" })
-                .eq("id", uid);
-            }
           }
-
-          const u: User = {
-            id: uid,
-            name:
-              profile?.full_name ||
-              dbAgent?.full_name ||
-              authRes.data.user.user_metadata?.full_name ||
-              authRes.data.user.email?.split("@")[0] ||
-              "User",
-            email: authRes.data.user.email || cleanEmail,
-            role: resolvedRole,
-          };
-          setUser(u);
-          try {
-            localStorage.setItem("jss.auth_user", JSON.stringify(u));
-          } catch {}
-          syncWishlistWithDb(uid);
-          return { ok: true, user: u };
         }
 
-        if (authRes.error) {
-          return { ok: false, error: authRes.error.message };
+        let userAvatar: string | undefined = undefined;
+        if (
+          profile?.notification_prefs &&
+          typeof profile.notification_prefs === "object" &&
+          !Array.isArray(profile.notification_prefs)
+        ) {
+          const prefs = profile.notification_prefs as Record<string, unknown>;
+          if (typeof prefs.avatar_url === "string") {
+            userAvatar = prefs.avatar_url;
+          }
         }
 
-        return { ok: false, error: "Sign in failed" };
+        const u: User = {
+          id: uid,
+          name: resolveUserName(
+            authRes.data.user.email || cleanEmail,
+            authRes.data.user.user_metadata?.full_name,
+            profile?.full_name,
+          ),
+          email: authRes.data.user.email || cleanEmail,
+          role: resolvedRole,
+          avatar: userAvatar,
+        };
+
+        setUser(u);
+        syncWishlistWithDb(uid);
+        return { ok: true, user: u };
       } catch (err: any) {
-        return { ok: false, error: err?.message || "Authentication failed" };
+        return { ok: false, error: err?.message || "Authentication failed. Please try again." };
       }
     },
     [syncWishlistWithDb],

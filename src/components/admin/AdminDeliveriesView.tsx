@@ -17,6 +17,7 @@ import {
   Sliders,
   ShieldAlert,
   UserCheck,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -44,6 +51,7 @@ import {
   assignDeliveryAgentToDelivery,
   type DeliveryAgentRecord,
 } from "@/lib/delivery-agent-service";
+import { deleteDeliveryAssignment } from "@/lib/order-service";
 import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 import { cn } from "@/lib/utils";
 import { DEFAULT_SLOTS, SlotConfig } from "@/lib/cylinder-service";
@@ -73,6 +81,27 @@ export function AdminDeliveriesView() {
   // Slots Configuration State
   const [slotConfigs, setSlotConfigs] = useState<SlotConfig[]>(DEFAULT_SLOTS);
   const [savingSlots, setSavingSlots] = useState(false);
+
+  // Delete Delivery Assignment Confirmation Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<any | null>(null);
+  const [deletingAssignment, setDeletingAssignment] = useState(false);
+
+  const handleConfirmDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
+    setDeletingAssignment(true);
+    try {
+      const res = await deleteDeliveryAssignment(assignmentToDelete.id);
+      toast.success(res.message || "Delivery assignment deleted successfully.");
+      setDeleteModalOpen(false);
+      setAssignmentToDelete(null);
+      await loadDeliveriesAndSlots();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete delivery assignment.");
+    } finally {
+      setDeletingAssignment(false);
+    }
+  };
 
   const loadDeliveriesAndSlots = async () => {
     setLoading(true);
@@ -184,7 +213,7 @@ export function AdminDeliveriesView() {
 
   const handleAssignAgent = async () => {
     if (!selectedDeliveryToAssign || !selectedAgentIdForAssign) {
-      toast.error("Please select an active delivery agent.");
+      toast.error("Please select an active driver.");
       return;
     }
 
@@ -613,6 +642,19 @@ export function AdminDeliveriesView() {
                                 <Link to="/admin/orders">View Order</Link>
                               </Button>
                             )}
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setAssignmentToDelete(d);
+                                setDeleteModalOpen(true);
+                              }}
+                              className="h-7 w-7 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer"
+                              title="Delete delivery assignment"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -625,12 +667,12 @@ export function AdminDeliveriesView() {
         </div>
       )}
 
-      {/* ASSIGN / REASSIGN DELIVERY AGENT MODAL */}
+      {/* ASSIGN / REASSIGN DRIVER MODAL */}
       <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white border border-slate-200">
           <DialogHeader>
             <DialogTitle className="font-display font-extrabold text-lg text-slate-900 flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-primary" /> Assign Delivery Agent
+              <UserCheck className="h-5 w-5 text-primary" /> Assign Driver
             </DialogTitle>
           </DialogHeader>
 
@@ -685,14 +727,14 @@ export function AdminDeliveriesView() {
 
               <div>
                 <label className="font-bold text-slate-800 block mb-1">
-                  Select Active Delivery Agent
+                  Select Active Driver
                 </label>
                 <Select
                   value={selectedAgentIdForAssign}
                   onValueChange={setSelectedAgentIdForAssign}
                 >
                   <SelectTrigger className="rounded-xl text-xs font-semibold bg-white border-slate-200">
-                    <SelectValue placeholder="Choose a delivery agent..." />
+                    <SelectValue placeholder="Choose a driver..." />
                   </SelectTrigger>
                   <SelectContent>
                     {deliveryAgents.map((ag) => (
@@ -758,7 +800,7 @@ export function AdminDeliveriesView() {
           <form onSubmit={handleCreateAssignment} className="space-y-4 pt-2 text-xs">
             {deliveryAgents.length > 0 && (
               <div>
-                <label className="font-bold text-slate-800">Assign Registered Delivery Agent</label>
+                <label className="font-bold text-slate-800">Assign Registered Driver</label>
                 <Select
                   value={selectedAgentId}
                   onValueChange={(agentId) => {
@@ -832,6 +874,94 @@ export function AdminDeliveriesView() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Delivery Assignment Confirmation Modal */}
+      <Dialog
+        open={deleteModalOpen}
+        onOpenChange={(open) => !deletingAssignment && setDeleteModalOpen(open)}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-3xl p-6 bg-white border border-slate-200 shadow-xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="font-extrabold text-lg text-slate-900">
+                  Delete delivery assignment?
+                </DialogTitle>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  This will permanently remove the route assignment from Supabase.
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {assignmentToDelete && (
+            <div className="my-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Route / Area:</span>
+                <span className="font-bold text-slate-900">
+                  {assignmentToDelete.route_area || "Gloucestershire"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Driver:</span>
+                <span className="font-bold text-slate-900">
+                  {assignmentToDelete.driver_name || "Unassigned"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Vehicle:</span>
+                <span className="font-mono font-bold text-slate-700">
+                  {assignmentToDelete.vehicle_identifier || "Fleet Van"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Associated Order:</span>
+                <span className="font-mono font-extrabold text-primary">
+                  {assignmentToDelete.orders?.order_number
+                    ? `#${assignmentToDelete.orders.order_number}`
+                    : "Standalone Route"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Status:</span>
+                <span className="font-bold text-slate-700">
+                  {assignmentToDelete.status || "Pending"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deletingAssignment}
+              className="rounded-xl text-xs font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDeleteAssignment}
+              disabled={deletingAssignment}
+              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deletingAssignment ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Deleting...
+                </>
+              ) : (
+                "Delete Assignment"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

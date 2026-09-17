@@ -371,8 +371,8 @@ export function CustomerOrderDetailView() {
     <div class="header-flex">
       <div>
         <h1 class="company-title">JOHN STAYTE SERVICES</h1>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Whitminster Depot, Gloucestershire, GL2 7NY</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: 01452 740326</p>
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom</p>
+        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: +44 (0)1453 822859</p>
       </div>
       <div>
         <h2 class="inv-title">VAT TAX INVOICE</h2>
@@ -582,7 +582,7 @@ export function CustomerOrderDetailView() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 w-full">
         <div className="h-8 w-48 bg-slate-100 rounded-xl animate-pulse" />
         <div className="bg-white rounded-2xl border p-8 space-y-6 shadow-xs animate-pulse">
           <div className="h-6 w-1/3 bg-slate-100 rounded-md" />
@@ -622,7 +622,7 @@ export function CustomerOrderDetailView() {
   const isCancelled = order.status === "Cancelled";
 
   return (
-    <div className="space-y-6 sm:space-y-7 max-w-5xl">
+    <div className="space-y-6 sm:space-y-7 w-full">
       {/* ============================================================ */}
       {/* 1. TOP BAR & ORDER HEADER                                    */}
       {/* ============================================================ */}
@@ -1013,6 +1013,17 @@ export function CustomerOrderDetailView() {
                     <span className="text-slate-500">Depot:</span>{" "}
                     {order.assigned_depot || "Whitminster Main Depot (GL2)"}
                   </p>
+                  {(order.delivery_date || deliveryAssignment?.scheduled_date) && (
+                    <p className="font-semibold text-emerald-700">
+                      <span className="text-slate-500 font-normal">Expected Delivery:</span>{" "}
+                      {new Date(order.delivery_date || deliveryAssignment?.scheduled_date).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}{" "}
+                      ({order.delivery_slot || deliveryAssignment?.time_slot || "Morning (08:00 - 12:00)"})
+                    </p>
+                  )}
                   {order.assigned_driver && (
                     <p className="font-semibold text-primary">
                       <span className="text-slate-500 font-normal">Assigned Driver:</span>{" "}
@@ -1039,7 +1050,7 @@ export function CustomerOrderDetailView() {
                     New Cylinder Purchase
                   </h3>
                   <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    No empty cylinder required. Our delivery agent will deliver your full cylinder directly to your door.
+                    No empty cylinder required. Our driver will deliver your full cylinder directly to your door.
                   </p>
                 </div>
               </div>
@@ -1181,7 +1192,7 @@ export function CustomerOrderDetailView() {
 
                     <div className="bg-white p-3 rounded-xl border border-slate-100 space-y-1">
                       <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                        Delivery Agent (
+                        Driver (
                         {orderReview.delivery_agent_name || order.assigned_driver || "Driver"})
                       </span>
                       <div className="flex items-center gap-1">

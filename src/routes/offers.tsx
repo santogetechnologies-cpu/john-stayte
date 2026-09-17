@@ -27,14 +27,36 @@ export const Route = createFileRoute("/offers")({
 function OffersPage() {
   const [deals, setDeals] = useState<Product[]>([]);
   const [promoOffers, setPromoOffers] = useState<any[]>([]);
+  const [heroCms, setHeroCms] = useState({
+    eyebrow: "Offers",
+    title: "Latest deals & bundles",
+    subtitle: "Refreshed monthly — while stocks last.",
+  });
 
   useEffect(() => {
     async function loadOffersData() {
       try {
-        const [{ data: prodData }, { data: offerData }] = await Promise.all([
+        const [{ data: prodData }, { data: offerData }, { data: block }] = await Promise.all([
           supabase.from("products").select("*").eq("is_offer", true),
           supabase.from("offers").select("*").eq("is_active", true),
+          supabase.from("cms_content_blocks").select("content").eq("section_key", "offers_data").maybeSingle(),
         ]);
+
+        if (block?.content) {
+          try {
+            const parsed = JSON.parse(block.content);
+            if (parsed && typeof parsed === "object") {
+              setHeroCms({
+                eyebrow: parsed.heroEyebrow || "Offers",
+                title: parsed.heroHeading || "Latest deals & bundles",
+                subtitle: parsed.heroSubtitle || "Refreshed monthly — while stocks last.",
+              });
+              if (Array.isArray(parsed.offers) && parsed.offers.length > 0) {
+                setPromoOffers(parsed.offers.filter((o: any) => o.is_active !== false));
+              }
+            }
+          } catch {}
+        }
 
         if (prodData) {
           const mapped: Product[] = prodData.map((p) => ({
@@ -61,7 +83,7 @@ function OffersPage() {
           setDeals(mapped);
         }
 
-        if (offerData) {
+        if (offerData && offerData.length > 0) {
           setPromoOffers(offerData);
         }
       } catch (err) {
@@ -69,14 +91,18 @@ function OffersPage() {
       }
     }
     loadOffersData();
+
+    const handleUpdate = () => loadOffersData();
+    window.addEventListener("cms_offers_updated", handleUpdate);
+    return () => window.removeEventListener("cms_offers_updated", handleUpdate);
   }, []);
 
   return (
     <SiteLayout>
       <PageHero
-        eyebrow="Offers"
-        title="Latest deals & bundles"
-        subtitle="Refreshed monthly — while stocks last."
+        eyebrow={heroCms.eyebrow}
+        title={heroCms.title}
+        subtitle={heroCms.subtitle}
       />
       <div className="container-page py-12">
         {promoOffers.length > 0 && (

@@ -1,0 +1,108 @@
+-- Migration 00035: Sync real Patio Gas refill products (13kg and 5kg)
+-- Updates existing 13kg patio record and inserts 5kg patio record with exact prices and images
+
+-- 1. Ensure 13kg Patio Gas Refill record has correct specifications
+INSERT INTO public.products (
+  id,
+  name,
+  slug,
+  brand,
+  category_id,
+  category_slug,
+  subcategory,
+  description,
+  price,
+  stock,
+  rating,
+  reviews_count,
+  image_url,
+  is_featured,
+  is_offer,
+  specs,
+  created_at,
+  updated_at
+) VALUES (
+  'c874e66e-1797-47cf-accc-25571775432d',
+  'Calor Patio Gas - 13kg Refill',
+  'calor-patio-gas-13kg-refill',
+  'Calor',
+  'c78e60e3-bf94-4015-b8a6-a9c5a487fcf7',
+  'gas',
+  'Patio Cylinders',
+  '13kg Patio Gas cylinder refill equipped with 27mm clip-on connector for 4+ burner barbecues and patio heaters. Requires an empty cylinder exchange on delivery.',
+  52.50,
+  30,
+  5.0,
+  18,
+  '/calor-patio-13kg.png',
+  true,
+  false,
+  '{"gas_type": "Patio Gas", "is_active": true, "is_refill": true, "usage_type": "DOMESTIC", "product_mode": "Refill / Cylinder Exchange", "refill_price": 52.50, "cylinder_size": "13kg", "deposit_price": 44.99, "empty_cylinder_required": true}'::jsonb,
+  now(),
+  now()
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  brand = EXCLUDED.brand,
+  category_id = EXCLUDED.category_id,
+  category_slug = EXCLUDED.category_slug,
+  subcategory = EXCLUDED.subcategory,
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  image_url = EXCLUDED.image_url,
+  specs = EXCLUDED.specs,
+  updated_at = now();
+
+-- 2. Ensure 5kg Patio Gas Refill record has correct specifications
+INSERT INTO public.products (
+  id,
+  name,
+  slug,
+  brand,
+  category_id,
+  category_slug,
+  subcategory,
+  description,
+  price,
+  stock,
+  rating,
+  reviews_count,
+  image_url,
+  is_featured,
+  is_offer,
+  specs,
+  created_at,
+  updated_at
+) VALUES (
+  'fa53859f-d5b0-49c7-91b2-fb1b83b32ba2',
+  'Calor Patio Gas - 5kg Refill',
+  'calor-patio-gas-5kg-refill',
+  'Calor',
+  'c78e60e3-bf94-4015-b8a6-a9c5a487fcf7',
+  'gas',
+  'Patio Cylinders',
+  '5kg Patio Gas cylinder refill for compact tabletop barbecues and portable patio heaters. Requires an empty cylinder exchange on delivery.',
+  23.25,
+  25,
+  5.0,
+  14,
+  '/calor-patio-5kg.png',
+  true,
+  false,
+  '{"gas_type": "Patio Gas", "is_active": true, "is_refill": true, "usage_type": "DOMESTIC", "product_mode": "Refill / Cylinder Exchange", "refill_price": 23.25, "cylinder_size": "5kg", "deposit_price": 34.99, "empty_cylinder_required": true}'::jsonb,
+  now(),
+  now()
+)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  brand = EXCLUDED.brand,
+  category_id = EXCLUDED.category_id,
+  category_slug = EXCLUDED.category_slug,
+  subcategory = EXCLUDED.subcategory,
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  image_url = EXCLUDED.image_url,
+  specs = EXCLUDED.specs,
+  updated_at = now();

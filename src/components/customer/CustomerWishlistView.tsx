@@ -255,7 +255,7 @@ export function CustomerWishlistView() {
                       onClick={() => handleAddToCart(product)}
                     >
                       <ShoppingCart className="h-3.5 w-3.5" />
-                      {isOutOfStock ? "Out of Stock" : "Add to Basket"}
+                      {isOutOfStock ? "Out of Stock" : "Add to Cart"}
                     </Button>
 
                     <Button

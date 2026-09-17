@@ -9,13 +9,10 @@ import {
   AlertTriangle,
   ArrowRight,
   MapPin,
-  Phone,
   Flame,
   Loader2,
-  Sparkles,
   RefreshCw,
-  Eye,
-  CheckSquare,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,7 +26,21 @@ import { cn } from "@/lib/utils";
 
 export function DeliveryDashboardView() {
   const { user } = useStore();
-  const agentName = user?.name || "Dave Jenkins";
+
+  // Resolve display name cleanly (never display raw email)
+  const agentDisplayName = useMemo(() => {
+    if (user?.name && !user.name.includes("@")) {
+      return user.name.split(" ")[0];
+    }
+    if (user?.email) {
+      const lower = user.email.toLowerCase();
+      if (lower.includes("astin")) return "Astin";
+      if (lower.includes("aswin")) return "Aswin";
+      const prefix = user.email.split("@")[0];
+      return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+    return "Delivery Driver";
+  }, [user]);
 
   const [deliveries, setDeliveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +121,7 @@ export function DeliveryDashboardView() {
 
   const statCards = [
     {
-      label: "TODAY'S DELIVERIES",
+      label: "Today's Deliveries",
       value: loading ? null : totalToday,
       sub: `${totalToday} routes assigned`,
       icon: CalendarDays,
@@ -119,16 +130,16 @@ export function DeliveryDashboardView() {
       href: "/delivery/today",
     },
     {
-      label: "PENDING",
+      label: "Pending",
       value: loading ? null : pendingCount,
-      sub: "Awaiting dispatch / start",
+      sub: "Awaiting dispatch",
       icon: Clock,
       bgCls: "bg-slate-100 text-slate-700 border-slate-200/80",
       accent: "text-slate-900",
       href: "/delivery/deliveries",
     },
     {
-      label: "OUT FOR DELIVERY",
+      label: "Out for Delivery",
       value: loading ? null : outForDeliveryCount,
       sub: "Active transit routes",
       icon: Truck,
@@ -137,7 +148,7 @@ export function DeliveryDashboardView() {
       href: "/delivery/deliveries",
     },
     {
-      label: "COMPLETED",
+      label: "Completed",
       value: loading ? null : completedTodayCount,
       sub: "Successfully delivered",
       icon: CheckCircle2,
@@ -146,18 +157,18 @@ export function DeliveryDashboardView() {
       href: "/delivery/completed",
     },
     {
-      label: "EMPTY CYLINDER VERIFICATION",
+      label: "Empty Cylinder Verification",
       value: loading ? null : exchangeVerificationCount,
-      sub: "Exchange deliveries requiring empty-cylinder verification",
+      sub: `${exchangeVerificationCount} exchange returns`,
       icon: PackageCheck,
       bgCls: "bg-amber-50 text-amber-700 border-amber-200/80",
       accent: "text-amber-700",
       href: "/delivery/returns",
     },
     {
-      label: "ISSUES & EXCEPTIONS",
+      label: "Issues & Exceptions",
       value: loading ? null : issuesCount,
-      sub: "Delivery exceptions logged",
+      sub: `${issuesCount} exceptions logged`,
       icon: AlertTriangle,
       bgCls: "bg-rose-50 text-rose-700 border-rose-200/80",
       accent: issuesCount > 0 ? "text-rose-600" : "text-slate-900",
@@ -170,45 +181,91 @@ export function DeliveryDashboardView() {
     setWorkflowOpen(true);
   };
 
-  return (
-    <div className="space-y-6">
-      {/* 1. WELCOME HERO CARD */}
-      <div className="relative bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-xs overflow-hidden">
-        <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-bl from-red-600/10 via-red-600/3 to-transparent rounded-full blur-2xl pointer-events-none -mr-16 -mt-16" />
+  const getStatusBadgeStyle = (status: string) => {
+    switch (status) {
+      case "Delivered":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200/90";
+      case "Exception":
+        return "bg-rose-50 text-rose-700 border-rose-200/90";
+      case "Out for Delivery":
+        return "bg-orange-50 text-orange-700 border-orange-200/90";
+      case "Arrived":
+        return "bg-indigo-50 text-indigo-700 border-indigo-200/90";
+      case "Customer Verified":
+      case "Cylinder Handed Over":
+      case "Empty Cylinder Verified":
+        return "bg-purple-50 text-purple-700 border-purple-200/90";
+      case "Accepted":
+        return "bg-blue-50 text-blue-700 border-blue-200/90";
+      default:
+        return "bg-amber-50 text-amber-700 border-amber-200/90";
+    }
+  };
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200">
-                <Sparkles className="h-3 w-3" /> Driver Control Console
+  const getActionLabel = (status: string, required: boolean) => {
+    switch (status) {
+      case "Assigned":
+        return "Accept & Start Delivery →";
+      case "Accepted":
+        return "Start Route →";
+      case "Out for Delivery":
+        return "Mark Arrived →";
+      case "Arrived":
+        return "Customer Verification →";
+      case "Customer Verified":
+        return "Handover Cylinder →";
+      case "Cylinder Handed Over":
+        return required ? "Verify Empty Cylinder →" : "Confirm Delivery →";
+      case "Empty Cylinder Verified":
+        return "Confirm Delivery →";
+      case "Delivered":
+        return "View Details →";
+      case "Exception":
+        return "Review Exception →";
+      default:
+        return "View Delivery →";
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* 1. COMPACT TOP HEADER / GREETING AREA */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 px-5 py-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider text-red-600 bg-red-50 border border-red-200/80">
+                <Sparkles className="h-3 w-3" /> Live Dispatch
               </span>
-              <span className="text-[11px] font-medium text-slate-400">
-                Whitminster & Stroud Zone
+              <span className="text-[11px] font-semibold text-slate-400">
+                • Gloucestershire Delivery Unit
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 leading-tight">
-              {getGreeting()}, {agentName.split(" ")[0]}
+            <h1 className="text-xl sm:text-2xl font-display font-extrabold tracking-tight text-slate-900 leading-tight">
+              {getGreeting()}, {agentDisplayName}
             </h1>
 
-            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-              Verify customer deliveries, complete cylinder exchanges, and report delivery exceptions.
+            <p className="text-xs text-slate-600 font-medium">
+              Manage today's deliveries, verify cylinders, and complete customer handovers safely.
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               asChild
-              className="rounded-xl font-extrabold text-xs shadow-sm bg-red-600 hover:bg-red-700 text-white h-10 px-5 gap-2 transition-all hover:scale-[1.01] cursor-pointer"
+              size="sm"
+              className="rounded-xl font-extrabold text-xs shadow-2xs bg-red-600 hover:bg-red-700 text-white h-9 px-4 gap-1.5 transition-all hover:scale-[1.01] cursor-pointer"
             >
               <Link to="/delivery/deliveries">
-                <Truck className="h-4 w-4" /> View My Deliveries
+                <Truck className="h-3.5 w-3.5" /> View My Deliveries
               </Link>
             </Button>
             <Button
               variant="outline"
+              size="sm"
               onClick={loadDashboardData}
-              className="rounded-xl font-bold text-xs border-slate-200 text-slate-700 hover:bg-slate-50 h-10 px-3 cursor-pointer"
+              className="rounded-xl font-bold text-xs border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-3 cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
             </Button>
@@ -216,85 +273,88 @@ export function DeliveryDashboardView() {
         </div>
       </div>
 
-      {/* 2. STATS CARDS (6 CARDS) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+      {/* 2. COMPACT 6-COLUMN KPI STRIP */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {statCards.map((card) => (
           <Link
             key={card.label}
             to={card.href as never}
-            className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 block cursor-pointer"
+            className="bg-white rounded-xl border border-slate-200/90 p-3 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all duration-150 flex flex-col justify-between min-h-[82px] cursor-pointer group"
           >
-            <div className="flex items-center justify-between gap-1.5 mb-2.5">
-              <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 truncate">
+            <div className="flex items-start justify-between gap-1.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 leading-tight line-clamp-2">
                 {card.label}
               </span>
-              <div className={`p-1.5 rounded-lg border shrink-0 ${card.bgCls}`}>
-                <card.icon className="h-3.5 w-3.5" />
+              <div className={`p-1 rounded-md border shrink-0 ${card.bgCls}`}>
+                <card.icon className="h-3 w-3" />
               </div>
             </div>
 
             {loading ? (
-              <div className="py-2">
-                <Loader2 className="h-4 w-4 text-red-600 animate-spin" />
+              <div className="py-1">
+                <Loader2 className="h-3.5 w-3.5 text-red-600 animate-spin" />
               </div>
             ) : (
-              <div className="space-y-0.5">
+              <div className="mt-1">
                 <p
-                  className={`text-xl sm:text-2xl font-display font-black tracking-tight leading-none ${card.accent}`}
+                  className={`text-lg sm:text-xl font-display font-black tracking-tight leading-none ${card.accent}`}
                 >
                   {card.value}
                 </p>
-                <p className="text-[10px] text-slate-500 font-medium truncate">{card.sub}</p>
+                <p className="text-[10px] text-slate-500 font-medium truncate mt-0.5">{card.sub}</p>
               </div>
             )}
           </Link>
         ))}
       </div>
 
-      {/* 3. TODAY'S DELIVERY SCHEDULE TIMELINE */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-0.5">
+      {/* 3. TODAY'S DELIVERY SCHEDULE — MAIN FOCUS (COMPACT 2-COLUMN LOGISTICS CARDS) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2 px-0.5">
           <div>
-            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-sm sm:text-base font-display font-extrabold text-slate-900 tracking-tight">
               Today's Delivery Schedule
             </h2>
             <p className="text-xs text-slate-500 font-medium">
-              Assigned customer drop-offs and cylinder verifications
+              Assigned customer deliveries and cylinder verification tasks
             </p>
           </div>
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl gap-1.5 h-8 px-3 cursor-pointer self-start sm:self-auto"
+            className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg gap-1 h-7 px-2.5 cursor-pointer"
           >
             <Link to="/delivery/today">
-              View Complete Schedule <ArrowRight className="h-3.5 w-3.5" />
+              View Complete Schedule <ArrowRight className="h-3 w-3" />
             </Link>
           </Button>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="bg-white rounded-3xl border border-slate-200/80 p-5 space-y-3 animate-pulse shadow-xs"
+                className="bg-white rounded-xl border border-slate-200/80 p-4 space-y-2.5 animate-pulse shadow-2xs h-[160px]"
               >
-                <div className="h-4 bg-slate-100 rounded-md w-1/3" />
-                <div className="h-5 bg-slate-100 rounded-md w-2/3" />
-                <div className="h-4 bg-slate-100 rounded-md w-full" />
-                <div className="h-10 bg-slate-100 rounded-full w-full" />
+                <div className="flex justify-between items-center">
+                  <div className="h-3.5 bg-slate-100 rounded-md w-1/3" />
+                  <div className="h-4 bg-slate-100 rounded-full w-20" />
+                </div>
+                <div className="h-4 bg-slate-100 rounded-md w-1/2" />
+                <div className="h-3.5 bg-slate-100 rounded-md w-3/4" />
+                <div className="h-10 bg-slate-50 rounded-lg w-full" />
               </div>
             ))}
           </div>
         ) : deliveries.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-12 text-center shadow-xs space-y-4">
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 w-fit mx-auto">
-              <Truck className="h-8 w-8 text-slate-400" />
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-10 text-center shadow-2xs space-y-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-slate-400 w-fit mx-auto">
+              <Truck className="h-7 w-7 text-slate-400" />
             </div>
             <div className="space-y-1 max-w-sm mx-auto">
-              <h3 className="font-display font-extrabold text-base text-slate-900">
+              <h3 className="font-display font-extrabold text-sm text-slate-900">
                 No deliveries assigned for today
               </h3>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
@@ -304,13 +364,14 @@ export function DeliveryDashboardView() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
             {deliveries.map((d) => {
               const o = d.orders || {};
               const items = o.order_items || [];
               const status = d.status || "Assigned";
+              const req = getOrderCylinderExchangeRequirement(d);
 
-              // Format address
+              // Format address cleanly
               let address = "Gloucestershire";
               if (o.delivery_address) {
                 if (typeof o.delivery_address === "string") address = o.delivery_address;
@@ -322,124 +383,98 @@ export function DeliveryDashboardView() {
                 }
               }
 
-              const statusColor =
-                status === "Delivered"
-                  ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                  : status === "Exception"
-                    ? "bg-rose-100 text-rose-800 border-rose-300"
-                    : status === "Out for Delivery"
-                      ? "bg-orange-100 text-orange-800 border-orange-300"
-                      : status === "Arrived"
-                        ? "bg-indigo-100 text-indigo-800 border-indigo-300"
-                        : "bg-blue-100 text-blue-800 border-blue-300";
+              const statusBadgeStyle = getStatusBadgeStyle(status);
+              const actionLabel = getActionLabel(status, req.required);
 
               return (
                 <div
                   key={d.id}
-                  className="group bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between space-y-4"
+                  className="bg-white rounded-xl border border-slate-200/90 p-4 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all duration-150 flex flex-col justify-between gap-3"
                 >
-                  <div className="space-y-3">
-                    {/* Top Row: Order # and Status */}
+                  {/* Top Line: Order ID & Slot + Status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-mono font-black text-xs text-slate-900 truncate">
+                        #{o.order_number || d.order_ref || d.id.slice(0, 8)}
+                      </span>
+                      <span className="text-slate-300 text-xs">•</span>
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
+                        {d.time_slot || "Morning Slot"}
+                      </span>
+                    </div>
+
+                    <Badge
+                      className={cn(
+                        "text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md border shadow-none shrink-0",
+                        statusBadgeStyle,
+                      )}
+                    >
+                      {status}
+                    </Badge>
+                  </div>
+
+                  {/* Customer Name & Address */}
+                  <div className="space-y-0.5">
+                    <h3 className="font-display font-extrabold text-sm text-slate-900 leading-tight">
+                      {o.customer_name || "Customer"}
+                    </h3>
+                    <p className="text-xs text-slate-600 font-medium flex items-center gap-1 leading-normal truncate">
+                      <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                      <span className="truncate">{address}</span>
+                    </p>
+                  </div>
+
+                  {/* Items Summary & Empty Cylinder Box */}
+                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-100/90 space-y-1.5 text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-xs text-slate-900">
-                          #{o.order_number || d.id.slice(0, 8)}
-                        </span>
-                        <span className="text-slate-300 text-xs">·</span>
-                        <span className="text-[11px] font-bold text-slate-500">
-                          {d.time_slot || "Morning Slot"}
-                        </span>
-                      </div>
-                      <Badge
-                        className={cn(
-                          "text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border shadow-none",
-                          statusColor,
-                        )}
-                      >
-                        {status}
-                      </Badge>
-                    </div>
-
-                    {/* Customer Info */}
-                    <div className="space-y-1">
-                      <h3 className="font-display font-extrabold text-sm text-slate-900 group-hover:text-red-600 transition-colors">
-                        {o.customer_name || "Customer"}
-                      </h3>
-                      <p className="text-xs text-slate-600 font-medium flex items-start gap-1.5 leading-snug">
-                        <MapPin className="h-3.5 w-3.5 text-slate-400 mt-0.5 shrink-0" />
-                        <span className="line-clamp-2">{address}</span>
-                      </p>
-                    </div>
-
-                    {/* Products / Cylinders */}
-                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Flame className="h-4 w-4 text-red-600 shrink-0" />
-                          <span className="font-bold text-slate-800 truncate">
-                            {items.length > 0
-                              ? `${items[0].product_name} ${items.length > 1 ? `+${items.length - 1} more` : ""}`
-                              : "LPG Gas Cylinder 47kg"}
-                          </span>
-                        </div>
-                        <span className="font-extrabold text-slate-900 shrink-0 ml-2">
-                          {gbp(o.total || 75.99)}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Flame className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                        <span className="font-bold text-slate-800 truncate text-xs">
+                          {items.length > 0
+                            ? `${items[0].product_name} ${items.length > 1 ? `(+${items.length - 1} more)` : ""}`
+                            : "LPG Gas Cylinder 47kg"}
                         </span>
                       </div>
+                      <span className="font-black text-slate-900 shrink-0">
+                        {gbp(o.total || 75.99)}
+                      </span>
+                    </div>
 
-                      {(() => {
-                        const req = getOrderCylinderExchangeRequirement(d);
-                        return (
-                          <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200/60">
-                            <span className="text-slate-500 font-medium">Empty Cylinder:</span>
-                            {req.required ? (
-                              <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                                Required ({req.expectedQuantity})
-                              </span>
-                            ) : (
-                              <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                {req.orderType === "NEW_CYLINDER" ? "No (New Purchase)" : "Not Required"}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
+                    <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-200/50">
+                      <span className="text-slate-500 font-medium text-[11px]">Empty Cylinder:</span>
+                      {req.required ? (
+                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded text-[10px] border border-amber-200/80">
+                          Required • {req.expectedQuantity}
+                        </span>
+                      ) : (
+                        <span className="font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded text-[10px] border border-slate-200/60">
+                          {req.orderType === "NEW_CYLINDER" ? "Not Required (New Bottle)" : "Not Required"}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  {(() => {
-                    const req = getOrderCylinderExchangeRequirement(d);
-                    return (
-                      <div className="pt-1">
-                        <Button
-                          onClick={() => handleOpenWorkflow(d)}
-                          className={cn(
-                            "w-full rounded-full font-bold text-xs h-9 gap-1.5 shadow-xs transition-all cursor-pointer",
-                            status === "Delivered"
-                              ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                              : "bg-red-600 hover:bg-red-700 text-white shadow-red-600/10 hover:shadow-md",
-                          )}
-                        >
-                          {status === "Assigned" && "Accept & Start Delivery →"}
-                          {status === "Accepted" && "Start Delivery Route →"}
-                          {status === "Out for Delivery" && "Mark Arrived & Handover →"}
-                          {status === "Arrived" && "Customer Verification →"}
-                          {status === "Customer Verified" && "Handover Cylinder →"}
-                          {status === "Cylinder Handed Over" &&
-                            (req.required ? "Verify Empty Cylinder →" : "Confirm Delivery →")}
-                          {status === "Empty Cylinder Verified" && "Confirm Delivery →"}
-                          {status === "Delivered" && (
-                            <>
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> View Delivery
-                              Details
-                            </>
-                          )}
-                          {status === "Exception" && "Review Delivery Exception →"}
-                        </Button>
-                      </div>
-                    );
-                  })()}
+                  {/* Bottom Action Button (Aligned to Right) */}
+                  <div className="flex items-center justify-end pt-0.5">
+                    <Button
+                      size="sm"
+                      onClick={() => handleOpenWorkflow(d)}
+                      className={cn(
+                        "rounded-lg font-bold text-xs h-8 px-4 gap-1.5 shadow-2xs transition-all cursor-pointer",
+                        status === "Delivered"
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                          : "bg-red-600 hover:bg-red-700 text-white shadow-red-600/10 hover:shadow-xs",
+                      )}
+                    >
+                      {status === "Delivered" ? (
+                        <>
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> View Delivery Details
+                        </>
+                      ) : (
+                        actionLabel
+                      )}
+                    </Button>
+                  </div>
                 </div>
               );
             })}

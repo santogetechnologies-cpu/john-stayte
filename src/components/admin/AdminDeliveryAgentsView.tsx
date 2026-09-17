@@ -11,6 +11,7 @@ import {
   Phone,
   Mail,
   Edit2,
+  Trash2,
   Power,
   ShieldCheck,
   CheckCircle2,
@@ -52,17 +53,18 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   getDeliveryAgents,
   getDeliveryAgentProfile,
   getAgentInitials,
   createDeliveryAgent,
   updateDeliveryAgent,
+  deleteDeliveryAgent,
   type DeliveryAgentRecord,
 } from "@/lib/delivery-agent-service";
 import { DeliveryAgentProfileModal } from "@/components/delivery/DeliveryAgentProfileModal";
 import { supabase } from "@/lib/supabase";
+import { logAdminAuditAction } from "@/lib/audit";
 import { cn } from "@/lib/utils";
 
 const DELIVERY_ZONES = [
@@ -94,6 +96,11 @@ export function AdminDeliveryAgentsView() {
   const [profileData, setProfileData] = useState<any | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
+  // Delete Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [agentToDelete, setAgentToDelete] = useState<DeliveryAgentRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Form State
   const [formData, setFormData] = useState({
     agent_code: "",
@@ -115,7 +122,7 @@ export function AdminDeliveryAgentsView() {
       const data = await getDeliveryAgents();
       setAgents(data);
     } catch (err: any) {
-      toast.error("Failed to load delivery agents: " + err.message);
+      toast.error("Failed to load drivers: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -146,7 +153,7 @@ export function AdminDeliveryAgentsView() {
     };
   }, []);
 
-  // Filtered Delivery Agents
+  // Filtered Drivers
   const filteredAgents = useMemo(() => {
     return (agents || []).filter((a) => {
       if (!a) return false;
@@ -196,10 +203,10 @@ export function AdminDeliveryAgentsView() {
     return { total, active, inactive, onDelivery, available };
   }, [agents]);
 
-  // Open Add Agent Modal
+  // Open Add Driver Modal
   const handleOpenAdd = () => {
     try {
-      // Generate next default Agent Code
+      // Generate next default Driver Code
       const existingNums = (agents || [])
         .map((a) => {
           if (!a || !a.agent_code) return NaN;
@@ -207,7 +214,7 @@ export function AdminDeliveryAgentsView() {
         })
         .filter((n) => !isNaN(n));
       const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
-      const defaultCode = `AGT-${String(nextNum).padStart(3, "0")}`;
+      const defaultCode = `DRV-${String(nextNum).padStart(3, "0")}`;
 
       setFormData({
         agent_code: defaultCode,
@@ -224,9 +231,9 @@ export function AdminDeliveryAgentsView() {
       setEditingAgent(null);
       setAddModalOpen(true);
     } catch (err) {
-      console.error("Notice opening add agent modal:", err);
+      console.error("Notice opening add driver modal:", err);
       setFormData({
-        agent_code: "AGT-001",
+        agent_code: "DRV-001",
         full_name: "",
         email: "",
         password: "",
@@ -242,11 +249,11 @@ export function AdminDeliveryAgentsView() {
     }
   };
 
-  // Open Edit Agent Modal
+  // Open Edit Driver Modal
   const handleOpenEdit = (agent: DeliveryAgentRecord) => {
     try {
       setFormData({
-        agent_code: agent.agent_code || "AGT-001",
+        agent_code: agent.agent_code || "DRV-001",
         full_name: agent.full_name || "",
         email: agent.email || "",
         password: "",
@@ -260,21 +267,58 @@ export function AdminDeliveryAgentsView() {
       setEditingAgent(agent);
       setAddModalOpen(true);
     } catch (err) {
-      console.error("Notice opening edit agent modal:", err);
+      console.error("Notice opening edit driver modal:", err);
       setEditingAgent(agent);
       setAddModalOpen(true);
     }
   };
 
-  // Submit Add / Edit Agent
+  // Open Delete Confirmation Modal
+  const handleOpenDelete = (agent: DeliveryAgentRecord) => {
+    setAgentToDelete(agent);
+    setDeleteModalOpen(true);
+  };
+
+  // Confirm Real Delete Driver
+  const handleConfirmDelete = async () => {
+    if (!agentToDelete) return;
+
+    if (agentToDelete.active_deliveries > 0) {
+      toast.error(
+        "This driver cannot be deleted while active deliveries or pending assignments exist. Deactivate the driver instead.",
+      );
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const res = await deleteDeliveryAgent(agentToDelete.id);
+      await logAdminAuditAction("DELETE_DRIVER", "delivery_agents", agentToDelete.id, {
+        driver_name: agentToDelete.full_name,
+        agent_code: agentToDelete.agent_code,
+      });
+
+      toast.success(res.message || `Driver ${agentToDelete.full_name} deleted successfully.`);
+      setDeleteModalOpen(false);
+      setAgentToDelete(null);
+      await loadAgents();
+    } catch (err: any) {
+      console.error("Driver deletion error:", err);
+      toast.error(err.message || "Failed to delete driver.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Submit Add / Edit Driver
   const handleSubmitAgent = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.agent_code.trim()) {
-      return toast.error("Please provide an Agent ID code.");
+      return toast.error("Please provide a Driver ID code.");
     }
     if (!formData.full_name.trim()) {
-      return toast.error("Please provide the agent's full name.");
+      return toast.error("Please provide the driver's full name.");
     }
     if (!formData.phone.trim()) {
       return toast.error("Please provide a phone number.");
@@ -286,21 +330,27 @@ export function AdminDeliveryAgentsView() {
     setSubmitting(true);
     try {
       if (editingAgent) {
-        // Update existing agent
+        // Update existing driver
         await updateDeliveryAgent(editingAgent.id, formData);
-        toast.success(`Delivery Agent ${formData.full_name} updated successfully.`);
+        await logAdminAuditAction("UPDATE_DRIVER", "delivery_agents", editingAgent.id, {
+          driver_name: formData.full_name,
+        });
+        toast.success(`Driver ${formData.full_name} updated successfully.`);
       } else {
-        // Create new agent
+        // Create new driver
         await createDeliveryAgent(formData);
-        toast.success(`Delivery Agent ${formData.full_name} added to fleet.`);
+        await logAdminAuditAction("CREATE_DRIVER", "delivery_agents", formData.agent_code, {
+          driver_name: formData.full_name,
+        });
+        toast.success(`Driver ${formData.full_name} added to fleet.`);
       }
 
       setAddModalOpen(false);
       setEditingAgent(null);
       await loadAgents();
     } catch (err: any) {
-      console.error("Agent save error:", err);
-      toast.error("Error saving delivery agent: " + err.message);
+      console.error("Driver save error:", err);
+      toast.error("Error saving driver: " + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -311,8 +361,12 @@ export function AdminDeliveryAgentsView() {
     const nextStatus = agent.status === "Active" ? "Inactive" : "Active";
     try {
       await updateDeliveryAgent(agent.id, { status: nextStatus });
+      await logAdminAuditAction("UPDATE_DRIVER_STATUS", "delivery_agents", agent.id, {
+        driver_name: agent.full_name,
+        status: nextStatus,
+      });
       toast.success(
-        `Agent ${agent.full_name} is now ${nextStatus === "Active" ? "Active" : "Deactivated"}.`,
+        `Driver ${agent.full_name} is now ${nextStatus === "Active" ? "Active" : "Deactivated"}.`,
       );
       await loadAgents();
     } catch (err: any) {
@@ -320,7 +374,7 @@ export function AdminDeliveryAgentsView() {
     }
   };
 
-  // View Agent Profile Drawer
+  // View Driver Profile Drawer
   const handleViewProfile = async (agentId: string) => {
     setViewingProfileId(agentId);
     setLoadingProfile(true);
@@ -328,7 +382,7 @@ export function AdminDeliveryAgentsView() {
       const data = await getDeliveryAgentProfile(agentId);
       setProfileData(data);
     } catch (err: any) {
-      toast.error("Failed to load agent profile: " + err.message);
+      toast.error("Failed to load driver profile: " + err.message);
       setViewingProfileId(null);
     } finally {
       setLoadingProfile(false);
@@ -347,10 +401,10 @@ export function AdminDeliveryAgentsView() {
             <span>/</span>
             <span className="text-foreground">Operations</span>
             <span>/</span>
-            <span className="text-foreground font-bold">Delivery Agents</span>
+            <span className="text-foreground font-bold">Drivers</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-foreground flex items-center gap-2.5">
-            <UserCheck className="h-7 w-7 text-primary" /> Delivery Agents Management
+            <UserCheck className="h-7 w-7 text-primary" /> Drivers Management
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Manage your Gloucestershire logistics drivers, fleet vehicle assignments, active routes,
@@ -362,7 +416,7 @@ export function AdminDeliveryAgentsView() {
           onClick={handleOpenAdd}
           className="rounded-full font-extrabold text-xs shadow-md bg-primary hover:bg-primary/90 text-white gap-2 self-start sm:self-auto h-10 px-5"
         >
-          <Plus className="h-4 w-4" /> Add Delivery Agent
+          <Plus className="h-4 w-4" /> Add Driver
         </Button>
       </div>
 
@@ -370,7 +424,7 @@ export function AdminDeliveryAgentsView() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
         <div className="surface-card p-4 sm:p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-            Total Fleet Agents
+            Total Fleet Drivers
           </p>
           <p className="text-2xl sm:text-3xl font-black text-slate-900">{metrics.total}</p>
           <p className="text-[10px] text-muted-foreground">Registered drivers</p>
@@ -378,7 +432,7 @@ export function AdminDeliveryAgentsView() {
 
         <div className="surface-card p-4 sm:p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-            Active Agents
+            Active Drivers
           </p>
           <p className="text-2xl sm:text-3xl font-black text-emerald-600">{metrics.active}</p>
           <p className="text-[10px] text-muted-foreground">Ready for routing</p>
@@ -394,7 +448,7 @@ export function AdminDeliveryAgentsView() {
 
         <div className="surface-card p-4 sm:p-5 rounded-3xl border bg-white shadow-2xs space-y-1">
           <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-            Available Agents
+            Available Drivers
           </p>
           <p className="text-2xl sm:text-3xl font-black text-blue-600">{metrics.available}</p>
           <p className="text-[10px] text-muted-foreground">Ready for assignment</p>
@@ -416,7 +470,7 @@ export function AdminDeliveryAgentsView() {
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by agent name, ID code, phone, vehicle, or zone..."
+            placeholder="Search by driver name, ID code, phone, vehicle, or zone..."
             className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs"
           />
         </div>
@@ -452,28 +506,28 @@ export function AdminDeliveryAgentsView() {
         </div>
       </div>
 
-      {/* 4. Delivery Agents Table */}
+      {/* 4. Drivers Table */}
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-16 text-center text-xs text-muted-foreground font-bold space-y-2">
             <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
-            <p>Loading delivery fleet from Supabase...</p>
+            <p>Loading logistics drivers from Supabase...</p>
           </div>
         ) : filteredAgents.length === 0 ? (
           <div className="p-16 text-center space-y-3">
             <Users className="mx-auto h-12 w-12 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">No delivery agents found</h3>
+            <h3 className="font-bold text-sm text-foreground">No drivers found</h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
               {searchQuery || statusFilter !== "all" || zoneFilter !== "all"
-                ? "No delivery agents match your search and filter criteria."
-                : "Add your first delivery agent to begin managing order fulfillment routes."}
+                ? "No drivers match your search and filter criteria."
+                : "Add your first driver to begin managing order fulfillment routes."}
             </p>
             <Button
               onClick={handleOpenAdd}
               size="sm"
               className="rounded-full text-xs font-bold bg-primary text-white mt-2"
             >
-              <Plus className="h-3.5 w-3.5 mr-1" /> Add Delivery Agent
+              <Plus className="h-3.5 w-3.5 mr-1" /> Add Driver
             </Button>
           </div>
         ) : (
@@ -481,9 +535,9 @@ export function AdminDeliveryAgentsView() {
             <Table>
               <TableHeader className="bg-slate-50/80">
                 <TableRow>
-                  <TableHead className="font-bold text-xs">Agent</TableHead>
-                  <TableHead className="font-bold text-xs">Agent ID</TableHead>
-                  <TableHead className="font-bold text-xs">Contact & Zone</TableHead>
+                  <TableHead className="font-bold text-xs">Driver</TableHead>
+                  <TableHead className="font-bold text-xs">Driver ID</TableHead>
+                  <TableHead className="font-bold text-xs">Contact &amp; Zone</TableHead>
                   <TableHead className="font-bold text-xs">Vehicle Fleet</TableHead>
                   <TableHead className="font-bold text-xs">Current Status</TableHead>
                   <TableHead className="font-bold text-xs text-center">Active Routes</TableHead>
@@ -600,6 +654,7 @@ export function AdminDeliveryAgentsView() {
                           size="sm"
                           onClick={() => handleViewProfile(agent.id)}
                           className="h-8 rounded-full text-xs font-bold text-slate-700 hover:text-primary gap-1"
+                          title="View Driver Profile"
                         >
                           <Eye className="h-3.5 w-3.5" /> View
                         </Button>
@@ -609,6 +664,7 @@ export function AdminDeliveryAgentsView() {
                           size="sm"
                           onClick={() => handleOpenEdit(agent)}
                           className="h-8 w-8 p-0 rounded-full text-slate-700 hover:text-primary"
+                          title="Edit Driver Details"
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
@@ -620,12 +676,23 @@ export function AdminDeliveryAgentsView() {
                           className={cn(
                             "h-8 rounded-full text-[11px] font-bold px-2",
                             agent.status === "Active"
-                              ? "text-slate-500 hover:text-red-600 hover:bg-red-50"
+                              ? "text-slate-500 hover:text-amber-700 hover:bg-amber-50"
                               : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50",
                           )}
+                          title={agent.status === "Active" ? "Deactivate Driver" : "Activate Driver"}
                         >
                           <Power className="h-3.5 w-3.5 mr-1" />
                           {agent.status === "Active" ? "Deactivate" : "Activate"}
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenDelete(agent)}
+                          className="h-8 w-8 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Delete Driver"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -637,15 +704,13 @@ export function AdminDeliveryAgentsView() {
         )}
       </div>
 
-      {/* 5. ADD / EDIT DELIVERY AGENT MODAL */}
+      {/* 5. ADD / EDIT DRIVER MODAL */}
       <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
         <DialogContent className="max-w-lg rounded-3xl p-6 bg-white space-y-4">
           <DialogHeader>
             <DialogTitle className="text-lg font-black flex items-center gap-2 text-slate-900">
               <UserCheck className="h-5 w-5 text-primary" />
-              {editingAgent
-                ? `Edit Delivery Agent — ${editingAgent.full_name}`
-                : "Add New Delivery Agent"}
+              {editingAgent ? `Edit Driver — ${editingAgent.full_name}` : "Add New Driver"}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
               {editingAgent
@@ -658,12 +723,12 @@ export function AdminDeliveryAgentsView() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="font-bold text-slate-800 block">
-                  Agent ID Code <span className="text-red-500">*</span>
+                  Driver ID Code <span className="text-red-500">*</span>
                 </label>
                 <Input
                   value={formData.agent_code}
                   onChange={(e) => setFormData({ ...formData, agent_code: e.target.value })}
-                  placeholder="e.g. AGT-004"
+                  placeholder="e.g. DRV-004"
                   className="rounded-xl text-xs font-mono font-bold"
                   required
                 />
@@ -730,7 +795,10 @@ export function AdminDeliveryAgentsView() {
             {!editingAgent && (
               <div className="space-y-1">
                 <label className="font-bold text-slate-800 block">
-                  Driver Login Password <span className="text-muted-foreground font-normal text-[11px]">(Defaults to Delivery2026!)</span>
+                  Driver Login Password{" "}
+                  <span className="text-muted-foreground font-normal text-[11px]">
+                    (Defaults to Delivery2026!)
+                  </span>
                 </label>
                 <Input
                   type="password"
@@ -828,14 +896,128 @@ export function AdminDeliveryAgentsView() {
                 ) : (
                   <CheckCircle2 className="h-3.5 w-3.5" />
                 )}
-                {editingAgent ? "Update Agent" : "Add Agent to Fleet"}
+                {editingAgent ? "Update Driver" : "Add Driver to Fleet"}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* 6. DETAILED DELIVERY AGENT PROFILE MODAL */}
+      {/* 6. DELETE DRIVER CONFIRMATION MODAL */}
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6 bg-white space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Delete Driver?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Deleting this driver is permanent. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          {agentToDelete && (
+            <div className="space-y-4 text-xs">
+              {/* Driver Details Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-sm text-slate-900">
+                    {agentToDelete.full_name}
+                  </span>
+                  <Badge variant="outline" className="font-mono text-[10px] font-bold">
+                    {agentToDelete.agent_code}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1 border-t border-slate-200/60">
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Email</span>
+                    <span className="font-medium text-slate-800">{agentToDelete.email || "-"}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Phone</span>
+                    <span className="font-medium text-slate-800">{agentToDelete.phone || "-"}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Vehicle Reg</span>
+                    <span className="font-mono font-bold text-slate-800">
+                      {agentToDelete.vehicle_plate || "-"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">Active Deliveries</span>
+                    <span
+                      className={cn(
+                        "font-bold",
+                        agentToDelete.active_deliveries > 0 ? "text-red-600" : "text-emerald-700",
+                      )}
+                    >
+                      {agentToDelete.active_deliveries} active
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning Block */}
+              {agentToDelete.active_deliveries > 0 ? (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-900 space-y-1">
+                  <div className="flex items-center gap-1.5 font-extrabold text-xs text-red-700">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-red-600" />
+                    <span>Deletion Blocked</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-red-800">
+                    This driver cannot be deleted while active deliveries or pending assignments exist.
+                    Please reassign or complete active deliveries, or deactivate the driver instead.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                    <span>Important Security Note</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-900">
+                    Deleting this driver will remove their driver profile and revoke dispatch portal
+                    access. Historical completed deliveries, invoices, and customer ratings will be
+                    safely preserved.
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDeleteModalOpen(false);
+                    setAgentToDelete(null);
+                  }}
+                  className="rounded-xl text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={deleting || agentToDelete.active_deliveries > 0}
+                  onClick={handleConfirmDelete}
+                  className="rounded-xl font-extrabold text-xs bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                  <span>Delete Driver</span>
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 7. DETAILED DRIVER PROFILE MODAL */}
       <DeliveryAgentProfileModal
         open={Boolean(viewingProfileId)}
         onOpenChange={(open) => !open && setViewingProfileId(null)}

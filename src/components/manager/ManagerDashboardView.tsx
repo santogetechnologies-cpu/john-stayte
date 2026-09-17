@@ -238,7 +238,7 @@ export function ManagerDashboardView() {
             tagCls: "bg-blue-50 text-blue-700 border-blue-200/60",
           },
           {
-            label: "Active Delivery Agents",
+            label: "Active Drivers",
             val: activeDeliveryAgentsCount,
             sub: "On-duty depot drivers",
             tag: "Drivers Ready",
@@ -461,7 +461,7 @@ export function ManagerDashboardView() {
                   color: "text-amber-600 bg-amber-50",
                 },
                 {
-                  label: "Delivery Agents",
+                  label: "Drivers",
                   href: "/manager/delivery-agents",
                   icon: Users,
                   color: "text-blue-600 bg-blue-50",

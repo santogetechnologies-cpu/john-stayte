@@ -24,39 +24,39 @@ const DEFAULT_STATIONS = [
   {
     id: "st-1",
     name: "Wild Goose Garage",
-    address: "Bristol Road, Cambridge, Gloucestershire GL2 7AL",
-    town: "Gloucester",
-    postcode: "GL2 7AL",
-    phone: "01453 890123",
+    address: "27 Kingshill Road, Dursley, Gloucestershire, GL11 4BJ",
+    town: "Dursley",
+    postcode: "GL11 4BJ",
+    phone: "01453 545696",
     hours: "Mon–Sat 7:00–19:00 • Sun 9:00–17:00",
     autogas_available: true,
-    maps_link: "https://maps.google.com/?q=Wild+Goose+Garage+Gloucester",
-    services: ["Fuel", "Autogas", "Shop", "Air", "AdBlue"],
+    maps_link: "https://maps.google.com/?q=Wild+Goose+Garage+27+Kingshill+Road+Dursley+GL11+4BJ",
+    services: ["Fuel", "Autogas", "Shop", "Air", "AdBlue", "Cylinder Exchange"],
     images: [
       "/wild-goose-garage-1.jpg",
       "/wild-goose-garage-2.jpg",
       "/wild-goose-garage-3.jpg",
       "/wild-goose-garage-4.jpg",
-      "/wild-goose-garage-5.jpg",
     ],
-    latitude: 51.7389,
-    longitude: -2.3842,
+    latitude: 51.6885,
+    longitude: -2.3547,
   },
   {
     id: "st-2",
     name: "Fromebridge Service Station",
-    address: "Fromebridge, Whitminster, Gloucestershire GL2 7PD",
-    town: "Gloucester",
-    postcode: "GL2 7PD",
-    phone: "01452 741234",
+    address: "Bristol Road, Whitminster, Gloucestershire, GL2 7PG",
+    town: "Whitminster",
+    postcode: "GL2 7PG",
+    phone: "01452 740753",
     hours: "Mon–Sat 7:00–20:00 • Sun 8:00–18:00",
     autogas_available: true,
-    maps_link: "https://maps.google.com/?q=Fromebridge+Service+Station+Whitminster",
+    maps_link: "https://maps.google.com/?q=Fromebridge+Service+Station+Bristol+Road+Whitminster+GL2+7PG",
     services: ["Fuel", "Autogas", "Shop", "Air", "AdBlue", "Cylinder Exchange"],
     images: [
       "/fromebridge-service-station-1.jpg",
       "/fromebridge-service-station-2.jpg",
       "/fromebridge-service-station-3.jpg",
+      "/fromebridge-service-station-4.jpg",
     ],
     latitude: 51.7694,
     longitude: -2.3486,
@@ -64,15 +64,16 @@ const DEFAULT_STATIONS = [
   {
     id: "st-3",
     name: "Bridge Service Station",
-    address: "Bridge Road, Frampton on Severn, Gloucestershire GL2 7EP",
-    town: "Gloucester",
-    postcode: "GL2 7EP",
-    phone: "01452 740567",
+    address: "Gloucester Road, Stonehouse, Gloucestershire, GL10 2PB",
+    town: "Stonehouse",
+    postcode: "GL10 2PB",
+    phone: "01453 821005",
     hours: "Mon–Fri 6:30–20:00 • Sat–Sun 8:00–18:00",
-    autogas_available: false,
-    maps_link: "https://maps.google.com/?q=Bridge+Service+Station+Frampton+on+Severn",
+    autogas_available: true,
+    maps_link: "https://maps.google.com/?q=Bridge+Service+Station+Gloucester+Road+Stonehouse+GL10+2PB",
     services: [
       "Texaco Fuel",
+      "Autogas",
       "HGV High-Flow Pumps",
       "Car Wash & Jet Wash",
       "Air Pressure Pumps",
@@ -86,9 +87,10 @@ const DEFAULT_STATIONS = [
       "/bridge-station-forecourt.jpg",
       "/bridge-station-canopy-londis.jpg",
       "/bridge-station-wide-facilities.jpg",
+      "/bridge-station-ev-totem.jpg",
     ],
-    latitude: 51.7719,
-    longitude: -2.3681,
+    latitude: 51.7482,
+    longitude: -2.2870,
   },
 ];
 
@@ -111,6 +113,7 @@ export interface FillingStation {
   maps_url?: string;
   autogas_available?: boolean;
   postcode?: string;
+  town?: string;
 }
 
 const normalizeServices = (services: unknown): string[] => {
@@ -128,23 +131,32 @@ const normalizeServices = (services: unknown): string[] => {
 
 const getStationImages = (s: FillingStation): string[] => {
   const name = (s.name || "").toLowerCase();
-  if (name.includes("wild goose") || name.includes("cambridge")) {
+  if (name.includes("wild goose") || name.includes("dursley") || name.includes("cambridge")) {
     return [
       "/wild-goose-garage-1.jpg",
       "/wild-goose-garage-2.jpg",
       "/wild-goose-garage-3.jpg",
       "/wild-goose-garage-4.jpg",
-      "/wild-goose-garage-5.jpg",
     ];
   }
   if (name.includes("fromebridge") || name.includes("whitminster")) {
-    return ["/fromebridge-service-station-1.jpg", "/fromebridge-service-station-2.jpg"];
+    return [
+      "/fromebridge-service-station-1.jpg",
+      "/fromebridge-service-station-2.jpg",
+      "/fromebridge-service-station-3.jpg",
+      "/fromebridge-service-station-4.jpg",
+    ];
+  }
+  if (name.includes("bridge") || name.includes("stonehouse") || name.includes("frampton")) {
+    return [
+      "/bridge-station-forecourt.jpg",
+      "/bridge-station-canopy-londis.jpg",
+      "/bridge-station-wide-facilities.jpg",
+      "/bridge-station-ev-totem.jpg",
+    ];
   }
   if (Array.isArray(s.images) && s.images.length > 0) {
     return s.images;
-  }
-  if (name.includes("bridge") || name.includes("frampton")) {
-    return ["/bridge-service-station-1.jpg"];
   }
   if (s.image_url) return [s.image_url];
   if (s.image) return [s.image];
@@ -156,11 +168,11 @@ const getStationCoordinates = (station: FillingStation): { lat: number; lng: num
     return { lat: Number(station.latitude), lng: Number(station.longitude) };
   }
   const name = (station.name || "").toLowerCase();
-  if (name.includes("wild goose") || name.includes("cambridge"))
-    return { lat: 51.7389, lng: -2.3842 };
-  if (name.includes("fromebridge")) return { lat: 51.7694, lng: -2.3486 };
-  if (name.includes("bridge") || name.includes("frampton")) return { lat: 51.7719, lng: -2.3681 };
-  return { lat: 51.76, lng: -2.36 };
+  if (name.includes("wild goose") || name.includes("dursley") || name.includes("cambridge"))
+    return { lat: 51.6885, lng: -2.3547 };
+  if (name.includes("fromebridge") || name.includes("whitminster")) return { lat: 51.7694, lng: -2.3486 };
+  if (name.includes("bridge") || name.includes("stonehouse") || name.includes("frampton")) return { lat: 51.7482, lng: -2.2870 };
+  return { lat: 51.74, lng: -2.32 };
 };
 
 function ServiceChip({ name }: { name: string }) {
@@ -362,13 +374,12 @@ function StationSectionBlock({ station, index }: { station: FillingStation; inde
                     alt={`${station.name} view ${idx + 1}`}
                     loading={idx === 0 ? "eager" : "lazy"}
                     style={{ willChange: "opacity" }}
-                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out select-none pointer-events-none ${
-                      isCurrent
+                    className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out select-none pointer-events-none ${isCurrent
                         ? "opacity-100 z-10"
                         : isPrevious
                           ? "opacity-0 z-5"
                           : "opacity-0 z-0"
-                    }`}
+                      }`}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = images[0] || "/wild-goose-garage-1.jpg";
                     }}
@@ -415,11 +426,10 @@ function StationSectionBlock({ station, index }: { station: FillingStation; inde
                       });
                     }}
                     aria-label={`Go to ${station.name} photo ${dotIdx + 1}`}
-                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                      dotIdx === currentImgIdx
+                    className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${dotIdx === currentImgIdx
                         ? "bg-white w-5.5 shadow-xs"
                         : "bg-white/50 hover:bg-white/80 w-2"
-                    }`}
+                      }`}
                   />
                 ))}
               </div>
@@ -454,6 +464,11 @@ export const Route = createFileRoute("/filling-stations")({
 
 function Stations() {
   const [stationList, setStationList] = useState<FillingStation[]>(DEFAULT_STATIONS);
+  const [heroCms, setHeroCms] = useState({
+    eyebrow: "LOCATIONS",
+    heading: "Our filling stations",
+    subtitle: "Three Gloucestershire forecourts for fuel, autogas, cylinder exchange and shop essentials.",
+  });
 
   useEffect(() => {
     async function loadStations() {
@@ -469,7 +484,7 @@ function Stations() {
           .eq("section_key", "stations_data")
           .maybeSingle();
 
-        let parsedBlock: FillingStation[] = [];
+        let parsedBlock: any = null;
         if (block?.content) {
           try {
             parsedBlock = JSON.parse(block.content);
@@ -482,7 +497,7 @@ function Stations() {
         DEFAULT_STATIONS.forEach((s) => stationMap.set(s.name.toLowerCase(), s));
 
         if (Array.isArray(parsedBlock) && parsedBlock.length > 0) {
-          parsedBlock.forEach((s) => {
+          parsedBlock.forEach((s: any) => {
             const key = (s.name || "").toLowerCase();
             const existing = stationMap.get(key);
             if (existing) {
@@ -491,6 +506,25 @@ function Stations() {
               stationMap.set(key, s);
             }
           });
+        } else if (parsedBlock && typeof parsedBlock === "object") {
+          if (parsedBlock.heroEyebrow || parsedBlock.heroHeading || parsedBlock.heroSubtitle) {
+            setHeroCms({
+              eyebrow: parsedBlock.heroEyebrow || "LOCATIONS",
+              heading: parsedBlock.heroHeading || "Our filling stations",
+              subtitle: parsedBlock.heroSubtitle || "Three Gloucestershire forecourts for fuel, autogas, cylinder exchange and shop essentials.",
+            });
+          }
+          if (Array.isArray(parsedBlock.stations) && parsedBlock.stations.length > 0) {
+            parsedBlock.stations.forEach((s: any) => {
+              const key = (s.name || "").toLowerCase();
+              const existing = stationMap.get(key);
+              if (existing) {
+                stationMap.set(key, { ...existing, ...s });
+              } else {
+                stationMap.set(key, s);
+              }
+            });
+          }
         }
 
         if (Array.isArray(dbStations) && dbStations.length > 0) {
@@ -505,18 +539,21 @@ function Stations() {
           });
         }
 
-        const merged = Array.from(stationMap.values()).map((s) => {
+        const merged = Array.from(stationMap.values()).map((rawStation) => {
+          let s = { ...rawStation };
           const coords = getStationCoordinates(s);
-          const formattedAddress = s.address.includes(s.postcode || "")
-            ? s.address
-            : s.address + (s.postcode ? `, ${s.postcode}` : "");
+          const formattedAddress = s.address && s.postcode && !s.address.includes(s.postcode)
+            ? `${s.address}, ${s.postcode}`
+            : s.address || "";
 
+          const stImages = getStationImages(s);
           return {
             ...s,
             address: formattedAddress,
-            phone: s.phone || "01453 890123",
+            phone: s.phone || "01452 741234",
             hours: s.hours || "Mon–Sat 7:00–19:00 • Sun 9:00–17:00",
-            images: getStationImages(s),
+            images: stImages,
+            image: stImages[0] || "/fromebridge-service-station-1.jpg",
             latitude: coords.lat,
             longitude: coords.lng,
             maps_link:
@@ -532,9 +569,9 @@ function Stations() {
         // 3. Bridge Service Station
         const orderWeight = (name: string) => {
           const n = (name || "").toLowerCase();
-          if (n.includes("wild goose") || n.includes("cambridge")) return 1;
+          if (n.includes("wild goose") || n.includes("dursley") || n.includes("cambridge")) return 1;
           if (n.includes("fromebridge") || n.includes("whitminster")) return 2;
-          if (n.includes("bridge") || n.includes("frampton")) return 3;
+          if (n.includes("bridge") || n.includes("stonehouse") || n.includes("frampton")) return 3;
           return 4;
         };
 
@@ -560,14 +597,20 @@ function Stations() {
           {/* Header matching Services page heading size, font weights & spacing */}
           <div className="space-y-2 mb-8 sm:mb-10 text-left">
             <p className="text-xs sm:text-[13px] font-extrabold uppercase tracking-[0.16em] text-primary font-display">
-              LOCATIONS
+              {heroCms.eyebrow}
             </p>
             <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-[1.1] font-display">
-              Our <span className="text-primary">filling stations</span>
+              {heroCms.heading.toLowerCase().includes("filling stations") ? (
+                <>
+                  {heroCms.heading.replace(/filling stations/i, "").trim()}{" "}
+                  <span className="text-primary">filling stations</span>
+                </>
+              ) : (
+                heroCms.heading
+              )}
             </h1>
             <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed max-w-2xl">
-              Three Gloucestershire forecourts for fuel, autogas, cylinder exchange and shop
-              essentials.
+              {heroCms.subtitle}
             </p>
           </div>
 

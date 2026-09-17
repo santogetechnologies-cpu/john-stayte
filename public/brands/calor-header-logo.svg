@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 70" fill="none">
+  <!-- Flame circle icon -->
+  <g fill="#E30613">
+    <path d="M26,12 C14.954,12 6,20.954 6,32 C6,43.046 14.954,52 26,52 C37.046,52 46,43.046 46,32 C46,20.954 37.046,12 26,12 Z M26,18 C33.732,18 40,24.268 40,32 C40,39.732 33.732,46 26,46 C18.268,46 12,39.732 12,32 C12,24.268 18.268,18 26,18 Z" />
+    <path d="M23,6 L29,6 L29,28 L23,28 Z" />
+  </g>
+  <!-- CALOR text -->
+  <text x="56" y="41" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="36" font-weight="900" letter-spacing="-0.5" fill="#0F172A">CALOR</text>
+  <!-- Tagline text -->
+  <text x="57" y="58" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="10.5" font-weight="800" letter-spacing="2.2" fill="#475569">KEEPING BRITAIN MOVING</text>
+</svg>

@@ -330,21 +330,21 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // 3. Delivery Agent Gate (Immediate redirection to /delivery)
+  // 3. Driver Gate (Immediate redirection to /delivery)
   if (user.role === "delivery_agent") {
     return (
       <div className="min-h-screen grid place-items-center bg-[#f8f8fa] px-4 font-sans">
         <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
           <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
-          <h1 className="text-xl font-bold font-display text-slate-900">Delivery Agent Portal</h1>
+          <h1 className="text-xl font-bold font-display text-slate-900">Driver Portal</h1>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Your account is authenticated as a Delivery Agent. Taking you to your active dispatch portal...
+            Your account is authenticated as a Driver. Taking you to your active dispatch portal...
           </p>
           <Button
             asChild
             className="w-full rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white h-10 shadow-xs"
           >
-            <Link to="/delivery">Open Delivery Portal</Link>
+            <Link to="/delivery">Open Driver Portal</Link>
           </Button>
         </div>
       </div>
@@ -598,8 +598,8 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-5 sm:p-7 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-7 animate-rise">{children}</div>
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:px-6 lg:py-6">
+          <div className="w-full max-w-7xl mx-auto space-y-6 animate-rise">{children}</div>
         </main>
       </div>
     </div>

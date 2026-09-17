@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { getAgentInitials } from "@/lib/delivery-agent-service";
+import { getAgentInitials, getAgentAssignedDeliveries } from "@/lib/delivery-agent-service";
 import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 import { cn } from "@/lib/utils";
 
@@ -90,23 +90,13 @@ export function DeliverySidebar({
         const currentUserId = authData?.user?.id || user?.id;
         const currentUserEmail = authData?.user?.email || user?.email;
 
-        const { data: assignments } = await (supabase.from("delivery_assignments") as any).select(
-          "id, status, notes, agent_id, driver_id, driver_name",
-        );
+        const agentAssignments = await getAgentAssignedDeliveries({
+          id: user?.id,
+          email: user?.email,
+          name: user?.name,
+        });
 
-        if (assignments) {
-          // Filter assignments for this specific agent
-          const agentAssignments = assignments.filter((a: any) => {
-            const dName = (a.driver_name || "").toLowerCase().trim();
-            const uName = (user?.name || "").toLowerCase().trim();
-            if (!dName || dName === "unassigned" || dName.includes("unassigned")) return false;
-            return (
-              (a.agent_id && a.agent_id === currentUserId) ||
-              (a.driver_id && a.driver_id === currentUserId) ||
-              (uName && dName === uName)
-            );
-          });
-
+        if (agentAssignments) {
           // Pending empty cylinder returns (only for exchange deliveries requiring empty return)
           const pending = agentAssignments.filter((a: any) => {
             const s = (a.status || "").toLowerCase();
@@ -277,7 +267,7 @@ export function DeliverySidebar({
                   JOHN STAYTE
                 </span>
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-600">
-                  Delivery Agent
+                  Driver
                 </span>
               </div>
             )}

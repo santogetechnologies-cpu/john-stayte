@@ -10,15 +10,32 @@ import {
   CheckCircle2,
   Check,
   Flame,
+  Mail,
+  KeyRound,
+  RefreshCw,
 } from "lucide-react";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { gbp, useCartTotals, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { isRefillableLpgCylinderProduct } from "@/lib/cylinder-exchange-service";
+import {
+  sendCheckoutEmailOtp,
+  verifyCheckoutEmailOtp,
+  checkEmailVerifiedStatus,
+} from "@/lib/checkout-email-service";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -63,6 +80,9 @@ function Checkout() {
   const [discount, setDiscount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [emailVerifyModalOpen, setEmailVerifyModalOpen] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const [refreshingAuth, setRefreshingAuth] = useState(false);
   const navigate = useNavigate();
 
   // Redirect unauthenticated visitors to login with return path to /checkout
@@ -79,34 +99,135 @@ function Checkout() {
   // Delivery Form Fields
   const [fullName, setFullName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
+  const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
+  const [verificationStep, setVerificationStep] = useState<"IDLE" | "OTP_SENT" | "VERIFIED">("IDLE");
+  const [otpCode, setOtpCode] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [phone, setPhone] = useState("");
   const [postcode, setPostcode] = useState("");
   const [address, setAddress] = useState("");
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
 
+  // Computed verified boolean
+  const isEmailVerified = useMemo(() => {
+    if (!email.trim()) return false;
+    return Boolean(verifiedEmail && verifiedEmail.toLowerCase() === email.trim().toLowerCase());
+  }, [verifiedEmail, email]);
+
+  // Check initial verification status on mount / user change
+  useEffect(() => {
+    let isMounted = true;
+    async function checkInitial() {
+      const targetEmail = (user?.email || email).trim();
+      if (!targetEmail) return;
+      const isVerified = await checkEmailVerifiedStatus(targetEmail);
+      if (isMounted && isVerified) {
+        setVerifiedEmail(targetEmail.toLowerCase());
+        setVerificationStep("VERIFIED");
+      }
+    }
+    checkInitial();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  const handleEmailChange = (newVal: string) => {
+    setEmail(newVal);
+    if (verifiedEmail && newVal.trim().toLowerCase() !== verifiedEmail.toLowerCase()) {
+      setVerifiedEmail(null);
+      setVerificationStep("IDLE");
+      setOtpCode("");
+    }
+  };
+
+  const handleSendEmailOtp = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      return toast.error("Please enter a valid email address to receive your verification code.");
+    }
+    setSendingOtp(true);
+    try {
+      const res = await sendCheckoutEmailOtp(cleanEmail);
+      toast.success(res.message);
+      setVerificationStep("OTP_SENT");
+      setCooldown(60);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send verification code. Please try again.");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    const cleanOtp = otpCode.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      return toast.error("Please enter the complete 6-digit code received in your email.");
+    }
+    setVerifyingOtp(true);
+    try {
+      const res = await verifyCheckoutEmailOtp(email, cleanOtp);
+      if (res.ok) {
+        setVerifiedEmail(res.verifiedEmail);
+        setVerificationStep("VERIFIED");
+        setOtpCode("");
+        setEmailVerifyModalOpen(false);
+        toast.success("Email verified successfully! You can now place your order.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Invalid or expired verification code. Please try again.");
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleChangeEmailClick = () => {
+    setVerifiedEmail(null);
+    setVerificationStep("IDLE");
+    setOtpCode("");
+  };
+
+  const handleResendVerification = async () => {
+    await handleSendEmailOtp();
+  };
+
+  const handleRefreshVerification = async () => {
+    setRefreshingAuth(true);
+    try {
+      const targetEmail = (user?.email || email).trim();
+      const isVerified = await checkEmailVerifiedStatus(targetEmail);
+      if (isVerified) {
+        setVerifiedEmail(targetEmail.toLowerCase());
+        setVerificationStep("VERIFIED");
+        setEmailVerifyModalOpen(false);
+        toast.success("Email verified successfully! You can now complete your order.");
+      } else {
+        toast.error("Email is not yet confirmed. Please verify the code sent to your email.");
+      }
+    } catch (err: any) {
+      toast.error("Verification status check failed: " + err.message);
+    } finally {
+      setRefreshingAuth(false);
+    }
+  };
+
   // Gas Cylinder Exchange Option
   const [cylinderExchangeType, setCylinderExchangeType] = useState<"refill" | "new">("refill");
 
-  // Check if cart contains gas cylinders
+  // Check if cart contains actual refillable/exchangeable gas cylinders
   const hasCylinderInCart = useMemo(() => {
-    const keywords = [
-      "cylinder",
-      "propane",
-      "butane",
-      "patio gas",
-      "forklift",
-      "campingaz",
-      "flt",
-      "pub gas",
-      "bottle",
-      "gas",
-    ];
-    return lines.some((l) => {
-      const name = (l.product?.name || "").toLowerCase();
-      const isExcluded =
-        name.includes("deposit") || name.includes("accessory") || name.includes("regulator");
-      return !isExcluded && keywords.some((kw) => name.includes(kw));
-    });
+    return lines.some((l) => isRefillableLpgCylinderProduct(l.product));
   }, [lines]);
 
   // Payment Form Fields (strictly in-memory, never stored in DB or localStorage)
@@ -234,6 +355,27 @@ function Checkout() {
       });
       navigate({ to: "/login", search: { redirect: "/checkout" } });
       return;
+    }
+
+    // 2. Strict Real Email Verification Security Enforcement
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isEmailVerified || verifiedEmail?.toLowerCase() !== cleanEmail) {
+      if (verificationStep !== "OTP_SENT") {
+        await handleSendEmailOtp();
+      }
+      return toast.error(
+        "Email verification required: Please enter and verify the 6-digit code sent to your email before placing your order.",
+      );
+    }
+
+    // Backend database verification check
+    const isBackendVerified = await checkEmailVerifiedStatus(cleanEmail);
+    if (!isBackendVerified) {
+      setVerifiedEmail(null);
+      setVerificationStep("IDLE");
+      return toast.error(
+        "Email verification could not be confirmed on the database server. Please verify your email code again.",
+      );
     }
 
     if (settings?.minOrderValue && subtotal < settings.minOrderValue) {
@@ -622,19 +764,125 @@ function Checkout() {
                   className="mt-1.5 rounded-full text-xs font-medium"
                 />
               </div>
-              <div>
-                <Label htmlFor="em" className="text-xs font-bold text-slate-700">
-                  Email address
-                </Label>
-                <Input
-                  id="em"
-                  type="email"
-                  required
-                  maxLength={120}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1.5 rounded-full text-xs font-medium"
-                />
+              <div className="space-y-1.5 sm:col-span-2 md:col-span-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="em" className="text-xs font-bold text-slate-700">
+                    Email address
+                  </Label>
+                  {isEmailVerified ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Verified Email
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-amber-600">
+                      OTP Verification Required
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    id="em"
+                    type="email"
+                    required
+                    maxLength={120}
+                    value={email}
+                    disabled={isEmailVerified && verificationStep === "VERIFIED"}
+                    onChange={(e) => handleEmailChange(e.target.value)}
+                    className={cn(
+                      "rounded-full text-xs font-medium flex-1",
+                      isEmailVerified && "bg-emerald-50/50 border-emerald-300 font-semibold text-emerald-900"
+                    )}
+                    placeholder="customer@example.com"
+                  />
+                  {isEmailVerified ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleChangeEmailClick}
+                      className="rounded-full text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-100 shrink-0 h-9 px-3"
+                    >
+                      Change
+                    </Button>
+                  ) : verificationStep === "IDLE" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSendEmailOtp}
+                      disabled={sendingOtp || !email.trim() || !email.includes("@")}
+                      className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-white shrink-0 h-9 px-4"
+                    >
+                      {sendingOtp ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="h-3.5 w-3.5 mr-1.5" />
+                          Send Code
+                        </>
+                      )}
+                    </Button>
+                  ) : null}
+                </div>
+
+                {/* 6-Digit Verification Code Entry */}
+                {verificationStep === "OTP_SENT" && !isEmailVerified && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 space-y-2.5 mt-2 animate-in fade-in">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-extrabold text-amber-900 flex items-center gap-1.5">
+                        <KeyRound className="h-3.5 w-3.5 text-amber-600" /> Enter 6-digit code sent to inbox:
+                      </span>
+                      <span className="text-[11px] font-mono font-bold text-amber-700">
+                        {cooldown > 0 ? `Resend in ${cooldown}s` : ""}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        placeholder="••••••"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="rounded-xl text-center text-base tracking-[0.3em] font-mono font-black bg-white border-amber-300 h-9 flex-1"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleVerifyEmailOtp}
+                        disabled={verifyingOtp || otpCode.trim().length !== 6}
+                        className="rounded-xl text-xs font-bold bg-amber-700 hover:bg-amber-800 text-white shrink-0 h-9 px-3"
+                      >
+                        {verifyingOtp ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                            Verifying...
+                          </>
+                        ) : (
+                          "Verify Code"
+                        )}
+                      </Button>
+                      {cooldown === 0 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSendEmailOtp}
+                          disabled={sendingOtp}
+                          className="rounded-xl text-xs font-bold border-amber-300 text-amber-900 bg-white hover:bg-amber-100 shrink-0 h-9 px-3"
+                        >
+                          Resend
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-amber-800 leading-tight">
+                      Please check your spam/junk folder if the code doesn't arrive in your main inbox.
+                    </p>
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="ph" className="text-xs font-bold text-slate-700">
@@ -1089,12 +1337,14 @@ function Checkout() {
           <Button
             type="submit"
             size="lg"
-            disabled={submitting || isProcessingPayment || cartLoading || lines.length === 0}
+            disabled={submitting || isProcessingPayment || cartLoading || lines.length === 0 || !isEmailVerified}
             className={cn(
-              "mt-4 w-full rounded-full gap-2 h-12 font-black text-sm text-white shadow-md cursor-pointer transition-all",
-              paymentMethod === "paypal"
-                ? "bg-[#0079C1] hover:bg-[#00457C]"
-                : "bg-primary hover:bg-primary/90",
+              "mt-4 w-full rounded-full gap-2 h-12 font-black text-sm transition-all cursor-pointer shadow-md",
+              !isEmailVerified
+                ? "bg-slate-200 text-slate-500 border border-slate-300 hover:bg-slate-200 cursor-not-allowed"
+                : paymentMethod === "paypal"
+                  ? "bg-[#0079C1] hover:bg-[#00457C] text-white"
+                  : "bg-primary hover:bg-primary/90 text-white",
             )}
           >
             {isProcessingPayment ? (
@@ -1111,6 +1361,11 @@ function Checkout() {
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Placing Order...</span>
               </>
+            ) : !isEmailVerified ? (
+              <>
+                <Mail className="h-4 w-4 mr-1 text-slate-400" />
+                <span>Verify Email to Confirm Order</span>
+              </>
             ) : paymentMethod === "paypal" ? (
               <>
                 <PayPalIcon className="h-4 w-4 fill-white" />
@@ -1119,7 +1374,7 @@ function Checkout() {
             ) : paymentMethod === "card" ? (
               `Pay ${gbp(Math.max(0, total - discount))}`
             ) : (
-              `Confirm Order (${gbp(Math.max(0, total - discount))})`
+              `Confirm & Place Order (${gbp(Math.max(0, total - discount))})`
             )}
           </Button>
 
@@ -1129,6 +1384,84 @@ function Checkout() {
           </div>
         </aside>
       </form>
+
+      {/* Email Verification Required Dialog Modal */}
+      <Dialog open={emailVerifyModalOpen} onOpenChange={setEmailVerifyModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 space-y-4">
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mb-2">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-black text-slate-900 font-display">
+              Email Verification Required
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-600 font-medium leading-relaxed pt-1">
+              For security and order confirmation, please enter the 6-digit verification code sent to your email.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs space-y-3">
+            <p className="font-bold text-slate-900">
+              Verification Code sent to:
+            </p>
+            <p className="font-mono text-primary font-bold text-sm bg-white p-2.5 rounded-xl border border-slate-200 break-all">
+              {email}
+            </p>
+            
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-xs font-bold text-slate-700">Enter 6-Digit Code:</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder="••••••"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="rounded-xl text-center text-base tracking-[0.3em] font-mono font-black bg-white border-amber-300 h-10 flex-1"
+                />
+                <Button
+                  type="button"
+                  onClick={handleVerifyEmailOtp}
+                  disabled={verifyingOtp || otpCode.trim().length !== 6}
+                  className="rounded-xl text-xs font-bold bg-primary text-white h-10 px-4 shrink-0"
+                >
+                  {verifyingOtp ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleSendEmailOtp}
+              disabled={sendingOtp || cooldown > 0}
+              className="rounded-full text-xs font-bold w-full sm:w-auto"
+            >
+              {sendingOtp ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  Sending...
+                </>
+              ) : cooldown > 0 ? (
+                `Resend in ${cooldown}s`
+              ) : (
+                "Resend Code"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SiteLayout>
   );
 }

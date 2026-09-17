@@ -35,6 +35,8 @@ import {
   Home,
   Factory,
   Flame,
+  Car,
+  Fuel,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -86,7 +88,7 @@ const adminNavGroups: NavGroup[] = [
         badgeColor: "bg-amber-100 text-amber-800 font-extrabold",
       },
       { title: "Deliveries", href: "/admin/deliveries", icon: Truck },
-      { title: "Delivery Agents", href: "/admin/delivery-agents", icon: UserCheck },
+      { title: "Drivers", href: "/admin/delivery-agents", icon: UserCheck },
       { title: "Applications", href: "/admin/applications", icon: FileText },
       {
         title: "Inventory",
@@ -116,6 +118,8 @@ const adminNavGroups: NavGroup[] = [
       { title: "Domestic LPG", href: "/admin/order-gas/domestic", icon: Home },
       { title: "Commercial LPG", href: "/admin/order-gas/commercial", icon: Building2 },
       { title: "Bulk LPG", href: "/admin/order-gas/bulk", icon: Factory },
+      { title: "Vehicle LPG / Autogas", href: "/admin/order-gas/autogas", icon: Car },
+      { title: "Cylinder Deposits", href: "/admin/cylinder-deposits", icon: ShieldCheck },
     ],
   },
   {
@@ -129,6 +133,7 @@ const adminNavGroups: NavGroup[] = [
     groupLabel: "BUSINESS",
     items: [
       { title: "Stations", href: "/admin/stations", icon: Building2, moduleKey: "stations" },
+      { title: "Auto Gas", href: "/admin/auto-gas", icon: Fuel, moduleKey: "auto-gas" },
       { title: "Reports", href: "/admin/reports", icon: BarChart3, moduleKey: "reports" },
       { title: "Analytics", href: "/admin/analytics", icon: TrendingUp, moduleKey: "analytics" },
     ],
@@ -161,7 +166,7 @@ const adminNavGroups: NavGroup[] = [
 ];
 
 export function AdminPortalLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useStore();
+  const { user, authLoading, logout } = useStore();
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
@@ -225,12 +230,34 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  // Guard: Auto redirect to login if not authenticated as admin
   useEffect(() => {
-    loadModuleConfigAndBadges();
-    const handleUpdate = () => loadModuleConfigAndBadges();
-    window.addEventListener("admin_modules_updated", handleUpdate);
-    return () => window.removeEventListener("admin_modules_updated", handleUpdate);
-  }, []);
+    if (!authLoading) {
+      if (!user || user.role !== "admin") {
+        navigate({ to: "/login", search: { redirect: currentPath || "/admin" } });
+      }
+    }
+  }, [user, authLoading, navigate, currentPath]);
+
+  useEffect(() => {
+    if (user && user.role === "admin") {
+      loadModuleConfigAndBadges();
+      const handleUpdate = () => loadModuleConfigAndBadges();
+      window.addEventListener("admin_modules_updated", handleUpdate);
+      return () => window.removeEventListener("admin_modules_updated", handleUpdate);
+    }
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-50 px-4 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
+          <p className="text-xs font-semibold text-slate-500">Verifying administrator authorization...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user || user.role !== "admin") {
     return (
@@ -245,7 +272,7 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
             asChild
             className="mt-6 w-full rounded-full shadow-md font-bold bg-red-600 hover:bg-red-700 text-white"
           >
-            <Link to="/login">Go to Sign In</Link>
+            <Link to="/login" search={{ redirect: currentPath || "/admin" }}>Go to Sign In</Link>
           </Button>
         </div>
       </div>

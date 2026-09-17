@@ -26,6 +26,7 @@ import {
   FileSignature,
   Star,
   Heart,
+  Car,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -51,8 +52,23 @@ import {
 } from "@/lib/cylinder-service";
 import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
 import { GasCustomerApplicationForm } from "@/components/customer/GasCustomerApplicationForm";
+import { getActiveDepositForProduct } from "@/lib/cylinder-deposit-service";
+import { isRefillableLpgCylinderProduct } from "@/lib/cylinder-exchange-service";
+import { OrderGasCatalogueSection, resolveBrandToCategoryId } from "@/components/site/OrderGasCatalogueSection";
+import { ProductDetailsModal } from "@/components/site/ProductDetailsModal";
+import { DistributorBrandBanners } from "@/components/site/DistributorBrandBanners";
+import { OrderGasHeroNetworkMesh } from "@/components/site/OrderGasHeroNetworkMesh";
+import { OrderGasShopByCategory } from "@/components/site/OrderGasShopByCategory";
+import { OrderGasReveal3D } from "@/components/site/OrderGasReveal3D";
 
 export const Route = createFileRoute("/order-gas")({
+  validateSearch: (search: Record<string, unknown>): { brand?: string; category?: string; usage?: string } => {
+    return {
+      brand: typeof search.brand === "string" ? search.brand : undefined,
+      category: typeof search.category === "string" ? search.category : undefined,
+      usage: typeof search.usage === "string" ? search.usage : undefined,
+    };
+  },
   head: () => ({
     meta: [
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
@@ -96,6 +112,7 @@ function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
 function OrderGasPage() {
   const { user, login, register } = useStore();
   const navigate = useNavigate();
+  const search = Route.useSearch();
 
   // Gas Customer Application State (Backend source of truth)
   const [customerApp, setCustomerApp] = useState<GasCustomerApplication | null>(null);
@@ -111,14 +128,103 @@ function OrderGasPage() {
   // Step 5: Confirmation
   const [step, setStep] = useState<number>(0);
 
-  // Step 0: Usage Type
+  // Step 0: Usage Type & Catalogue Category
   const [usageType, setUsageType] = useState<UsageType | null>(null);
+  const [selectedCatalogueCategory, setSelectedCatalogueCategory] = useState<string | null>(null);
+
+  // Sync brand or category search param from URL (e.g. /order-gas?brand=Calor or /order-gas?brand=Air%20Liquide)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncSearchParams = () => {
+      const params = new URLSearchParams(window.location.search);
+      const brandParam = search?.brand || params.get("brand");
+      const categoryParam = search?.category || params.get("category");
+
+      if (brandParam) {
+        const targetCategory = resolveBrandToCategoryId(brandParam);
+        setStep(0);
+        setSelectedCatalogueCategory(targetCategory);
+
+        const performScroll = () => {
+          const mainEl = document.getElementById("gas-catalogue-main");
+          if (mainEl) {
+            mainEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        };
+
+        performScroll();
+        const t1 = setTimeout(performScroll, 80);
+        const t2 = setTimeout(performScroll, 250);
+        const t3 = setTimeout(performScroll, 600);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+          clearTimeout(t3);
+        };
+      } else if (categoryParam) {
+        setStep(0);
+        setSelectedCatalogueCategory(categoryParam);
+        const performScroll = () => {
+          const mainEl = document.getElementById("gas-catalogue-main");
+          if (mainEl) {
+            mainEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        };
+        performScroll();
+        const t1 = setTimeout(performScroll, 100);
+        return () => clearTimeout(t1);
+      }
+    };
+
+    syncSearchParams();
+  }, [search?.brand, search?.category]);
+
+  // Sync section hash from URL (e.g., #garden, #food, #trailers, #workwear, #gas, #pub-gas)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncHash = () => {
+      const hash = (window.location.hash || "").replace("#", "").toLowerCase().trim();
+      if (!hash || hash === "shop-by-brand") return;
+
+      const HASH_MAP: Record<string, string> = {
+        gas: "calor-gas",
+        "calor-gas": "calor-gas",
+        "pub-gas": "pub-gas",
+        pubgas: "pub-gas",
+        garden: "garden",
+        food: "food",
+        trailers: "trailers",
+        workwear: "workwear",
+        "coal-logs": "coal-fuels",
+        "coal-fuels": "coal-fuels",
+        coal: "coal-fuels",
+        "fishing-baits": "dynamite-baits",
+        "fishing-bait": "dynamite-baits",
+        "animal-feed": "animal-feed",
+        "gas-appliances": "gas-appliances",
+        "gas-spares": "gas-spares",
+        "air-liquide": "air-liquide",
+      };
+
+      const target = HASH_MAP[hash] || hash;
+      setStep(0);
+      setSelectedCatalogueCategory(target);
+    };
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
+  }, []);
 
   // Step 1: Product & Quantity
   const [products, setProducts] = useState<GasProductRecord[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productFetchError, setProductFetchError] = useState<boolean>(false);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedProductOverride, setSelectedProductOverride] = useState<GasProductRecord | null>(null);
+  const [selectedFromCatalogue, setSelectedFromCatalogue] = useState<boolean>(false);
   const [quantity, setQuantity] = useState<number>(1);
   const [detailProduct, setDetailProduct] = useState<GasProductRecord | null>(null);
   const [detailActiveImg, setDetailActiveImg] = useState<string>("");
@@ -140,11 +246,6 @@ function OrderGasPage() {
   const [selectedDeliverySlot, setSelectedDeliverySlot] = useState<string>("");
   const [availableDeliverySlots, setAvailableDeliverySlots] = useState<any[]>([]);
 
-  // Refill Pickup Scheduling (when returnMethod === "SCHEDULED_PICKUP")
-  const [pickupAddress, setPickupAddress] = useState<string>("");
-  const [pickupDate, setPickupDate] = useState<string>("");
-  const [selectedPickupSlot, setSelectedPickupSlot] = useState<string>("");
-  const [availablePickupSlots, setAvailablePickupSlots] = useState<any[]>([]);
   const [notes, setNotes] = useState<string>("");
 
   // Step 4 & 5: Summary & Payment
@@ -193,6 +294,101 @@ function OrderGasPage() {
   const [authPassword, setAuthPassword] = useState<string>("");
   const [authName, setAuthName] = useState<string>("");
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+
+  // Rotating animated hero headline messages (5 Editorial Phrases Stack)
+  const ROTATING_HERO_PHRASES = [
+    "POWERING HOMES",
+    "POWERING BUSINESSES",
+    "POWERING GLOUCESTERSHIRE",
+    "POWERING A CLEANER TOMORROW",
+    "KEEPING YOU MOVING",
+  ];
+  const [activePhraseIndex, setActivePhraseIndex] = useState<number>(0); // Starts at POWERING HOMES
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActivePhraseIndex((prev) => (prev + 1) % ROTATING_HERO_PHRASES.length);
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [ROTATING_HERO_PHRASES.length]);
+
+  // CMS data from Supabase
+  const [shopGasCms, setShopGasCms] = useState({
+    heroEyebrow: "OFFICIAL CALOR GAS DISTRIBUTOR",
+    heroHeading: "ORDER GAS CYLINDERS & REFILLS",
+    heroSubtitle: "Order domestic heating, commercial appliances, and bulk forecourt LPG supplies across Gloucestershire.",
+    operationalBanner: "Next-Day Delivery available on orders placed before 12:00 PM across Gloucestershire.",
+  });
+
+  useEffect(() => {
+    async function loadShopCms() {
+      try {
+        const { data } = await supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "shop_order_gas_data")
+          .maybeSingle();
+
+        if (data?.content) {
+          try {
+            const parsed = JSON.parse(data.content);
+            if (parsed && typeof parsed === "object") {
+              setShopGasCms((prev) => ({
+                ...prev,
+                heroEyebrow: parsed.heroEyebrow || prev.heroEyebrow,
+                heroHeading: parsed.heroHeading || prev.heroHeading,
+                heroSubtitle: parsed.heroSubtitle || prev.heroSubtitle,
+                operationalBanner: parsed.operationalBanner || prev.operationalBanner,
+              }));
+            }
+          } catch { }
+        }
+      } catch (err) {
+        console.warn("Failed to load shop CMS block:", err);
+      }
+    }
+    loadShopCms();
+
+    const handleUpdate = () => loadShopCms();
+    window.addEventListener("cms_shop_updated", handleUpdate);
+    return () => window.removeEventListener("cms_shop_updated", handleUpdate);
+  }, []);
+
+  // Real Typewriter effect for main hero heading
+  const MAIN_HEADING_TEXT = shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS";
+  const [typedHeading, setTypedHeading] = useState<string>("");
+  const [isDeletingHeading, setIsDeletingHeading] = useState<boolean>(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (!isDeletingHeading) {
+      if (typedHeading.length < MAIN_HEADING_TEXT.length) {
+        timer = setTimeout(() => {
+          setTypedHeading(MAIN_HEADING_TEXT.slice(0, typedHeading.length + 1));
+        }, 70);
+      } else {
+        // Full heading typed, pause briefly before erasing
+        timer = setTimeout(() => {
+          setIsDeletingHeading(true);
+        }, 2200);
+      }
+    } else {
+      if (typedHeading.length > 0) {
+        timer = setTimeout(() => {
+          setTypedHeading(MAIN_HEADING_TEXT.slice(0, typedHeading.length - 1));
+        }, 35);
+      } else {
+        // Reset complete, pause briefly before typing again
+        timer = setTimeout(() => {
+          setIsDeletingHeading(false);
+        }, 400);
+      }
+    }
+
+    return () => clearTimeout(timer);
+  }, [typedHeading, isDeletingHeading, MAIN_HEADING_TEXT]);
 
   // Check Gas Customer Application Status for authenticated user
   useEffect(() => {
@@ -256,7 +452,13 @@ function OrderGasPage() {
       const loaded = await getGasProductsByUsage(type);
       setProducts(loaded);
       if (loaded.length > 0) {
-        setSelectedProductId(loaded[0].id);
+        setSelectedProductId((prev) => {
+          if (prev && loaded.some((p) => p.id === prev || p.slug === prev)) return prev;
+          if (selectedProductOverride && loaded.some((p) => p.id === selectedProductOverride.id || p.slug === selectedProductOverride.slug)) {
+            return loaded.find((p) => p.id === selectedProductOverride.id || p.slug === selectedProductOverride.slug)!.id;
+          }
+          return prev || loaded[0].id;
+        });
       }
     } catch (err: any) {
       setProductFetchError(true);
@@ -269,9 +471,24 @@ function OrderGasPage() {
   useEffect(() => {
     if (!usageType) return;
     fetchProductsForUsage(usageType);
+
+    const channel = supabase
+      .channel(`customer-order-gas-sync-${usageType}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          fetchProductsForUsage(usageType);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [usageType]);
 
-  // Load available slots from backend
+  // Load available delivery slots from backend
   useEffect(() => {
     async function loadSlots() {
       const today = new Date().toISOString().split("T")[0];
@@ -280,28 +497,52 @@ function OrderGasPage() {
       if (delSlots.length > 0 && !selectedDeliverySlot) {
         setSelectedDeliverySlot(delSlots[0].slot.slot_name);
       }
-
-      if (returnMethod === "SCHEDULED_PICKUP") {
-        const pSlots = await getAvailableSlots({ type: "pickup", date: pickupDate || today });
-        setAvailablePickupSlots(pSlots);
-        if (pSlots.length > 0 && !selectedPickupSlot) {
-          setSelectedPickupSlot(pSlots[0].slot.slot_name);
-        }
-      }
     }
     loadSlots();
-  }, [deliveryDate, pickupDate, returnMethod]);
+  }, [deliveryDate]);
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId) || products[0];
+  const selectedProduct =
+    products.find((p) => p.id === selectedProductId || p.slug === selectedProductId) ||
+    (selectedProductOverride && (selectedProductOverride.id === selectedProductId || selectedProductOverride.slug === selectedProductId || !products.length)
+      ? selectedProductOverride
+      : null) ||
+    selectedProductOverride ||
+    products[0];
+
+  // Dynamic Supabase-backed deposit state
+  const [dynamicDeposit, setDynamicDeposit] = useState<{
+    amount: number;
+    isConfigured: boolean;
+    loading: boolean;
+  }>({ amount: 0, isConfigured: false, loading: false });
+
+  useEffect(() => {
+    if (!selectedProduct?.id) return;
+    let isMounted = true;
+    setDynamicDeposit((prev) => ({ ...prev, loading: true }));
+    getActiveDepositForProduct(selectedProduct.id).then((res) => {
+      if (isMounted) {
+        setDynamicDeposit({
+          amount: res.depositAmount,
+          isConfigured: res.isConfigured,
+          loading: false,
+        });
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedProduct?.id]);
 
   // Pricing calculation
+  const isCylinderProduct = selectedProduct ? isRefillableLpgCylinderProduct(selectedProduct) : true;
   const isNew = orderType === "NEW_CYLINDER";
   const gasPriceUnit = selectedProduct
     ? isNew
       ? selectedProduct.price
-      : selectedProduct.refill_price
+      : selectedProduct.refill_price ?? selectedProduct.price
     : 0;
-  const depositUnit = isNew && selectedProduct ? selectedProduct.deposit_price : 0;
+  const depositUnit = isNew && selectedProduct && isCylinderProduct ? dynamicDeposit.amount : 0;
   const gasTotal = gasPriceUnit * quantity;
   const depositTotal = depositUnit * quantity;
   const deliveryFee = selectedProduct?.delivery_charge || 0;
@@ -310,12 +551,19 @@ function OrderGasPage() {
   // Step 0: Usage selection handler
   const handleSelectUsage = (type: UsageType) => {
     setUsageType(type);
+    setSelectedFromCatalogue(false);
     setStep(1); // Proceed to choose product
   };
 
   // Step 1: Product selection handler
   const handleNextFromProduct = () => {
-    if (!selectedProduct) return toast.error("Please choose a gas cylinder.");
+    if (!selectedProduct) return toast.error("Please choose a product or service.");
+    if (!isCylinderProduct || usageType === "AUTOGAS") {
+      // Autogas and non-cylinder products bypass New / Refill exchange
+      setOrderType("NEW_CYLINDER");
+      setStep(3);
+      return;
+    }
     setStep(2); // Proceed to New vs Refill
   };
 
@@ -353,9 +601,6 @@ function OrderGasPage() {
     }
     if (!deliveryDate) {
       return toast.error("Please choose your preferred delivery date.");
-    }
-    if (orderType === "REFILL_EXCHANGE" && returnMethod === "SCHEDULED_PICKUP" && !pickupDate) {
-      return toast.error("Please choose your preferred empty cylinder pickup date.");
     }
     setStep(4); // Proceed to Order Summary & Payment
   };
@@ -464,13 +709,7 @@ function OrderGasPage() {
         quantity,
         deliveryDate,
         deliveryTimeSlot: selectedDeliverySlot,
-        returnMethod: orderType === "REFILL_EXCHANGE" ? returnMethod : undefined,
-        pickupAddress:
-          returnMethod === "SCHEDULED_PICKUP"
-            ? pickupAddress.trim() || deliveryAddress.trim()
-            : undefined,
-        pickupDate: returnMethod === "SCHEDULED_PICKUP" ? pickupDate : undefined,
-        pickupTimeSlot: returnMethod === "SCHEDULED_PICKUP" ? selectedPickupSlot : undefined,
+        returnMethod: orderType === "REFILL_EXCHANGE" ? "RETURN_ON_DELIVERY" : undefined,
         cylinderTag: cylinderTag.trim() || undefined,
         notes: notes.trim() || undefined,
         paymentMethod: normalizedMethod,
@@ -502,187 +741,297 @@ function OrderGasPage() {
 
   return (
     <SiteLayout>
-      <div className="bg-[#fcfdfe] min-h-[85vh] py-8 sm:py-10 lg:py-14 border-b border-slate-200/60">
-        <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 space-y-8">
-          {/* Page Header */}
-          <div className="space-y-3 text-left">
-            <div className="inline-flex items-center gap-2 rounded-full border border-red-200/90 bg-red-50/80 px-4 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red-600 shadow-2xs backdrop-blur-xs">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              <span>OFFICIAL CALOR GAS DISTRIBUTOR</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-[44px] font-black text-slate-900 tracking-tight leading-[1.08] font-display">
-              Order Gas Cylinders & Refills
-            </h1>
-            <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl">
-              Order domestic heating, commercial appliances, and bulk forecourt LPG supplies across
-              Gloucestershire.
-            </p>
+      <div className="bg-[#fcfdfe] min-h-[85vh] border-b border-slate-200/60">
+        {/* ========================================================================= */}
+        {/* 1. FULL-WIDTH IMMERSIVE CINEMATIC DARK 3D HERO SECTION */}
+        {/* ========================================================================= */}
+        <section className="relative w-full overflow-hidden bg-[#080b11] py-8 sm:py-10 md:py-14 min-h-[580px] sm:min-h-[620px] lg:min-h-[640px] flex items-center border-b border-slate-800/80 shadow-2xl">
+          <OrderGasHeroNetworkMesh />
+
+          {/* Floating Micro-Content Accents (Background Composition) */}
+          <div className="absolute top-6 right-8 lg:right-24 hidden md:block text-left text-[9px] font-black tracking-[0.2em] text-slate-500/50 uppercase leading-tight select-none pointer-events-none z-10">
+            <div>ENERGY</div>
+            <div>FOR EVERYDAY</div>
+            <div>LIFE</div>
+            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 opacity-80" />
           </div>
 
-          {/* Stepper Indicator */}
-          {step < 5 && (
-            <nav aria-label="Progress" className="w-full">
-              <ol className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {[
-                  { title: "1. Usage Type", desc: usageType ? usageType : "Select Usage" },
-                  {
-                    title: "2. Gas & Cylinder",
-                    desc: selectedProduct ? selectedProduct.name.slice(0, 18) + "..." : "Pick Size",
-                  },
-                  {
-                    title: "3. New / Refill",
-                    desc: orderType === "NEW_CYLINDER" ? "New Purchase" : "Refill Exchange",
-                  },
-                  { title: "4. Schedule & Address", desc: "Delivery Slot" },
-                  { title: "5. Review & Pay", desc: "Order Total" },
-                ].map((s, idx) => {
-                  const isActive = step === idx;
-                  const isComplete = step > idx;
-                  return (
-                    <li key={s.title} className="w-full">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (idx < step) setStep(idx);
-                        }}
-                        disabled={idx > step}
+          <div className="absolute top-10 right-6 hidden xl:block text-left text-[9px] font-black tracking-[0.2em] text-slate-500/40 uppercase leading-tight select-none pointer-events-none z-10">
+            <div>HOMES</div>
+            <div>BUSINESSES</div>
+            <div>INDUSTRY</div>
+            <div>COMMUNITIES</div>
+            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 opacity-80" />
+          </div>
+
+          <div className="absolute bottom-6 left-6 hidden sm:block text-left text-[9px] font-black tracking-[0.2em] text-slate-500/50 uppercase leading-tight select-none pointer-events-none z-10">
+            <div>SAFE</div>
+            <div>RELIABLE</div>
+            <div>SUSTAINABLE</div>
+            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 opacity-80" />
+          </div>
+
+          <div className="absolute bottom-6 right-6 hidden sm:block text-right text-[9px] font-black tracking-[0.2em] text-slate-500/50 uppercase leading-tight select-none pointer-events-none z-10">
+            <div>SUPPORTING</div>
+            <div>A BRIGHTER</div>
+            <div>TOMORROW</div>
+            <div className="w-4 h-[2px] bg-red-600 rounded-full mt-1 ml-auto opacity-80" />
+          </div>
+
+          <div className="container-page max-w-[88rem] px-3.5 sm:px-6 relative z-10 w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+
+              {/* Left Column: Badge, Editorial Headline Stack, Main Title, Description & Trust Badges */}
+              <div className="lg:col-span-6 xl:col-span-6 space-y-4 sm:space-y-5 text-left flex flex-col items-start">
+
+                {/* Official Calor Distributor Badge (Dark Theme) */}
+                <div className="inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-950/50 backdrop-blur-md px-3 sm:px-3.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider sm:tracking-[0.2em] text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
+                  <span>{shopGasCms.heroEyebrow || "OFFICIAL CALOR GAS DISTRIBUTOR"}</span>
+                </div>
+
+                {/* Animated Editorial Vertical Headline Stack (Matching Reference) */}
+                <div className="space-y-1 sm:space-y-1.5 py-1 select-none w-full">
+                  {ROTATING_HERO_PHRASES.map((phrase, idx) => {
+                    const isActive = idx === activePhraseIndex;
+                    return (
+                      <div
+                        key={phrase}
                         className={cn(
-                          "w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border text-xs font-extrabold transition-all text-left",
+                          "transition-all duration-300 ease-out flex items-center",
                           isActive
-                            ? "border-primary bg-primary text-white shadow-md"
-                            : isComplete
-                              ? "border-slate-300 bg-white text-slate-900 hover:border-slate-400 shadow-2xs cursor-pointer"
-                              : "border-slate-200/80 bg-slate-50 text-slate-400 cursor-not-allowed",
+                            ? "border-l-[3.5px] border-red-600 pl-3 sm:pl-4 text-white font-black text-lg min-[380px]:text-xl sm:text-2xl md:text-3xl lg:text-[34px] tracking-tight leading-tight uppercase scale-100"
+                            : "pl-3 sm:pl-4 text-slate-500/50 hover:text-slate-400 font-extrabold text-xs min-[380px]:text-sm sm:text-base lg:text-lg tracking-wider uppercase scale-[0.98] origin-left",
                         )}
                       >
-                        <span
+                        <span className="break-words">{phrase}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Main Hero Title with Real Typewriter Animation in JSS Red */}
+                <div className="relative pt-2 select-none w-full">
+                  {/* Invisible Ghost Header: Strictly locks dimensions to prevent layout shifts while typing */}
+                  <h1
+                    aria-hidden="true"
+                    className="text-xl sm:text-3xl md:text-4xl lg:text-[44px] xl:text-[46px] font-black text-transparent tracking-tight leading-[1.1] font-display uppercase pointer-events-none opacity-0 select-none break-words"
+                  >
+                    {shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS"}
+                  </h1>
+
+                  {/* Real Letter-by-Letter Animated Typed Heading in Pure White (No Cursor) */}
+                  <h1
+                    className="absolute top-0 left-0 right-0 pt-2 text-xl sm:text-3xl md:text-4xl lg:text-[44px] xl:text-[46px] font-black text-white tracking-tight leading-[1.1] font-display uppercase break-words"
+                    aria-label={shopGasCms.heroHeading || "ORDER GAS CYLINDERS & REFILLS"}
+                  >
+                    {typedHeading}
+                  </h1>
+                </div>
+
+                {/* Supporting Description */}
+                <p className="text-xs sm:text-sm md:text-base text-slate-300 font-normal leading-relaxed max-w-xl">
+                  {shopGasCms.heroSubtitle ||
+                    "Order domestic heating, commercial appliances, and bulk forecourt LPG supplies across Gloucestershire."}
+                </p>
+
+                {/* Trust & Service Highlights Row */}
+                <div className="flex flex-wrap items-center gap-4 sm:gap-7 pt-2">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-950/70 border border-red-500/40 flex items-center justify-center text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.25)] shrink-0">
+                      <Truck className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs sm:text-sm font-bold text-white leading-tight">Reliable Local Delivery</p>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400">Across Gloucestershire</p>
+                    </div>
+                  </div>
+
+                  <div className="w-[1px] h-7 bg-slate-800 hidden sm:block" />
+
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-950/70 border border-red-500/40 flex items-center justify-center text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.25)] shrink-0">
+                      <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs sm:text-sm font-bold text-white leading-tight">Trusted Brands</p>
+                      <p className="text-[10px] sm:text-[11px] text-slate-400">Calor &amp; Air Liquide</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: 3D Floating Brand Visuals (Calor & Air Liquide) */}
+              <div className="lg:col-span-6 xl:col-span-6 flex justify-center lg:justify-end w-full pt-4 lg:pt-0">
+                <DistributorBrandBanners />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* 2. SHOP BY CATEGORY (All Non-Empty Sidebar Categories) */}
+        {/* ========================================================================= */}
+        <OrderGasShopByCategory
+          onSelectCategory={(catId) => {
+            setSelectedCatalogueCategory(catId);
+            setStep(0);
+            const el = document.getElementById("gas-catalogue-main");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }}
+          activeCategoryId={selectedCatalogueCategory || undefined}
+        />
+
+        {/* ========================================================================= */}
+        {/* 3. ORDERING STEPS & PRODUCT CATALOGUE */}
+        {/* ========================================================================= */}
+        <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 py-6 sm:py-10 space-y-6 sm:space-y-8">
+          {/* Stepper Indicator with 3D Scroll Reveal */}
+          {step < 5 && (
+            <OrderGasReveal3D translateY={18} rotateX={4} scale={0.98} duration={700}>
+              <nav aria-label="Progress" className="w-full">
+                <ol className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-5 gap-2 sm:gap-2.5 lg:gap-3">
+                  {[
+                    {
+                      title: "1. Usage Type",
+                      desc: usageType ? (usageType === "AUTOGAS" ? "Autogas" : usageType) : "Select Usage",
+                    },
+                    {
+                      title: "2. Gas & Cylinder",
+                      desc: selectedProduct ? selectedProduct.name.slice(0, 18) + "..." : "Pick Size",
+                    },
+                    {
+                      title: "3. New / Refill",
+                      desc:
+                        usageType === "AUTOGAS" || !isCylinderProduct
+                          ? "Direct Order"
+                          : orderType === "NEW_CYLINDER"
+                            ? "New Purchase"
+                            : "Refill Exchange",
+                    },
+                    { title: "4. Schedule & Address", desc: "Delivery Slot" },
+                    { title: "5. Review & Pay", desc: "Order Total" },
+                  ].map((s, idx) => {
+                    const isActive = step === idx;
+                    const isComplete = step > idx;
+                    const isBypassed = idx === 2 && (usageType === "AUTOGAS" || !isCylinderProduct);
+                    return (
+                      <li key={s.title} className="w-full last:col-span-1 min-[420px]:last:col-span-2 md:last:col-span-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (idx < step && !isBypassed) setStep(idx);
+                          }}
+                          disabled={idx > step || isBypassed}
                           className={cn(
-                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
+                            "w-full flex items-center gap-2.5 sm:gap-3 px-3 sm:px-3.5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border text-xs font-extrabold transition-all text-left",
                             isActive
-                              ? "bg-white/20 text-white"
+                              ? "border-primary bg-primary text-white shadow-md"
                               : isComplete
-                                ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
-                                : "bg-slate-200/70 text-slate-500",
+                                ? "border-slate-300 bg-white text-slate-900 hover:border-slate-400 shadow-2xs cursor-pointer"
+                                : isBypassed
+                                  ? "border-slate-200 bg-slate-100/60 text-slate-400 cursor-not-allowed opacity-60"
+                                  : "border-slate-200/80 bg-slate-50 text-slate-400 cursor-not-allowed",
                           )}
                         >
-                          {isComplete ? (
-                            <Check className="h-3 w-3 stroke-[3]" />
-                          ) : (
-                            <span>{idx + 1}</span>
-                          )}
-                        </span>
-                        <div className="min-w-0">
-                          <p className="truncate leading-tight font-extrabold">{s.title}</p>
-                          <p
+                          <span
                             className={cn(
-                              "text-[10px] font-normal truncate",
-                              isActive ? "text-white/80" : "text-slate-500",
+                              "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black",
+                              isActive
+                                ? "bg-white/20 text-white"
+                                : isComplete
+                                  ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
+                                  : "bg-slate-200/70 text-slate-500",
                             )}
                           >
-                            {s.desc}
-                          </p>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
+                            {isComplete ? (
+                              <Check className="h-3 w-3 stroke-[3]" />
+                            ) : (
+                              <span>{idx + 1}</span>
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate leading-tight font-extrabold">{s.title}</p>
+                            <p
+                              className={cn(
+                                "text-[10px] font-normal truncate",
+                                isActive ? "text-white/80" : "text-slate-500",
+                              )}
+                            >
+                              {s.desc}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </nav>
+            </OrderGasReveal3D>
           )}
 
           {/* ========================================================================= */}
           {/* STEP 0: CHOOSE USAGE (LANDING PAGE - FIRST VIEW) */}
           {/* ========================================================================= */}
           {step === 0 && (
-            <div className="space-y-8 text-left">
-              <div className="space-y-1">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
-                  What are you ordering gas for?
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-500">
-                  Select your primary application below to view verified Calor products and fast
-                  delivery slots.
-                </p>
-              </div>
+            <div className="space-y-12 text-left">
+              {/* FIRST SECTION: CATALOGUE & CATEGORY BROWSING (PRODUCTS LISTING FIRST) */}
+              <OrderGasCatalogueSection
+                selectedCategoryOverride={selectedCatalogueCategory}
+                onSelectCategoryChange={(catId) => {
+                  setSelectedCatalogueCategory(catId);
+                }}
+                onSelectGasProduct={(productId, usage, productObj, qty) => {
+                  const uType = usage || "DOMESTIC";
+                  setUsageType(uType);
+                  setSelectedProductId(productId);
+                  setSelectedFromCatalogue(true);
+                  if (qty) setQuantity(qty);
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-                {[
-                  {
-                    type: "DOMESTIC" as const,
-                    title: "Domestic LPG",
-                    badgeText: "RESIDENTIAL & HOME",
-                    description:
-                      "Propane, butane, patio gas, and domestic heating cylinders delivered directly to your home, BBQ, pub, or caravan.",
-                    image: "/domestic_kitchen_cylinder.jpg",
-                    icon: Flame,
-                    btnLabel: "Explore category",
-                  },
-                  {
-                    type: "COMMERCIAL" as const,
-                    title: "Commercial LPG",
-                    badgeText: "HOSPITALITY & TRADE",
-                    description:
-                      "High-capacity 47kg & 19kg propane bottles, FLT forklift gas, and cellar dispense gas for hotels, restaurants, pubs, and kitchens.",
-                    image: "/commercial_kitchen_cylinders.jpg",
-                    icon: Building2,
-                    btnLabel: "Explore category",
-                  },
-                  {
-                    type: "BULK" as const,
-                    title: "Bulk LPG & Tanks",
-                    badgeText: "INDUSTRIAL & BULK",
-                    description:
-                      "Large-scale metered bulk road tanker deliveries and static vessel tank refills for farms, industrial heating, and commercial estates.",
-                    image: "/service_bulk_supply.jpg",
-                    icon: Factory,
-                    btnLabel: "Explore category",
-                  },
-                ].map((card) => {
-                  const Icon = card.icon;
-                  return (
-                    <div
-                      key={card.type}
-                      onClick={() => handleSelectUsage(card.type)}
-                      className="group rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xs hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between cursor-pointer text-left"
-                    >
-                      <div>
-                        {/* Clean Straight-Edged Rectangular Image Frame (No rounded corners) */}
-                        <div className="relative w-full aspect-[16/10] overflow-hidden bg-slate-100 rounded-none border border-slate-100">
-                          <img
-                            src={card.image}
-                            alt={card.title}
-                            className="h-full w-full object-cover rounded-none group-hover:scale-102 transition-transform duration-500"
-                          />
-                        </div>
+                  if (productObj) {
+                    const formattedObj: GasProductRecord = {
+                      id: productObj.id || productId,
+                      name: productObj.name,
+                      slug: productObj.slug || productId,
+                      brand: productObj.brand || "Calor",
+                      category_slug: productObj.category_slug || "gas",
+                      subcategory: productObj.subcategory || null,
+                      description: productObj.description || "",
+                      price: productObj.price || 0,
+                      stock: productObj.stock ?? 30,
+                      image_url: productObj.image_url || productObj.image || "/calor-cylinders-studio.jpg",
+                      images: productObj.images || [productObj.image_url || productObj.image || "/calor-cylinders-studio.jpg"],
+                      usage_type: uType,
+                      gas_type: productObj.gas_type || (productObj.name?.toLowerCase().includes("butane") ? "Butane" : productObj.name?.toLowerCase().includes("propane") ? "Propane" : "LPG"),
+                      cylinder_size: productObj.cylinder_size || (productObj.specs?.cylinder_size || ""),
+                      deposit_price: productObj.deposit_price ?? 39.99,
+                      refill_price: productObj.refill_price ?? productObj.price ?? 0,
+                      delivery_charge: productObj.delivery_charge || 0,
+                      is_active: true,
+                      specs: productObj.specs || {},
+                    };
+                    setSelectedProductOverride(formattedObj);
+                  }
 
-                        {/* Category Label */}
-                        <div className="flex items-center gap-1.5 pt-4">
-                          <Icon className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span className="text-[11px] font-bold uppercase tracking-wider text-red-600 font-sans">
-                            {card.badgeText}
-                          </span>
-                        </div>
+                  const isCyl = productObj
+                    ? isRefillableLpgCylinderProduct(productObj) && uType !== "AUTOGAS"
+                    : uType !== "AUTOGAS";
 
-                        {/* Title & Description */}
-                        <h3 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-primary transition-colors font-display tracking-tight mt-2">
-                          {card.title}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-slate-500 font-normal leading-relaxed mt-1.5">
-                          {card.description}
-                        </p>
-                      </div>
+                  if (!isCyl) {
+                    setOrderType("NEW_CYLINDER");
+                    setStep(3);
+                  } else {
+                    setStep(2); // Go directly to Step 2 (3. Refill Option)
+                  }
 
-                      {/* Red Explore Category Button */}
-                      <div className="pt-5">
-                        <span className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 bg-[#c8102e] hover:bg-[#a50d24] text-white font-extrabold text-xs shadow-xs transition-all group-hover:shadow-md">
-                          <span>{card.btnLabel}</span>
-                          <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                onViewProductDetail={(prod) => {
+                  setDetailProduct(prod as any);
+                }}
+              />
             </div>
           )}
 
@@ -699,7 +1048,9 @@ function OrderGasPage() {
                         ? "Domestic LPG"
                         : usageType === "COMMERCIAL"
                           ? "Commercial LPG"
-                          : "Bulk LPG & Tanks"}
+                          : usageType === "BULK"
+                            ? "Bulk LPG & Tanks"
+                            : "Vehicle LPG / Autogas"}
                     </Badge>
                     {products.length > 0 && (
                       <span className="text-xs text-slate-400 font-bold">
@@ -709,7 +1060,9 @@ function OrderGasPage() {
                     )}
                   </div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tight font-display mt-1">
-                    Select Your Gas Cylinder / Supply
+                    {usageType === "AUTOGAS"
+                      ? "Select Your Vehicle LPG / Autogas Service or Product"
+                      : "Select Your Gas Cylinder / Supply"}
                   </h2>
                 </div>
 
@@ -892,7 +1245,11 @@ function OrderGasPage() {
                   onClick={handleNextFromProduct}
                   className="rounded-full px-8 py-3 bg-primary hover:bg-primary/90 text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12"
                 >
-                  <span>Continue to Order Type</span>
+                  <span>
+                    {usageType === "AUTOGAS" || (selectedProduct && !isCylinderProduct)
+                      ? "Continue to Scheduling"
+                      : "Continue to Order Type"}
+                  </span>
                   <ChevronRight className="h-4 w-4 stroke-[2.5]" />
                 </Button>
               </div>
@@ -906,21 +1263,78 @@ function OrderGasPage() {
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 max-w-4xl mx-auto">
               <div className="text-left space-y-1">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
-                  How would you like to order?
+                  Do you have an empty cylinder to exchange?
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Select whether you need a brand-new bottle or are exchanging an empty Calor
-                  cylinder.
+                  You selected: <strong className="text-slate-900 font-extrabold">{selectedProduct.name}</strong>. Please confirm whether you have an empty cylinder to return.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* Option 1: New Cylinder */}
+                {/* Option 1: Refill / Exchange */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOrderType("REFILL_EXCHANGE");
+                    setConfirmedHasEmpty(true);
+                  }}
+                  className={cn(
+                    "p-6 rounded-3xl border text-left transition-all cursor-pointer space-y-4 relative group",
+                    orderType === "REFILL_EXCHANGE"
+                      ? "border-primary ring-2 ring-primary/20 bg-red-50/20 shadow-md"
+                      : "border-slate-200/90 bg-white hover:border-slate-300",
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                      <RotateCcw className="h-6 w-6" />
+                    </div>
+                    <div
+                      className={cn(
+                        "h-5 w-5 rounded-full border flex items-center justify-center transition-all",
+                        orderType === "REFILL_EXCHANGE"
+                          ? "border-primary bg-primary text-white"
+                          : "border-slate-300 bg-white group-hover:border-slate-400",
+                      )}
+                    >
+                      {orderType === "REFILL_EXCHANGE" && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-slate-900">
+                        Yes – Refill / Exchange
+                      </h3>
+                      <Badge className="bg-emerald-600 text-white font-extrabold text-[10px]">
+                        EXCHANGE
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      I have an empty Calor cylinder to exchange. Zero cylinder deposit charge applies.
+                    </p>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Gas Content:</span>
+                      <span className="font-bold">{gbp(selectedProduct.refill_price ?? selectedProduct.price)}</span>
+                    </div>
+                    <div className="flex justify-between text-emerald-700 font-bold">
+                      <span>Deposit Fee:</span>
+                      <span>£0.00 (Exchanged)</span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Option 2: New Cylinder */}
                 <button
                   type="button"
                   onClick={() => setOrderType("NEW_CYLINDER")}
                   className={cn(
-                    "p-6 rounded-3xl border text-left transition-all cursor-pointer space-y-4",
+                    "p-6 rounded-3xl border text-left transition-all cursor-pointer space-y-4 relative group",
                     orderType === "NEW_CYLINDER"
                       ? "border-primary ring-2 ring-primary/20 bg-red-50/20 shadow-md"
                       : "border-slate-200/90 bg-white hover:border-slate-300",
@@ -930,20 +1344,31 @@ function OrderGasPage() {
                     <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                       <PackagePlus className="h-6 w-6" />
                     </div>
-                    <Badge className="bg-blue-600 text-white font-extrabold text-[10px]">
-                      NEW PURCHASE
-                    </Badge>
+                    <div
+                      className={cn(
+                        "h-5 w-5 rounded-full border flex items-center justify-center transition-all",
+                        orderType === "NEW_CYLINDER"
+                          ? "border-primary bg-primary text-white"
+                          : "border-slate-300 bg-white group-hover:border-slate-400",
+                      )}
+                    >
+                      {orderType === "NEW_CYLINDER" && (
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1">
-                    <h3 className="text-lg font-black text-slate-900">Option 1: New Cylinder</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-black text-slate-900">
+                        No – New Cylinder
+                      </h3>
+                      <Badge className="bg-blue-600 text-white font-extrabold text-[10px]">
+                        NEW BOTTLE
+                      </Badge>
+                    </div>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Select this if you do not have an empty Calor bottle to return. A refundable
-                      cylinder security deposit of{" "}
-                      <strong className="text-slate-900 font-bold">
-                        {gbp(selectedProduct.deposit_price)}
-                      </strong>{" "}
-                      will be added.
+                      I need a new cylinder (adds refundable security deposit).
                     </p>
                   </div>
 
@@ -954,51 +1379,35 @@ function OrderGasPage() {
                     </div>
                     <div className="flex justify-between text-blue-700 font-bold">
                       <span>Security Deposit:</span>
-                      <span>+{gbp(selectedProduct.deposit_price)}</span>
+                      <span>+{gbp(dynamicDeposit.amount || selectedProduct.deposit_price || 39.99)}</span>
                     </div>
                   </div>
                 </button>
+              </div>
 
-                {/* Option 2: Refill / Exchange */}
+              {/* Selected Product Summary Banner with thumbnail and Change product link */}
+              <div className="flex items-center justify-between p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <img
+                    src={selectedProduct.image_url || selectedProduct.images?.[0] || "/calor-cylinders-studio.jpg"}
+                    alt={selectedProduct.name}
+                    className="h-12 w-12 shrink-0 object-contain rounded-xl bg-white p-1 border border-slate-200"
+                  />
+                  <div className="text-left min-w-0">
+                    <h4 className="font-extrabold text-xs sm:text-sm text-slate-900 leading-snug truncate">
+                      {selectedProduct.name}
+                    </h4>
+                    <div className="font-bold text-xs text-slate-600 mt-0.5">
+                      {gbp(orderType === "REFILL_EXCHANGE" ? (selectedProduct.refill_price ?? selectedProduct.price) : selectedProduct.price)}
+                    </div>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setOrderType("REFILL_EXCHANGE")}
-                  className={cn(
-                    "p-6 rounded-3xl border text-left transition-all cursor-pointer space-y-4",
-                    orderType === "REFILL_EXCHANGE"
-                      ? "border-primary ring-2 ring-primary/20 bg-red-50/20 shadow-md"
-                      : "border-slate-200/90 bg-white hover:border-slate-300",
-                  )}
+                  onClick={() => setStep(1)}
+                  className="text-xs font-bold text-primary hover:underline hover:text-red-700 cursor-pointer shrink-0 ml-3"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <RotateCcw className="h-6 w-6" />
-                    </div>
-                    <Badge className="bg-emerald-600 text-white font-extrabold text-[10px]">
-                      REFILL EXCHANGE
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-black text-slate-900">
-                      Option 2: Refill / Exchange
-                    </h3>
-                    <p className="text-xs text-slate-600 leading-relaxed">
-                      Return your empty cylinder when receiving your refill. Zero cylinder deposit
-                      charge applies.
-                    </p>
-                  </div>
-
-                  <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
-                    <div className="flex justify-between text-slate-600">
-                      <span>Gas Content:</span>
-                      <span className="font-bold">{gbp(selectedProduct.refill_price)}</span>
-                    </div>
-                    <div className="flex justify-between text-emerald-700 font-bold">
-                      <span>Deposit Fee:</span>
-                      <span>£0.00 (Exchanged)</span>
-                    </div>
-                  </div>
+                  Change product
                 </button>
               </div>
 
@@ -1030,38 +1439,15 @@ function OrderGasPage() {
                     </span>
                   </label>
 
-                  {/* Return Method Selection */}
-                  <div className="space-y-2 pt-2">
-                    <Label className="text-xs font-extrabold uppercase tracking-wider text-amber-950">
-                      How would you like to return your empty cylinder?
+                  {/* Empty Cylinder Collection Notice (Exchange on Delivery) */}
+                  <div className="p-3 rounded-2xl bg-amber-100/70 border border-amber-300 text-xs space-y-1">
+                    <Label className="text-xs font-black uppercase tracking-wider text-amber-950 flex items-center gap-1.5">
+                      <Truck className="h-4 w-4 text-amber-700" />
+                      Collection on Normal Delivery Handover
                     </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setReturnMethod("RETURN_ON_DELIVERY")}
-                        className={cn(
-                          "p-3 rounded-xl border text-xs font-extrabold text-left transition-all cursor-pointer",
-                          returnMethod === "RETURN_ON_DELIVERY"
-                            ? "border-primary bg-white text-primary ring-1 ring-primary"
-                            : "border-slate-200 bg-white/70 text-slate-700",
-                        )}
-                      >
-                        🚚 A. Return during delivery drop-off
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setReturnMethod("SCHEDULED_PICKUP")}
-                        className={cn(
-                          "p-3 rounded-xl border text-xs font-extrabold text-left transition-all cursor-pointer",
-                          returnMethod === "SCHEDULED_PICKUP"
-                            ? "border-primary bg-white text-primary ring-1 ring-primary"
-                            : "border-slate-200 bg-white/70 text-slate-700",
-                        )}
-                      >
-                        📅 B. Schedule a separate pickup
-                      </button>
-                    </div>
+                    <p className="text-[11px] text-amber-900 leading-relaxed font-medium">
+                      Our delivery driver will collect your matching empty cylinder when delivering your full replacement bottle.
+                    </p>
                   </div>
                 </div>
               )}
@@ -1071,16 +1457,16 @@ function OrderGasPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setStep(1)}
-                  className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700"
+                  onClick={() => (selectedFromCatalogue ? setStep(0) : setStep(1))}
+                  className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700 cursor-pointer"
                 >
-                  Back to Products
+                  Back
                 </Button>
 
                 <Button
                   type="button"
                   onClick={handleNextFromOrderType}
-                  className="rounded-full px-8 py-3 bg-primary hover:bg-primary/90 text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12"
+                  className="rounded-full px-8 py-3 bg-[#c8102e] hover:bg-[#a50d24] text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12"
                 >
                   <span>Continue to Scheduling</span>
                   <ChevronRight className="h-4 w-4 stroke-[2.5]" />
@@ -1096,10 +1482,10 @@ function OrderGasPage() {
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8">
               <div className="text-left space-y-1">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
-                  Delivery & Pickup Details
+                  Choose Delivery Address &amp; Date
                 </h2>
                 <p className="text-sm text-slate-500">
-                  Select your Gloucestershire delivery address and preferred delivery time window.
+                  Select your delivery address and preferred date for your <strong className="text-slate-900 font-extrabold">{selectedProduct?.name || "Gas Order"}</strong>.
                 </p>
               </div>
 
@@ -1243,42 +1629,7 @@ function OrderGasPage() {
                     </div>
                   </div>
 
-                  {/* Refill Pickup Schedule (if separate pickup requested) */}
-                  {orderType === "REFILL_EXCHANGE" && returnMethod === "SCHEDULED_PICKUP" && (
-                    <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3 pt-3">
-                      <p className="text-xs font-extrabold text-amber-950 flex items-center gap-1.5">
-                        <Truck className="h-4 w-4 text-amber-600" /> Empty Cylinder Pickup Schedule:
-                      </p>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-bold text-slate-700">
-                          Pickup Date *
-                        </Label>
-                        <Input
-                          type="date"
-                          value={pickupDate}
-                          onChange={(e) => setPickupDate(e.target.value)}
-                          min={new Date().toISOString().split("T")[0]}
-                          className="rounded-xl h-10 text-xs bg-white"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[11px] font-bold text-slate-700">
-                          Pickup Time Window
-                        </Label>
-                        <select
-                          value={selectedPickupSlot}
-                          onChange={(e) => setSelectedPickupSlot(e.target.value)}
-                          className="w-full h-10 rounded-xl border border-slate-200 px-3 bg-white text-xs font-bold"
-                        >
-                          {availablePickupSlots.map(({ slot }) => (
-                            <option key={slot.id} value={slot.slot_name}>
-                              {slot.slot_name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-slate-700">
@@ -1299,7 +1650,13 @@ function OrderGasPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setStep(2)}
+                  onClick={() =>
+                    !isCylinderProduct || usageType === "AUTOGAS"
+                      ? selectedFromCatalogue
+                        ? setStep(0)
+                        : setStep(1)
+                      : setStep(2)
+                  }
                   className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700"
                 >
                   Back
@@ -1338,26 +1695,42 @@ function OrderGasPage() {
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       Application
                     </span>
-                    <p className="text-base font-black text-slate-900">{usageType} LPG Order</p>
+                    <p className="text-base font-black text-slate-900">
+                      {usageType === "AUTOGAS"
+                        ? "Vehicle LPG / Autogas"
+                        : !isCylinderProduct
+                          ? "Direct Order"
+                          : `${usageType} LPG Order`}
+                    </p>
                   </div>
                   <Badge
                     className={cn(
                       "text-xs font-extrabold px-3 py-1",
-                      isNew ? "bg-blue-600 text-white" : "bg-emerald-600 text-white",
+                      usageType === "AUTOGAS" || !isCylinderProduct
+                        ? "bg-slate-900 text-white"
+                        : isNew
+                          ? "bg-blue-600 text-white"
+                          : "bg-emerald-600 text-white",
                     )}
                   >
-                    {isNew ? "NEW CYLINDER" : "REFILL EXCHANGE"}
+                    {usageType === "AUTOGAS" || !isCylinderProduct
+                      ? "DIRECT ORDER"
+                      : isNew
+                        ? "NEW CYLINDER"
+                        : "REFILL EXCHANGE"}
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
                   <div>
-                    <span className="text-slate-500 font-medium">Selected Gas Product:</span>
+                    <span className="text-slate-500 font-medium">Selected Product:</span>
                     <p className="font-extrabold text-slate-900">{selectedProduct.name}</p>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium">Quantity:</span>
-                    <p className="font-extrabold text-slate-900">{quantity} Cylinder(s)</p>
+                    <p className="font-extrabold text-slate-900">
+                      {quantity} {usageType === "AUTOGAS" || !isCylinderProduct ? "Item(s)" : "Cylinder(s)"}
+                    </p>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium">Recipient:</span>
@@ -1381,23 +1754,27 @@ function OrderGasPage() {
                 <div className="border-t border-slate-200 pt-4 space-y-2 text-xs sm:text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">
-                      Gas Refill Charge ({quantity}x {gbp(gasPriceUnit)}):
+                      {isCylinderProduct
+                        ? `Gas ${isNew ? "Purchase" : "Refill"} Charge (${quantity}x ${gbp(gasPriceUnit)}):`
+                        : `Product Price (${quantity}x ${gbp(gasPriceUnit)}):`}
                     </span>
                     <span className="font-extrabold text-slate-900">{gbp(gasTotal)}</span>
                   </div>
 
-                  {isNew ? (
-                    <div className="flex items-center justify-between text-blue-700 font-semibold bg-blue-50/80 p-2 rounded-xl border border-blue-100">
-                      <span>
-                        Cylinder Security Deposit ({quantity}x {gbp(depositUnit)}):
-                      </span>
-                      <span className="font-black">{gbp(depositTotal)}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between text-emerald-700 font-medium bg-emerald-50/80 p-2 rounded-xl border border-emerald-100">
-                      <span>Cylinder Deposit (Exchange Policy):</span>
-                      <span className="font-extrabold">£0.00 (Exchanged Empty)</span>
-                    </div>
+                  {isCylinderProduct && (
+                    isNew ? (
+                      <div className="flex items-center justify-between text-blue-700 font-semibold bg-blue-50/80 p-2 rounded-xl border border-blue-100">
+                        <span>
+                          Cylinder Security Deposit ({quantity}x {gbp(depositUnit)}):
+                        </span>
+                        <span className="font-black">{gbp(depositTotal)}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between text-emerald-700 font-medium bg-emerald-50/80 p-2 rounded-xl border border-emerald-100">
+                        <span>Cylinder Deposit (Exchange Policy):</span>
+                        <span className="font-extrabold">£0.00 (Exchanged Empty)</span>
+                      </div>
+                    )
                   )}
 
                   <div className="flex items-center justify-between">
@@ -1747,7 +2124,7 @@ function OrderGasPage() {
                 <div className="flex justify-between border-b border-slate-200 pb-2">
                   <span className="text-slate-500">Application:</span>
                   <span className="font-extrabold text-slate-900">
-                    {completedOrder.usageType} LPG
+                    {completedOrder.usageType === "AUTOGAS" ? "Vehicle LPG / Autogas" : `${completedOrder.usageType} LPG`}
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-slate-200 pb-2">
@@ -1857,216 +2234,29 @@ function OrderGasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* PRODUCT DETAIL INFORMATION MODAL */}
-      <Dialog open={!!detailProduct} onOpenChange={(open) => !open && setDetailProduct(null)}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl bg-white border border-slate-200/90 shadow-2xl">
-          {detailProduct && (
-            <div>
-              <DialogHeader className="sr-only">
-                <DialogTitle>{detailProduct.name}</DialogTitle>
-              </DialogHeader>
-
-              <div className="grid grid-cols-1 md:grid-cols-12">
-                {/* Left Column: Image & Gallery */}
-                <div className="md:col-span-5 bg-gradient-to-b from-slate-50 to-slate-100/60 p-6 sm:p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-slate-100 relative">
-                  {/* Category / Gas Tag */}
-                  <div className="flex items-center justify-between gap-2 mb-4">
-                    <Badge className="bg-slate-900 text-white font-extrabold text-[10px] uppercase">
-                      {detailProduct.usage_type} LPG
-                    </Badge>
-                    <span className="text-[11px] font-black text-red-600 uppercase tracking-wider font-sans">
-                      {detailProduct.gas_type}
-                    </span>
-                  </div>
-
-                  {/* Main Large Image */}
-                  <div className="relative aspect-square w-full flex items-center justify-center p-4 bg-white rounded-2xl border border-slate-200/70 shadow-xs overflow-hidden my-auto">
-                    <img
-                      src={
-                        detailActiveImg || detailProduct.image_url || "/calor-cylinders-studio.jpg"
-                      }
-                      alt={detailProduct.name}
-                      className="max-h-64 sm:max-h-72 w-auto object-contain transition-transform duration-300 hover:scale-105"
-                    />
-                  </div>
-
-                  {/* Thumbnails Gallery (if > 1 image available) */}
-                  {detailProduct.images && detailProduct.images.length > 1 && (
-                    <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-1">
-                      {detailProduct.images.map((img, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setDetailActiveImg(img)}
-                          className={cn(
-                            "h-14 w-14 rounded-xl border-2 p-1 bg-white shrink-0 transition-all cursor-pointer",
-                            (detailActiveImg || detailProduct.image_url) === img
-                              ? "border-primary shadow-xs scale-105"
-                              : "border-slate-200/80 hover:border-slate-300 opacity-70 hover:opacity-100",
-                          )}
-                        >
-                          <img
-                            src={img}
-                            alt={`Thumbnail ${idx + 1}`}
-                            className="h-full w-full object-contain"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Trust Footer */}
-                  <div className="mt-4 pt-4 border-t border-slate-200/60 flex items-center justify-between text-[11px] font-bold text-slate-500">
-                    <div className="flex items-center gap-1 text-emerald-600">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      <span>Direct Stayte Delivery</span>
-                    </div>
-                    <span className="text-slate-400">Genuine {detailProduct.brand || "Calor"}</span>
-                  </div>
-                </div>
-
-                {/* Right Column: Information, Specs & Actions */}
-                <div className="md:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6 text-left">
-                  <div className="space-y-4">
-                    {/* Brand & Size */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-red-600">
-                        <span>{detailProduct.brand || "CALOR"}</span>
-                        <span>•</span>
-                        <span>{detailProduct.cylinder_size || "CYLINDER SUPPLY"}</span>
-                      </div>
-                      <h3 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight font-display">
-                        {detailProduct.name}
-                      </h3>
-                    </div>
-
-                    {/* Price & Stock */}
-                    <div className="flex flex-wrap items-baseline gap-3 pb-3 border-b border-slate-100">
-                      <div className="text-2xl sm:text-3xl font-black text-slate-900 font-display">
-                        {gbp(detailProduct.price)}
-                      </div>
-                      <span className="text-xs font-semibold text-slate-400">inc. VAT</span>
-                      {detailProduct.stock > 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-[11px]"
-                        >
-                          In Stock for Fast Delivery
-                        </Badge>
-                      ) : (
-                        <Badge
-                          variant="outline"
-                          className="ml-auto bg-amber-50 text-amber-700 border-amber-200 font-extrabold text-[11px]"
-                        >
-                          Available to Order
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Description */}
-                    {detailProduct.description && (
-                      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
-                        {detailProduct.description}
-                      </p>
-                    )}
-
-                    {/* Key Features (Render only if present in record) */}
-                    {detailProduct.features && detailProduct.features.length > 0 && (
-                      <div className="space-y-2 pt-2">
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider font-sans">
-                          Key Features
-                        </h4>
-                        <ul className="space-y-1.5 text-xs text-slate-600">
-                          {detailProduct.features.map((feat, idx) => (
-                            <li key={idx} className="flex items-start gap-2">
-                              <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                              <span>{feat}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Suitable For / Recommended Uses (Render only if present in record) */}
-                    {detailProduct.suitable_for && detailProduct.suitable_for.length > 0 && (
-                      <div className="space-y-2 pt-2">
-                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider font-sans">
-                          Suitable For / Recommended Uses
-                        </h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {detailProduct.suitable_for.map((useItem, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 text-slate-700 rounded-lg px-2.5 py-1"
-                            >
-                              <Flame className="h-3 w-3 text-red-500" />
-                              {useItem}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Quantity & CTA Buttons */}
-                  <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-extrabold text-slate-700">Order Quantity:</span>
-                      <div className="flex items-center gap-2 bg-slate-100 border border-slate-200/90 rounded-xl p-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg text-slate-700 font-bold hover:bg-white"
-                          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                        >
-                          -
-                        </Button>
-                        <span className="w-8 text-center font-black text-sm text-slate-900">
-                          {quantity}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 rounded-lg text-slate-700 font-bold hover:bg-white"
-                          onClick={() => setQuantity((q) => q + 1)}
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setDetailProduct(null)}
-                        className="rounded-full px-5 py-3 h-12 font-bold text-xs text-slate-600 border-slate-200 hover:bg-slate-50"
-                      >
-                        Back
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedProductId(detailProduct.id);
-                          setDetailProduct(null);
-                          setStep(2); // Continue to Step 3 (New vs Refill)
-                          toast.success(`Selected ${detailProduct.name}`);
-                        }}
-                        className="flex-1 rounded-full py-3.5 h-12 bg-[#c8102e] hover:bg-[#a50d24] text-white font-extrabold text-xs sm:text-sm shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.99]"
-                      >
-                        <span>Select Product & Continue</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* PRODUCT DETAIL INFORMATION MODAL (UNIVERSAL ACROSS ALL CATEGORIES) */}
+      <ProductDetailsModal
+        isOpen={!!detailProduct}
+        product={detailProduct}
+        onClose={() => setDetailProduct(null)}
+        categorySlug={usageType === "AUTOGAS" ? "vehicle-lpg" : "calor-gas"}
+        onSelectAndContinue={(prod, qty) => {
+          setSelectedProductId(prod.id);
+          setSelectedProductOverride(prod);
+          setQuantity(qty || 1);
+          setDetailProduct(null);
+          const isCyl = isRefillableLpgCylinderProduct(prod) && usageType !== "AUTOGAS";
+          if (!isCyl) {
+            setOrderType("NEW_CYLINDER");
+            setStep(3);
+          } else {
+            setConfirmedHasEmpty(true);
+            setOrderType("REFILL_EXCHANGE");
+            setStep(2); // Continue to Step 2 (New vs Refill)
+          }
+          toast.success(`Selected ${prod.name}`);
+        }}
+      />
 
       {/* AUTHENTICATION MODAL */}
       <Dialog open={authModalOpen} onOpenChange={setAuthModalOpen}>

@@ -120,6 +120,21 @@ export const Route = createFileRoute("/services")({
 
 function Services() {
   const [serviceList, setServiceList] = useState<any[]>(defaultServices);
+  const [cmsData, setCmsData] = useState<{
+    heroEyebrow?: string;
+    heroHeading?: string;
+    heroSubtitle?: string;
+    ctaTitle?: string;
+    ctaSubtitle?: string;
+    ctaButtonText?: string;
+  }>({
+    heroEyebrow: "SERVICES",
+    heroHeading: "Fuel supply, however you need it",
+    heroSubtitle: "From a single patio bottle to scheduled bulk deliveries for farms and pubs.",
+    ctaTitle: "Need a trade or bulk account?",
+    ctaSubtitle: "Scheduled supply, agreed pricing and one monthly invoice. Talk to our commercial team.",
+    ctaButtonText: "Talk to us",
+  });
 
   useEffect(() => {
     async function loadServices() {
@@ -136,6 +151,19 @@ function Services() {
             if (Array.isArray(parsed) && parsed.length > 0) {
               setServiceList(parsed);
               return;
+            } else if (parsed && typeof parsed === "object") {
+              if (Array.isArray(parsed.services) && parsed.services.length > 0) {
+                setServiceList(parsed.services);
+              }
+              setCmsData((prev) => ({
+                ...prev,
+                heroEyebrow: parsed.heroEyebrow || prev.heroEyebrow,
+                heroHeading: parsed.heroHeading || prev.heroHeading,
+                heroSubtitle: parsed.heroSubtitle || prev.heroSubtitle,
+                ctaTitle: parsed.ctaTitle || prev.ctaTitle,
+                ctaSubtitle: parsed.ctaSubtitle || prev.ctaSubtitle,
+                ctaButtonText: parsed.ctaButtonText || prev.ctaButtonText,
+              }));
             }
           } catch {}
         }
@@ -158,13 +186,13 @@ function Services() {
           <ScrollRevealCard delay={0}>
             <div className="space-y-2 mb-8 sm:mb-10 text-left">
               <p className="text-xs sm:text-[13px] font-extrabold uppercase tracking-[0.16em] text-primary font-display">
-                SERVICES
+                {cmsData.heroEyebrow || "SERVICES"}
               </p>
               <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-[1.1] font-display">
-                Fuel supply, however you need it
+                {cmsData.heroHeading || "Fuel supply, however you need it"}
               </h1>
               <p className="text-sm sm:text-base text-slate-600 font-normal leading-relaxed max-w-2xl">
-                From a single patio bottle to scheduled bulk deliveries for farms and pubs.
+                {cmsData.heroSubtitle || "From a single patio bottle to scheduled bulk deliveries for farms and pubs."}
               </p>
             </div>
           </ScrollRevealCard>
@@ -226,18 +254,18 @@ function Services() {
               <div className="rounded-2xl sm:rounded-3xl bg-ink px-6 sm:px-10 lg:px-12 py-8 sm:py-10 text-ink-foreground flex flex-col md:flex-row md:items-center md:justify-between gap-6">
                 <div className="max-w-xl space-y-2">
                   <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-white">
-                    Need a trade or bulk account?
+                    {cmsData.ctaTitle || "Need a trade or bulk account?"}
                   </h2>
                   <p className="text-sm sm:text-base text-slate-300 leading-relaxed font-normal">
-                    Scheduled supply, agreed pricing and one monthly invoice. Talk to our commercial
-                    team.
+                    {cmsData.ctaSubtitle ||
+                      "Scheduled supply, agreed pricing and one monthly invoice. Talk to our commercial team."}
                   </p>
                 </div>
                 <Button
                   asChild
                   className="rounded-full px-8 py-3.5 bg-primary hover:bg-primary/90 text-white font-extrabold text-sm shrink-0 shadow-md"
                 >
-                  <Link to="/contact">Talk to us</Link>
+                  <Link to="/contact">{cmsData.ctaButtonText || "Talk to us"}</Link>
                 </Button>
               </div>
             </ScrollRevealCard>

@@ -166,11 +166,11 @@ export function DeliveryAgentProfileModal({
     setSavingEdit(true);
     try {
       await updateDeliveryAgent(agent.id, editFormData);
-      toast.success("Delivery Agent profile updated successfully!");
+      toast.success("Driver profile updated successfully!");
       setEditModalOpen(false);
       if (onAgentUpdated) onAgentUpdated();
     } catch (err: any) {
-      toast.error("Failed to update agent: " + err.message);
+      toast.error("Failed to update driver: " + err.message);
     } finally {
       setSavingEdit(false);
     }
@@ -182,7 +182,7 @@ export function DeliveryAgentProfileModal({
     const nextStatus = agent.status === "Active" ? "Inactive" : "Active";
     try {
       await updateDeliveryAgent(agent.id, { status: nextStatus });
-      toast.success(`Agent ${agent.full_name} is now ${nextStatus === "Active" ? "Active" : "Deactivated"}.`);
+      toast.success(`Driver ${agent.full_name} is now ${nextStatus === "Active" ? "Active" : "Deactivated"}.`);
       if (onAgentUpdated) onAgentUpdated();
     } catch (err: any) {
       toast.error("Failed to update status: " + err.message);
@@ -280,7 +280,7 @@ export function DeliveryAgentProfileModal({
                             variant="outline"
                             className="text-[10px] font-bold bg-slate-100 text-slate-700 border-slate-200"
                           >
-                            <BadgeCheck className="h-3 w-3 mr-1 text-primary" /> Delivery Agent
+                            <BadgeCheck className="h-3 w-3 mr-1 text-primary" /> Driver
                           </Badge>
                         </div>
 

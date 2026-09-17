@@ -187,8 +187,8 @@ export function CustomerInvoicesView() {
     <div class="header-flex">
       <div>
         <h1 class="company-title">JOHN STAYTE SERVICES</h1>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Whitminster Depot, Gloucestershire, GL2 7NY</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: 01452 740326</p>
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom</p>
+        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: +44 (0)1453 822859</p>
       </div>
       <div>
         <h2 class="inv-title">VAT TAX INVOICE</h2>

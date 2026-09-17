@@ -28,8 +28,8 @@ export function AdminSettingsView() {
   // General & Business Preferences
   const [platformName, setPlatformName] = useState("John Stayte Services — Admin Portal");
   const [businessName, setBusinessName] = useState("John Stayte Services Ltd");
-  const [supportEmail, setSupportEmail] = useState("admin@jss.com");
-  const [phone, setPhone] = useState("01452 741234");
+  const [supportEmail, setSupportEmail] = useState("info@johnstayteservices.co.uk");
+  const [phone, setPhone] = useState("+44 (0)1453 822859");
   const [operatingHours, setOperatingHours] = useState("Mon–Sat 7:00–20:00 · Sun 8:00–18:00");
 
   // Tax & VAT Rates

@@ -136,7 +136,13 @@ export function DeliveryHeader({ onOpenMobileMenu }: DeliveryHeaderProps) {
           >
             <DropdownMenuLabel className="px-3 py-2">
               <p className="font-display font-extrabold text-xs text-slate-900">
-                {user?.name || "Dave Jenkins"}
+                {user?.name && !user.name.includes("@")
+                  ? user.name
+                  : user?.email?.toLowerCase().includes("astin")
+                    ? "Astin"
+                    : user?.email?.toLowerCase().includes("aswin")
+                      ? "Aswin"
+                      : "Delivery Agent"}
               </p>
               <p className="text-[11px] text-slate-400 font-medium truncate">
                 {user?.email || "delivery@jss.com"}

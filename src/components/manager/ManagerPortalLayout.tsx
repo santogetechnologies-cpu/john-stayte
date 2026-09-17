@@ -95,7 +95,7 @@ const managerNavGroups: NavGroup[] = [
         badgeKey: "unassignedDeliveries",
       },
       {
-        title: "Delivery Agents",
+        title: "Drivers",
         href: "/manager/delivery-agents",
         icon: Users,
       },
@@ -168,7 +168,7 @@ const managerNavGroups: NavGroup[] = [
 ];
 
 export function ManagerPortalLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useStore();
+  const { user, authLoading, logout } = useStore();
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
@@ -233,29 +233,51 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
     }
   };
 
+  // Guard: Auto redirect to login if not authenticated as manager or admin
   useEffect(() => {
-    loadSidebarCounts();
+    if (!authLoading) {
+      if (!user || (user.role !== "manager" && user.role !== "admin")) {
+        navigate({ to: "/login", search: { redirect: currentPath || "/manager" } });
+      }
+    }
+  }, [user, authLoading, navigate, currentPath]);
 
-    const channel = supabase
-      .channel("manager_sidebar_realtime_sync")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
-        loadSidebarCounts(),
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
-        loadSidebarCounts(),
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
-        loadSidebarCounts(),
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
-        loadSidebarCounts(),
-      )
-      .subscribe();
+  useEffect(() => {
+    if (user && (user.role === "manager" || user.role === "admin")) {
+      loadSidebarCounts();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+      const channel = supabase
+        .channel("manager_sidebar_realtime_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+          loadSidebarCounts(),
+        )
+        .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
+          loadSidebarCounts(),
+        )
+        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
+          loadSidebarCounts(),
+        )
+        .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
+          loadSidebarCounts(),
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-50 px-4 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-xs font-semibold text-slate-500">Verifying manager authorization...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Protect Manager Portal: only managers and admins are allowed
   if (!user || (user.role !== "manager" && user.role !== "admin")) {

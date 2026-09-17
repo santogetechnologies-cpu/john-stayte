@@ -46,38 +46,84 @@ const schema = z.object({
 
 function Contact() {
   const [faqsList, setFaqsList] = useState<any[]>(defaultFaqs);
+  const [contactInfo, setContactInfo] = useState({
+    heroEyebrow: "GET IN TOUCH",
+    heroHeading: "Talk to the team",
+    heroSubtitle: "Deliveries, trade accounts, appliance advice — we're happy to help.",
+    phone: "+44 (0)1453 822859",
+    email: "info@johnstayteservices.co.uk",
+    address: "Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom",
+    hours: "Mon–Fri 8:00–17:00 · Sat 8:30–12:30",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    async function loadFaqs() {
+    async function loadFaqsAndContact() {
       try {
-        const { data } = await supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "faqs_data")
-          .maybeSingle();
+        const [{ data: faqsBlock }, { data: contactBlock }] = await Promise.all([
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "faqs_data")
+            .maybeSingle(),
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "contact_faqs_data")
+            .maybeSingle(),
+        ]);
 
-        if (data?.content) {
+        if (faqsBlock?.content) {
           try {
-            const parsed = JSON.parse(data.content);
+            const parsed = JSON.parse(faqsBlock.content);
             if (Array.isArray(parsed) && parsed.length > 0) {
               const activeOnly = parsed.filter((item) => item.is_active !== false);
               if (activeOnly.length > 0) {
                 setFaqsList(activeOnly.map((f) => ({ q: f.q || f.question, a: f.a || f.answer })));
-                return;
+              }
+            }
+          } catch {}
+        }
+
+        if (contactBlock?.content) {
+          try {
+            const parsed = JSON.parse(contactBlock.content);
+            if (parsed && typeof parsed === "object") {
+              setContactInfo((prev) => ({
+                ...prev,
+                heroEyebrow: parsed.heroEyebrow || prev.heroEyebrow,
+                heroHeading: parsed.heroHeading || prev.heroHeading,
+                heroSubtitle: parsed.heroSubtitle || prev.heroSubtitle,
+                phone: parsed.phonePrimary || parsed.phone || prev.phone,
+                email: parsed.emailPrimary || parsed.email || prev.email,
+                address:
+                  parsed.headOfficeAddress && parsed.headOfficeTown
+                    ? `${parsed.headOfficeAddress}, ${parsed.headOfficeTown}, ${parsed.headOfficePostcode || "GL10 3AH"}, United Kingdom`
+                    : parsed.address || parsed.headOfficeAddress || prev.address,
+                hours: parsed.hoursWeekday || parsed.openingHours || parsed.hours || prev.hours,
+              }));
+              if (Array.isArray(parsed.faqs) && parsed.faqs.length > 0) {
+                const activeFaqs = parsed.faqs.filter((f: any) => f.is_active !== false);
+                if (activeFaqs.length > 0) {
+                  setFaqsList(activeFaqs.map((f: any) => ({ q: f.question, a: f.answer })));
+                }
               }
             }
           } catch {}
         }
       } catch (err) {
-        console.error("Failed to load FAQs from Supabase:", err);
+        console.error("Failed to load FAQs/Contact from Supabase:", err);
       }
     }
-    loadFaqs();
+    loadFaqsAndContact();
 
-    const handleUpdate = () => loadFaqs();
+    const handleUpdate = () => loadFaqsAndContact();
     window.addEventListener("cms_faqs_updated", handleUpdate);
-    return () => window.removeEventListener("cms_faqs_updated", handleUpdate);
+    window.addEventListener("cms_contact_updated", handleUpdate);
+    return () => {
+      window.removeEventListener("cms_faqs_updated", handleUpdate);
+      window.removeEventListener("cms_contact_updated", handleUpdate);
+    };
   }, []);
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -176,13 +222,13 @@ function Contact() {
         <div className="container-page text-left">
           <div className="inline-flex items-center gap-2 rounded-full border border-red-200/90 bg-red-50/80 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red-600 shadow-2xs backdrop-blur-xs mb-3">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            <span>CONTACT</span>
+            <span>{contactInfo.heroEyebrow || "CONTACT"}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-[1.08] font-display">
-            Talk to the team
+            {contactInfo.heroHeading || "Talk to the team"}
           </h1>
           <p className="mt-2.5 max-w-2xl text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
-            Deliveries, trade accounts, appliance advice — we're happy to help.
+            {contactInfo.heroSubtitle || "Deliveries, trade accounts, appliance advice — we're happy to help."}
           </p>
         </div>
       </section>
@@ -284,10 +330,10 @@ function Contact() {
                       Phone
                     </span>
                     <a
-                      href="tel:01452741234"
+                      href={`tel:${contactInfo.phone.replace(/\s+/g, "")}`}
                       className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
                     >
-                      01452 741234
+                      {contactInfo.phone}
                     </a>
                   </div>
                 </li>
@@ -301,10 +347,10 @@ function Contact() {
                       Email
                     </span>
                     <a
-                      href="mailto:sales@johnstayte.co.uk"
+                      href={`mailto:${contactInfo.email}`}
                       className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
                     >
-                      sales@johnstayte.co.uk
+                      {contactInfo.email}
                     </a>
                   </div>
                 </li>
@@ -318,7 +364,7 @@ function Contact() {
                       Address
                     </span>
                     <span className="font-bold text-slate-800 leading-snug">
-                      Fromebridge, Whitminster, Gloucester GL2 7PD
+                      {contactInfo.address}
                     </span>
                   </div>
                 </li>
@@ -332,7 +378,7 @@ function Contact() {
                       Opening Hours
                     </span>
                     <span className="font-bold text-slate-800 leading-snug">
-                      Mon–Sat 7:00–20:00 · Sun 8:00–18:00
+                      {contactInfo.hours}
                     </span>
                   </div>
                 </li>

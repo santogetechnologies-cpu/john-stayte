@@ -339,7 +339,7 @@ export function OrderReviewModal({
                 </div>
               </div>
 
-              {/* 4. Rating Row 3: How was the delivery agent's service? */}
+              {/* 4. Rating Row 3: How was the driver's service? */}
               <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs hover:border-slate-300 transition-colors">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="h-10 w-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600">
@@ -347,10 +347,10 @@ export function OrderReviewModal({
                   </div>
                   <div className="space-y-0.5">
                     <h4 className="text-xs sm:text-sm font-bold text-slate-900 leading-tight">
-                      How was the delivery agent's service?
+                      How was the driver's service?
                     </h4>
                     <p className="text-[11px] text-slate-500 leading-tight">
-                      Rate the delivery agent's behaviour and service.
+                      Rate the driver's behaviour and delivery service.
                     </p>
                   </div>
                 </div>

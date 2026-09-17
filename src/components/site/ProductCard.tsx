@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Heart, Plus, Star, XCircle, CheckCircle2 } from "lucide-react";
+import { Heart, ShoppingCart, Star, XCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Product } from "@/data/catalog";
 import { gbp, useStore } from "@/lib/store";
@@ -13,19 +13,47 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="group surface-card relative flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lift)]">
+      {/* TOP-LEFT: Wishlist Quick Action */}
       <button
         type="button"
-        aria-label="Add to wishlist"
-        onClick={() => toggleWishlist(product.slug)}
-        className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full border bg-background/90 backdrop-blur transition-colors hover:border-primary"
+        aria-label={wished ? "Remove from wishlist" : "Add to wishlist"}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleWishlist(product.slug);
+          toast(wished ? `Removed ${product.name} from wishlist` : `Added ${product.name} to wishlist`);
+        }}
+        className="absolute left-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border border-slate-200/80 bg-white/95 backdrop-blur shadow-2xs hover:shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer group/fav"
       >
         <Heart
-          className={cn("h-4 w-4", wished ? "fill-primary text-primary" : "text-muted-foreground")}
+          className={cn(
+            "h-4 w-4 transition-colors",
+            wished ? "fill-red-600 text-red-600" : "text-slate-400 group-hover/fav:text-red-600",
+          )}
         />
       </button>
 
+      {/* TOP-RIGHT: Cart Quick Action */}
+      <button
+        type="button"
+        aria-label="Add to cart"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isOutOfStock) {
+            toast.error(`${product.name} is currently out of stock.`);
+            return;
+          }
+          addToCart(product.slug, 1);
+          toast.success(`Added ${product.name} to cart`);
+        }}
+        className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full border border-slate-200/80 bg-white/95 backdrop-blur shadow-2xs hover:shadow-xs hover:scale-105 active:scale-95 text-slate-700 hover:text-red-600 hover:border-red-200 transition-all cursor-pointer group/cart"
+      >
+        <ShoppingCart className="h-4 w-4 transition-colors" />
+      </button>
+
       {product.offer && (
-        <span className="absolute left-3 top-3 z-10 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-primary-foreground shadow-xs">
+        <span className="absolute left-12 top-3.5 z-10 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow-xs">
           Offer
         </span>
       )}
@@ -78,18 +106,13 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
 
         <Button
-          disabled={isOutOfStock}
-          className="mt-4 w-full rounded-full font-bold shadow-xs"
-          onClick={() => {
-            if (isOutOfStock) {
-              toast.error(`${product.name} is currently out of stock.`);
-              return;
-            }
-            addToCart(product.slug);
-            toast.success(`${product.name} added to basket`);
-          }}
+          asChild
+          className="mt-4 w-full rounded-full font-black text-xs shadow-xs bg-red-600 hover:bg-red-700 text-white h-9 transition-all flex items-center justify-center gap-1.5 cursor-pointer group/btn"
         >
-          <Plus className="mr-1 h-4 w-4" /> {isOutOfStock ? "Out of Stock" : "Add to basket"}
+          <Link to="/products/$slug" params={{ slug: product.slug }}>
+            <span>View details &amp; select</span>
+            <span className="transition-transform group-hover/btn:translate-x-0.5">→</span>
+          </Link>
         </Button>
       </div>
     </article>

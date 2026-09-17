@@ -8,15 +8,54 @@ interface StationMapProps {
     phone?: string;
     hours?: string;
     image?: string;
+    images?: string[];
+    image_url?: string;
     latitude?: number;
     longitude?: number;
     maps_link?: string;
+    autogas_available?: boolean;
+    services?: string[] | string;
   }>;
+}
+
+function getPrimaryStationImage(s: {
+  name: string;
+  image?: string;
+  images?: string[];
+  image_url?: string;
+}): string {
+  if (s.image && typeof s.image === "string" && s.image.trim()) {
+    return s.image.trim();
+  }
+  if (
+    Array.isArray(s.images) &&
+    s.images.length > 0 &&
+    typeof s.images[0] === "string" &&
+    s.images[0].trim()
+  ) {
+    return s.images[0].trim();
+  }
+  if (s.image_url && typeof s.image_url === "string" && s.image_url.trim()) {
+    return s.image_url.trim();
+  }
+
+  const name = (s.name || "").toLowerCase();
+  if (name.includes("wild goose") || name.includes("dursley") || name.includes("cambridge")) {
+    return "/wild-goose-garage-1.jpg";
+  }
+  if (name.includes("fromebridge") || name.includes("whitminster")) {
+    return "/fromebridge-service-station-1.jpg";
+  }
+  if (name.includes("bridge") || name.includes("stonehouse") || name.includes("frampton")) {
+    return "/bridge-station-forecourt.jpg";
+  }
+  return "/fromebridge-service-station-1.jpg";
 }
 
 export function StationMap({ stations }: StationMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const markersLayerRef = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -24,71 +63,47 @@ export function StationMap({ stations }: StationMapProps) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || !mapContainerRef.current || mapInstanceRef.current) return;
+    if (!mounted || !mapContainerRef.current) return;
 
     let isSubscribed = true;
-
-    let cleanupListeners: (() => void) | null = null;
 
     import("leaflet").then((L) => {
       if (!isSubscribed || !mapContainerRef.current) return;
 
       const container = mapContainerRef.current;
 
-      // Prevent duplicate initialization
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+      // Initialize map once if not created
+      if (!mapInstanceRef.current) {
+        const map = L.map(container, {
+          scrollWheelZoom: false,
+          zoomControl: true,
+          doubleClickZoom: true,
+          touchZoom: true,
+          boxZoom: true,
+          dragging: true,
+        }).setView([51.74, -2.32], 12);
+
+        mapInstanceRef.current = map;
+
+        // Add high quality OpenStreetMap tiles
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(map);
+
+        const markersLayer = L.layerGroup().addTo(map);
+        markersLayerRef.current = markersLayer;
       }
 
-      // Center around Gloucestershire (approx 51.76, -2.36)
-      // Enable independent scrollWheelZoom on map only
-      const map = L.map(container, {
-        scrollWheelZoom: true,
-        wheelDebounceTime: 40,
-        wheelPxPerZoomLevel: 60,
-        zoomControl: true,
-        doubleClickZoom: true,
-        touchZoom: true,
-        boxZoom: true,
-      }).setView([51.758, -2.365], 12);
+      const map = mapInstanceRef.current;
+      const markersLayer = markersLayerRef.current;
 
-      mapInstanceRef.current = map;
+      if (markersLayer) {
+        markersLayer.clearLayers();
+      }
 
-      // Disable scroll propagation to parent document
-      L.DomEvent.disableScrollPropagation(container);
-
-      // Prevent wheel/trackpad gestures from triggering full-browser page zoom
-      const handleWheel = (e: WheelEvent) => {
-        e.stopPropagation();
-        if (e.ctrlKey) {
-          e.preventDefault();
-        }
-      };
-
-      const handleGesture = (e: Event) => {
-        e.preventDefault();
-        e.stopPropagation();
-      };
-
-      container.addEventListener("wheel", handleWheel, { passive: false });
-      container.addEventListener("gesturestart", handleGesture, { passive: false });
-      container.addEventListener("gesturechange", handleGesture, { passive: false });
-
-      cleanupListeners = () => {
-        container.removeEventListener("wheel", handleWheel);
-        container.removeEventListener("gesturestart", handleGesture);
-        container.removeEventListener("gesturechange", handleGesture);
-      };
-
-      // Add high quality OpenStreetMap tiles
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(map);
-
-      // Custom Red Pin Marker Icon with smooth pulsing highlight for John Stayte Services
+      // Custom Black Pin Marker Icon with smooth pulsing highlight for John Stayte Services
       const stationPinIcon = L.divIcon({
         className: "custom-station-pin",
         html: `
@@ -97,11 +112,11 @@ export function StationMap({ stations }: StationMapProps) {
             <div class="station-pin-aura"></div>
             <div class="station-pin-ring"></div>
 
-            <!-- Existing Red Pin Design (Unchanged) -->
+            <!-- Crisp Black Pin Design -->
             <div class="station-pin-head" style="
               position: relative;
               z-index: 2;
-              background: #dc2626;
+              background: #0f172a;
               width: 38px;
               height: 38px;
               border-radius: 50% 50% 50% 0;
@@ -109,7 +124,7 @@ export function StationMap({ stations }: StationMapProps) {
               display: flex;
               align-items: center;
               justify-content: center;
-              box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+              box-shadow: 0 4px 14px rgba(15, 23, 42, 0.5);
               border: 2.5px solid #ffffff;
               cursor: pointer;
               transition: transform 0.2s ease;
@@ -139,23 +154,33 @@ export function StationMap({ stations }: StationMapProps) {
 
         validLatLngs.push([s.latitude, s.longitude]);
 
+        const stationImg = getPrimaryStationImage(s);
         const mapsUrl =
           s.maps_link ||
           `https://maps.google.com/?q=${encodeURIComponent(s.name + " " + s.address)}`;
 
+        const hasAutogas =
+          s.autogas_available ||
+          (Array.isArray(s.services) &&
+            s.services.some((svc) => String(svc).toLowerCase().includes("autogas"))) ||
+          (typeof s.services === "string" && s.services.toLowerCase().includes("autogas"));
+
+        const autogasBadgeHtml = hasAutogas
+          ? `<div style="display: inline-flex; align-items: center; gap: 4px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 9999px; margin-top: 4px; margin-bottom: 5px;">
+               <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span> Autogas Available
+             </div>`
+          : "";
+
         const popupHtml = `
           <div style="font-family: inherit; width: 240px; padding: 2px;">
-            ${
-              s.image
-                ? `<div style="width: 100%; height: 115px; border-radius: 12px; overflow: hidden; margin-bottom: 8px; background: #f1f5f9;">
-                     <img src="${s.image}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='/station.jpg'" />
-                   </div>`
-                : ""
-            }
-            <h4 style="margin: 0; color: #dc2626; font-size: 15px; font-weight: 800; line-height: 1.25; text-transform: uppercase;">
+            <div style="width: 100%; height: 115px; border-radius: 12px; overflow: hidden; margin-bottom: 8px; background: #f1f5f9;">
+              <img src="${stationImg}" alt="${s.name}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='${stationImg}'" />
+            </div>
+            <h4 style="margin: 0; color: #dc2626; font-size: 14px; font-weight: 800; line-height: 1.25; text-transform: uppercase;">
               ${s.name}
             </h4>
-            <p style="margin: 5px 0 3px 0; color: #475569; font-size: 12px; font-weight: 500; display: flex; align-items: flex-start; gap: 4px;">
+            ${autogasBadgeHtml}
+            <p style="margin: ${hasAutogas ? "2px" : "5px"} 0 3px 0; color: #475569; font-size: 12px; font-weight: 500; display: flex; align-items: flex-start; gap: 4px;">
               📍 <span>${s.address}</span>
             </p>
             ${
@@ -183,12 +208,19 @@ export function StationMap({ stations }: StationMapProps) {
           </div>
         `;
 
-        L.marker([s.latitude, s.longitude], { icon: stationPinIcon })
-          .addTo(map)
-          .bindPopup(popupHtml, {
+        const marker = L.marker([s.latitude, s.longitude], { icon: stationPinIcon }).bindPopup(
+          popupHtml,
+          {
             maxWidth: 270,
             className: "station-leaflet-popup",
-          });
+          },
+        );
+
+        if (markersLayer) {
+          markersLayer.addLayer(marker);
+        } else {
+          marker.addTo(map);
+        }
       });
 
       // Fit bounds if we have multiple valid markers
@@ -202,22 +234,25 @@ export function StationMap({ stations }: StationMapProps) {
 
     return () => {
       isSubscribed = false;
-      if (cleanupListeners) {
-        cleanupListeners();
-      }
+    };
+  }, [mounted, stations]);
+
+  // Complete cleanup on unmount
+  useEffect(() => {
+    return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
+        markersLayerRef.current = null;
       }
     };
-  }, [mounted, stations]);
+  }, []);
 
   return (
     <div className="relative w-full h-[450px] sm:h-[480px] bg-slate-100 rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs">
       <div
         ref={mapContainerRef}
-        className="w-full h-full z-0 overscroll-contain select-none"
-        style={{ overscrollBehavior: "contain" }}
+        className="w-full h-full z-0 select-none"
       />
       {!mounted && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-100 text-slate-400 font-bold text-sm">

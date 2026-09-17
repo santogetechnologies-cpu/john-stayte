@@ -1,0 +1,158 @@
+-- Migration 00041: Animal Feed Category and Products Setup
+-- Creates/Updates the "Animal Feed" category with subcategories (All, Wild Bird Seed, Dog Food, Horse & Pony Feed, Poultry & Farm Feed) and inserts/updates the 5 real products in public.products
+
+-- 1. Insert / Update Animal Feed category
+INSERT INTO public.categories (
+  name,
+  slug,
+  icon,
+  description,
+  subcategories,
+  display_order,
+  is_active
+) VALUES (
+  'Animal Feed',
+  'animal-feed',
+  'Dog',
+  'Nutritious wild bird seed, dog food, feeds, and supplements for domestic pets, horses, and poultry across Gloucestershire.',
+  ARRAY[
+    'All',
+    'Wild Bird Seed',
+    'Dog Food',
+    'Horse & Pony Feed',
+    'Poultry & Farm Feed'
+  ],
+  5,
+  true
+) ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  icon = EXCLUDED.icon,
+  description = EXCLUDED.description,
+  subcategories = EXCLUDED.subcategories,
+  display_order = EXCLUDED.display_order,
+  is_active = EXCLUDED.is_active;
+
+-- 2. Insert or update the 5 Animal Feed products
+INSERT INTO public.products (
+  name,
+  slug,
+  brand,
+  category_slug,
+  subcategory,
+  description,
+  price,
+  stock,
+  rating,
+  reviews_count,
+  image_url,
+  is_featured,
+  is_offer,
+  specs,
+  created_at,
+  updated_at
+) VALUES
+  (
+    'No Mess Wild Bird Seed 20kg',
+    'no-mess-wild-bird-seed-20kg',
+    'Countrywide',
+    'animal-feed',
+    'Wild Bird Food',
+    'Countrywide No Mess Wild Bird Seed (20kg) – husk-free premium seed mix to attract wild birds without garden waste.',
+    28.25,
+    50,
+    5.0,
+    11,
+    '/feed-no-mess-wild-bird-seed-20kg.png',
+    false,
+    false,
+    '{"weight": "20kg", "type": "Wild Bird Seed", "brand": "Countrywide"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Summer Wild Bird 20kg',
+    'summer-wild-bird-20kg',
+    'Countrywide',
+    'animal-feed',
+    'Wild Bird Food',
+    'Countrywide Summer Season Wild Bird Food (20kg) – specially formulated high-energy blend for garden birds during warm breeding months.',
+    13.70,
+    50,
+    5.0,
+    7,
+    '/feed-summer-wild-bird-20kg.png',
+    false,
+    false,
+    '{"weight": "20kg", "type": "Wild Bird Food", "brand": "Countrywide"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Autarky Mature Lite - Chicken 12kg',
+    'autarky-mature-lite-chicken-12kg',
+    'Autarky',
+    'animal-feed',
+    'Dog Food',
+    'Autarky Mature Lite Complete Dog Food with Delicious Chicken (12kg) – 100% natural goodness with added herbs for senior and weight-conscious dogs.',
+    25.20,
+    50,
+    5.0,
+    15,
+    '/feed-autarky-mature-lite-chicken-12kg.png',
+    false,
+    false,
+    '{"weight": "12kg", "type": "Mature Lite Dog Food", "flavor": "Chicken", "brand": "Autarky"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Autarky Puppy/Junior - Chicken 12kg',
+    'autarky-puppy-junior-chicken-12kg',
+    'Autarky',
+    'animal-feed',
+    'Dog Food',
+    'Autarky Puppy/Junior Complete Dog Food with Delicious Chicken (12kg) – hypoallergenic recipe with prebiotics and minerals for healthy puppy development.',
+    29.30,
+    50,
+    5.0,
+    12,
+    '/feed-autarky-puppy-junior-chicken-12kg.png',
+    false,
+    false,
+    '{"weight": "12kg", "type": "Puppy/Junior Dog Food", "flavor": "Chicken", "brand": "Autarky"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Autarky Adult - Salmon 12kg',
+    'autarky-adult-salmon-12kg',
+    'Autarky',
+    'animal-feed',
+    'Dog Food',
+    'Autarky Adult Complete Dog Food with Succulent Salmon (12kg) – rich in Omega 3 fatty acids, wheat-gluten free for active adult working dogs.',
+    26.00,
+    50,
+    5.0,
+    19,
+    '/feed-autarky-adult-salmon-12kg.png',
+    false,
+    false,
+    '{"weight": "12kg", "type": "Adult Dog Food", "flavor": "Salmon", "brand": "Autarky"}'::jsonb,
+    NOW(),
+    NOW()
+  )
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  brand = EXCLUDED.brand,
+  category_slug = EXCLUDED.category_slug,
+  subcategory = EXCLUDED.subcategory,
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  stock = EXCLUDED.stock,
+  rating = EXCLUDED.rating,
+  reviews_count = EXCLUDED.reviews_count,
+  image_url = EXCLUDED.image_url,
+  is_featured = EXCLUDED.is_featured,
+  is_offer = EXCLUDED.is_offer,
+  specs = EXCLUDED.specs,
+  updated_at = NOW();

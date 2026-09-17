@@ -741,6 +741,75 @@ export interface Database {
         };
         Relationships: [];
       };
+      auto_gas_stations: {
+        Row: {
+          id: string;
+          station_number: string;
+          name: string;
+          slug: string;
+          address: string;
+          town: string | null;
+          county: string | null;
+          postcode: string;
+          telephone: string;
+          opening_hours: string | null;
+          service: string | null;
+          badge: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          maps_url: string | null;
+          image_url: string | null;
+          display_order: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          station_number: string;
+          name: string;
+          slug: string;
+          address: string;
+          town?: string | null;
+          county?: string | null;
+          postcode: string;
+          telephone: string;
+          opening_hours?: string | null;
+          service?: string | null;
+          badge?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          maps_url?: string | null;
+          image_url?: string | null;
+          display_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          station_number?: string;
+          name?: string;
+          slug?: string;
+          address?: string;
+          town?: string | null;
+          county?: string | null;
+          postcode?: string;
+          telephone?: string;
+          opening_hours?: string | null;
+          service?: string | null;
+          badge?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
+          maps_url?: string | null;
+          image_url?: string | null;
+          display_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       delivery_assignments: {
         Row: {
           id: string;

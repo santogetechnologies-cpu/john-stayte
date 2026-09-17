@@ -296,12 +296,16 @@ export function DeliveryTracker({
       ? formatDateTime(order.delivered_at || assignment?.delivered_at)
       : "";
 
-  const expectedDate = assignment?.dispatched_at
-    ? formatDate(assignment.dispatched_at)
-    : formatDate(
-        new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      );
-  const timeSlot = assignment?.time_slot || "Morning (08:00 - 12:00)";
+  const expectedDate = order.delivery_date
+    ? formatDate(order.delivery_date)
+    : assignment?.scheduled_date
+      ? formatDate(assignment.scheduled_date)
+      : assignment?.dispatched_at
+        ? formatDate(assignment.dispatched_at)
+        : formatDate(
+            new Date(new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000).toISOString(),
+          );
+  const timeSlot = order.delivery_slot || assignment?.time_slot || "Morning (08:00 - 12:00)";
 
   // Dynamic Timeline Steps based on order type
   const refillTimelineSteps = [

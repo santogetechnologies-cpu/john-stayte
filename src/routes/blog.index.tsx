@@ -658,7 +658,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Keep the area cordoned off. Alert neighbours if wind carries gas towards adjacent buildings, and call emergency services immediately.",
     whenToCallPro:
-      "Contact John Stayte Services on 01452 741234 to install heavy-duty galvanised cylinder cages, auto-changeover manifolds, or to arrange commercial storage safety surveys.",
+      "Contact John Stayte Services on +44 (0)1453 822859 to install heavy-duty galvanised cylinder cages, auto-changeover manifolds, or to arrange commercial storage safety surveys.",
     recapPoints: [
       "Store cylinders outdoors on a firm, level, paved base",
       "Always keep bottles standing vertically upright",
@@ -733,7 +733,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Stand at least 15 metres away from the vehicle. Do not use electronic key fobs or mobile phones near the vehicle. Call John Stayte Services or emergency services if the leak cannot be stopped by closing the handwheel.",
     whenToCallPro:
-      "Save the hassle of vehicle transport: John Stayte Services provides fast, certified local delivery across Gloucestershire straight to your door: 01452 741234.",
+      "Save the hassle of vehicle transport: John Stayte Services provides fast, certified local delivery across Gloucestershire straight to your door: +44 (0)1453 822859.",
     recapPoints: [
       "Keep cylinders upright and secured with ratchet straps",
       "Ensure cylinder valves are tightly closed with transit caps",
@@ -808,7 +808,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Do not attempt to re-light the appliance. Keep the room ventilated and contact a Gas Safe engineer to diagnose the flue or burner failure.",
     whenToCallPro:
-      "Annual servicing, boiler commissioning, landlord CP12 certificates, and pipework pressure soundness tests must be carried out exclusively by Gas Safe registered engineers: 01452 741234.",
+      "Annual servicing, boiler commissioning, landlord CP12 certificates, and pipework pressure soundness tests must be carried out exclusively by Gas Safe registered engineers: +44 (0)1453 822859.",
     recapPoints: [
       "Schedule annual servicing with a Gas Safe registered engineer",
       "Replace flexible rubber gas hoses every 5 years",
@@ -883,7 +883,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Account for all staff at the designated assembly point. Notify the Fire & Rescue Service and the National Gas Emergency Helpline. Do not re-enter until emergency services declare the commercial premises safe.",
     whenToCallPro:
-      "John Stayte Services supplies commercial LPG bulk tanks, multi-bottle cylinder contracts, and commercial installation services: 01452 741234.",
+      "John Stayte Services supplies commercial LPG bulk tanks, multi-bottle cylinder contracts, and commercial installation services: +44 (0)1453 822859.",
     recapPoints: [
       "Commercial kitchens must have an active Gas Interlock System (GIS)",
       "Train all staff on emergency isolation and slam switches",
@@ -958,7 +958,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Prevent vehicle entry into the driveway. Call the Fire & Rescue Service (999) and the John Stayte 24/7 Bulk Emergency Team immediately.",
     whenToCallPro:
-      "John Stayte Services provides complete bulk LPG tank supply, automated tank telemetry, inspections, and seamless tank swaps: 01452 741234.",
+      "John Stayte Services provides complete bulk LPG tank supply, automated tank telemetry, inspections, and seamless tank swaps: +44 (0)1453 822859.",
     recapPoints: [
       "Maintain a strict 3m clear exclusion zone around bulk tanks",
       "Keep ground free from weeds, timber, and dry debris",
@@ -1033,7 +1033,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Shut off the gas supply at the cylinder or tank immediately if safe to do so from upwind. Call emergency services and John Stayte Services right away.",
     whenToCallPro:
-      "All pipework installation, extension, electronic tightness testing, and regulator commissioning must be performed by certified Gas Safe engineers: 01452 741234.",
+      "All pipework installation, extension, electronic tightness testing, and regulator commissioning must be performed by certified Gas Safe engineers: +44 (0)1453 822859.",
     recapPoints: [
       "Emergency Isolation Valves (EIV) must remain unobstructed",
       "Pipes entering buildings must be properly sleeved and sealed",
@@ -1107,7 +1107,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     whenToLeave:
       "If you discover a stored cylinder is leaking or venting vapour in an enclosed or semi-enclosed alcove, step back upwind at least 15 metres and keep everyone away.",
     afterLeaving:
-      "Do not operate outdoor garden lighting or vehicle engines. Contact John Stayte Services on 01452 741234 or the National Gas Emergency line.",
+      "Do not operate outdoor garden lighting or vehicle engines. Contact John Stayte Services on +44 (0)1453 822859 or the National Gas Emergency line.",
     whenToCallPro:
       "Contact John Stayte Services for supply and installation of certified galvanised residential cylinder security cages, wall brackets, and auto-changeover kits.",
     recapPoints: [
@@ -1333,7 +1333,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Leave the cylinder isolated outdoors. Do not attempt to use the appliance until a replacement regulator or hose has been fitted.",
     whenToCallPro:
-      "If joint leaks cannot be resolved by gentle retightening, or if you require fixed pipework electronic manometer soundness testing, call John Stayte Services on 01452 741234.",
+      "If joint leaks cannot be resolved by gentle retightening, or if you require fixed pipework electronic manometer soundness testing, call John Stayte Services on +44 (0)1453 822859.",
     recapPoints: [
       "Test all new cylinder connections with 50/50 soapy water",
       "Growing froth and bubbles indicate an active gas leak",
@@ -1408,7 +1408,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Ensure children and pets remain outdoors until the room has completely ventilated and no trace gas odour remains.",
     whenToCallPro:
-      "John Stayte Services supplies heavy-duty galvanised lockable cylinder security cages, armored flexible hoses, and appliance safety accessories: 01452 741234.",
+      "John Stayte Services supplies heavy-duty galvanised lockable cylinder security cages, armored flexible hoses, and appliance safety accessories: +44 (0)1453 822859.",
     recapPoints: [
       "House outdoor cylinders in lockable, ventilated safety cages",
       "Protect flexible rubber hoses from pet teeth and claws",
@@ -1483,7 +1483,7 @@ const SAFETY_GUIDANCE_ITEMS = [
     afterLeaving:
       "Remain outside at a safe distance. Warn neighbours if necessary, especially those downwind or in basement properties. Wait for emergency response engineers.",
     whenToCallPro:
-      "National Gas Emergency Helpline: 0800 111 999 (24/7 Freephone). For emergency cylinder isolation assistance or post-incident safety testing, contact John Stayte Services on 01452 741234.",
+      "National Gas Emergency Helpline: 0800 111 999 (24/7 Freephone). For emergency cylinder isolation assistance or post-incident safety testing, contact John Stayte Services on +44 (0)1453 822859.",
     recapPoints: [
       "Turn off cylinder valve clockwise to isolate gas supply",
       "Do NOT operate any electrical switches or naked flames",
@@ -2249,7 +2249,7 @@ function BlogKnowledgeCentrePage() {
                           </span>
                           <span>
                             Call the National Gas Emergency Service on 0800 111 999 or John Stayte
-                            Emergency Support on 01452 741234.
+                            Emergency Support on +44 (0)1453 822859.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
@@ -2334,7 +2334,7 @@ function BlogKnowledgeCentrePage() {
                           </span>
                           <span>
                             Call the National Gas Emergency Service on 0800 111 999 or John Stayte
-                            Services on 01452 741234.
+                            Services on +44 (0)1453 822859.
                           </span>
                         </li>
                         <li className="flex items-start gap-2.5">
@@ -2379,7 +2379,7 @@ function BlogKnowledgeCentrePage() {
                           </span>
                           <span>
                             Seek medical attention if you suspect you&apos;re suffering from signs
-                            of CO poisoning, and call our Emergency Service on 01452 741234.
+                            of CO poisoning, and call our Emergency Service on +44 (0)1453 822859.
                           </span>
                         </li>
                       </ul>
@@ -2562,10 +2562,10 @@ function BlogKnowledgeCentrePage() {
                   immediately and contact a Gas Safe registered engineer or call John Stayte Support
                   on{" "}
                   <a
-                    href="tel:01452741234"
+                    href="tel:+441453822859"
                     className="font-extrabold underline text-amber-950 hover:text-primary transition-colors"
                   >
-                    01452 741234
+                    +44 (0)1453 822859
                   </a>
                   .
                 </div>
@@ -2596,11 +2596,11 @@ function BlogKnowledgeCentrePage() {
 
               {/* Red Phone CTA Button */}
               <a
-                href="tel:01452741234"
+                href="tel:+441453822859"
                 className="inline-flex items-center justify-center gap-2.5 rounded-full bg-primary hover:bg-primary/90 text-white px-7 py-3 text-xs sm:text-sm font-black font-display shadow-sm hover:shadow-md transition-all shrink-0 cursor-pointer self-start sm:self-center"
               >
                 <PhoneCall className="h-4 w-4 stroke-[2.5]" />
-                <span>01452 741234</span>
+                <span>+44 (0)1453 822859</span>
               </a>
             </div>
 
@@ -2710,7 +2710,7 @@ function BlogKnowledgeCentrePage() {
                       Call Emergency Line
                     </h4>
                     <p className="text-xs text-slate-500 font-normal leading-relaxed">
-                      Call 0800 111 999 or JSS on 01452 741234.
+                      Call 0800 111 999 or JSS on +44 (0)1453 822859.
                     </p>
                   </div>
                 </div>
@@ -3242,10 +3242,10 @@ function BlogKnowledgeCentrePage() {
                     <div className="flex items-center gap-2">
                       <PhoneCall className="h-4 w-4 text-primary shrink-0" />
                       <a
-                        href="tel:01452741234"
+                        href="tel:+441453822859"
                         className="text-white text-sm sm:text-base font-display hover:text-primary transition-colors"
                       >
-                        01452 741234
+                        +44 (0)1453 822859
                       </a>
                     </div>
                     <span className="text-[11px] text-slate-400 block">

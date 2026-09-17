@@ -1,0 +1,147 @@
+-- Migration 00051: Gas Spares Category & Products Setup
+-- Inserts/updates the 6 real Gas Spares products in public.products
+-- and updates public.categories subcategories for gas-spares
+
+-- 1. Ensure Gas Spares category subcategories are properly configured
+UPDATE public.categories
+SET subcategories = ARRAY['Butane Regulators', 'Propane Regulators', 'Changeover Valves']::text[]
+WHERE slug = 'gas-spares';
+
+-- 2. Insert or update the 6 Gas Spares products
+INSERT INTO public.products (
+  name,
+  slug,
+  brand,
+  category_slug,
+  subcategory,
+  description,
+  price,
+  stock,
+  rating,
+  reviews_count,
+  image_url,
+  is_featured,
+  is_offer,
+  specs,
+  created_at,
+  updated_at
+) VALUES
+  (
+    'Low Pressure Butane Regulator',
+    'low-pressure-butane-regulator',
+    'Clesse',
+    'gas-spares',
+    'Butane Regulators',
+    'Low pressure butane gas regulator with screw fitting for standard UK butane cylinders.',
+    8.99,
+    50,
+    5.0,
+    12,
+    '/spares-butane-regulator-low-pressure.png',
+    true,
+    false,
+    '{"type": "Low Pressure Butane Regulator", "fitting": "Screw Fitting", "pressure": "28mbar", "brand": "Clesse"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Low Pressure Clip-On Regulator 21mm',
+    'low-pressure-clip-on-regulator-21mm',
+    'Clesse',
+    'gas-spares',
+    'Butane Regulators',
+    'Low pressure 21mm clip-on butane gas regulator for Calor and standard 21mm butane cylinders.',
+    8.99,
+    50,
+    5.0,
+    18,
+    '/spares-butane-clip-on-21mm.png',
+    false,
+    false,
+    '{"type": "Clip-On Butane Regulator", "fitting": "21mm Clip-on", "pressure": "28mbar", "brand": "Clesse"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Low Pressure Propane Regulator',
+    'low-pressure-propane-regulator',
+    'Clesse',
+    'gas-spares',
+    'Propane Regulators',
+    'Low pressure propane gas regulator with POL male screw fitting for domestic and light commercial propane bottles.',
+    8.99,
+    50,
+    5.0,
+    15,
+    '/spares-propane-regulator-low-pressure.png',
+    true,
+    false,
+    '{"type": "Low Pressure Propane Regulator", "fitting": "POL Screw Fitting", "pressure": "37mbar", "brand": "Clesse"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Low Pressure Propane Clip-On Regulator 27mm',
+    'low-pressure-propane-clip-on-regulator-27mm',
+    'Clesse',
+    'gas-spares',
+    'Propane Regulators',
+    'Low pressure 27mm clip-on propane gas regulator specifically engineered for Patio Gas cylinders and BBQs.',
+    10.50,
+    50,
+    5.0,
+    24,
+    '/spares-propane-clip-on-27mm.png',
+    false,
+    false,
+    '{"type": "Clip-On Propane Patio Regulator", "fitting": "27mm Clip-on", "pressure": "37mbar", "brand": "Clesse"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Compact 800 Acov (OPSO) - 2 Pack',
+    'compact-800-acov-opso-2-pack',
+    'Clesse',
+    'gas-spares',
+    'Changeover Valves',
+    'Compact 800 automatic changeover valve (OPSO) 2-cylinder pack with pigtail hoses and bracket for off-grid propane systems.',
+    140.00,
+    20,
+    5.0,
+    9,
+    '/spares-compact-800-acov-2pack.png',
+    true,
+    false,
+    '{"type": "Automatic Changeover Valve (OPSO)", "capacity": "2 Cylinder System", "brand": "Clesse", "safety": "Over Pressure Shut Off (OPSO)"}'::jsonb,
+    NOW(),
+    NOW()
+  ),
+  (
+    'Compact 800 Acov (OPSO) - 4 Pack',
+    'compact-800-acov-opso-4-pack',
+    'Clesse',
+    'gas-spares',
+    'Changeover Valves',
+    'Compact 800 automatic changeover valve (OPSO) 4-cylinder pack with multi-bottle pigtail manifolds for whole-house propane heating.',
+    199.95,
+    15,
+    5.0,
+    14,
+    '/spares-compact-800-acov-4pack.png',
+    true,
+    false,
+    '{"type": "Automatic Changeover Valve (OPSO)", "capacity": "4 Cylinder System", "brand": "Clesse", "safety": "Over Pressure Shut Off (OPSO)"}'::jsonb,
+    NOW(),
+    NOW()
+  )
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  brand = EXCLUDED.brand,
+  category_slug = EXCLUDED.category_slug,
+  subcategory = EXCLUDED.subcategory,
+  description = EXCLUDED.description,
+  price = EXCLUDED.price,
+  stock = EXCLUDED.stock,
+  image_url = EXCLUDED.image_url,
+  specs = EXCLUDED.specs,
+  updated_at = NOW();

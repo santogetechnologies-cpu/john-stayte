@@ -6,12 +6,6 @@ import {
   Clock,
   Phone,
   Truck,
-  Flame,
-  Logs,
-  Dog,
-  Fish,
-  CookingPot,
-  Fuel,
   Users,
   Award,
   CheckCircle2,
@@ -20,16 +14,31 @@ import {
   HeartHandshake,
   Navigation,
   Headphones,
+  Building2,
+  Mail,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  TrendingUp,
+  Sun,
+  Sprout,
+  Quote,
+  Store,
+  Fuel,
+  Car,
+  Home,
+  Lightbulb,
+  Settings,
+  Flame,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { supabase } from "@/lib/supabase";
 import { stations } from "@/data/catalog";
 import heroImg from "@/assets/hero-delivery.jpg";
-import stationImg from "@/assets/station.jpg";
-import stationWildGooseBP from "@/assets/station-wild-goose-bp.png";
-import stationBridge76 from "@/assets/station-bridge-76.png";
-import gloucestershireMap from "@/assets/gloucestershire-map.jpg";
 import originsHeritageHero from "@/assets/origins-heritage-hero.jpg";
+import jssLogo from "@/assets/image-5.png";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -337,16 +346,19 @@ function AboutPage() {
             if (parsed && typeof parsed === "object") {
               setAboutData((prev: any) => ({ ...prev, ...parsed }));
             }
-          } catch {}
+          } catch { }
         }
 
         if (stnBlock?.content) {
           try {
             const parsedStns = JSON.parse(stnBlock.content);
-            if (Array.isArray(parsedStns) && parsedStns.length > 0) {
-              setDbStations(parsedStns);
+            const stationList = Array.isArray(parsedStns)
+              ? parsedStns
+              : (Array.isArray(parsedStns?.stations) ? parsedStns.stations : []);
+            if (stationList.length > 0) {
+              setDbStations(stationList);
             }
-          } catch {}
+          } catch { }
         }
       } catch (err) {
         console.error("Error loading about data:", err);
@@ -405,7 +417,7 @@ function AboutPage() {
                     {aboutData?.heroHeading
                       ? aboutData.heroHeading.includes("MOVING SINCE")
                         ? aboutData.heroHeading.split("MOVING SINCE")[0].trim()
-                        : "KEEPING GLOUCESTERSHIRE"
+                        : aboutData.heroHeading
                       : "KEEPING GLOUCESTERSHIRE"}
                   </span>
                 </Reveal>
@@ -414,7 +426,7 @@ function AboutPage() {
                     {aboutData?.heroHeading
                       ? aboutData.heroHeading.includes("MOVING SINCE")
                         ? "MOVING SINCE " + aboutData.heroHeading.split("MOVING SINCE")[1].trim()
-                        : "MOVING SINCE 1972"
+                        : ""
                       : "MOVING SINCE 1972"}
                   </span>
                 </Reveal>
@@ -521,11 +533,9 @@ function AboutPage() {
               return (
                 <Reveal key={item.title} variant="card" delay={idx * 80}>
                   <div
-                    className={`flex items-center gap-2.5 sm:gap-3 lg:gap-3.5 p-2.5 sm:p-3 lg:p-3.5 group/benefit transition-all ${
-                      idx % 2 === 1 ? "border-l border-slate-200/80" : ""
-                    } ${idx >= 2 ? "border-t border-slate-200/80 lg:border-t-0" : ""} ${
-                      idx > 0 ? "lg:border-l lg:border-slate-200/80" : ""
-                    }`}
+                    className={`flex items-center gap-2.5 sm:gap-3 lg:gap-3.5 p-2.5 sm:p-3 lg:p-3.5 group/benefit transition-all ${idx % 2 === 1 ? "border-l border-slate-200/80" : ""
+                      } ${idx >= 2 ? "border-t border-slate-200/80 lg:border-t-0" : ""} ${idx > 0 ? "lg:border-l lg:border-slate-200/80" : ""
+                      }`}
                   >
                     {/* Large Soft Circular Icon Background */}
                     <div className="h-11 w-11 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-white shadow-[0_3px_14px_rgba(0,0,0,0.05)] border border-slate-100/90 flex items-center justify-center text-primary shrink-0 transition-transform duration-300 group-hover/benefit:scale-105">
@@ -621,7 +631,7 @@ function AboutPage() {
                     capabilities have expanded alongside it. What started as a single village garage
                     evolved into an authorized Calor Gas regional stockist, solid fuel merchant, pet
                     nutrition supplier, and the operator of three bustling filling station
-                    forecourts across Fromebridge, Cambridge, and Frampton on Severn.
+                    forecourts across Dursley, Whitminster, and Stonehouse.
                   </p>
                   <p>
                     As the region's reliance on off-grid heating and bottled LPG expanded, we
@@ -640,6 +650,294 @@ function AboutPage() {
               </Reveal>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* =========================================================================
+          3.5 OUR HEAD OFFICE — EASTINGTON (Clean Editorial Hero Section)
+          Full-width 3D scene backdrop with clean rectangular media panel, contact bar, & brand strip
+      ========================================================================= */}
+      <section className="py-10 sm:py-12 lg:py-14 relative overflow-hidden bg-[#fafbfe] border-b border-slate-200/70">
+        {/* Current Background Image Preserved */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage: "url('/head-office-3d-bg.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center center",
+          }}
+        />
+
+        {/* Soft Translucent Overlays for High Legibility & Seamless 3D Blend */}
+        <div className="absolute inset-0 bg-white/45 pointer-events-none z-0" />
+        <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/55 to-white/20 pointer-events-none z-0" />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/60 via-transparent to-white/70 pointer-events-none z-0" />
+
+        {/* Ambient Red Glow Accents */}
+        <div className="absolute top-1/3 left-1/4 -translate-x-1/2 w-[500px] h-[500px] bg-red-500/[0.05] rounded-full blur-[120px] pointer-events-none z-0" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-500/[0.06] rounded-full blur-[100px] pointer-events-none z-0" />
+
+        <div className="container-page relative z-10 space-y-6 sm:space-y-8">
+
+          {/* MAIN 2-COLUMN HERO COMPOSITION */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 lg:gap-10 xl:gap-12 items-center">
+
+            {/* LEFT COLUMN: Head Office Narrative & 4 Feature Pillars */}
+            <div className="lg:col-span-6 space-y-4 sm:space-y-4.5">
+
+              {/* Eyebrow & Red Underline */}
+              <Reveal delay={0}>
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm text-[11px] font-black tracking-widest text-[#e31b23] bg-red-50/95 border border-red-200/80 shadow-2xs backdrop-blur-md">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#e31b23]"></span>
+                    </span>
+                    OUR HEAD OFFICE
+                  </div>
+                  <div className="h-[2.5px] w-12 bg-primary rounded-full mt-2" />
+                </div>
+              </Reveal>
+
+              {/* Heading & Subtitle */}
+              <Reveal delay={40} variant="heading">
+                <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-black text-slate-950 tracking-tight leading-[1.08] font-display">
+                  Head Office, <span className="text-primary">Eastington</span>
+                </h2>
+                <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.18em] text-slate-600 mt-1.5 font-mono">
+                  OUR OPERATIONS. OUR PEOPLE. A STRONGER GLOUCESTERSHIRE.
+                </p>
+              </Reveal>
+
+              {/* Editorial Paragraphs */}
+              <Reveal delay={80}>
+                <div className="space-y-2.5 text-slate-800 text-[13.5px] sm:text-[14.5px] leading-relaxed font-normal">
+                  <p>
+                    Our Head Office in Eastington is the central hub for John Stayte Services,
+                    overseeing customer support, administration, and our primary fuel depot.
+                    From here, we coordinate deliveries, manage stock, and ensure a reliable supply
+                    of LPG and associated products to homes, businesses, farms, and industries
+                    across Gloucestershire.
+                  </p>
+                  <p>
+                    With a dedicated team and a modern depot, we're committed to efficiency,
+                    safety, and excellent service — keeping local communities fuelled and supported
+                    all year round.
+                  </p>
+                </div>
+              </Reveal>
+
+              {/* 4 Feature Pillars (Dedicated Team, Reliable Supply, Safety Focused, Supporting Local) */}
+              <Reveal delay={120}>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 pt-1">
+                  <div className="flex flex-col items-center text-center p-3 rounded-md bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs hover:border-red-200 hover:bg-white transition-all">
+                    <div className="h-8 w-8 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center mb-1.5 shadow-2xs">
+                      <Users className="h-4 w-4 stroke-[2]" />
+                    </div>
+                    <span className="text-xs font-extrabold text-slate-900 leading-tight">Dedicated Team</span>
+                    <span className="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">Here to help</span>
+                  </div>
+
+                  <div className="flex flex-col items-center text-center p-3 rounded-md bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs hover:border-red-200 hover:bg-white transition-all">
+                    <div className="h-8 w-8 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center mb-1.5 shadow-2xs">
+                      <Truck className="h-4 w-4 stroke-[2]" />
+                    </div>
+                    <span className="text-xs font-extrabold text-slate-900 leading-tight">Reliable Supply</span>
+                    <span className="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">All year round</span>
+                  </div>
+
+                  <div className="flex flex-col items-center text-center p-3 rounded-md bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs hover:border-red-200 hover:bg-white transition-all">
+                    <div className="h-8 w-8 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center mb-1.5 shadow-2xs">
+                      <ShieldCheck className="h-4 w-4 stroke-[2]" />
+                    </div>
+                    <span className="text-xs font-extrabold text-slate-900 leading-tight">Safety Focused</span>
+                    <span className="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">In everything we do</span>
+                  </div>
+
+                  <div className="flex flex-col items-center text-center p-3 rounded-md bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs hover:border-red-200 hover:bg-white transition-all">
+                    <div className="h-8 w-8 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center mb-1.5 shadow-2xs">
+                      <HeartHandshake className="h-4 w-4 stroke-[2]" />
+                    </div>
+                    <span className="text-xs font-extrabold text-slate-900 leading-tight">Supporting Local</span>
+                    <span className="text-[10px] text-slate-500 font-normal leading-tight mt-0.5">Homes, businesses & farms</span>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+
+            {/* RIGHT COLUMN: Clean Sharp Rectangular Eastington Depot Photograph + Quote */}
+            <div className="lg:col-span-6 space-y-3">
+              <Reveal delay={100} variant="image">
+                <div className="relative rounded-md overflow-hidden bg-slate-950 shadow-[0_8px_24px_rgba(0,0,0,0.09)] border border-slate-300/80 aspect-[16/10.8] w-full">
+                  <img
+                    src="/head-office-eastington-sunset.jpg"
+                    alt="John Stayte Services Eastington Head Office & Animal Feeds Depot building at sunset"
+                    className="w-full h-full object-cover object-center"
+                    loading="lazy"
+                  />
+                </div>
+              </Reveal>
+
+              {/* Bottom Quote Bar */}
+              <Reveal delay={140}>
+                <div className="flex items-center gap-3 pt-0.5 px-1">
+                  <span className="text-2xl sm:text-3xl font-black text-primary font-serif leading-none">
+                    “
+                  </span>
+                  <div className="border-l-2 border-slate-300 pl-3">
+                    <p className="text-xs sm:text-[13px] font-semibold text-slate-700 italic">
+                      "A reliable supply. A local commitment. A stronger Gloucestershire."
+                    </p>
+                    <div className="h-0.5 w-8 bg-primary rounded-full mt-1" />
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+
+          </div>
+
+          {/* CONTACT INFORMATION HORIZONTAL BAR - CLEAN RECTANGLE */}
+          <Reveal delay={160}>
+            <div className="bg-white/92 backdrop-blur-md border border-slate-200/90 shadow-2xs rounded-md p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 divide-y sm:divide-y-0 lg:divide-x divide-slate-200/80">
+
+              {/* Address */}
+              <div className="flex items-start gap-3.5 pt-2.5 first:pt-0 sm:pt-0">
+                <div className="h-9 w-9 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                  <MapPin className="h-4.5 w-4.5 stroke-[2]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                    ADDRESS
+                  </div>
+                  <div className="text-xs sm:text-[12.5px] text-slate-900 font-bold leading-relaxed mt-0.5">
+                    Puddlesworth Lane<br />
+                    Eastington, Stonehouse<br />
+                    Gloucestershire, GL10 3AH
+                  </div>
+                </div>
+              </div>
+
+              {/* Telephone */}
+              <div className="flex items-start gap-3.5 pt-2.5 sm:pt-0 sm:pl-4 lg:pl-5">
+                <div className="h-9 w-9 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                  <Phone className="h-4.5 w-4.5 stroke-[2]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                    TELEPHONE
+                  </div>
+                  <a
+                    href="tel:+441453822859"
+                    className="text-sm sm:text-base font-black text-slate-900 hover:text-primary transition-colors block mt-0.5"
+                  >
+                    +44 (0)1453 822859
+                  </a>
+                  <div className="text-[10.5px] text-slate-500 font-medium mt-0.5">
+                    Mon – Fri, 8:00 AM – 5:00 PM
+                  </div>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="flex items-start gap-3.5 pt-2.5 sm:pt-0 sm:pl-4 lg:pl-5">
+                <div className="h-9 w-9 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                  <Mail className="h-4.5 w-4.5 stroke-[2]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                    EMAIL
+                  </div>
+                  <a
+                    href="mailto:info@johnstayteservices.co.uk"
+                    className="text-xs sm:text-[12.5px] font-bold text-slate-900 hover:text-primary transition-colors truncate block mt-0.5"
+                    title="info@johnstayteservices.co.uk"
+                  >
+                    info@johnstayteservices.co.uk
+                  </a>
+                  <div className="text-[10.5px] text-slate-500 font-medium mt-0.5">
+                    We'll get back to you soon
+                  </div>
+                </div>
+              </div>
+
+              {/* Website */}
+              <div className="flex items-start gap-3.5 pt-2.5 sm:pt-0 sm:pl-4 lg:pl-5">
+                <div className="h-9 w-9 rounded-sm bg-red-50 text-primary border border-red-100 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                  <Globe className="h-4.5 w-4.5 stroke-[2]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                    WEBSITE
+                  </div>
+                  <a
+                    href="https://www.johnstayteservices.co.uk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs sm:text-[12.5px] font-bold text-slate-900 hover:text-primary transition-colors truncate block mt-0.5"
+                    title="www.johnstayteservices.co.uk"
+                  >
+                    www.johnstayteservices.co.uk
+                  </a>
+                  <div className="text-[10.5px] text-slate-500 font-medium mt-0.5">
+                    Visit our website
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
+          {/* BOTTOM BRAND STRIP */}
+          <Reveal delay={200}>
+            <div className="pt-2 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-slate-300/60">
+
+              {/* Left: Stylized Tagline */}
+              <div className="flex items-center gap-3">
+                <div className="font-serif italic font-extrabold text-xl sm:text-2xl text-slate-800 tracking-tight leading-none">
+                  Fueling <span className="text-primary">Gloucestershire</span> Together
+                </div>
+              </div>
+
+              {/* Center: 3 Trust Pillars */}
+              <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-7 text-xs font-semibold text-slate-700">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <span className="font-extrabold text-slate-900 uppercase tracking-wider text-[11px] block">LOCAL PEOPLE</span>
+                    <span className="text-[10px] text-slate-500 font-normal">At the heart of what we do</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <span className="font-extrabold text-slate-900 uppercase tracking-wider text-[11px] block">TRUSTED SERVICE</span>
+                    <span className="text-[10px] text-slate-500 font-normal">For over 50 years</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <span className="font-extrabold text-slate-900 uppercase tracking-wider text-[11px] block">CLEANER ENERGY</span>
+                    <span className="text-[10px] text-slate-500 font-normal">A brighter tomorrow</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Red Accent Polygon Tag */}
+              <div className="hidden xl:flex items-center bg-primary text-white px-4 py-2 rounded-sm shadow-2xs text-right">
+                <div>
+                  <div className="text-[9.5px] font-black tracking-widest uppercase text-white/90">
+                    SAME TRUST.
+                  </div>
+                  <div className="text-[11.5px] font-black tracking-wider uppercase text-white">
+                    A BRIGHTER TOMORROW
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
         </div>
       </section>
 
@@ -705,7 +1003,7 @@ function AboutPage() {
                 {
                   year: "2000s",
                   title: "Forecourt Network",
-                  desc: "Expanded to three service stations: Fromebridge, Wild Goose Garage (Cambridge) and Bridge Service Station.",
+                  desc: "Expanded to three service stations: Wild Goose Garage (Dursley), Fromebridge Service Station, and Bridge Service Station (Stonehouse).",
                   side: "right" as const,
                 },
                 {
@@ -722,125 +1020,6 @@ function AboutPage() {
         </div>
       </section>
 
-      {/* =========================================================================
-          5. WHAT WE DO ("More Than Fuel.")
-          3-column x 2-row card grid with high-resolution editorial photography
-      ========================================================================= */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-white border-b border-slate-200/60">
-        <div className="container-page space-y-10 sm:space-y-12">
-          <div className="text-center space-y-2.5 max-w-2xl mx-auto">
-            <Reveal delay={0}>
-              <span className="text-xs font-extrabold uppercase tracking-[0.2em] text-primary block">
-                — COMPREHENSIVE PROVISION —
-              </span>
-            </Reveal>
-            <Reveal delay={80} variant="heading">
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight font-display">
-                More Than <span className="text-primary">Fuel.</span>
-              </h2>
-            </Reveal>
-            <Reveal delay={150}>
-              <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-xl mx-auto font-normal">
-                Everything you need for heating, outdoor living, rural work, and transport from one
-                trusted local team.
-              </p>
-            </Reveal>
-          </div>
-
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-8 items-stretch">
-            {[
-              {
-                title: "Bottled Gas",
-                desc: "Propane, butane, patio gas, and cellar gas cylinders delivered directly to your home, pub, or business.",
-                icon: Flame,
-                image: "/more-than-fuel-bottled-gas.jpg",
-                link: "/order-gas",
-              },
-              {
-                title: "Solid Fuel & Logs",
-                desc: "Smokeless coal, kiln-dried hardwood logs, kindling, and eco-fuels for open fires and multi-fuel stoves.",
-                icon: Logs,
-                image: "/more-than-fuel-solid-fuel.jpg",
-                link: "/products",
-              },
-              {
-                title: "Animal Feed & Pet Care",
-                desc: "Quality equine feeds, poultry grains, wild bird seeds, and domestic pet nutrition from trusted British brands.",
-                icon: Dog,
-                image: "/more-than-fuel-animal-feed.jpg",
-                link: "/products",
-              },
-              {
-                title: "Fishing Bait & Tackle",
-                desc: "Fresh boilies, pellets, groundbaits, and terminal tackle trusted by anglers across Gloucestershire.",
-                icon: Fish,
-                image: "/more-than-fuel-fishing-bait.jpg",
-                link: "/products",
-              },
-              {
-                title: "Gas Appliances & Spares",
-                desc: "Portable gas heaters, Char-Broil BBQs, regulators, hoses, and certified gas fittings with expert advice.",
-                icon: CookingPot,
-                image: "/more-than-fuel-gas-appliances.jpg",
-                link: "/products",
-              },
-              {
-                title: "Filling Stations & Shops",
-                desc: "Three forecourts across Whitminster, Cambridge, and Frampton on Severn providing road fuels and convenience essentials.",
-                icon: Fuel,
-                image: "/more-than-fuel-filling-stations.jpg",
-                link: "/filling-stations",
-              },
-            ].map((service, idx) => (
-              <Reveal key={service.title} variant="card" delay={idx * 100} className="h-full">
-                <Link
-                  to={service.link}
-                  className="group bg-white rounded-[12px] sm:rounded-[16px] lg:rounded-[18px] border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col justify-between overflow-hidden h-full"
-                >
-                  <div>
-                    {/* Full-Bleed Top Category Image */}
-                    <div className="w-full aspect-[16/10] sm:aspect-[16/9.5] overflow-hidden bg-slate-100 relative shrink-0">
-                      <img
-                        src={service.image}
-                        alt={service.title}
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    </div>
-
-                    {/* Circular Category Icon (Overlapping Image Bottom) */}
-                    <div className="-mt-3.5 sm:-mt-4.5 lg:-mt-5 ml-2.5 sm:ml-4 lg:ml-5 relative z-10">
-                      <div className="h-7 w-7 sm:h-9 sm:w-9 lg:h-11 lg:w-11 rounded-full bg-red-50 text-primary border border-red-100/90 flex items-center justify-center shadow-2xs">
-                        <service.icon className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 lg:h-5 lg:w-5 stroke-[1.8]" />
-                      </div>
-                    </div>
-
-                    {/* Card Text Content */}
-                    <div className="p-2.5 sm:p-4 lg:p-5 pt-1.5 sm:pt-2 lg:pt-2.5 space-y-1 sm:space-y-1.5 lg:space-y-2">
-                      <h3 className="text-xs sm:text-base lg:text-lg font-extrabold text-slate-900 group-hover:text-primary transition-colors tracking-tight leading-snug line-clamp-1 sm:line-clamp-none">
-                        {service.title}
-                      </h3>
-                      <p className="text-[10px] sm:text-xs lg:text-[13px] text-slate-500 font-normal leading-tight sm:leading-relaxed line-clamp-2 sm:line-clamp-none min-h-[24px] sm:min-h-[32px] lg:min-h-[38px]">
-                        {service.desc}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Bottom Aligned CTA Button */}
-                  <div className="px-2.5 sm:px-4 lg:px-5 pb-2.5 sm:pb-4 lg:pb-5">
-                    <div className="pt-2 sm:pt-3 border-t border-slate-100 flex items-center justify-start">
-                      <span className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-primary hover:bg-primary/90 text-white text-[10px] sm:text-xs font-extrabold shadow-[0_2px_8px_rgba(220,38,38,0.22)] group-hover:shadow-[0_4px_12px_rgba(220,38,38,0.35)] transition-all">
-                        <span>Explore category</span>
-                        <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 transform group-hover:translate-x-1 transition-transform shrink-0" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* =========================================================================
           6. WHY CHOOSE JOHN STAYTE SERVICES ("Why Choose Us")
@@ -912,9 +1091,8 @@ function AboutPage() {
               return (
                 <Reveal key={b.title} variant="card" delay={idx * 110} className="h-full">
                   <div
-                    className={`bg-white rounded-[14px] sm:rounded-[16px] border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col ${
-                      isImageLeft ? "md:flex-row" : "md:flex-row-reverse"
-                    } h-full group`}
+                    className={`bg-white rounded-[14px] sm:rounded-[16px] border border-slate-200/90 shadow-2xs hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col ${isImageLeft ? "md:flex-row" : "md:flex-row-reverse"
+                      } h-full group`}
                   >
                     {/* Sharp-Cornered Square/Portrait Photography (Approx 45% Desktop Width) */}
                     <div className="w-full md:w-[45%] h-52 sm:h-60 md:h-auto overflow-hidden bg-slate-100 shrink-0 relative">
@@ -967,106 +1145,521 @@ function AboutPage() {
       </section>
 
       {/* =========================================================================
-          7. REGIONAL COVERAGE / LOCAL CONNECTION
-          2-Column showcase: Left text/pills/CTA + Right crisp rectangular map with floating status bar
+          7. NIZA GROUP ANNOUNCEMENT ("Company News")
+          Exact Match to Visual Reference:
+          - Seamless full-width background image (/niza-announcement-bg.png) behind the entire section
+          - Contained content aligned with container-page
+          - Top Hero: COMPANY NEWS, bold heading, feature row, and prominent JS × NIZA branding
+          - Editorial Article: 2-Column press release with red quote box, Visit NIZA Group button, executive message card, and 4 value pillars
       ========================================================================= */}
-      <section className="py-10 sm:py-14 lg:py-16 bg-white border-b border-slate-200/60">
-        <div className="container-page">
-          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 xl:gap-14 items-center">
-            {/* Left Column: Heading, Description, Delivery Location Pills & CTA (~45% width) */}
-            <div className="lg:col-span-5 xl:col-span-5 space-y-5 sm:space-y-6">
-              <div className="space-y-2">
-                <Reveal delay={0}>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-red-200/80 bg-red-50/90 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red-600 shadow-2xs">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                    <span>REGIONAL COVERAGE</span>
-                  </div>
-                </Reveal>
-                <Reveal delay={80} variant="heading">
-                  <h2 className="text-3xl sm:text-4xl lg:text-[40px] font-black text-slate-900 tracking-tight leading-[1.08] font-display">
-                    Right Across <span className="text-primary">Gloucestershire</span>
-                  </h2>
-                </Reveal>
-                <Reveal delay={120}>
-                  <div className="w-12 h-1 bg-primary rounded-full mt-2.5" />
-                </Reveal>
-              </div>
+      <section className="relative overflow-hidden py-12 sm:py-16 lg:py-20 border-b border-slate-200/80 bg-[#fbfdfc]">
+        {/* Full-width Seamless Background Image from Image 3 */}
+        <div
+          className="absolute inset-0 pointer-events-none z-0"
+          style={{
+            backgroundImage: "url('/niza-announcement-bg.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center center",
+          }}
+        />
 
-              <Reveal delay={160}>
-                <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
-                  Our distribution vehicles operate daily delivery routes across Gloucestershire,
-                  serving towns, rural villages, and isolated properties within a 40-mile radius.
+        {/* Soft Ambient Light Balancing */}
+        <div className="absolute inset-0 bg-white/35 pointer-events-none z-0" />
+
+        <div className="container-page relative z-10 space-y-12 sm:space-y-16">
+          
+          {/* TOP HERO ANNOUNCEMENT AREA */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            
+            {/* LEFT COLUMN: Headings, Subtitle & Feature Pillars */}
+            <div className="lg:col-span-7 xl:col-span-7 space-y-3.5 sm:space-y-4">
+              
+              {/* Pill Badge: COMPANY NEWS */}
+              <Reveal delay={0}>
+                <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/90 border border-[#bbf7d0] text-slate-800 text-[11px] font-black uppercase tracking-widest shadow-2xs backdrop-blur-xs">
+                  <span className="h-2 w-2 rounded-full bg-[#059669]" />
+                  <span>COMPANY NEWS</span>
+                </div>
+              </Reveal>
+
+              {/* Dominant Main Heading */}
+              <Reveal delay={60} variant="heading">
+                <h2 className="text-3xl sm:text-4xl lg:text-[44px] xl:text-[48px] font-black text-slate-950 tracking-tight leading-[1.05] font-display uppercase">
+                  JOHN STAYTE SERVICES <br />
+                  <span>PROUDLY JOINS </span>
+                  <span className="text-[#059669]">NIZA GROUP</span>
+                </h2>
+              </Reveal>
+
+              {/* Supporting Line */}
+              <Reveal delay={100}>
+                <p className="text-sm sm:text-base lg:text-[16px] font-bold text-slate-800 leading-snug">
+                  A stronger future for our customers, communities and colleagues.
                 </p>
               </Reveal>
 
-              {/* Service Areas Pill Grid */}
-              <Reveal delay={220}>
-                <div className="space-y-2.5">
-                  <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
-                    Regular Delivery Areas
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {[
-                      "Gloucester",
-                      "Stroud",
-                      "Dursley",
-                      "Cam",
-                      "Berkeley",
-                      "Cheltenham",
-                      "Forest of Dean",
-                      "Tewkesbury",
-                      "Frampton on Severn",
-                      "Whitminster",
-                      "Stonehouse",
-                      "Wotton-under-Edge",
-                    ].map((loc) => (
-                      <span
-                        key={loc}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-red-50 hover:text-red-700 text-slate-700 text-xs font-semibold border border-slate-200/80 transition-colors shadow-2xs cursor-default"
-                      >
-                        <MapPin className="h-3 w-3 text-primary shrink-0" />
-                        <span>{loc}</span>
-                      </span>
-                    ))}
+              {/* Horizontal Feature Row with Dividers */}
+              <Reveal delay={140}>
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3.5 pt-2 text-[11px] sm:text-xs font-black text-slate-700 tracking-wider">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-[#059669] stroke-[2.2]" />
+                    <span>PEOPLE</span>
+                  </div>
+                  <span className="text-slate-300 font-normal">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-[#059669] stroke-[2.2]" />
+                    <span>PLACES</span>
+                  </div>
+                  <span className="text-slate-300 font-normal">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <Sprout className="h-4 w-4 text-[#059669] stroke-[2.2]" />
+                    <span>COMMUNITIES</span>
+                  </div>
+                  <span className="text-slate-300 font-normal">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <Sun className="h-4 w-4 text-[#059669] stroke-[2.2]" />
+                    <span>A BRIGHTER TOMORROW</span>
                   </div>
                 </div>
               </Reveal>
 
-              {/* Nearest Station CTA */}
-              <Reveal delay={280}>
-                <div className="pt-1">
-                  <Link
-                    to="/filling-stations"
-                    className="px-6 py-3.5 rounded-full bg-primary hover:bg-primary/90 text-white font-extrabold text-xs sm:text-sm shadow-[0_4px_16px_rgba(220,38,38,0.25)] hover:shadow-[0_6px_22px_rgba(220,38,38,0.35)] inline-flex items-center gap-2.5 transition-all group cursor-pointer"
-                  >
-                    <Navigation className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-                    <span>Find your nearest station</span>
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+            </div>
+
+            {/* RIGHT COLUMN: JSS × NIZA Logo Relationship + Script Tagline */}
+            <div className="lg:col-span-5 xl:col-span-5 flex flex-col items-center justify-center text-center lg:border-l lg:border-slate-300/60 lg:pl-10 py-2">
+              <Reveal delay={120}>
+                <div className="space-y-3 sm:space-y-4">
+                  {/* Logos Row */}
+                  <div className="flex items-center justify-center gap-5 sm:gap-7">
+                    {/* JSS Official Brand Badge */}
+                    <div className="flex items-center">
+                      <img
+                        src="/favicon.png"
+                        alt="John Stayte Services"
+                        className="h-16 sm:h-20 md:h-22 w-auto object-contain drop-shadow-md transition-transform duration-300 hover:scale-105"
+                      />
+                    </div>
+
+                    {/* Relationship Connector */}
+                    <span className="text-slate-300 font-light text-3xl sm:text-4xl select-none px-1">
+                      ✕
+                    </span>
+
+                    {/* NIZA Group Official Brand Logo */}
+                    <div className="flex items-center gap-2.5 sm:gap-3 transition-transform duration-300 hover:scale-105">
+                      <img
+                        src="/brands/niza-group-official.png"
+                        alt="NIZA Group"
+                        className="h-16 sm:h-20 md:h-22 w-auto object-contain drop-shadow-sm"
+                      />
+                      <div className="text-left font-display">
+                        <div className="text-2xl sm:text-3xl md:text-[32px] font-black text-[#059669] tracking-tight leading-none">
+                          NIZA
+                        </div>
+                        <div className="text-xs sm:text-sm md:text-base font-black text-slate-800 tracking-widest leading-none mt-1">
+                          GROUP
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Script Accent Tagline with Curved Underline */}
+                  <div className="pt-2">
+                    <div className="font-serif italic font-extrabold text-xl sm:text-2xl md:text-[25px] text-[#059669] tracking-wide">
+                      Local Roots. Greater Possibilities.
+                    </div>
+                    <svg
+                      className="w-56 sm:w-68 md:w-76 h-3 mx-auto text-[#059669] mt-1"
+                      viewBox="0 0 200 12"
+                      fill="none"
+                    >
+                      <path
+                        d="M2 9C60 2 140 2 198 9"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
                 </div>
               </Reveal>
             </div>
 
-            {/* Right Column: Premium Sharp-Cornered Map Visual (~55% width) */}
-            <div className="lg:col-span-7 xl:col-span-7">
-              <Reveal delay={150} variant="image">
-                <div className="rounded-[10px] sm:rounded-[12px] overflow-hidden border border-slate-200/90 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.12)] bg-slate-50 relative group aspect-[4/3] sm:aspect-[16/11] lg:aspect-[4/3] w-full">
+          </div>
+
+          {/* EDITORIAL ACQUISITION ARTICLE & SIDEBAR */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+            
+            {/* LEFT COLUMN: Acquisition Press Narrative (7 cols) */}
+            <div className="lg:col-span-7 space-y-4">
+              
+              {/* Date */}
+              <Reveal delay={0}>
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                  <span>July 21, 2026</span>
+                </div>
+              </Reveal>
+
+              {/* Article Headline */}
+              <Reveal delay={40} variant="heading">
+                <h3 className="text-2xl sm:text-3xl lg:text-[32px] font-black text-slate-950 tracking-tight leading-tight font-display">
+                  Niza Group Expands with the Acquisition of John Stayte Services
+                </h3>
+              </Reveal>
+
+              {/* Narrative Paragraphs */}
+              <Reveal delay={80}>
+                <div className="space-y-3.5 text-slate-600 text-sm sm:text-[14.5px] leading-relaxed font-normal">
+                  <p>
+                    John Stayte Services has officially become part of NIZA Group as of 1st July 2026. Customers
+                    can expect the same reliable fuel, gas, heating, and retail services, backed by NIZA Group's
+                    commitment to growth, innovation, and exceptional customer care.
+                  </p>
+                  <p>
+                    Today marks a significant milestone in the continued growth of Niza Group, as we are delighted
+                    to announce the successful acquisition of John Stayte Services, a highly respected
+                    Gloucestershire business with decades of experience serving local communities.
+                  </p>
+                  <p>
+                    This acquisition represents much more than simply adding new locations—it strengthens our
+                    commitment to providing quality fuel, convenience retail, bottled gas, agricultural supplies
+                    and specialist products across Gloucestershire and the South West.
+                  </p>
+                </div>
+              </Reveal>
+
+              {/* Quote Callout Box */}
+              <Reveal delay={120}>
+                <div className="mt-6 p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-[#fff8f8]/90 backdrop-blur-xs border border-red-100 border-l-4 border-l-primary flex items-start gap-3.5 shadow-2xs">
+                  <span className="text-3xl sm:text-4xl font-serif font-black text-primary leading-none shrink-0 select-none">
+                    “
+                  </span>
+                  <p className="text-xs sm:text-[13.5px] text-slate-700 italic font-medium leading-relaxed pt-1">
+                    For existing John Stayte Services customers, you can continue to expect the same trusted service
+                    from the same local teams, now backed by the strength, investment and long-term vision of Niza Group.
+                  </p>
+                </div>
+              </Reveal>
+
+              {/* Official NIZA Website CTA Button */}
+              <Reveal delay={160}>
+                <div className="pt-3">
+                  <a
+                    href="https://nizagroup.uk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2.5 px-7 sm:px-8 py-3.5 sm:py-4 rounded-full bg-primary hover:bg-primary/90 active:scale-[0.99] text-white text-sm sm:text-[15px] font-black shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/35 transition-all duration-200 group cursor-pointer"
+                  >
+                    <span>Visit NIZA Group</span>
+                    <ArrowRight className="h-4.5 w-4.5 group-hover:translate-x-1.5 transition-transform duration-200" />
+                  </a>
+                </div>
+              </Reveal>
+
+            </div>
+
+            {/* RIGHT COLUMN: Executive Message Card & Value Pillars (5 cols) */}
+            <div className="lg:col-span-5 space-y-4 sm:space-y-5">
+              
+              {/* Executive Message Card */}
+              <Reveal delay={60} variant="card">
+                <div className="p-5 sm:p-6 rounded-2xl bg-[#f0f9f4]/90 backdrop-blur-md border border-[#d1ebd9] shadow-2xs space-y-3">
+                  <div className="flex items-center gap-3.5">
+                    <div className="h-10 w-10 rounded-full bg-[#dcfce7] border border-[#bbf7d0] text-[#059669] flex items-center justify-center shrink-0 shadow-2xs">
+                      <Quote className="h-4.5 w-4.5 fill-[#059669]/20" />
+                    </div>
+                    <div>
+                      <div className="text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider">
+                        A MESSAGE FROM
+                      </div>
+                      <div className="text-base sm:text-lg font-black text-[#059669] leading-tight">
+                        Chandran Manoharan
+                      </div>
+                      <div className="text-xs text-slate-600 font-semibold mt-0.5">
+                        Managing Director of Office
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#d8eedf]">
+                    <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed font-normal">
+                      “We are delighted to welcome John Stayte Services into the Niza Group family. Together, we
+                      will continue to serve our local communities with trusted products and services, while
+                      investing for a brighter future.”
+                    </p>
+                    <div className="w-8 h-0.5 bg-[#059669] rounded-full mt-3" />
+                  </div>
+                </div>
+              </Reveal>
+
+              {/* 4 Value Pillars Card */}
+              <Reveal delay={100} variant="card">
+                <div className="p-5 sm:p-6 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs space-y-4">
+                  {/* Pillar 1 */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="h-9 w-9 rounded-full bg-[#dcfce7] text-[#16a34a] border border-[#bbf7d0] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                      <Users className="h-4.5 w-4.5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-[13px] font-extrabold text-slate-900 leading-tight">
+                        Same Trusted Service
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 font-normal">
+                        The same local teams you know
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pillar 2 */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="h-9 w-9 rounded-full bg-[#fee2e2] text-[#dc2626] border border-[#fecaca] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                      <TrendingUp className="h-4.5 w-4.5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-[13px] font-extrabold text-slate-900 leading-tight">
+                        Greater Investment
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 font-normal">
+                        Improved stores and facilities
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pillar 3 */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="h-9 w-9 rounded-full bg-[#dbeafe] text-[#2563eb] border border-[#bfdbfe] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                      <Store className="h-4.5 w-4.5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-[13px] font-extrabold text-slate-900 leading-tight">
+                        Expanded Network
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 font-normal">
+                        More locations and convenience
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pillar 4 */}
+                  <div className="flex items-start gap-3.5">
+                    <div className="h-9 w-9 rounded-full bg-[#fef3c7] text-[#d97706] border border-[#fde68a] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                      <Sparkles className="h-4.5 w-4.5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <div className="text-xs sm:text-[13px] font-extrabold text-slate-900 leading-tight">
+                        A Brighter Future
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 font-normal">
+                        Supporting our communities
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      {/* =========================================================================
+          8. TEXACO BRIDGNORTH SERVICE STATION HIGHLIGHT SECTION
+          Independent Milestone Feature with subtle ambient pastel accents,
+          2-column showcase (Left: Forecourt photo, Right: Milestone card & details)
+      ========================================================================= */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-white border-b border-slate-200/60 relative overflow-hidden">
+        {/* Subtle Ambient Background Accents */}
+        <div className="absolute top-0 left-0 -translate-x-1/4 -translate-y-1/4 w-[420px] h-[420px] bg-emerald-100/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 translate-x-1/4 -translate-y-1/4 w-[460px] h-[460px] bg-red-100/35 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 w-[420px] h-[420px] bg-emerald-50/40 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="container-page relative z-10 space-y-8 sm:space-y-10">
+          {/* Top Row: Section Heading (Left) + Independent Texaco Brand Header (Right) */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 pb-2 border-b border-slate-100/80">
+            {/* Left: Eyebrow + Main Heading + Supporting Text */}
+            <div className="space-y-2 max-w-2xl">
+              <Reveal delay={0}>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-slate-800 text-[11px] font-extrabold uppercase tracking-widest shadow-2xs">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>LATEST MILESTONE</span>
+                </div>
+              </Reveal>
+
+              <Reveal delay={60} variant="heading">
+                <h2 className="text-2xl sm:text-3xl lg:text-[38px] xl:text-[42px] font-black text-slate-950 tracking-tight leading-[1.1] font-display uppercase">
+                  <span className="text-primary">TEXACO </span>
+                  <span>BRIDGNORTH SERVICE STATION</span>
+                </h2>
+              </Reveal>
+
+              <Reveal delay={100}>
+                <p className="text-sm sm:text-base text-slate-600 font-medium">
+                  Quality fuel. Great value. A local stop you can rely on.
+                </p>
+              </Reveal>
+            </div>
+
+            {/* Right: Independent Texaco Branding & Tagline */}
+            <Reveal delay={120}>
+              <div className="flex items-center gap-5 sm:gap-7 self-start md:self-center shrink-0">
+                {/* Texaco Logo */}
+                <div className="flex flex-col items-center">
                   <img
-                    src={gloucestershireMap}
-                    alt="Gloucestershire service delivery map showing John Stayte Services 40-mile coverage"
-                    className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 rounded-none"
+                    src="/brands/texaco-logo.svg"
+                    alt="Texaco"
+                    className="h-20 sm:h-24 md:h-28 w-auto object-contain drop-shadow-xs"
                     loading="lazy"
                   />
+                </div>
 
-                  {/* Clean Floating Status Bar Overlay */}
-                  <div className="absolute bottom-3.5 left-3.5 right-3.5 sm:bottom-4 sm:left-4 sm:right-4 bg-white/95 backdrop-blur-md rounded-full px-4 py-2.5 sm:py-3 border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.1)] flex items-center justify-between text-xs sm:text-[13px]">
+                {/* Vertical Divider */}
+                <div className="h-16 sm:h-20 w-px bg-slate-200/90" />
+
+                {/* Tagline with red underline */}
+                <div className="flex flex-col justify-center">
+                  <span className="text-sm sm:text-base font-black text-slate-900 tracking-wider uppercase leading-tight font-display">
+                    FUELING <br />
+                    STRONGER <br />
+                    COMMUNITIES.
+                  </span>
+                  <div className="w-10 h-0.5 bg-primary rounded-full mt-2" />
+                </div>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Main 2-Column Content: Left Forecourt Image + Right Milestone Card */}
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
+            {/* LEFT COLUMN: Clean Realistic Texaco Forecourt Photograph */}
+            <div className="lg:col-span-6 xl:col-span-6 flex">
+              <Reveal delay={150} variant="image" className="w-full h-full">
+                <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-[0_12px_36px_-10px_rgba(0,0,0,0.12)] bg-slate-100 group w-full h-full min-h-[340px] sm:min-h-[420px] lg:min-h-full">
+                  <img
+                    src="/texaco-bridgnorth-station.jpg"
+                    alt="Texaco Bridgnorth Service Station forecourt"
+                    className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700"
+                    loading="lazy"
+                  />
+                </div>
+              </Reveal>
+            </div>
+
+            {/* RIGHT COLUMN: Milestone Card, Location Box, 4 Feature Pillars & CTA */}
+            <div className="lg:col-span-6 xl:col-span-6 flex">
+              <Reveal delay={200} className="w-full">
+                <div className="rounded-2xl sm:rounded-3xl bg-white border border-slate-200/80 p-6 sm:p-8 lg:p-9 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col justify-between space-y-6 h-full">
+                  {/* Top: Acquired On Date + Title + Narrative */}
+                  <div className="space-y-3.5">
+                    {/* Date Pill */}
                     <div className="flex items-center gap-2.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-                      <span className="font-extrabold text-slate-800">
-                        Daily Delivery Fleet Active
-                      </span>
+                      <div className="h-8 w-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-primary shrink-0">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-primary leading-tight">
+                          ACQUIRED ON
+                        </div>
+                        <div className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight">
+                          19 March 2026
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-primary font-black tracking-wide">40-Mile Radius</span>
+
+                    {/* Section Card Heading */}
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
+                      Texaco Bridgnorth Service Station
+                    </h3>
+
+                    {/* Detailed Acquisition Description */}
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                      We are delighted to announce the acquisition of Texaco Bridgnorth Service Station on 19 March 2026, marking another important milestone in our continued growth as one of the UK’s leading independent forecourt operators.
+                    </p>
+                  </div>
+
+                  {/* Location Address & Phone Box */}
+                  <div className="flex items-start gap-3.5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-slate-50 border border-slate-200/70">
+                    <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+                      <MapPin className="h-4 w-4" />
+                    </div>
+                    <div className="space-y-0.5 text-xs sm:text-[13px]">
+                      <div className="font-extrabold text-slate-900">
+                        Texaco Bridgnorth Service Station
+                      </div>
+                      <div className="text-slate-600 font-medium">
+                        Wyken, Bridgnorth, WV15 5NR
+                      </div>
+                      <div className="text-slate-500 font-medium flex items-center gap-1 pt-0.5 text-[11px] sm:text-xs">
+                        <Phone className="h-3 w-3 text-slate-400" />
+                        <span>Phone: 01902 965364</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Supporting Feature Highlight Pillars */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    {/* Pillar 1: Quality Fuel */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/60 text-center space-y-1.5 flex flex-col items-center">
+                      <div className="h-9 w-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center shadow-2xs">
+                        <Fuel className="h-4 w-4" />
+                      </div>
+                      <div className="font-black text-slate-900 text-xs">Quality Fuel</div>
+                      <div className="text-[10px] text-slate-500 leading-tight">
+                        Reliable fuel for everyday journeys
+                      </div>
+                    </div>
+
+                    {/* Pillar 2: Convenience Store */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/60 text-center space-y-1.5 flex flex-col items-center">
+                      <div className="h-9 w-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-2xs">
+                        <Store className="h-4 w-4" />
+                      </div>
+                      <div className="font-black text-slate-900 text-xs">Convenience Store</div>
+                      <div className="text-[10px] text-slate-500 leading-tight">
+                        Everyday essentials and more
+                      </div>
+                    </div>
+
+                    {/* Pillar 3: Easy Access */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/60 text-center space-y-1.5 flex flex-col items-center">
+                      <div className="h-9 w-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shadow-2xs">
+                        <Car className="h-4 w-4" />
+                      </div>
+                      <div className="font-black text-slate-900 text-xs">Easy Access</div>
+                      <div className="text-[10px] text-slate-500 leading-tight">
+                        Convenient location for local drivers
+                      </div>
+                    </div>
+
+                    {/* Pillar 4: Local Community */}
+                    <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/60 text-center space-y-1.5 flex flex-col items-center">
+                      <div className="h-9 w-9 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shadow-2xs">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div className="font-black text-slate-900 text-xs">Local Community</div>
+                      <div className="text-[10px] text-slate-500 leading-tight">
+                        Proud to serve Bridgnorth
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Red Primary Button & Quote */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-t border-slate-100">
+                    <Link
+                      to="/filling-stations"
+                      className="px-6 py-3 rounded-full bg-primary hover:bg-primary/90 text-white font-extrabold text-xs sm:text-sm shadow-[0_4px_16px_rgba(220,38,38,0.25)] hover:shadow-[0_6px_22px_rgba(220,38,38,0.35)] inline-flex items-center justify-center gap-2 transition-all cursor-pointer group shrink-0"
+                    >
+                      <span>Learn More About Our Locations</span>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+
+                    <div className="border-l-2 border-primary pl-3 py-0.5">
+                      <p className="text-[11px] sm:text-xs font-semibold text-slate-600 italic leading-snug">
+                        “Supporting local communities for a brighter tomorrow.”
+                      </p>
+                    </div>
                   </div>
                 </div>
               </Reveal>
@@ -1074,6 +1667,239 @@ function AboutPage() {
           </div>
         </div>
       </section>
+
+      {/* =========================================================================
+          PROUDLY PARTNERED WITH (CORPORATE PARTNERSHIPS SECTION)
+          Featuring Calor, Air Liquide, and BOC in premium cards with high-res branding,
+          capability tags, and direct product catalog links.
+      ========================================================================= */}
+      <section
+        className="py-14 sm:py-20 lg:py-24 border-b border-slate-200/60 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/partnerships-bg.png')",
+        }}
+      >
+        {/* Soft light overlay so the background image is subtle & cards/text remain ultra-readable */}
+        <div className="absolute inset-0 bg-white/70 backdrop-blur-[0.5px] pointer-events-none" />
+
+        <div className="container-page relative z-10 space-y-10 sm:space-y-14">
+          {/* Section Header: Pill, Heading, Subtitle & Red Accent Bar */}
+          <div className="text-center space-y-3.5 max-w-3xl mx-auto">
+            <Reveal delay={0}>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-red-50/90 border border-red-200/70 text-red-700 text-[11px] sm:text-xs font-black uppercase tracking-widest shadow-2xs">
+                <HeartHandshake className="h-3.5 w-3.5 text-primary" />
+                <span>TRUSTED BRANDS. STRONGER TOGETHER.</span>
+              </div>
+            </Reveal>
+
+            <Reveal delay={60} variant="heading">
+              <h2 className="text-2xl sm:text-3xl lg:text-[40px] xl:text-[44px] font-black tracking-tight leading-[1.1] font-display uppercase">
+                <span className="text-slate-950">PROUDLY </span>
+                <span className="text-primary">PARTNERED WITH</span>
+              </h2>
+            </Reveal>
+
+            <Reveal delay={100}>
+              <p className="text-sm sm:text-base lg:text-lg text-slate-600 font-medium max-w-2xl mx-auto leading-relaxed">
+                We’re proud to work with trusted gas and energy brands, delivering reliable products and services to our customers.
+              </p>
+            </Reveal>
+
+            <Reveal delay={140}>
+              <div className="w-12 h-1 bg-primary rounded-full mx-auto mt-2" />
+            </Reveal>
+          </div>
+
+          {/* Three Premium Brand Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-7 lg:gap-8 items-stretch">
+            {/* BRAND 1: CALOR */}
+            <Reveal delay={150} variant="card" className="flex">
+              <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-6 sm:p-7 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_45px_rgba(220,38,38,0.08)] hover:border-red-200/90 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden group">
+                {/* Ambient corner glow */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-100/40 via-red-50/10 to-transparent rounded-bl-full pointer-events-none" />
+
+                <div className="space-y-4 sm:space-y-5">
+                  {/* Brand Logo Header */}
+                  <div className="flex items-center min-h-[90px] sm:min-h-[105px] md:min-h-[115px]">
+                    <img
+                      src="/brands/calor-partner-logo.png"
+                      alt="Calor"
+                      className="h-16 sm:h-20 md:h-22 lg:h-24 w-auto max-w-[260px] sm:max-w-[290px] md:max-w-[320px] object-contain shrink-0 mix-blend-multiply select-none"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  {/* Brand Description */}
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                    Calor is one of the UK’s leading suppliers of LPG, providing reliable and efficient energy for homes, businesses and rural communities.
+                  </p>
+
+                  {/* 3 Capability Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Home className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                      <span>Home Heating</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Building2 className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                      <span>Business Energy</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Sprout className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>Cleaner Tomorrow</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom CTA Button */}
+                <div className="pt-6 border-t border-slate-100 mt-6">
+                  <Button
+                    asChild
+                    className="w-full rounded-full bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Link
+                      to="/order-gas"
+                      search={{ brand: "Calor" }}
+                    >
+                      <span>View Products</span>
+                      <ArrowRight className="h-4 w-4 stroke-[2.5]" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* BRAND 2: AIR LIQUIDE */}
+            <Reveal delay={200} variant="card" className="flex">
+              <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-6 sm:p-7 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_45px_rgba(220,38,38,0.08)] hover:border-red-200/90 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden group">
+                {/* Ambient corner glow */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-sky-100/40 via-red-50/10 to-transparent rounded-bl-full pointer-events-none" />
+
+                <div className="space-y-4 sm:space-y-5">
+                  {/* Brand Logo Header */}
+                  <div className="flex items-center min-h-[90px] sm:min-h-[105px] md:min-h-[115px]">
+                    <img
+                      src="/brands/air-liquide-partner.png"
+                      alt="Air Liquide"
+                      className="h-16 sm:h-20 md:h-22 lg:h-24 w-auto max-w-[260px] sm:max-w-[290px] md:max-w-[320px] object-contain shrink-0 mix-blend-multiply select-none"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  {/* Brand Description */}
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                    Air Liquide supplies industrial and specialty gases with a focus on innovation, safety and sustainability across multiple sectors.
+                  </p>
+
+                  {/* 3 Capability Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Settings className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                      <span>Industrial Gases</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Lightbulb className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span>Innovative Solutions</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Sprout className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>Sustainable Future</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom CTA Button */}
+                <div className="pt-6 border-t border-slate-100 mt-6">
+                  <Button
+                    asChild
+                    className="w-full rounded-full bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Link
+                      to="/order-gas"
+                      search={{ brand: "Air Liquide" }}
+                    >
+                      <span>View Products</span>
+                      <ArrowRight className="h-4 w-4 stroke-[2.5]" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* BRAND 3: BOC */}
+            <Reveal delay={250} variant="card" className="flex">
+              <div className="w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-6 sm:p-7 lg:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_45px_rgba(220,38,38,0.08)] hover:border-red-200/90 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between relative overflow-hidden group">
+                {/* Ambient corner glow */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-red-100/40 via-red-50/10 to-transparent rounded-bl-full pointer-events-none" />
+
+                <div className="space-y-4 sm:space-y-5">
+                  {/* Brand Logo Header */}
+                  <div className="flex items-center min-h-[90px] sm:min-h-[105px] md:min-h-[115px]">
+                    <img
+                      src="/brands/boc-logo.svg"
+                      alt="BOC - A Linde company"
+                      className="h-16 sm:h-20 md:h-22 lg:h-24 w-auto max-w-[260px] sm:max-w-[290px] md:max-w-[320px] object-contain shrink-0 select-none"
+                      loading="lazy"
+                    />
+                  </div>
+
+                  {/* Brand Description */}
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                    BOC is a trusted name in industrial, medical and specialty gases, delivering high-quality solutions for a safer and more productive tomorrow.
+                  </p>
+
+                  {/* 3 Capability Pills */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <ShieldCheck className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                      <span>Medical Gases</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Settings className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                      <span>Industrial Solutions</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 text-[11px] sm:text-xs font-semibold text-slate-700">
+                      <Sprout className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span>A Cleaner, Safer World</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom CTA Button */}
+                <div className="pt-6 border-t border-slate-100 mt-6">
+                  <Button
+                    asChild
+                    className="w-full rounded-full bg-primary hover:bg-primary/90 text-white font-bold text-xs sm:text-sm h-11 sm:h-12 shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Link
+                      to="/order-gas"
+                      search={{ category: "boc-gases" }}
+                    >
+                      <span>View Products</span>
+                      <ArrowRight className="h-4 w-4 stroke-[2.5]" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Section Footer: "Stronger Together" motif */}
+          <Reveal delay={300}>
+            <div className="pt-6 sm:pt-8 text-center space-y-2">
+              <div className="text-2xl sm:text-3xl font-serif italic text-slate-400 font-light select-none tracking-wide">
+                Stronger Together
+              </div>
+              <div className="flex items-center justify-center gap-3 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.25em] text-slate-400">
+                <span className="h-px w-10 sm:w-16 bg-slate-200" />
+                <span>PEOPLE • PARTNERSHIPS • A CLEANER BRITAIN</span>
+                <span className="h-px w-10 sm:w-16 bg-slate-200" />
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
 
       {/* =========================================================================
           8. OUR FLEET / DELIVERY SECTION ("Own Vehicle Fleet")
@@ -1234,7 +2060,7 @@ function AboutPage() {
                   btnText: "text-red-600",
                   btnHoverBg: "hover:bg-red-600",
                   btnHoverText: "hover:text-white",
-                  defaultImg: stationImg,
+                  defaultImg: "/fromebridge-service-station-1.jpg",
                 },
                 {
                   badgeBg: "bg-emerald-50",
@@ -1244,7 +2070,7 @@ function AboutPage() {
                   btnText: "text-emerald-700",
                   btnHoverBg: "hover:bg-emerald-600",
                   btnHoverText: "hover:text-white",
-                  defaultImg: stationWildGooseBP,
+                  defaultImg: "/wild-goose-garage-1.jpg",
                 },
                 {
                   badgeBg: "bg-sky-50",
@@ -1254,16 +2080,24 @@ function AboutPage() {
                   btnText: "text-sky-700",
                   btnHoverBg: "hover:bg-sky-600",
                   btnHoverText: "hover:text-white",
-                  defaultImg: stationBridge76,
+                  defaultImg: "/bridge-station-forecourt.jpg",
                 },
               ];
               const style = styles[idx % styles.length];
               const stationImagesMap: Record<string, string> = {
-                "Fromebridge Service Station": stationImg,
-                "Wild Goose Garage": stationWildGooseBP,
-                "Bridge Service Station": stationBridge76,
+                "Fromebridge Service Station": "/fromebridge-service-station-1.jpg",
+                "Wild Goose Garage": "/wild-goose-garage-1.jpg",
+                "Bridge Service Station": "/bridge-station-forecourt.jpg",
               };
-              const imgSrc = stn.image_url || stationImagesMap[stn.name] || style.defaultImg;
+              const getStationImage = (name: string, fallback: string) => {
+                if (!name) return fallback;
+                const lower = name.toLowerCase();
+                if (lower.includes("fromebridge")) return "/fromebridge-service-station-1.jpg";
+                if (lower.includes("wild goose")) return "/wild-goose-garage-1.jpg";
+                if (lower.includes("bridge")) return "/bridge-station-forecourt.jpg";
+                return stationImagesMap[name] || fallback;
+              };
+              const imgSrc = getStationImage(stn.name, stn.image_url || style.defaultImg);
 
               return (
                 <Reveal key={stn.name || idx} variant="card" delay={idx * 110} className="h-full">
@@ -1277,11 +2111,6 @@ function AboutPage() {
                           className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-500 rounded-none"
                           loading="lazy"
                         />
-                        {/* Overlaid OPEN NOW Status Badge */}
-                        <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 bg-white/95 backdrop-blur-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-slate-800 border border-white/80 shadow-2xs flex items-center gap-1.5 pointer-events-none">
-                          <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                          <span>OPEN NOW</span>
-                        </div>
                       </div>
 
                       {/* Card Content */}
@@ -1429,12 +2258,12 @@ function AboutPage() {
 
             {/* Right Side: Image Collage (~58% desktop width) */}
             <div className="lg:col-span-7 xl:col-span-7 space-y-3 sm:space-y-3.5">
-              {/* 1. Large Horizontal Rectangular Image at Top */}
+              {/* 1. Large Horizontal Rectangular Image at Top: JSS Engineer Home Visit */}
               <Reveal delay={120} variant="image">
                 <div className="rounded-[12px] sm:rounded-[14px] overflow-hidden border border-slate-200/90 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.12)] bg-slate-50 relative aspect-[16/9.5] sm:aspect-[16/9.2] w-full group">
                   <img
-                    src="/our-promise-main-exact.jpg"
-                    alt="Customer speaking with the John Stayte Services technician in the kitchen"
+                    src="/our-promise-service-visit.jpg"
+                    alt="John Stayte Services professional gas engineer advising a Gloucestershire homeowner"
                     className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 rounded-none"
                     loading="lazy"
                   />
@@ -1443,36 +2272,36 @@ function AboutPage() {
 
               {/* 2. Three Supporting Images Below in One Horizontal Row */}
               <div className="grid grid-cols-3 gap-2.5 sm:gap-3.5">
-                {/* Image 1: Bottom-left — warm living room with radiator */}
+                {/* Image 1: Bottom-left — Home Heating */}
                 <Reveal delay={200} variant="image">
                   <div className="rounded-[10px] sm:rounded-[12px] overflow-hidden border border-slate-200/80 shadow-2xs aspect-[4/3] bg-slate-50 group">
                     <img
-                      src="/our-promise-radiator-exact.jpg"
-                      alt="Warm modern UK living room with column radiator central heating"
+                      src="/our-promise-home-heating.jpg"
+                      alt="Comfortable UK home interior with modern column radiator home heating"
                       className="w-full h-full object-cover object-center group-hover:scale-104 transition-transform duration-500 rounded-none"
                       loading="lazy"
                     />
                   </div>
                 </Reveal>
 
-                {/* Image 2: Bottom-middle — indoor wood-burning stove with coal basket */}
+                {/* Image 2: Bottom-middle — Wood & Solid Fuel */}
                 <Reveal delay={280} variant="image">
                   <div className="rounded-[10px] sm:rounded-[12px] overflow-hidden border border-slate-200/80 shadow-2xs aspect-[4/3] bg-slate-50 group">
                     <img
-                      src="/our-promise-stove-exact.jpg"
-                      alt="Indoor wood-burning stove with coal basket"
+                      src="/our-promise-wood-stove.jpg"
+                      alt="Cosy Cotswold fireplace with wood-burning stove and firewood logs"
                       className="w-full h-full object-cover object-center group-hover:scale-104 transition-transform duration-500 rounded-none"
                       loading="lazy"
                     />
                   </div>
                 </Reveal>
 
-                {/* Image 3: Bottom-right — clean modern gas hob with blue flame */}
+                {/* Image 3: Bottom-right — Gas & Cooking */}
                 <Reveal delay={360} variant="image">
                   <div className="rounded-[10px] sm:rounded-[12px] overflow-hidden border border-slate-200/80 shadow-2xs aspect-[4/3] bg-slate-50 group">
                     <img
-                      src="/our-promise-gashob-exact.jpg"
-                      alt="Clean modern kitchen stainless steel gas hob with clean burning blue flame"
+                      src="/our-promise-gas-hob.jpg"
+                      alt="Contemporary kitchen gas hob with clean burning blue flame"
                       className="w-full h-full object-cover object-center group-hover:scale-104 transition-transform duration-500 rounded-none"
                       loading="lazy"
                     />

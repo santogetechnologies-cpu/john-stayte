@@ -4,13 +4,13 @@ import { DeliveryPortalLayout } from "@/components/delivery/DeliveryPortalLayout
 export const Route = createFileRoute("/delivery")({
   head: () => ({
     meta: [
-      { title: "Delivery Agent Portal | John Stayte Services" },
+      { title: "Driver Portal | John Stayte Services" },
       {
         name: "description",
         content:
           "Official logistics and route management console for John Stayte Services delivery drivers.",
       },
-      { property: "og:title", content: "Delivery Agent Portal | John Stayte Services" },
+      { property: "og:title", content: "Driver Portal | John Stayte Services" },
     ],
   }),
   component: DeliveryLayout,

@@ -342,8 +342,11 @@ export function DeliveryMyDeliveriesView({ initialFilter = "all" }: DeliveryMyDe
                         <Phone className="h-3 w-3 text-slate-400" />{" "}
                         {o.customer_phone || "07700 900123"}
                       </span>
-                      <span className="text-[11px] font-bold text-slate-500">
-                        {d.time_slot || "Morning Slot"}
+                      <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                        {(o.delivery_date || d.scheduled_date)
+                          ? `${new Date(o.delivery_date || d.scheduled_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} • `
+                          : ""}
+                        {o.delivery_slot || d.time_slot || "Morning Slot"}
                       </span>
                     </div>
                   </div>

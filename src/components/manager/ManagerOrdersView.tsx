@@ -1,6 +1,19 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ShoppingBag, Search, Eye, Filter, X, Clock, PackageCheck, Truck, ArrowRight } from "lucide-react";
+import {
+  ShoppingBag,
+  Search,
+  Eye,
+  Filter,
+  X,
+  Clock,
+  PackageCheck,
+  Truck,
+  ArrowRight,
+  Calendar,
+  Edit2,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -39,6 +52,20 @@ export function ManagerOrdersView() {
     return "all";
   });
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Delivery Schedule Management State
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [schedDate, setSchedDate] = useState("");
+  const [schedSlot, setSchedSlot] = useState("Morning (08:00 - 12:00)");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setSchedDate(selectedOrder.delivery_date || "");
+      setSchedSlot(selectedOrder.delivery_slot || "Morning (08:00 - 12:00)");
+      setEditingSchedule(false);
+    }
+  }, [selectedOrder]);
 
   // Keep statusFilter synchronized with live router location changes
   useEffect(() => {
@@ -175,6 +202,83 @@ export function ManagerOrdersView() {
       await loadOrders();
     } catch (err: any) {
       toast.error("Failed to update order status: " + err.message);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!selectedOrder) return;
+    if (!schedDate) {
+      return toast.error("Please select a delivery date.");
+    }
+    setSavingSchedule(true);
+    try {
+      const { data: authUser } = await supabase.auth.getUser();
+
+      // 1. Update orders table in Supabase
+      const { error: orderErr } = await (supabase.from("orders") as any)
+        .update({
+          delivery_date: schedDate,
+          delivery_slot: schedSlot,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedOrder.id);
+
+      if (orderErr) throw orderErr;
+
+      // 2. Synchronize delivery_assignments table
+      try {
+        await (supabase.from("delivery_assignments") as any)
+          .update({
+            scheduled_date: schedDate,
+            time_slot: schedSlot,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("order_id", selectedOrder.id);
+      } catch (delErr) {
+        console.warn("delivery_assignments schedule sync notice:", delErr);
+      }
+
+      // 3. Log into order_status_history
+      try {
+        await supabase.from("order_status_history").insert([
+          {
+            order_id: selectedOrder.id,
+            status: selectedOrder.status || "Pending",
+            actor_id: authUser?.user?.id || null,
+            created_by: authUser?.user?.id || null,
+            notes: `Delivery schedule set to ${new Date(schedDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} (${schedSlot}) by Manager`,
+          },
+        ]);
+      } catch (histErr) {
+        console.warn("Status history notice:", histErr);
+      }
+
+      // 4. Send customer notification if schedule assigned/changed
+      if (selectedOrder.customer_id) {
+        try {
+          await (supabase.from("notifications") as any).insert([
+            {
+              user_id: selectedOrder.customer_id,
+              title: "Delivery Schedule Updated",
+              message: `Your order #${selectedOrder.order_number || selectedOrder.id.slice(0, 8)} is scheduled for delivery on ${new Date(schedDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} (${schedSlot}).`,
+              type: "delivery_update",
+            },
+          ]);
+        } catch (notifErr) {
+          console.warn("Notification insert notice:", notifErr);
+        }
+      }
+
+      toast.success(`Delivery schedule saved for order #${selectedOrder.order_number || selectedOrder.id.slice(0, 8)}`);
+      setSelectedOrder((prev: any) =>
+        prev ? { ...prev, delivery_date: schedDate, delivery_slot: schedSlot } : null,
+      );
+      setEditingSchedule(false);
+      await loadOrders();
+    } catch (err: any) {
+      toast.error("Failed to save delivery schedule: " + err.message);
+    } finally {
+      setSavingSchedule(false);
     }
   };
 
@@ -428,10 +532,124 @@ export function ManagerOrdersView() {
 
               <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
                 <p className="font-bold text-foreground">Customer</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_name}</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
-                {selectedOrder.shipping_address && (
-                  <p className="text-muted-foreground mt-1">{selectedOrder.shipping_address}</p>
+                <p className="text-muted-foreground">{selectedOrder.customer_name || "Guest Customer"}</p>
+                {selectedOrder.customer_email && (
+                  <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+                )}
+                <p className="text-muted-foreground mt-1">
+                  {typeof selectedOrder.shipping_address === "string"
+                    ? selectedOrder.shipping_address
+                    : typeof selectedOrder.delivery_address === "string"
+                    ? selectedOrder.delivery_address
+                    : typeof selectedOrder.delivery_address === "object" && selectedOrder.delivery_address !== null
+                    ? [selectedOrder.delivery_address.street, selectedOrder.delivery_address.city, selectedOrder.delivery_address.postcode].filter(Boolean).join(", ")
+                    : "Gloucestershire Address"}
+                </p>
+              </div>
+
+              {/* Delivery Schedule Management Section */}
+              <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                    <Calendar className="h-4 w-4 text-primary" /> Delivery Schedule
+                  </span>
+                  {!editingSchedule && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingSchedule(true)}
+                      className="h-7 text-[11px] font-bold rounded-xl border-slate-300 gap-1 bg-white hover:bg-slate-100"
+                    >
+                      <Edit2 className="h-3 w-3" /> Edit Schedule
+                    </Button>
+                  )}
+                </div>
+
+                {editingSchedule ? (
+                  <div className="space-y-3 pt-1 animate-in fade-in">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Delivery Date
+                      </label>
+                      <Input
+                        type="date"
+                        value={schedDate}
+                        onChange={(e) => setSchedDate(e.target.value)}
+                        className="h-8 rounded-xl text-xs bg-white border-slate-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Delivery Slot
+                      </label>
+                      <Select value={schedSlot} onValueChange={setSchedSlot}>
+                        <SelectTrigger className="h-8 rounded-xl text-xs bg-white border-slate-300 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="Morning (08:00 - 12:00)">Morning (08:00 - 12:00)</SelectItem>
+                          <SelectItem value="Afternoon (12:00 - 16:00)">Afternoon (12:00 - 16:00)</SelectItem>
+                          <SelectItem value="Evening (16:00 - 20:00)">Evening (16:00 - 20:00)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSaveSchedule}
+                        disabled={savingSchedule}
+                        className="h-7 rounded-xl text-[11px] font-bold bg-primary hover:bg-primary/90 text-white"
+                      >
+                        {savingSchedule ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...
+                          </>
+                        ) : (
+                          "Save Delivery Schedule"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingSchedule(false);
+                          setSchedDate(selectedOrder.delivery_date || "");
+                          setSchedSlot(selectedOrder.delivery_slot || "Morning (08:00 - 12:00)");
+                        }}
+                        className="h-7 rounded-xl text-[11px] font-medium"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Date
+                      </span>
+                      <span className="font-extrabold text-foreground">
+                        {selectedOrder.delivery_date
+                          ? new Date(selectedOrder.delivery_date).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "Not scheduled"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Time Slot
+                      </span>
+                      <span className="font-extrabold text-foreground">
+                        {selectedOrder.delivery_slot || "Not scheduled"}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
 
