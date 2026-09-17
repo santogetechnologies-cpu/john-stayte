@@ -60,6 +60,7 @@ import { DistributorBrandBanners } from "@/components/site/DistributorBrandBanne
 import { OrderGasHeroNetworkMesh } from "@/components/site/OrderGasHeroNetworkMesh";
 import { OrderGasShopByCategory } from "@/components/site/OrderGasShopByCategory";
 import { OrderGasReveal3D } from "@/components/site/OrderGasReveal3D";
+import { speakLoginError, speakLoginSuccess } from "@/lib/auth-voice";
 
 export const Route = createFileRoute("/order-gas")({
   validateSearch: (search: Record<string, unknown>): { brand?: string; category?: string; usage?: string } => {
@@ -608,12 +609,23 @@ function OrderGasPage() {
   // Inline auth handler
   const handleInlineAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authEmail || !authPassword) return toast.error("Email and password are required.");
+    if (!authEmail || !authPassword) {
+      if (!authEmail || !authEmail.includes("@")) {
+        speakLoginError("wrong email", authEmail);
+      } else {
+        speakLoginError("Sign in failed. Please check your details and try again.", authEmail);
+      }
+      return toast.error("Email and password are required.");
+    }
     setAuthLoading(true);
     try {
       if (authMode === "login") {
         const res = await login(authEmail, authPassword);
-        if (!res.ok) throw new Error(res.error || "Invalid credentials.");
+        if (!res.ok) {
+          speakLoginError(res.error, authEmail);
+          throw new Error(res.error || "Invalid credentials.");
+        }
+        speakLoginSuccess(res.user?.role);
         toast.success("Signed in successfully!");
         setAuthModalOpen(false);
 
@@ -636,6 +648,7 @@ function OrderGasPage() {
         setShowApplicationModal(true);
       }
     } catch (err: any) {
+      speakLoginError(err.message, authEmail);
       toast.error(err.message);
     } finally {
       setAuthLoading(false);

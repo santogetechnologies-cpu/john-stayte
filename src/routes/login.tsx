@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { speakLoginError, speakLoginSuccess } from "@/lib/auth-voice";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -112,6 +113,11 @@ function LoginPage() {
 
     if (!signInEmail || !signInPassword) {
       setAuthStatus("error");
+      if (!signInEmail || !signInEmail.includes("@")) {
+        speakLoginError("wrong email", signInEmail);
+      } else {
+        speakLoginError("Sign in failed. Please check your details and try again.", signInEmail);
+      }
       return setFormError("Please enter both email address and password.");
     }
 
@@ -124,22 +130,14 @@ function LoginPage() {
       if (!res.ok || !res.user) {
         setAuthStatus("error");
         setFormError(res.error || "Invalid email or password.");
-        try {
-          if ("speechSynthesis" in window) {
-            const utter = new SpeechSynthesisUtterance("Wrong password.");
-            utter.rate = 1.0;
-            utter.pitch = 1.0;
-            window.speechSynthesis.speak(utter);
-          }
-        } catch {
-          // ignore speech error
-        }
+        speakLoginError(res.error, signInEmail);
         setTimeout(() => setAuthStatus("idle"), 1500);
         return;
       }
 
-      // Real Authentication Success Animation
+      // Real Authentication Success Animation & Role-Aware Voice Feedback
       setAuthStatus("success");
+      speakLoginSuccess(res.user.role);
       toast.success(`Welcome back, ${res.user.name}`);
       setTimeout(() => {
         redirectByRole(res.user!.role);
@@ -148,6 +146,7 @@ function LoginPage() {
       setLoading(false);
       setAuthStatus("error");
       setFormError("Unable to sign in. Please check your credentials and try again.");
+      speakLoginError(err?.message || "Unable to sign in.", signInEmail);
       setTimeout(() => setAuthStatus("idle"), 1500);
     }
   };
