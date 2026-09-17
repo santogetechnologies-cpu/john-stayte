@@ -1246,20 +1246,12 @@ function AboutPage() {
                     </span>
 
                     {/* NIZA Group Official Brand Logo */}
-                    <div className="flex items-center gap-2.5 sm:gap-3 transition-transform duration-300 hover:scale-105">
+                    <div className="flex items-center transition-transform duration-300 hover:scale-105">
                       <img
                         src="/brands/niza-group-official.png"
                         alt="NIZA Group"
-                        className="h-16 sm:h-20 md:h-22 w-auto object-contain drop-shadow-sm"
+                        className="h-16 sm:h-20 md:h-22 w-auto object-contain drop-shadow-xs"
                       />
-                      <div className="text-left font-display">
-                        <div className="text-2xl sm:text-3xl md:text-[32px] font-black text-[#059669] tracking-tight leading-none">
-                          NIZA
-                        </div>
-                        <div className="text-xs sm:text-sm md:text-base font-black text-slate-800 tracking-widest leading-none mt-1">
-                          GROUP
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -1359,36 +1351,48 @@ function AboutPage() {
 
             </div>
 
-            {/* RIGHT COLUMN: Executive Message Card & Value Pillars (5 cols) */}
+            {/* RIGHT COLUMN: Strengthening Niza Group Information Card & Value Pillars (5 cols) */}
             <div className="lg:col-span-5 space-y-4 sm:space-y-5">
               
-              {/* Executive Message Card */}
+              {/* Strengthening Niza Group Information Card */}
               <Reveal delay={60} variant="card">
-                <div className="p-5 sm:p-6 rounded-2xl bg-[#f0f9f4]/90 backdrop-blur-md border border-[#d1ebd9] shadow-2xs space-y-3">
-                  <div className="flex items-center gap-3.5">
-                    <div className="h-10 w-10 rounded-full bg-[#dcfce7] border border-[#bbf7d0] text-[#059669] flex items-center justify-center shrink-0 shadow-2xs">
-                      <Quote className="h-4.5 w-4.5 fill-[#059669]/20" />
-                    </div>
-                    <div>
-                      <div className="text-[10.5px] font-extrabold text-slate-500 uppercase tracking-wider">
-                        A MESSAGE FROM
-                      </div>
-                      <div className="text-base sm:text-lg font-black text-[#059669] leading-tight">
-                        Chandran Manoharan
-                      </div>
-                      <div className="text-xs text-slate-600 font-semibold mt-0.5">
-                        Managing Director of Office
-                      </div>
-                    </div>
+                <div className="p-5 sm:p-6 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs space-y-4">
+                  {/* Top: Heading & Narrative */}
+                  <div className="space-y-2.5">
+                    <h4 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight font-display">
+                      Strengthening Niza Group
+                    </h4>
+                    <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal">
+                      Niza Group has grown into one of the region’s leading independent forecourt operators, operating Esso and Texaco branded fuel stations together with modern convenience stores offering more than 1,000+ branded grocery and everyday products.
+                    </p>
+                    <p className="text-xs sm:text-[13px] text-slate-600 leading-relaxed font-normal">
+                      The acquisition of John Stayte Services allows us to expand our retail network further while preserving the excellent customer service and specialist product range that local communities have relied upon for generations.
+                    </p>
                   </div>
 
-                  <div className="pt-3 border-t border-[#d8eedf]">
-                    <p className="text-xs sm:text-[13px] text-slate-700 leading-relaxed font-normal">
-                      “We are delighted to welcome John Stayte Services into the Niza Group family. Together, we
-                      will continue to serve our local communities with trusted products and services, while
-                      investing for a brighter future.”
-                    </p>
-                    <div className="w-8 h-0.5 bg-[#059669] rounded-full mt-3" />
+                  {/* Bottom: Split Visual Area (NIZA Logo on Left, Statement on Right) */}
+                  <div className="pt-3.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center">
+                    {/* Left: Prominent Official NIZA Group Logo */}
+                    <div className="sm:col-span-6 flex items-center justify-center p-3 rounded-xl bg-gradient-to-br from-emerald-50/60 via-slate-50 to-white border border-emerald-100/60 shadow-2xs">
+                      <img
+                        src="/brands/niza-group-official.png"
+                        alt="NIZA Group Official Logo"
+                        className="h-9 sm:h-11 w-auto max-w-full object-contain drop-shadow-2xs"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </div>
+
+                    {/* Right: Statement with Accent Line */}
+                    <div className="sm:col-span-6 pl-1 sm:pl-2">
+                      <div className="text-[11px] sm:text-xs font-black text-slate-800 tracking-wider uppercase leading-tight font-display">
+                        INVESTING<br />
+                        IN PEOPLE,<br />
+                        PLACES AND<br />
+                        COMMUNITIES
+                      </div>
+                      <div className="w-8 h-0.5 bg-[#16a34a] rounded-full mt-2" />
+                    </div>
                   </div>
                 </div>
               </Reveal>
