@@ -243,7 +243,7 @@ export function speakLoginError(errorMessage?: string, email?: string): void {
     err.includes("email address is invalid") ||
     err.includes("wrong email")
   ) {
-    speakVoiceFeedback("Hmm... you entered the wrong email. Please check it once and try again.");
+    speakVoiceFeedback("Oops! You entered the wrong email. Please check it once and try again.");
     return;
   }
 
@@ -270,8 +270,8 @@ export function speakLoginError(errorMessage?: string, email?: string): void {
  */
 export function speakLoginSuccess(role?: string): void {
   if (role === "admin") {
-    speakVoiceFeedback("Welcome, Admin! You're all set.");
+    speakVoiceFeedback("Welcome, Admin! Have a great day!");
   } else {
-    speakVoiceFeedback("Yay! Welcome to John Stayte Services. Great to have you back!");
+    speakVoiceFeedback("hello! Welcome to John Stayte Services. Great to have you back!");
   }
 }
