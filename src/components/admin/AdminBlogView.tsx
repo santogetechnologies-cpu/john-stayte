@@ -85,7 +85,7 @@ export const ALL_EXISTING_BLOG_POSTS = [
     excerpt:
       "5 immediate actions if you smell gas or suspect an LPG leak: isolate valve, extinguish naked flames, do not operate light switches, open windows, and evacuate.",
     content:
-      "If you detect the distinctive rotten-egg odorant of LPG: 1. Do NOT turn electrical switches ON or OFF. 2. Extinguish all naked flames immediately. 3. Turn off the cylinder valve handwheel clockwise. 4. Open doors and windows wide. 5. Evacuate immediately and call our emergency line on 01452 741234.",
+      "If you detect the distinctive rotten-egg odorant of LPG: 1. Do NOT turn electrical switches ON or OFF. 2. Extinguish all naked flames immediately. 3. Turn off the cylinder valve handwheel clockwise. 4. Open doors and windows wide. 5. Evacuate immediately and call our emergency line on +44 (0)1453 822859.",
     image_url: "/gas-cylinder-safety-measures.jpg",
     author_name: "John Stayte Emergency Response",
     is_published: true,

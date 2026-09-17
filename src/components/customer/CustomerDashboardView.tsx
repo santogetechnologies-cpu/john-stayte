@@ -12,16 +12,20 @@ import {
   Loader2,
   TrendingUp,
   Sparkles,
-  ChevronRight,
   Flame,
   FileText,
   AlertCircle,
+  Plus,
+  Star,
+  XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useStore, gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
+import { cleanImageUrl, cn } from "@/lib/utils";
 
 interface CustomerOrder {
   id: string;
@@ -32,16 +36,35 @@ interface CustomerOrder {
   order_items?: { id?: string; name?: string; quantity?: number; price?: number }[];
 }
 
+interface ShopProduct {
+  id: string;
+  slug: string;
+  name: string;
+  brand: string;
+  category_slug: string;
+  subcategory?: string | null;
+  price: number;
+  compare_at_price?: number | null;
+  stock: number;
+  image_url: string | null;
+  is_offer?: boolean;
+  is_featured?: boolean;
+  rating?: number;
+  reviews_count?: number;
+}
+
 export function CustomerDashboardView() {
-  const { user, wishlist } = useStore();
+  const { user, wishlist, toggleWishlist, addToCart } = useStore();
   const customerName = user?.name || "Customer";
 
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [ticketCount, setTicketCount] = useState<number>(0);
   const [customerApp, setCustomerApp] = useState<GasCustomerApplication | null>(null);
+  const [products, setProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
 
-  // Fetch real customer orders & data from Supabase
+  // Fetch real customer data & products from Supabase
   useEffect(() => {
     async function loadDashboardData() {
       setLoading(true);
@@ -50,12 +73,6 @@ export function CustomerDashboardView() {
         const currentEmail = authUser?.user?.email || user?.email;
         const currentUid = authUser?.user?.id || user?.id;
 
-        if (!currentEmail && !currentUid) {
-          setOrders([]);
-          setLoading(false);
-          return;
-        }
-
         // Fetch application status
         if (currentUid) {
           const app = await getCustomerGasApplication(currentUid);
@@ -63,22 +80,24 @@ export function CustomerDashboardView() {
         }
 
         // 1. Query Orders belonging to authenticated customer
-        const { data: orderData } = await supabase
-          .from("orders")
-          .select("*, order_items(*)")
-          .or(`customer_email.eq.${currentEmail},customer_id.eq.${authUser?.user?.id}`)
-          .order("created_at", { ascending: false });
+        if (currentEmail || currentUid) {
+          const { data: orderData } = await supabase
+            .from("orders")
+            .select("*, order_items(*)")
+            .or(`customer_email.eq.${currentEmail},customer_id.eq.${currentUid}`)
+            .order("created_at", { ascending: false });
 
-        if (orderData) {
-          setOrders(orderData);
+          if (orderData) {
+            setOrders(orderData);
+          }
         }
 
         // 2. Query support requests for customer filtered strictly by auth.uid()
-        if (authUser?.user?.id) {
+        if (currentUid) {
           const { count } = await supabase
             .from("support_tickets")
             .select("*", { count: "exact", head: true })
-            .eq("customer_id", authUser.user.id);
+            .eq("customer_id", currentUid);
           setTicketCount(count || 0);
         }
       } catch (err) {
@@ -88,7 +107,56 @@ export function CustomerDashboardView() {
       }
     }
 
+    async function loadFeaturedProducts() {
+      setLoadingProducts(true);
+      try {
+        // Query real store products from Supabase
+        const { data: prodData } = await supabase
+          .from("products")
+          .select("*")
+          .order("is_featured", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(8);
+
+        if (prodData && prodData.length > 0) {
+          const mapped: ShopProduct[] = prodData.map((p) => ({
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            brand: p.brand || "Calor",
+            category_slug: p.category_slug || "gas",
+            subcategory: p.subcategory || null,
+            price: Number(p.price || 0),
+            compare_at_price: p.compare_at_price ? Number(p.compare_at_price) : null,
+            stock: Number(p.stock ?? 10),
+            image_url: p.image_url,
+            is_offer: Boolean(p.is_offer),
+            is_featured: Boolean(p.is_featured),
+            rating: Number(p.rating || 5.0),
+            reviews_count: Number(p.reviews_count || 0),
+          }));
+
+          // Sort in-stock products first, then take 4
+          const sorted = mapped.sort((a, b) => {
+            if (a.stock > 0 && b.stock <= 0) return -1;
+            if (a.stock <= 0 && b.stock > 0) return 1;
+            return 0;
+          });
+
+          setProducts(sorted.slice(0, 4));
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("Failed to load shop products for dashboard:", err);
+        setProducts([]);
+      } finally {
+        setLoadingProducts(false);
+      }
+    }
+
     loadDashboardData();
+    loadFeaturedProducts();
 
     const channel = supabase
       .channel("customer_dashboard_realtime_kpis")
@@ -100,6 +168,9 @@ export function CustomerDashboardView() {
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () =>
         loadDashboardData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
+        loadFeaturedProducts(),
       )
       .subscribe();
 
@@ -119,60 +190,11 @@ export function CustomerDashboardView() {
     [activeOrders],
   );
 
-  const recentOrders = useMemo(() => orders.slice(0, 4), [orders]);
-
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
     if (hour < 17) return "Good afternoon";
     return "Good evening";
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Delivered":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/70">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-            Delivered
-          </span>
-        );
-      case "Out for Delivery":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200/70">
-            <span className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
-            Out for Delivery
-          </span>
-        );
-      case "Packed":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/70">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
-            Packed
-          </span>
-        );
-      case "Approved":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200/70">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
-            Approved
-          </span>
-        );
-      case "Cancelled":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
-            Cancelled
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-            Pending
-          </span>
-        );
-    }
   };
 
   const kpiCards = [
@@ -484,129 +506,232 @@ export function CustomerDashboardView() {
       </div>
 
       {/* ============================================================ */}
-      {/* 4. RECENT ORDERS                                            */}
+      {/* 4. SHOP PRODUCTS (PREMIUM ECOMMERCE SHOWCASE)                */}
       {/* ============================================================ */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between px-0.5">
-          <div>
-            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 tracking-tight">
-              Recent Orders
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Your latest cylinder and fuel orders processed by John Stayte Services
-            </p>
-          </div>
-          {orders.length > 0 && (
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 rounded-xl gap-1.5 h-8 px-3"
-            >
-              <Link to="/account/orders">
-                View All Orders <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 sm:gap-y-4">
+        {/* Section Header */}
+        <div className="col-span-1 px-0.5">
+          <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 tracking-tight">
+            Shop Products
+          </h2>
+          <p className="text-xs text-slate-500 font-medium">
+            Explore our latest gas, cylinders and home heating products.
+          </p>
         </div>
 
-        {loading ? (
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-10 text-center shadow-xs space-y-3">
-            <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
-            <p className="text-xs text-slate-500 font-bold">Loading your recent orders...</p>
-          </div>
-        ) : orders.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-10 sm:p-14 text-center shadow-xs space-y-4">
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 w-fit mx-auto">
-              <Package className="h-8 w-8 text-slate-400" />
-            </div>
-            <div className="space-y-1 max-w-sm mx-auto">
-              <h3 className="font-display font-extrabold text-base text-slate-900">
-                No orders placed yet
-              </h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Order your Calor propane, butane, patio cylinders, fuels or store essentials online
-                for fast Gloucestershire delivery.
-              </p>
-            </div>
-            <div className="pt-1">
-              <Button
-                asChild
-                className="rounded-xl font-bold text-xs gap-2 shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-9 px-4"
-              >
-                <Link to="/products">
-                  Start Shopping <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs divide-y divide-slate-100 overflow-hidden">
-            {recentOrders.map((order) => (
-              <div
-                key={order.id}
-                className="p-4 sm:px-6 sm:py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
-              >
-                {/* Left: Order Info */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200/60 flex items-center justify-center text-slate-600 shrink-0">
-                    <Package className="h-5 w-5" />
-                  </div>
+        {/* View All Products Action: Top-Right on Desktop/Tablet, Bottom on Mobile */}
+        <div className="order-3 sm:order-2 col-span-1 flex justify-center sm:justify-end items-center pt-2 sm:pt-0">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 rounded-xl gap-1.5 h-8 px-3 cursor-pointer"
+          >
+            <Link to="/products">
+              View All Products <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
 
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-mono font-bold text-sm text-slate-900">
-                        #{order.order_number}
-                      </span>
-                      {getStatusBadge(order.status)}
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
-                      <span>
-                        {new Date(order.created_at).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                      {Boolean(order.order_items && order.order_items.length > 0) && (
-                        <>
-                          <span className="text-slate-300">·</span>
-                          <span>
-                            {order.order_items?.length} item
-                            {order.order_items?.length !== 1 ? "s" : ""}
-                          </span>
-                        </>
-                      )}
-                    </p>
-                  </div>
+        {/* Product Cards Showcase */}
+        <div className="order-2 sm:order-3 col-span-1 sm:col-span-2">
+          {loadingProducts ? (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 p-2.5 sm:p-4 space-y-2 sm:space-y-3.5 animate-pulse shadow-xs"
+                >
+                  <div className="aspect-square bg-slate-100 rounded-xl sm:rounded-2xl w-full" />
+                  <div className="h-2.5 sm:h-3 bg-slate-100 rounded-md w-1/3" />
+                  <div className="h-3 sm:h-4 bg-slate-100 rounded-md w-3/4" />
+                  <div className="h-4 sm:h-5 bg-slate-100 rounded-md w-1/2" />
+                  <div className="h-8 sm:h-9 bg-slate-100 rounded-full w-full" />
                 </div>
-
-                {/* Right: Total + View Details */}
-                <div className="flex items-center justify-between sm:justify-end gap-5 border-t border-slate-100 sm:border-0 pt-2.5 sm:pt-0 shrink-0">
-                  <div className="text-left sm:text-right">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Total
-                    </p>
-                    <p className="text-base font-display font-black text-slate-900 leading-tight">
-                      {gbp(Number(order.total || 0))}
-                    </p>
-                  </div>
-
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl text-xs font-bold gap-1 border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 hover:bg-primary/5 h-8.5 px-3.5 transition-colors"
-                  >
-                    <Link to="/account/orders/$orderId" params={{ orderId: order.id }}>
-                      View Details <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
-                </div>
+              ))}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-8 sm:p-14 text-center shadow-xs space-y-4">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 w-fit mx-auto">
+                <ShoppingBag className="h-8 w-8 text-slate-400" />
               </div>
-            ))}
-          </div>
-        )}
+              <div className="space-y-1 max-w-sm mx-auto">
+                <h3 className="font-display font-extrabold text-base text-slate-900">
+                  No products available right now.
+                </h3>
+                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                  Explore our full catalog of LPG cylinders, heating equipment, and accessories.
+                </p>
+              </div>
+              <div className="pt-1">
+                <Button
+                  asChild
+                  className="rounded-full font-bold text-xs gap-2 shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-9 px-5 cursor-pointer"
+                >
+                  <Link to="/products">
+                    Browse Shop <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+              {products.map((p) => {
+                const isWished = wishlist.includes(p.slug);
+                const isOutOfStock = p.stock <= 0;
+                const hasDiscount = Boolean(p.compare_at_price && p.compare_at_price > p.price);
+                const discountPercent = hasDiscount
+                  ? Math.round(((p.compare_at_price! - p.price) / p.compare_at_price!) * 100)
+                  : null;
+
+                const categoryBadge =
+                  p.subcategory ||
+                  (p.category_slug === "gas"
+                    ? "LPG / Cylinder"
+                    : p.category_slug === "heating"
+                      ? "Home Heating"
+                      : p.brand || "Calor Gas");
+
+                return (
+                  <div
+                    key={p.id}
+                    className="group bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-2.5 sm:p-4 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between relative"
+                  >
+                    {/* Top Image Container */}
+                    <div className="relative w-full rounded-xl sm:rounded-2xl bg-slate-50/80 border border-slate-100 p-2 sm:p-4 aspect-square flex items-center justify-center overflow-hidden mb-2 sm:mb-3">
+                      {/* Discount or Offer Badge */}
+                      {hasDiscount ? (
+                        <span className="absolute left-1.5 top-1.5 sm:left-2.5 sm:top-2.5 z-10 rounded-full bg-red-600 px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wide text-white shadow-2xs">
+                          {discountPercent ? `${discountPercent}% OFF` : "Sale"}
+                        </span>
+                      ) : p.is_offer ? (
+                        <span className="absolute left-1.5 top-1.5 sm:left-2.5 sm:top-2.5 z-10 rounded-full bg-amber-500 px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wide text-white shadow-2xs">
+                          Offer
+                        </span>
+                      ) : null}
+
+                      {/* Wishlist Heart Button */}
+                      <button
+                        type="button"
+                        aria-label={isWished ? "Remove from wishlist" : "Add to wishlist"}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleWishlist(p.slug);
+                          if (!isWished) {
+                            toast.success(`${p.name} saved to wishlist!`);
+                          }
+                        }}
+                        className="absolute right-1.5 top-1.5 sm:right-2.5 sm:top-2.5 z-10 grid h-6 w-6 sm:h-8 sm:w-8 place-items-center rounded-full border border-slate-200/80 bg-white/95 backdrop-blur-xs text-slate-400 hover:text-red-600 hover:border-red-200 hover:bg-white transition-all shadow-2xs cursor-pointer"
+                      >
+                        <Heart
+                          className={cn(
+                            "h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform active:scale-75",
+                            isWished ? "fill-red-600 text-red-600" : "text-slate-400",
+                          )}
+                        />
+                      </button>
+
+                      {/* Product Image Link */}
+                      <Link
+                        to="/products/$slug"
+                        params={{ slug: p.slug }}
+                        className="w-full h-full flex items-center justify-center cursor-pointer"
+                      >
+                        <img
+                          src={cleanImageUrl(p.image_url, p.slug)}
+                          alt={p.name}
+                          loading="lazy"
+                          className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/placeholder.svg";
+                          }}
+                        />
+                      </Link>
+                    </div>
+
+                    {/* Middle Content */}
+                    <div className="space-y-1 sm:space-y-1.5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <p className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground truncate">
+                          {categoryBadge}
+                        </p>
+                        <h3 className="text-xs sm:text-sm font-bold text-slate-900 leading-snug mt-0.5 line-clamp-2 group-hover:text-primary transition-colors">
+                          <Link to="/products/$slug" params={{ slug: p.slug }}>
+                            {p.name}
+                          </Link>
+                        </h3>
+
+                        {p.rating && p.rating > 0 ? (
+                          <div className="mt-1 flex items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground">
+                            <Star className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-amber-400 text-amber-400" />
+                            <span className="font-bold text-slate-700">{p.rating.toFixed(1)}</span>
+                            {Boolean(p.reviews_count && p.reviews_count > 0) && (
+                              <span className="text-slate-400">({p.reviews_count})</span>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className="pt-1.5 sm:pt-2">
+                        {/* Price & Compare Price */}
+                        <div className="flex items-baseline gap-1.5 sm:gap-2">
+                          <span className="text-sm sm:text-base font-display font-black text-slate-900">
+                            {gbp(p.price)}
+                          </span>
+                          {p.compare_at_price && p.compare_at_price > p.price && (
+                            <span className="text-[10px] sm:text-xs text-slate-400 line-through font-semibold">
+                              {gbp(p.compare_at_price)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Stock availability indicator */}
+                        <div className="mt-0.5 sm:mt-1 flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-[11px]">
+                          {isOutOfStock ? (
+                            <span className="inline-flex items-center font-bold text-rose-600">
+                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mr-1" />
+                              Out of Stock
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center font-bold text-emerald-600">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1" />
+                              In Stock
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action: Add to Cart */}
+                    <Button
+                      disabled={isOutOfStock}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (isOutOfStock) {
+                          toast.error(`${p.name} is currently out of stock.`);
+                          return;
+                        }
+                        addToCart(p.slug, 1);
+                        toast.success(`${p.name} added to your basket!`);
+                      }}
+                      className={cn(
+                        "mt-2.5 sm:mt-3.5 w-full rounded-full font-bold text-[11px] sm:text-xs h-8 sm:h-9 px-2 sm:px-3 shadow-xs transition-all gap-1 sm:gap-1.5 cursor-pointer",
+                        isOutOfStock
+                          ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                          : "bg-red-600 hover:bg-red-700 text-white shadow-red-600/10 hover:shadow-md hover:scale-[1.01]",
+                      )}
+                    >
+                      <Plus className="h-3 w-3 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
+                      {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

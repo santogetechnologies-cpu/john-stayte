@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { SiteHeader } from "./SiteHeader";
 import { SiteFooter } from "./SiteFooter";
+import { JSSAssistantChat } from "./JSSAssistantChat";
 
 export function SiteLayout({
   children,
@@ -14,6 +15,7 @@ export function SiteLayout({
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter className={footerClassName} />
+      <JSSAssistantChat />
     </div>
   );
 }

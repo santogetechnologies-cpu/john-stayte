@@ -852,7 +852,7 @@ function BlogPostPage() {
                       {
                         num: "05",
                         title: "Call for help from a safe location",
-                        desc: "From an outdoor safe distance, call John Stayte Support on 01452 741234 or dial 999 for emergency services.",
+                        desc: "From an outdoor safe distance, call John Stayte Support on +44 (0)1453 822859 or dial 999 for emergency services.",
                         icon: PhoneCall,
                       },
                     ].map((step) => {
@@ -1045,7 +1045,7 @@ function BlogPostPage() {
                         {
                           num: "4",
                           title: "Get professional help",
-                          desc: "Contact John Stayte Support on 01452 741234 for safe on-site cylinder recovery.",
+                          desc: "Contact John Stayte Support on +44 (0)1453 822859 for safe on-site cylinder recovery.",
                         },
                       ].map((item) => (
                         <div
@@ -1147,7 +1147,7 @@ function BlogPostPage() {
                         </div>
                       </div>
                       <a
-                        href="tel:01452741234"
+                        href="tel:+441453822859"
                         className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white text-slate-900 hover:bg-slate-100 font-black text-xs shadow-xs transition-all shrink-0 font-display"
                       >
                         <Phone className="h-3.5 w-3.5 text-primary" /> Report Defect
@@ -1366,10 +1366,10 @@ function BlogPostPage() {
                     <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-4 text-xs font-bold text-slate-800">
                       <span>Turn off unsafe appliances &amp; book a Gas Safe inspection.</span>
                       <a
-                        href="tel:01452741234"
+                        href="tel:+441453822859"
                         className="text-primary hover:underline font-display shrink-0"
                       >
-                        01452 741234 →
+                        +44 (0)1453 822859 →
                       </a>
                     </div>
                   </div>
@@ -1443,7 +1443,7 @@ function BlogPostPage() {
                         {
                           step: "05",
                           title: "CALL FOR HELP",
-                          subtitle: "01452 741234 or 999",
+                          subtitle: "+44 (0)1453 822859 or 999",
                           icon: PhoneCall,
                           theme: "primary", // Red accent
                         },
@@ -1689,10 +1689,10 @@ function BlogPostPage() {
                       </div>
                     </div>
                     <a
-                      href="tel:01452741234"
+                      href="tel:+441453822859"
                       className="block text-center py-3.5 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xl tracking-wider font-display shadow-xs transition-all"
                     >
-                      01452 741234
+                      +44 (0)1453 822859
                     </a>
                     <p className="text-xs text-slate-500 text-center">
                       Mon–Fri 8:00am–5:00pm | Sat 8:00am–12:30pm
@@ -1776,10 +1776,10 @@ function BlogPostPage() {
                   </p>
                 </div>
                 <a
-                  href="tel:01452741234"
+                  href="tel:+441453822859"
                   className="block w-full text-center py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-black text-xs shadow-xs transition-all font-display"
                 >
-                  Call 01452 741234
+                  Call +44 (0)1453 822859
                 </a>
               </div>
             </aside>

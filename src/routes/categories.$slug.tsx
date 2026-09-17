@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   ArrowRight,
   Flame,
+  Tent,
   Fish,
   Dog,
   CookingPot,
@@ -25,6 +26,7 @@ import {
   Sparkles,
   RefreshCw,
   ShoppingBag,
+  ShoppingCart,
   Fuel,
   Info,
   ChevronRight,
@@ -112,6 +114,7 @@ export const Route = createFileRoute("/categories/$slug")({
 
 const iconMap: Record<string, typeof Flame> = {
   Flame,
+  Tent,
   Logs,
   Fish,
   Dog,
@@ -125,6 +128,7 @@ const iconMap: Record<string, typeof Flame> = {
 
 const categoryImagesMap: Record<string, string> = {
   gas: cylinderImg,
+  campingaz: cylinderImg,
   "coal-logs": coalLogs,
   "fishing-baits": baitsImg,
   "animal-feed": animalFeedImg,
@@ -221,7 +225,15 @@ function CategoryLandingPage() {
 
   // Filter products belonging to this category
   const categoryProducts = useMemo(() => {
-    return dbProducts.filter((p) => p.category.toLowerCase() === slug.toLowerCase());
+    return dbProducts.filter((p) => {
+      if (p.category.toLowerCase() !== slug.toLowerCase()) return false;
+      if (slug.toLowerCase() === "gas-appliances") {
+        const name = (p.name || "").toLowerCase();
+        const pSlug = (p.slug || "").toLowerCase();
+        if (name.includes("907") || pSlug.includes("907") || name.includes("refillable cylinder")) return false;
+      }
+      return true;
+    });
   }, [dbProducts, slug]);
 
   // Featured products within this category
@@ -821,11 +833,11 @@ function CategoryLandingPage() {
                       for (let i = 0; i < featuredQty; i++) {
                         addToCart(activeFeatured.slug);
                       }
-                      toast.success(`Added ${featuredQty} × ${activeFeatured.name} to basket`);
+                      toast.success(`Added ${featuredQty} × ${activeFeatured.name} to cart`);
                     }}
                     className="flex-1 rounded-full font-extrabold text-sm h-12 shadow-sm"
                   >
-                    <Plus className="mr-1.5 h-4 w-4" /> Add to Basket
+                    <ShoppingCart className="mr-1.5 h-4 w-4" /> Add to Cart
                   </Button>
 
                   <Button
@@ -1189,7 +1201,7 @@ function CategoryLandingPage() {
               </div>
               <h3 className="font-extrabold text-sm text-slate-900">Direct Human Support</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Experienced Gloucestershire support team you can call directly on 01452 741234.
+                Experienced Gloucestershire support team you can call directly on +44 (0)1453 822859.
               </p>
             </div>
           </div>
@@ -1222,9 +1234,9 @@ function CategoryLandingPage() {
 
             <div className="surface-card p-6 rounded-3xl border border-slate-200/80 bg-white space-y-2.5 relative shadow-xs">
               <span className="text-2xl font-black text-primary/20">02</span>
-              <h3 className="font-extrabold text-base text-slate-900">Add to Basket</h3>
+              <h3 className="font-extrabold text-base text-slate-900">Add to Cart</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Add cylinder to basket and select empty cylinder return or new cylinder issue.
+                Add cylinder to cart and select empty cylinder return or new cylinder issue.
               </p>
             </div>
 

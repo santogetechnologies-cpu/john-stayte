@@ -15,7 +15,7 @@ export interface GasCustomerApplication {
   delivery_address: string;
   billing_address?: string | null;
   preferred_contact_method?: string | null;
-  usage_type: "DOMESTIC" | "COMMERCIAL" | "BULK";
+  usage_type: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
   // Business fields (for Commercial / Bulk)
   business_name?: string | null;
   business_type?: string | null;
@@ -50,7 +50,7 @@ export interface ApplicationSubmitPayload {
   deliveryAddress: string;
   billingAddress?: string;
   preferredContactMethod?: string;
-  usageType: "DOMESTIC" | "COMMERCIAL" | "BULK";
+  usageType: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
   businessName?: string;
   businessType?: string;
   businessAddress?: string;
@@ -71,8 +71,24 @@ export async function getCustomerGasApplication(
 ): Promise<GasCustomerApplication | null> {
   if (!customerId) return null;
 
+  // 1. Dedicated table: gas_customer_applications
   try {
-    // 1. Primary: Fetch from customer's profile record in Supabase
+    const { data: dbApp, error: dbErr } = await (supabase.from("gas_customer_applications") as any)
+      .select("*")
+      .eq("customer_id", customerId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!dbErr && dbApp) {
+      return dbApp as GasCustomerApplication;
+    }
+  } catch (e) {
+    // Fallback to profile and cms storage
+  }
+
+  // 2. Profile record fallback in Supabase
+  try {
     const { data: prof } = await supabase
       .from("profiles")
       .select("notification_prefs")
@@ -88,7 +104,7 @@ export async function getCustomerGasApplication(
     console.warn("Could not query application from profile:", e);
   }
 
-  // 2. Fallback: cms_content_blocks container
+  // 3. Fallback: cms_content_blocks container
   try {
     const sectionKey = `gas_app_${customerId}`;
     const { data: block } = await supabase
@@ -109,7 +125,7 @@ export async function getCustomerGasApplication(
 }
 
 /**
- * Submits a new or updated Gas Customer Application with full validation and digital signature.
+ * Submits a new or updated Gas Customer Application with full validation, email verification check, and digital signature.
  */
 export async function submitGasCustomerApplication(
   payload: ApplicationSubmitPayload,
@@ -141,6 +157,22 @@ export async function submitGasCustomerApplication(
 
   // Server-side / backend validations
   if (!customerId) throw new Error("Authentication required: customer ID is missing.");
+
+  // Check real Supabase Auth Email Confirmation
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const authUser = authData?.user;
+    if (authUser && !authUser.email_confirmed_at && !authUser.confirmed_at) {
+      throw new Error(
+        "Please verify your email address before submitting your Gas Customer Application. Check your inbox for the confirmation link.",
+      );
+    }
+  } catch (authErr: any) {
+    if (authErr.message?.includes("verify your email")) {
+      throw authErr;
+    }
+  }
+
   if (!fullName?.trim()) throw new Error("Full name is required.");
   if (!email?.trim() || !email.includes("@")) throw new Error("A valid email address is required.");
   if (!phone?.trim() || phone.trim().length < 7)
@@ -195,7 +227,45 @@ export async function submitGasCustomerApplication(
     updated_at: now,
   };
 
-  // 1. Primary write: Update Customer's profile record in Supabase
+  // 1. Primary write to dedicated gas_customer_applications table
+  const { error: appDbError } = await (supabase.from("gas_customer_applications") as any).upsert(
+    {
+      customer_id: customerId,
+      full_name: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
+      date_of_birth: dateOfBirth?.trim() || null,
+      street_address: streetAddress.trim(),
+      city: city.trim() || "Gloucester",
+      postcode: postcode.trim().toUpperCase(),
+      delivery_address: deliveryAddress.trim() || `${streetAddress}, ${city} ${postcode}`,
+      billing_address: billingAddress?.trim() || null,
+      preferred_contact_method: preferredContactMethod?.trim() || "Phone",
+      usage_type: usageType,
+      business_name: businessName?.trim() || null,
+      business_type: businessType?.trim() || null,
+      business_address: businessAddress?.trim() || null,
+      business_contact: businessContact?.trim() || null,
+      existing_cylinder_status:
+        existingCylinderStatus?.trim() || "New Customer (No Existing Cylinders)",
+      cylinder_type: cylinderType?.trim() || null,
+      cylinder_size: cylinderSize?.trim() || null,
+      order_requirement: orderRequirement?.trim() || null,
+      declaration_accepted: true,
+      signature_data: signatureData,
+      signed_at: now,
+      status: "SUBMITTED",
+      updated_at: now,
+    },
+    { onConflict: "customer_id" },
+  );
+
+  if (appDbError) {
+    console.error("Failed to insert into gas_customer_applications:", appDbError);
+    throw new Error(appDbError.message || "Failed to submit gas customer application.");
+  }
+
+  // 2. Synchronize to customer's profile record in Supabase
   try {
     const { data: currentProfile } = await supabase
       .from("profiles")
@@ -221,7 +291,7 @@ export async function submitGasCustomerApplication(
     console.error("Failed to update profile with application:", err);
   }
 
-  // 2. Persist in cms_content_blocks container if accessible
+  // 3. Persist in cms_content_blocks container if accessible
   try {
     const sectionKey = `gas_app_${customerId}`;
     await supabase.from("cms_content_blocks").upsert(
@@ -237,7 +307,7 @@ export async function submitGasCustomerApplication(
     // Non-critical
   }
 
-  // 3. Update customer_addresses with primary address
+  // 4. Update customer_addresses with primary address
   try {
     await supabase.from("customer_addresses").upsert(
       {
@@ -294,7 +364,24 @@ export async function submitGasCustomerApplication(
 export async function getAllGasCustomerApplications(): Promise<GasCustomerApplication[]> {
   const applications: GasCustomerApplication[] = [];
 
-  // 1. Primary: Query all customer profiles from Supabase
+  // 1. Dedicated table: gas_customer_applications
+  try {
+    const { data: dbApps, error: dbErr } = await (supabase.from("gas_customer_applications") as any)
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!dbErr && dbApps && dbApps.length > 0) {
+      dbApps.forEach((app: any) => {
+        if (!applications.some((a) => a.customer_id === app.customer_id)) {
+          applications.push(app as GasCustomerApplication);
+        }
+      });
+    }
+  } catch (e) {
+    // Non-critical fallback
+  }
+
+  // 2. Primary fallback: Query all customer profiles from Supabase
   try {
     const { data: profs, error: profErr } = await supabase
       .from("profiles")
@@ -318,7 +405,7 @@ export async function getAllGasCustomerApplications(): Promise<GasCustomerApplic
     console.warn("Could not query applications from profiles:", e);
   }
 
-  // 2. Query from cms_content_blocks container
+  // 3. Query from cms_content_blocks container
   try {
     const { data: blocks } = await supabase
       .from("cms_content_blocks")
@@ -359,7 +446,23 @@ export async function updateGasApplicationStatus(params: {
   const { customerId, status, adminNotes = "", reviewedBy = "Admin" } = params;
   const now = new Date().toISOString();
 
-  // 1. Primary: Update in customer's profile
+  // 1. Update in dedicated gas_customer_applications table
+  try {
+    await (supabase.from("gas_customer_applications") as any)
+      .update({
+        status,
+        admin_notes: adminNotes,
+        rejection_reason: status === "REJECTED" ? adminNotes : null,
+        reviewed_by: reviewedBy,
+        reviewed_at: now,
+        updated_at: now,
+      })
+      .eq("customer_id", customerId);
+  } catch (e) {
+    // Non-critical fallback
+  }
+
+  // 2. Update in customer's profile
   try {
     const { data: prof } = await supabase
       .from("profiles")
@@ -394,7 +497,7 @@ export async function updateGasApplicationStatus(params: {
     console.error("Failed to update application in profile:", e);
   }
 
-  // 2. Secondary: Update in cms_content_blocks container
+  // 3. Update in cms_content_blocks container
   try {
     const sectionKey = `gas_app_${customerId}`;
     const { data: existing } = await supabase
@@ -459,3 +562,90 @@ export async function updateGasApplicationStatus(params: {
 
   return { success: true, status };
 }
+
+/**
+ * Sends a real 6-digit OTP code to the requested email address via Supabase Auth transactional email.
+ */
+export async function sendApplicationEmailOtp(email: string): Promise<{
+  ok: boolean;
+  message: string;
+}> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail || !cleanEmail.includes("@") || cleanEmail.length < 5) {
+    throw new Error("Please provide a valid email address to receive your verification code.");
+  }
+
+  // 1. Dispatch real OTP email via Supabase Auth transactional SMTP
+  const { error } = await supabase.auth.signInWithOtp({
+    email: cleanEmail,
+    options: {
+      shouldCreateUser: true,
+    },
+  });
+
+  if (error) {
+    if (error.message?.toLowerCase().includes("rate") || (error as any).status === 429) {
+      throw new Error(
+        "Too many verification attempts. Please wait a moment before requesting another code.",
+      );
+    }
+    throw new Error(error.message || "Failed to send verification email. Please try again.");
+  }
+
+  return {
+    ok: true,
+    message: `A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox.`,
+  };
+}
+
+/**
+ * Verifies the 6-digit OTP code received in the customer's email.
+ */
+export async function verifyApplicationEmailOtp(
+  email: string,
+  otpCode: string,
+): Promise<{
+  ok: boolean;
+  verifiedEmail: string;
+}> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanOtp = otpCode.trim();
+
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    throw new Error("Invalid email address.");
+  }
+
+  if (!cleanOtp || cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
+    throw new Error("Please enter the complete 6-digit numerical code sent to your email.");
+  }
+
+  // Verify against Supabase Auth cryptographic server
+  const { data, error } = await supabase.auth.verifyOtp({
+    email: cleanEmail,
+    token: cleanOtp,
+    type: "email",
+  });
+
+  if (error || !data) {
+    if (error?.message?.toLowerCase().includes("expired")) {
+      throw new Error("This verification code has expired. Please request a new code.");
+    }
+    throw new Error("Invalid or expired verification code. Please check your inbox and try again.");
+  }
+
+  // Record verified state in email_verifications table via secure RPC
+  const { error: rpcError } = await (supabase.rpc as any)("record_verified_application_email", {
+    p_email: cleanEmail,
+  });
+
+  if (rpcError) {
+    console.error("Failed to record verified application email:", rpcError);
+    throw new Error(rpcError.message || "Failed to record email verification.");
+  }
+
+  return {
+    ok: true,
+    verifiedEmail: cleanEmail,
+  };
+}
+

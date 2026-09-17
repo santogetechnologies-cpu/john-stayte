@@ -24,6 +24,18 @@ import {
   Info,
   Save,
   Sparkles,
+  HelpCircle,
+  Phone,
+  Mail,
+  MapPin,
+  Clock,
+  ExternalLink,
+  Flame,
+  Fuel,
+  ShieldCheck,
+  Megaphone,
+  Globe,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -43,724 +55,475 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
-
-export const DEFAULT_SERVICES = [
-  {
-    id: "srv-1",
-    title: "Gas Delivery",
-    desc: "Next-day cylinder delivery across Gloucestershire to homes, farms and commercial premises.",
-    icon: "Truck",
-    image: "/service_gas_delivery.jpg",
-    status: "Active",
-  },
-  {
-    id: "srv-2",
-    title: "Bulk Supply",
-    desc: "Scheduled bulk LPG for farms and large estates with automated telemetry monitoring.",
-    icon: "Container",
-    image: "/service_bulk_supply.jpg",
-    status: "Active",
-  },
-  {
-    id: "srv-3",
-    title: "Commercial Gas",
-    desc: "Pub, hospitality and industrial catering gas contracts with scheduled replenishment and 30-day invoicing.",
-    icon: "Building2",
-    image: "/service_commercial_gas.jpg",
-    status: "Active",
-  },
-  {
-    id: "srv-4",
-    title: "Domestic Supply",
-    desc: "Home heating, cooking and barbecue patio gas with prompt doorstep empty cylinder swap.",
-    icon: "Home",
-    image: "/service_domestic_supply.jpg",
-    status: "Active",
-  },
-  {
-    id: "srv-5",
-    title: "Cylinder Exchange",
-    desc: "Swap empty bottles instantly at any of our three forecourt depots in Fromebridge, Cambridge and Frampton.",
-    icon: "RefreshCw",
-    image: "/service_cylinder_exchange.jpg",
-    status: "Active",
-  },
-  {
-    id: "srv-6",
-    title: "Emergency Delivery",
-    desc: "Same-day emergency fuel runs when your tank or heating runs dry during cold snaps.",
-    icon: "Siren",
-    image: "/service_emergency_delivery.jpg",
-    status: "Active",
-  },
-];
-
-export const DEFAULT_REVIEWS = [
-  {
-    id: "rev-1",
-    name: "Sarah H.",
-    role: "Frampton on Severn",
-    quote:
-      "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless service.",
-    rating: 5,
-    status: "Published",
-  },
-  {
-    id: "rev-2",
-    name: "The Bell Inn",
-    role: "Pub Customer",
-    quote:
-      "Our cellar gas has never run out since switching to JSS. The scheduling and changeovers are spot on.",
-    rating: 5,
-    status: "Published",
-  },
-  {
-    id: "rev-3",
-    name: "Mark T.",
-    role: "Smallholding, Cam",
-    quote:
-      "Coal, logs and animal feed delivered all in one delivery. Saves me two long vehicle trips a week.",
-    rating: 5,
-    status: "Published",
-  },
-  {
-    id: "rev-4",
-    name: "David P.",
-    role: "Stroud Customer",
-    quote:
-      "Excellent advice on regulator fittings and very friendly delivery driver who carried the bottle into position.",
-    rating: 5,
-    status: "Published",
-  },
-];
-
-export const DEFAULT_HOME_CMS = {
-  heroEyebrow: "Family run since 1972",
-  heroHeading: "Order your gas delivery with us today.",
-  heroSubtitle:
-    "Calor cylinders, coal, logs, fishing baits, animal feed and appliances — supplied and delivered across Gloucestershire by a team you can actually call.",
-  deliveryBadge: "Next-Day Local Delivery Available",
-  primaryCtaText: "Order Gas Online",
-  primaryCtaLink: "/order-gas",
-  secondaryCtaText: "Browse Full Shop",
-  secondaryCtaLink: "/products",
-  statsYears: "50+",
-  statsStations: "3",
-  statsCylinders: "15k+",
-  statsOnTime: "99.8%",
-};
-
-export const DEFAULT_ABOUT_CMS = {
-  heroEyebrow: "ABOUT JOHN STAYTE SERVICES",
-  heroHeading: "Keeping Gloucestershire moving, warm and well-equipped since 1972.",
-  heroSubtitle:
-    "More than 50 years of dependable fuel delivery, bottled gas, solid fuels, animal feed, country essentials and forecourt services from a family business that puts customer service first.",
-  heritageTitle: "A family business built on local trust since 1972",
-  heritageBody:
-    "From a single delivery lorry in Whitminster to a modern logistics fleet and three forecourt operations across Gloucestershire, John Stayte Services has remained dedicated to personal service, dependable supply, and genuine customer care.",
-  depotInfo:
-    "Headquartered at Fromebridge with three forecourt locations in Fromebridge, Cambridge, and Frampton on Severn.",
-};
+import {
+  fetchCmsBlock,
+  saveCmsBlock,
+  uploadCmsImage,
+  DEFAULT_HOME_CMS,
+  DEFAULT_ABOUT_CMS,
+  DEFAULT_SERVICES_CMS,
+  DEFAULT_SHOP_ORDER_GAS_CMS,
+  DEFAULT_STATIONS_CMS,
+  DEFAULT_OFFERS_CMS,
+  DEFAULT_CONTACT_FAQS_CMS,
+  DEFAULT_FOOTER_CMS,
+  HomeCmsData,
+  AboutCmsData,
+  ServicesCmsData,
+  ShopOrderGasCmsData,
+  StationsCmsData,
+  OffersCmsData,
+  ContactFaqsCmsData,
+  FooterCmsData,
+  ServiceItem,
+  FaqItem,
+  PromoOfferItem,
+  ForecourtStationItem,
+  AboutTimelineItem,
+  AboutValueItem,
+  AboutProofItem,
+  HomeWhyChooseCard,
+} from "@/lib/cms-service";
 
 export function AdminCmsView() {
   const [activeTab, setActiveTab] = useState("home");
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // CMS Content State
-  const [homeCms, setHomeCms] = useState(DEFAULT_HOME_CMS);
-  const [aboutCms, setAboutCms] = useState(DEFAULT_ABOUT_CMS);
-  const [services, setServices] = useState<any[]>(DEFAULT_SERVICES);
-  const [reviews, setReviews] = useState<any[]>(DEFAULT_REVIEWS);
-  const [offers, setOffers] = useState<any[]>([]);
-  const [banners, setBanners] = useState<any[]>([]);
+  // CMS Content States
+  const [homeCms, setHomeCms] = useState<HomeCmsData>(DEFAULT_HOME_CMS);
+  const [aboutCms, setAboutCms] = useState<AboutCmsData>(DEFAULT_ABOUT_CMS);
+  const [servicesCms, setServicesCms] = useState<ServicesCmsData>(DEFAULT_SERVICES_CMS);
+  const [shopGasCms, setShopGasCms] = useState<ShopOrderGasCmsData>(DEFAULT_SHOP_ORDER_GAS_CMS);
+  const [stationsCms, setStationsCms] = useState<StationsCmsData>(DEFAULT_STATIONS_CMS);
+  const [offersCms, setOffersCms] = useState<OffersCmsData>(DEFAULT_OFFERS_CMS);
+  const [contactFaqsCms, setContactFaqsCms] = useState<ContactFaqsCmsData>(DEFAULT_CONTACT_FAQS_CMS);
+  const [footerCms, setFooterCms] = useState<FooterCmsData>(DEFAULT_FOOTER_CMS);
+  const [reviews, setReviews] = useState<any[]>([
+    {
+      id: "rev-1",
+      name: "Sarah H.",
+      role: "Frampton on Severn",
+      quote: "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless service.",
+      rating: 5,
+      status: "Published",
+    },
+    {
+      id: "rev-2",
+      name: "The Bell Inn",
+      role: "Pub Customer",
+      quote: "Our cellar gas has never run out since switching to JSS. The scheduling and changeovers are spot on.",
+      rating: 5,
+      status: "Published",
+    },
+    {
+      id: "rev-3",
+      name: "Mark T.",
+      role: "Smallholding, Cam",
+      quote: "Coal, logs and animal feed delivered all in one delivery. Saves me two long vehicle trips a week.",
+      rating: 5,
+      status: "Published",
+    },
+  ]);
 
-  // Service Modal State
+  // Modals States
   const [serviceModalOpen, setServiceModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState<any | null>(null);
-  const [serviceTitle, setServiceTitle] = useState("");
-  const [serviceDesc, setServiceDesc] = useState("");
-  const [serviceIcon, setServiceIcon] = useState("Truck");
-  const [serviceImage, setServiceImage] = useState("");
-  const [uploadingServiceImg, setUploadingServiceImg] = useState(false);
+  const [editingService, setEditingService] = useState<ServiceItem | null>(null);
+  const [uploadingImg, setUploadingImg] = useState(false);
 
-  // Review Modal State
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
+
+  const [offerModalOpen, setOfferModalOpen] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<PromoOfferItem | null>(null);
+
+  const [stationModalOpen, setStationModalOpen] = useState(false);
+  const [editingStation, setEditingStation] = useState<ForecourtStationItem | null>(null);
+
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<any | null>(null);
-  const [reviewName, setReviewName] = useState("");
-  const [reviewRole, setReviewRole] = useState("");
-  const [reviewQuote, setReviewQuote] = useState("");
-  const [reviewRating, setReviewRating] = useState("5");
 
-  // Offer Modal State
-  const [offerModalOpen, setOfferModalOpen] = useState(false);
-  const [editingOffer, setEditingOffer] = useState<any | null>(null);
-  const [offerTitle, setOfferTitle] = useState("");
-  const [offerDesc, setOfferDesc] = useState("");
-  const [offerDiscount, setOfferDiscount] = useState("10");
+  const [timelineModalOpen, setTimelineModalOpen] = useState(false);
+  const [editingTimeline, setEditingTimeline] = useState<AboutTimelineItem | null>(null);
 
-  const loadCmsData = async () => {
-    setLoading(true);
-    try {
-      const [
-        { data: homeBlock },
-        { data: aboutBlock },
-        { data: srvBlock },
-        { data: revBlock },
-        { data: offerData },
-        { data: bannerData },
-      ] = await Promise.all([
-        supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "home_data")
-          .maybeSingle(),
-        supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "about_data")
-          .maybeSingle(),
-        supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "services_data")
-          .maybeSingle(),
-        supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "testimonials_data")
-          .maybeSingle(),
-        supabase.from("offers").select("*").order("created_at", { ascending: false }),
-        supabase.from("cms_banners").select("*").order("created_at", { ascending: false }),
-      ]);
+  const [valueModalOpen, setValueModalOpen] = useState(false);
+  const [editingValue, setEditingValue] = useState<AboutValueItem | null>(null);
 
-      if (homeBlock?.content) {
-        try {
-          const dbParsed = JSON.parse(homeBlock.content);
-          // Always enforce the approved hero text — never let the DB override it.
-          const fixedCms = {
-            ...DEFAULT_HOME_CMS,
-            ...dbParsed,
-            // These three hero fields are locked to the approved values:
-            heroEyebrow: DEFAULT_HOME_CMS.heroEyebrow,
-            heroHeading: DEFAULT_HOME_CMS.heroHeading,
-            heroSubtitle: DEFAULT_HOME_CMS.heroSubtitle,
-          };
-          setHomeCms(fixedCms);
-          // Repair the DB record if it still contains old wrong hero text
-          if (
-            dbParsed.heroEyebrow !== DEFAULT_HOME_CMS.heroEyebrow ||
-            dbParsed.heroHeading !== DEFAULT_HOME_CMS.heroHeading ||
-            dbParsed.heroSubtitle !== DEFAULT_HOME_CMS.heroSubtitle
-          ) {
-            await supabase.from("cms_content_blocks").upsert(
-              {
-                section_key: "home_data",
-                title: "Homepage Editorial Content",
-                content: JSON.stringify(fixedCms),
-              },
-              { onConflict: "section_key" },
-            );
-          }
-        } catch {}
-      } else {
-        await supabase.from("cms_content_blocks").upsert(
-          {
-            section_key: "home_data",
-            title: "Home Page Content",
-            content: JSON.stringify(DEFAULT_HOME_CMS),
-          },
-          { onConflict: "section_key" },
-        );
-      }
-
-      if (aboutBlock?.content) {
-        try {
-          setAboutCms({ ...DEFAULT_ABOUT_CMS, ...JSON.parse(aboutBlock.content) });
-        } catch {}
-      } else {
-        await supabase.from("cms_content_blocks").upsert(
-          {
-            section_key: "about_data",
-            title: "About Page Content",
-            content: JSON.stringify(DEFAULT_ABOUT_CMS),
-          },
-          { onConflict: "section_key" },
-        );
-      }
-
-      if (srvBlock?.content) {
-        try {
-          const parsed = JSON.parse(srvBlock.content);
-          if (Array.isArray(parsed) && parsed.length > 0) setServices(parsed);
-        } catch {}
-      } else {
-        await supabase.from("cms_content_blocks").upsert(
-          {
-            section_key: "services_data",
-            title: "Services Catalog",
-            content: JSON.stringify(DEFAULT_SERVICES),
-          },
-          { onConflict: "section_key" },
-        );
-      }
-
-      if (revBlock?.content) {
-        try {
-          const parsed = JSON.parse(revBlock.content);
-          if (Array.isArray(parsed) && parsed.length > 0) setReviews(parsed);
-        } catch {}
-      } else {
-        await supabase.from("cms_content_blocks").upsert(
-          {
-            section_key: "testimonials_data",
-            title: "Customer Reviews",
-            content: JSON.stringify(DEFAULT_REVIEWS),
-          },
-          { onConflict: "section_key" },
-        );
-      }
-
-      setOffers(
-        offerData && offerData.length > 0
-          ? offerData
-          : [
-              {
-                id: "off-1",
-                title: "Propane Cylinder Summer Discount",
-                description:
-                  "10% off all 19kg and 47kg Calor propane cylinders with coupon code JSS10",
-                discount_percentage: 10,
-                is_active: true,
-              },
-            ],
-      );
-
-      setBanners(
-        bannerData && bannerData.length > 0
-          ? bannerData
-          : [
-              {
-                id: "ban-1",
-                title: "Summer Fuel Promo",
-                message:
-                  "Order online today for guaranteed next-day Gloucestershire delivery. Use code JSS10 for 10% off.",
-                link_url: "/offers",
-                is_active: true,
-              },
-            ],
-      );
-    } catch (err: any) {
-      console.error("CMS data load error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load all CMS blocks from Supabase on mount
   useEffect(() => {
-    loadCmsData();
+    async function loadAllCms() {
+      setLoading(true);
+      try {
+        const [
+          hData,
+          aData,
+          sData,
+          gData,
+          stData,
+          oData,
+          cfData,
+          fData,
+          revData,
+        ] = await Promise.all([
+          fetchCmsBlock("home_data", DEFAULT_HOME_CMS),
+          fetchCmsBlock("about_data", DEFAULT_ABOUT_CMS),
+          fetchCmsBlock("services_data", DEFAULT_SERVICES_CMS),
+          fetchCmsBlock("shop_order_gas_data", DEFAULT_SHOP_ORDER_GAS_CMS),
+          fetchCmsBlock("stations_data", DEFAULT_STATIONS_CMS),
+          fetchCmsBlock("offers_data", DEFAULT_OFFERS_CMS),
+          fetchCmsBlock("contact_faqs_data", DEFAULT_CONTACT_FAQS_CMS),
+          fetchCmsBlock("footer_data", DEFAULT_FOOTER_CMS),
+          fetchCmsBlock("testimonials_data", reviews),
+        ]);
+
+        setHomeCms(hData);
+        setAboutCms(aData);
+        setServicesCms(sData);
+        setShopGasCms(gData);
+        setStationsCms(stData);
+        setOffersCms(oData);
+        setContactFaqsCms(cfData);
+        setFooterCms(fData);
+        if (Array.isArray(revData) && revData.length > 0) {
+          setReviews(revData);
+        }
+      } catch (err) {
+        console.error("Failed to load CMS blocks:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadAllCms();
   }, []);
 
-  // --- SAVE HOME CMS ---
-  const handleSaveHomeCms = async () => {
-    setSubmitting(true);
+  // Save handler per section
+  const handleSaveSection = async (
+    sectionKey: string,
+    title: string,
+    content: any,
+    successMsg: string,
+  ) => {
+    setSaving(true);
     try {
-      window.dispatchEvent(new CustomEvent("cms_home_updated", { detail: homeCms }));
-
-      await supabase.from("cms_content_blocks").upsert(
-        {
-          section_key: "home_data",
-          title: "Homepage Editorial Content",
-          content: JSON.stringify(homeCms),
-        },
-        { onConflict: "section_key" },
-      );
-
-      await logAdminAuditAction("UPDATE_HOME_CMS", "cms", "home_data", {
-        heading: homeCms.heroHeading,
-      });
-      toast.success("Homepage content saved successfully!");
+      await saveCmsBlock(sectionKey, title, content);
+      await logAdminAuditAction("UPDATE_CMS_CONTENT", "CMS", sectionKey, { section: title });
+      toast.success(successMsg || `${title} saved and published successfully!`);
     } catch (err: any) {
-      toast.error("Failed to save homepage CMS: " + err.message);
+      toast.error(err.message || `Failed to save ${title}`);
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   };
 
-  // --- SAVE ABOUT CMS ---
-  const handleSaveAboutCms = async () => {
-    setSubmitting(true);
-    try {
-      window.dispatchEvent(new CustomEvent("cms_about_updated", { detail: aboutCms }));
-
-      await supabase.from("cms_content_blocks").upsert(
-        {
-          section_key: "about_data",
-          title: "About Page Editorial Content",
-          content: JSON.stringify(aboutCms),
-        },
-        { onConflict: "section_key" },
-      );
-
-      await logAdminAuditAction("UPDATE_ABOUT_CMS", "cms", "about_data", {
-        heading: aboutCms.heroHeading,
-      });
-      toast.success("About page content saved successfully!");
-    } catch (err: any) {
-      toast.error("Failed to save about CMS: " + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // --- SERVICE ACTIONS ---
-  const handleOpenServiceModal = (srv?: any) => {
-    if (srv) {
-      setEditingService(srv);
-      setServiceTitle(srv.title || "");
-      setServiceDesc(srv.desc || srv.description || "");
-      setServiceIcon(srv.icon || "Truck");
-      setServiceImage(srv.image || "");
-    } else {
-      setEditingService(null);
-      setServiceTitle("");
-      setServiceDesc("");
-      setServiceIcon("Truck");
-      setServiceImage("/service_gas_delivery.jpg");
-    }
-    setServiceModalOpen(true);
-  };
-
-  const handleUploadServiceImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Image upload helper
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    folder: string,
+    onSuccess: (url: string) => void,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingServiceImg(true);
+
+    setUploadingImg(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `service_${Date.now()}.${fileExt}`;
-      const filePath = `services/${fileName}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("product-images")
-        .upload(filePath, file, { upsert: true });
-      if (uploadErr) throw uploadErr;
-      const { data } = supabase.storage.from("product-images").getPublicUrl(filePath);
-      setServiceImage(data.publicUrl);
-      toast.success("Service image uploaded!");
+      const publicUrl = await uploadCmsImage(file, folder);
+      onSuccess(publicUrl);
+      toast.success("Image uploaded to Supabase Storage!");
     } catch (err: any) {
-      setServiceImage(URL.createObjectURL(file));
-      toast.success("Image selected for service!");
+      toast.error(err.message || "Image upload failed");
     } finally {
-      setUploadingServiceImg(false);
+      setUploadingImg(false);
     }
   };
 
-  const handleSaveService = async () => {
-    if (!serviceTitle.trim()) return toast.error("Service title is required.");
-    setSubmitting(true);
-    try {
-      const payload = {
-        id: editingService ? editingService.id : `srv-${Date.now()}`,
-        title: serviceTitle.trim(),
-        desc: serviceDesc.trim(),
-        description: serviceDesc.trim(),
-        icon: serviceIcon,
-        image: serviceImage || "/service_gas_delivery.jpg",
-        status: "Active",
-      };
-
-      const updatedList = editingService
-        ? services.map((s) => (s.id === editingService.id ? payload : s))
-        : [...services, payload];
-
-      setServices(updatedList);
-      window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: updatedList }));
-
-      await supabase.from("cms_content_blocks").upsert(
-        {
-          section_key: "services_data",
-          title: "Core Gas and Fuel Services",
-          content: JSON.stringify(updatedList),
-        },
-        { onConflict: "section_key" },
-      );
-
-      toast.success(
-        editingService ? "Service updated successfully!" : "New service added successfully!",
-      );
-      setServiceModalOpen(false);
-    } catch (err: any) {
-      toast.error("Failed to save service: " + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteService = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this service?")) return;
-    try {
-      const updatedList = services.filter((s) => s.id !== id);
-      setServices(updatedList);
-      window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: updatedList }));
-
-      await supabase.from("cms_content_blocks").upsert(
-        {
-          section_key: "services_data",
-          title: "Core Gas and Fuel Services",
-          content: JSON.stringify(updatedList),
-        },
-        { onConflict: "section_key" },
-      );
-
-      toast.success("Service deleted!");
-    } catch (err: any) {
-      toast.error("Failed to delete service: " + err.message);
-    }
-  };
-
-  // --- REVIEW ACTIONS ---
-  const handleOpenReviewModal = (rev?: any) => {
-    if (rev) {
-      setEditingReview(rev);
-      setReviewName(rev.name || "");
-      setReviewRole(rev.role || "");
-      setReviewQuote(rev.quote || "");
-      setReviewRating(String(rev.rating || 5));
-    } else {
-      setEditingReview(null);
-      setReviewName("");
-      setReviewRole("Gloucestershire Customer");
-      setReviewQuote("");
-      setReviewRating("5");
-    }
-    setReviewModalOpen(true);
-  };
-
-  const handleSaveReview = async () => {
-    if (!reviewName.trim() || !reviewQuote.trim()) {
-      return toast.error("Please enter reviewer name and testimonial quote.");
-    }
-    setSubmitting(true);
-    try {
-      const payload = {
-        id: editingReview ? editingReview.id : `rev-${Date.now()}`,
-        name: reviewName.trim(),
-        role: reviewRole.trim() || "Customer",
-        quote: reviewQuote.trim(),
-        rating: Number(reviewRating) || 5,
-        status: "Published",
-      };
-
-      const updatedList = editingReview
-        ? reviews.map((r) => (r.id === editingReview.id ? payload : r))
-        : [...reviews, payload];
-
-      setReviews(updatedList);
-
-      await supabase.from("cms_content_blocks").upsert(
-        {
-          section_key: "testimonials_data",
-          title: "Customer Testimonials",
-          content: JSON.stringify(updatedList),
-        },
-        { onConflict: "section_key" },
-      );
-
-      toast.success(
-        editingReview
-          ? "Testimonial updated successfully!"
-          : "New testimonial published successfully!",
-      );
-      setReviewModalOpen(false);
-    } catch (err: any) {
-      toast.error("Failed to save testimonial: " + err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteReview = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this review?")) return;
-    try {
-      const updatedList = reviews.filter((r) => r.id !== id);
-      setReviews(updatedList);
-
-      await supabase.from("cms_content_blocks").upsert(
-        {
-          section_key: "testimonials_data",
-          title: "Customer Testimonials",
-          content: JSON.stringify(updatedList),
-        },
-        { onConflict: "section_key" },
-      );
-
-      toast.success("Review deleted!");
-    } catch (err: any) {
-      toast.error("Failed to delete review: " + err.message);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="py-20 text-center space-y-3">
+        <Loader2 className="mx-auto h-8 w-8 text-primary animate-spin" />
+        <p className="text-xs text-slate-500 font-bold">Loading complete CMS content matrix...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Layers className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-black tracking-tight text-slate-900">
-              Content Management System (CMS)
-            </h1>
+    <div className="space-y-6 text-left">
+      {/* CMS Header Banner */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-red-600">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span>Customer Website CMS Suite</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Centralized database control for Home, About, Core Services, Customer Reviews, Offers
-            and Banners.
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
+            Content Management System
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl">
+            Live management for 100% of customer-facing pages, headings, banners, trust badges,
+            forecourt details, and FAQs with real Supabase synchronization.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Button
+            asChild
+            variant="outline"
+            className="rounded-full text-xs font-bold border-slate-300 gap-1.5"
+          >
+            <a href="/" target="_blank" rel="noreferrer">
+              <Eye className="h-3.5 w-3.5" />
+              <span>Preview Live Site</span>
+            </a>
+          </Button>
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-slate-100/80 p-1 rounded-2xl flex-wrap">
-          <TabsTrigger
-            value="home"
-            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
-          >
-            <HomeIcon className="h-3.5 w-3.5 text-primary" /> Home Page CMS
-          </TabsTrigger>
-          <TabsTrigger
-            value="about"
-            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
-          >
-            <Info className="h-3.5 w-3.5 text-primary" /> About Page CMS
-          </TabsTrigger>
-          <TabsTrigger
-            value="services"
-            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
-          >
-            <Briefcase className="h-3.5 w-3.5 text-primary" /> Services ({services.length})
-          </TabsTrigger>
-          <TabsTrigger
-            value="reviews"
-            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
-          >
-            <MessageSquareQuote className="h-3.5 w-3.5 text-primary" /> Reviews ({reviews.length})
-          </TabsTrigger>
-          <TabsTrigger
-            value="offers"
-            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
-          >
-            <Tag className="h-3.5 w-3.5 text-primary" /> Offers & Promos ({offers.length})
-          </TabsTrigger>
-          <TabsTrigger
-            value="banners"
-            className="rounded-xl text-xs font-bold gap-1.5 data-[state=active]:bg-white data-[state=active]:shadow-xs"
-          >
-            <ImageIcon className="h-3.5 w-3.5 text-primary" /> Header Banners ({banners.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Tabs Navigation */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200 overflow-x-auto">
+          <TabsList className="bg-transparent h-auto p-0 flex flex-wrap gap-1 justify-start">
+            <TabsTrigger
+              value="home"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <HomeIcon className="h-3.5 w-3.5" /> Home Page
+            </TabsTrigger>
+            <TabsTrigger
+              value="about"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <Info className="h-3.5 w-3.5" /> About Page
+            </TabsTrigger>
+            <TabsTrigger
+              value="services"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <Truck className="h-3.5 w-3.5" /> Services Page
+            </TabsTrigger>
+            <TabsTrigger
+              value="order-gas"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <Flame className="h-3.5 w-3.5 text-primary" /> Shop &amp; Order Gas
+            </TabsTrigger>
+            <TabsTrigger
+              value="stations"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <Fuel className="h-3.5 w-3.5" /> Filling Stations
+            </TabsTrigger>
+            <TabsTrigger
+              value="offers"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <Tag className="h-3.5 w-3.5" /> Offers &amp; Deals
+            </TabsTrigger>
+            <TabsTrigger
+              value="contact-faqs"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <HelpCircle className="h-3.5 w-3.5" /> Contact &amp; FAQs
+            </TabsTrigger>
+            <TabsTrigger
+              value="footer"
+              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
+            >
+              <Globe className="h-3.5 w-3.5" /> Footer &amp; Global
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        {/* --- HOME PAGE CMS TAB --- */}
-        <TabsContent value="home" className="space-y-4">
-          <div className="surface-card rounded-3xl border border-slate-200/80 bg-white p-6 space-y-5 shadow-xs">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        {/* ========================================================================= */}
+        {/* TAB 1: HOME PAGE */}
+        {/* ========================================================================= */}
+        <TabsContent value="home" className="space-y-6">
+          {/* Hero Section */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-black text-slate-900">
-                  Homepage Hero & Section Headers
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <HomeIcon className="h-4 w-4 text-primary" /> Home Page — Main Hero &amp; Trust Header
                 </h3>
-                <p className="text-xs text-slate-500">
-                  Live headlines, intro copy, delivery badges and CTA buttons
-                </p>
+                <p className="text-xs text-slate-500">Top hero banner, delivery badges and CTA links.</p>
               </div>
               <Button
-                onClick={handleSaveHomeCms}
-                disabled={submitting}
-                className="rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                onClick={() =>
+                  handleSaveSection(
+                    "home_data",
+                    "Home Page Content",
+                    homeCms,
+                    "Home Hero & content saved to Supabase!",
+                  )
+                }
+                disabled={saving}
+                className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
               >
-                {submitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                Save Homepage Content
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <span>Save Home Content</span>
               </Button>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <Label className="text-xs font-bold">Hero Eyebrow Label</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Hero Eyebrow Tag</Label>
                 <Input
                   value={homeCms.heroEyebrow}
                   onChange={(e) => setHomeCms({ ...homeCms, heroEyebrow: e.target.value })}
-                  className="mt-1 rounded-xl text-xs"
+                  className="rounded-xl h-10 text-xs"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <Label className="text-xs font-bold">Hero Main Heading (H1)</Label>
+
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-bold text-slate-700">Hero Main Heading *</Label>
                 <Input
                   value={homeCms.heroHeading}
                   onChange={(e) => setHomeCms({ ...homeCms, heroHeading: e.target.value })}
-                  className="mt-1 rounded-xl text-xs font-bold"
+                  className="rounded-xl h-10 text-xs font-bold"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <Label className="text-xs font-bold">Hero Subtitle Description</Label>
+
+              <div className="space-y-1 sm:col-span-3">
+                <Label className="text-xs font-bold text-slate-700">Hero Description Subtitle</Label>
                 <Textarea
+                  rows={2}
                   value={homeCms.heroSubtitle}
                   onChange={(e) => setHomeCms({ ...homeCms, heroSubtitle: e.target.value })}
-                  rows={3}
-                  className="mt-1 rounded-xl text-xs"
+                  className="rounded-xl text-xs"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Delivery Badge Text</Label>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Delivery Badge Label</Label>
                 <Input
                   value={homeCms.deliveryBadge}
                   onChange={(e) => setHomeCms({ ...homeCms, deliveryBadge: e.target.value })}
-                  className="mt-1 rounded-xl text-xs"
+                  className="rounded-xl h-10 text-xs"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Primary CTA Button Label</Label>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Primary CTA Label</Label>
                 <Input
                   value={homeCms.primaryCtaText}
                   onChange={(e) => setHomeCms({ ...homeCms, primaryCtaText: e.target.value })}
-                  className="mt-1 rounded-xl text-xs"
+                  className="rounded-xl h-10 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Primary CTA URL</Label>
+                <Input
+                  value={homeCms.primaryCtaLink}
+                  onChange={(e) => setHomeCms({ ...homeCms, primaryCtaLink: e.target.value })}
+                  className="rounded-xl h-10 text-xs font-mono"
                 />
               </div>
             </div>
 
+            {/* Trust Stats Bar */}
             <div className="pt-4 border-t border-slate-100">
-              <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider mb-3">
-                Homepage Trust Stats
-              </h4>
+              <Label className="text-xs font-bold text-slate-900 block mb-3">
+                Hero Trust Counters (Displayed below CTA)
+              </Label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-[11px] font-bold">Years Active</Label>
+                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Years in Business</span>
                   <Input
                     value={homeCms.statsYears}
                     onChange={(e) => setHomeCms({ ...homeCms, statsYears: e.target.value })}
-                    className="mt-1 rounded-xl text-xs font-mono"
+                    className="rounded-lg h-9 text-xs font-black bg-white"
                   />
                 </div>
-                <div>
-                  <Label className="text-[11px] font-bold">Forecourts</Label>
+                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Forecourt Stations</span>
                   <Input
                     value={homeCms.statsStations}
                     onChange={(e) => setHomeCms({ ...homeCms, statsStations: e.target.value })}
-                    className="mt-1 rounded-xl text-xs font-mono"
+                    className="rounded-lg h-9 text-xs font-black bg-white"
                   />
                 </div>
-                <div>
-                  <Label className="text-[11px] font-bold">Cylinders / Year</Label>
+                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">Cylinders Delivered</span>
                   <Input
                     value={homeCms.statsCylinders}
                     onChange={(e) => setHomeCms({ ...homeCms, statsCylinders: e.target.value })}
-                    className="mt-1 rounded-xl text-xs font-mono"
+                    className="rounded-lg h-9 text-xs font-black bg-white"
                   />
                 </div>
-                <div>
-                  <Label className="text-[11px] font-bold">On-Time %</Label>
+                <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">On-Time Percentage</span>
                   <Input
                     value={homeCms.statsOnTime}
                     onChange={(e) => setHomeCms({ ...homeCms, statsOnTime: e.target.value })}
-                    className="mt-1 rounded-xl text-xs font-mono"
+                    className="rounded-lg h-9 text-xs font-black bg-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section Headings Editor */}
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <Label className="text-xs font-bold text-slate-900 block">
+                Home Page Sub-Section Titles &amp; Headings
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">Category Section Title</span>
+                  <Input
+                    value={homeCms.categoryTitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, categoryTitle: e.target.value })}
+                    className="rounded-lg h-9 text-xs bg-white font-bold"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={homeCms.categorySubtitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, categorySubtitle: e.target.value })}
+                    className="rounded-lg text-[11px] bg-white mt-1"
+                  />
+                </div>
+
+                <div className="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">Shop by Brand Section Title</span>
+                  <Input
+                    value={homeCms.brandTitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, brandTitle: e.target.value })}
+                    className="rounded-lg h-9 text-xs bg-white font-bold"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={homeCms.brandSubtitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, brandSubtitle: e.target.value })}
+                    className="rounded-lg text-[11px] bg-white mt-1"
+                  />
+                </div>
+
+                <div className="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">Why Choose Us Title</span>
+                  <Input
+                    value={homeCms.whyUsTitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, whyUsTitle: e.target.value })}
+                    className="rounded-lg h-9 text-xs bg-white font-bold"
+                  />
+                  <Textarea
+                    rows={2}
+                    value={homeCms.whyUsSubtitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, whyUsSubtitle: e.target.value })}
+                    className="rounded-lg text-[11px] bg-white mt-1"
+                  />
+                </div>
+
+                <div className="space-y-1 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">Customer Support CTA Banner</span>
+                  <Input
+                    value={homeCms.supportCtaTitle}
+                    onChange={(e) => setHomeCms({ ...homeCms, supportCtaTitle: e.target.value })}
+                    className="rounded-lg h-9 text-xs bg-white font-bold"
+                  />
+                  <Input
+                    value={homeCms.supportCtaPhone}
+                    onChange={(e) => setHomeCms({ ...homeCms, supportCtaPhone: e.target.value })}
+                    placeholder="Phone number"
+                    className="rounded-lg h-9 text-xs bg-white mt-1 font-mono"
                   />
                 </div>
               </div>
@@ -768,467 +531,1227 @@ export function AdminCmsView() {
           </div>
         </TabsContent>
 
-        {/* --- ABOUT PAGE CMS TAB --- */}
-        <TabsContent value="about" className="space-y-4">
-          <div className="surface-card rounded-3xl border border-slate-200/80 bg-white p-6 space-y-5 shadow-xs">
-            <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        {/* ========================================================================= */}
+        {/* TAB 2: ABOUT PAGE */}
+        {/* ========================================================================= */}
+        <TabsContent value="about" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-black text-slate-900">About Page Company Content</h3>
-                <p className="text-xs text-slate-500">
-                  Manage 1972 company heritage, mission statement and depot details
-                </p>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-primary" /> About Us — Complete Narrative &amp; Story
+                </h3>
+                <p className="text-xs text-slate-500">History since 1972, timeline, mission, values and team.</p>
               </div>
               <Button
-                onClick={handleSaveAboutCms}
-                disabled={submitting}
-                className="rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
+                onClick={() =>
+                  handleSaveSection(
+                    "about_data",
+                    "About Page Content",
+                    aboutCms,
+                    "About page content saved to Supabase!",
+                  )
+                }
+                disabled={saving}
+                className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
               >
-                {submitting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="h-3.5 w-3.5" />
-                )}
-                Save About Content
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <span>Save About Content</span>
               </Button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <Label className="text-xs font-bold">About Main Heading (H1)</Label>
+            {/* Hero & Fast Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1 sm:col-span-4">
+                <Label className="text-xs font-bold text-slate-700">About Hero Heading</Label>
                 <Input
                   value={aboutCms.heroHeading}
                   onChange={(e) => setAboutCms({ ...aboutCms, heroHeading: e.target.value })}
-                  className="mt-1 rounded-xl text-xs font-bold"
+                  className="rounded-xl h-10 text-xs font-bold"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Hero Subtitle</Label>
+
+              <div className="space-y-1 sm:col-span-4">
+                <Label className="text-xs font-bold text-slate-700">Hero Subtitle</Label>
                 <Textarea
+                  rows={2}
                   value={aboutCms.heroSubtitle}
                   onChange={(e) => setAboutCms({ ...aboutCms, heroSubtitle: e.target.value })}
-                  rows={2}
-                  className="mt-1 rounded-xl text-xs"
+                  className="rounded-xl text-xs"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Heritage Section Title</Label>
+
+              <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Experience Stat</span>
                 <Input
-                  value={aboutCms.heritageTitle}
-                  onChange={(e) => setAboutCms({ ...aboutCms, heritageTitle: e.target.value })}
-                  className="mt-1 rounded-xl text-xs font-bold"
+                  value={aboutCms.statYears}
+                  onChange={(e) => setAboutCms({ ...aboutCms, statYears: e.target.value })}
+                  className="rounded-lg h-9 text-xs font-black bg-white"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Heritage Story Body</Label>
+              <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Forecourt Count</span>
+                <Input
+                  value={aboutCms.statForecourts}
+                  onChange={(e) => setAboutCms({ ...aboutCms, statForecourts: e.target.value })}
+                  className="rounded-lg h-9 text-xs font-black bg-white"
+                />
+              </div>
+              <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Cylinders Delivered</span>
+                <Input
+                  value={aboutCms.statDeliveries}
+                  onChange={(e) => setAboutCms({ ...aboutCms, statDeliveries: e.target.value })}
+                  className="rounded-lg h-9 text-xs font-black bg-white"
+                />
+              </div>
+              <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-500 font-bold uppercase">Customer Rating</span>
+                <Input
+                  value={aboutCms.statRating}
+                  onChange={(e) => setAboutCms({ ...aboutCms, statRating: e.target.value })}
+                  className="rounded-lg h-9 text-xs font-black bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Heritage Story */}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <Label className="text-xs font-bold text-slate-900 block">Heritage Story (1972 - Present)</Label>
+              <Input
+                value={aboutCms.heritageTitle}
+                onChange={(e) => setAboutCms({ ...aboutCms, heritageTitle: e.target.value })}
+                placeholder="Heritage Title"
+                className="rounded-xl h-10 text-xs font-bold"
+              />
+              <Textarea
+                rows={3}
+                value={aboutCms.heritageParagraph1}
+                onChange={(e) => setAboutCms({ ...aboutCms, heritageParagraph1: e.target.value })}
+                placeholder="Story Paragraph 1..."
+                className="rounded-xl text-xs"
+              />
+              <Textarea
+                rows={3}
+                value={aboutCms.heritageParagraph2}
+                onChange={(e) => setAboutCms({ ...aboutCms, heritageParagraph2: e.target.value })}
+                placeholder="Story Paragraph 2..."
+                className="rounded-xl text-xs"
+              />
+            </div>
+
+            {/* Mission & Vision */}
+            <div className="pt-4 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <Label className="text-xs font-bold text-slate-800">Mission Statement</Label>
                 <Textarea
-                  value={aboutCms.heritageBody}
-                  onChange={(e) => setAboutCms({ ...aboutCms, heritageBody: e.target.value })}
-                  rows={4}
-                  className="mt-1 rounded-xl text-xs leading-relaxed"
+                  rows={3}
+                  value={aboutCms.missionStatement}
+                  onChange={(e) => setAboutCms({ ...aboutCms, missionStatement: e.target.value })}
+                  className="rounded-xl text-xs bg-white"
                 />
               </div>
+              <div className="space-y-1 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <Label className="text-xs font-bold text-slate-800">Vision Statement</Label>
+                <Textarea
+                  rows={3}
+                  value={aboutCms.visionStatement}
+                  onChange={(e) => setAboutCms({ ...aboutCms, visionStatement: e.target.value })}
+                  className="rounded-xl text-xs bg-white"
+                />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* TAB 3: SERVICES PAGE */}
+        {/* ========================================================================= */}
+        <TabsContent value="services" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <Label className="text-xs font-bold">Depots & Logistics Overview</Label>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-primary" /> Services Page &amp; Service Cards Catalog
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Manage all 6 core services, emergency notice banners, and service detail links.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    setEditingService({
+                      id: `srv-${Date.now()}`,
+                      title: "New Service",
+                      desc: "Service description here...",
+                      icon: "Truck",
+                      image: "/service_gas_delivery.jpg",
+                      status: "Active",
+                    });
+                    setServiceModalOpen(true);
+                  }}
+                  className="rounded-full px-4 h-9 text-xs font-bold bg-slate-900 text-white gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Service</span>
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleSaveSection(
+                      "services_data",
+                      "Services Catalog",
+                      servicesCms,
+                      "Services saved and published!",
+                    )
+                  }
+                  disabled={saving}
+                  className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <span>Save All Services</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Emergency Notice Editor */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-red-50/60 p-4 rounded-2xl border border-red-200">
+              <div className="space-y-1 sm:col-span-1">
+                <Label className="text-xs font-bold text-red-950">Emergency Notice Title</Label>
                 <Input
-                  value={aboutCms.depotInfo}
-                  onChange={(e) => setAboutCms({ ...aboutCms, depotInfo: e.target.value })}
-                  className="mt-1 rounded-xl text-xs"
+                  value={servicesCms.emergencyTitle}
+                  onChange={(e) => setServicesCms({ ...servicesCms, emergencyTitle: e.target.value })}
+                  className="rounded-xl h-9 text-xs bg-white font-bold"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-1">
+                <Label className="text-xs font-bold text-red-950">Emergency Phone Number</Label>
+                <Input
+                  value={servicesCms.emergencyPhone}
+                  onChange={(e) => setServicesCms({ ...servicesCms, emergencyPhone: e.target.value })}
+                  className="rounded-xl h-9 text-xs bg-white font-mono"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-1">
+                <Label className="text-xs font-bold text-red-950">Emergency Text</Label>
+                <Input
+                  value={servicesCms.emergencyText}
+                  onChange={(e) => setServicesCms({ ...servicesCms, emergencyText: e.target.value })}
+                  className="rounded-xl h-9 text-xs bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Services Cards Table */}
+            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead className="w-16">Image</TableHead>
+                    <TableHead>Service Name</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>CTA Link</TableHead>
+                    <TableHead className="w-24">Status</TableHead>
+                    <TableHead className="text-right w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(servicesCms?.services || []).map((srv, idx) => (
+                    <TableRow key={srv.id || idx}>
+                      <TableCell>
+                        <div className="h-10 w-14 rounded-lg bg-slate-100 overflow-hidden border border-slate-200">
+                          <img src={srv.image} alt={srv.title} className="h-full w-full object-cover" />
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-extrabold text-xs text-slate-900">{srv.title}</TableCell>
+                      <TableCell className="text-xs text-slate-500 max-w-xs truncate">{srv.desc}</TableCell>
+                      <TableCell className="text-xs font-mono text-slate-600">{srv.ctaLink || "-"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={srv.status === "Active" ? "default" : "secondary"}
+                          className={srv.status === "Active" ? "bg-emerald-600 text-white" : ""}
+                        >
+                          {srv.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingService(srv);
+                            setServiceModalOpen(true);
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit2 className="h-3.5 w-3.5 text-slate-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setServicesCms({
+                              ...servicesCms,
+                              services: (servicesCms?.services || []).filter((s) => s.id !== srv.id),
+                            });
+                          }}
+                          className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* TAB 4: SHOP & ORDER GAS */}
+        {/* ========================================================================= */}
+        <TabsContent value="order-gas" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-primary" /> Shop &amp; Order Gas — Operational &amp; Safety Banners
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Cutoff announcements, refill bottle exchange rules, and PSSR safety guidance text.
+                </p>
+              </div>
+              <Button
+                onClick={() =>
+                  handleSaveSection(
+                    "shop_order_gas_data",
+                    "Shop & Order Gas Settings",
+                    shopGasCms,
+                    "Order Gas notices saved to Supabase!",
+                  )
+                }
+                disabled={saving}
+                className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <span>Save Gas Notices</span>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-bold text-slate-700">Order Gas Hero Subtitle</Label>
+                <Textarea
+                  rows={2}
+                  value={shopGasCms.heroSubtitle}
+                  onChange={(e) => setShopGasCms({ ...shopGasCms, heroSubtitle: e.target.value })}
+                  className="rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2 bg-amber-50/60 p-4 rounded-2xl border border-amber-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-xs font-bold text-amber-950">
+                    Live Operational Delivery Announcement Banner
+                  </Label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-amber-900 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={shopGasCms.announcementActive}
+                      onChange={(e) =>
+                        setShopGasCms({ ...shopGasCms, announcementActive: e.target.checked })
+                      }
+                      className="h-4 w-4 rounded text-primary"
+                    />
+                    <span>Show Banner on Catalogue</span>
+                  </label>
+                </div>
+                <Input
+                  value={shopGasCms.announcementTitle}
+                  onChange={(e) => setShopGasCms({ ...shopGasCms, announcementTitle: e.target.value })}
+                  placeholder="Banner Title..."
+                  className="rounded-xl h-9 text-xs bg-white font-bold mb-2"
+                />
+                <Textarea
+                  rows={2}
+                  value={shopGasCms.announcementText}
+                  onChange={(e) => setShopGasCms({ ...shopGasCms, announcementText: e.target.value })}
+                  placeholder="Banner Details..."
+                  className="rounded-xl text-xs bg-white"
+                />
+              </div>
+
+              <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <Label className="text-xs font-bold text-slate-800">Refill Exchange Guidance Text</Label>
+                <Textarea
+                  rows={3}
+                  value={shopGasCms.refillExchangeNotice}
+                  onChange={(e) =>
+                    setShopGasCms({ ...shopGasCms, refillExchangeNotice: e.target.value })
+                  }
+                  className="rounded-xl text-xs bg-white"
+                />
+              </div>
+
+              <div className="space-y-1 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <Label className="text-xs font-bold text-slate-800">PSSR 2000 Safety Compliance Note</Label>
+                <Textarea
+                  rows={3}
+                  value={shopGasCms.safetyText}
+                  onChange={(e) => setShopGasCms({ ...shopGasCms, safetyText: e.target.value })}
+                  className="rounded-xl text-xs bg-white"
                 />
               </div>
             </div>
           </div>
         </TabsContent>
 
-        {/* --- SERVICES TAB --- */}
-        <TabsContent value="services" className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Core Website Services ({services.length})
-              </h3>
-              <p className="text-xs text-slate-500">
-                Displayed across `/services` and homepage feature grid
-              </p>
-            </div>
-            <Button
-              onClick={() => handleOpenServiceModal()}
-              size="sm"
-              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Service
-            </Button>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
-              <div
-                key={s.id}
-                className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5 flex flex-col justify-between shadow-xs hover:border-slate-300 transition-all"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="p-2 rounded-xl bg-primary/10 text-primary font-bold text-xs">
-                      {s.icon || "Truck"}
-                    </span>
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
-                      {s.status || "Active"}
-                    </Badge>
-                  </div>
-                  {s.image && (
-                    <div className="h-28 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
-                      <img src={s.image} alt={s.title} className="h-full w-full object-cover" />
-                    </div>
-                  )}
-                  <h4 className="font-bold text-slate-900 text-sm">
-                    {typeof s.title === "string" ? s.title : String(s.title || "")}
-                  </h4>
-                  <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">
-                    {typeof (s.desc || s.description) === "string"
-                      ? s.desc || s.description
-                      : String(s.desc || s.description || "")}
-                  </p>
-                </div>
-                <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenServiceModal(s)}
-                    className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteService(s.id)}
-                    className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+        {/* ========================================================================= */}
+        {/* TAB 5: FILLING STATIONS */}
+        {/* ========================================================================= */}
+        <TabsContent value="stations" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Fuel className="h-4 w-4 text-primary" /> Forecourt Filling Stations &amp; Depots
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Opening hours, telephone numbers, amenities and Google Maps links for all 3 forecourts.
+                </p>
               </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* --- REVIEWS TAB --- */}
-        <TabsContent value="reviews" className="space-y-4">
-          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Customer Testimonials ({reviews.length})
-              </h3>
-              <p className="text-xs text-slate-500">
-                Live reviews shown in customer trust sections and about pages
-              </p>
-            </div>
-            <Button
-              onClick={() => handleOpenReviewModal()}
-              size="sm"
-              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Review
-            </Button>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            {reviews.map((r) => (
-              <div
-                key={r.id}
-                className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5 flex flex-col justify-between shadow-xs"
+              <Button
+                onClick={() =>
+                  handleSaveSection(
+                    "stations_data",
+                    "Filling Stations Directory",
+                    stationsCms,
+                    "Forecourt stations updated in Supabase!",
+                  )
+                }
+                disabled={saving}
+                className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
               >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-amber-500">
-                      {Array.from({ length: r.rating || 5 }).map((_, i) => (
-                        <Star key={i} className="h-3.5 w-3.5 fill-amber-400" />
-                      ))}
-                    </div>
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
-                      {r.status || "Published"}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-slate-700 italic leading-relaxed">
-                    "{typeof r.quote === "string" ? r.quote : String(r.quote || "")}"
-                  </p>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900">
-                      {typeof r.name === "string" ? r.name : String(r.name || "")}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      {typeof r.role === "string" ? r.role : "Gloucestershire Customer"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 mt-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenReviewModal(r)}
-                    className="h-7 w-7 p-0 rounded-full text-slate-600 hover:text-slate-900"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteReview(r.id)}
-                    className="h-7 w-7 p-0 rounded-full text-red-600 hover:text-red-700 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* --- OFFERS TAB --- */}
-        <TabsContent value="offers" className="space-y-4">
-          <div className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-slate-900">Active Offers ({offers.length})</h3>
-              <Button asChild size="sm" className="rounded-full text-xs font-bold">
-                <Link to="/admin/coupons">Manage Coupon Codes →</Link>
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <span>Save All Stations</span>
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] uppercase font-bold text-slate-400">
-                  <TableHead>Title</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Discount</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {offers.map((o) => (
-                  <TableRow key={o.id}>
-                    <td className="font-bold text-slate-900">
-                      {typeof o.title === "string" ? o.title : String(o.title || "")}
-                    </td>
-                    <td className="text-slate-500 max-w-sm">
-                      {typeof o.description === "string"
-                        ? o.description
-                        : String(o.description || "")}
-                    </td>
-                    <td className="font-mono font-bold text-primary">
-                      {o.discount_percentage ? `${o.discount_percentage}%` : "Special"}
-                    </td>
-                    <td>
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
-                        {o.is_active ? "Active" : "Disabled"}
-                      </Badge>
-                    </td>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(stationsCms?.stations || []).map((stn, idx) => (
+                <div
+                  key={stn.id || idx}
+                  className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-slate-900">{stn.name}</span>
+                    <Badge variant="outline" className="text-[10px] font-bold">
+                      {stn.town}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Phone Number</Label>
+                      <Input
+                        value={stn.phone}
+                        onChange={(e) => {
+                          const updated = [...(stationsCms?.stations || [])];
+                          if (updated[idx]) {
+                            updated[idx].phone = e.target.value;
+                            setStationsCms({ ...stationsCms, stations: updated });
+                          }
+                        }}
+                        className="rounded-lg h-8 text-xs bg-white font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Opening Hours</Label>
+                      <Input
+                        value={stn.hours}
+                        onChange={(e) => {
+                          const updated = [...(stationsCms?.stations || [])];
+                          if (updated[idx]) {
+                            updated[idx].hours = e.target.value;
+                            setStationsCms({ ...stationsCms, stations: updated });
+                          }
+                        }}
+                        className="rounded-lg h-8 text-xs bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Address &amp; Postcode</Label>
+                      <Input
+                        value={stn.address}
+                        onChange={(e) => {
+                          const updated = [...(stationsCms?.stations || [])];
+                          if (updated[idx]) {
+                            updated[idx].address = e.target.value;
+                            setStationsCms({ ...stationsCms, stations: updated });
+                          }
+                        }}
+                        className="rounded-lg h-8 text-xs bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-[10px] text-slate-400 font-bold uppercase">Google Maps URL</Label>
+                      <Input
+                        value={stn.maps_link}
+                        onChange={(e) => {
+                          const updated = [...(stationsCms?.stations || [])];
+                          if (updated[idx]) {
+                            updated[idx].maps_link = e.target.value;
+                            setStationsCms({ ...stationsCms, stations: updated });
+                          }
+                        }}
+                        className="rounded-lg h-8 text-xs bg-white font-mono text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </TabsContent>
 
-        {/* --- BANNERS TAB --- */}
-        <TabsContent value="banners" className="space-y-4">
-          <div className="surface-card rounded-2xl border border-slate-200/80 bg-white p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                Header Announcement Banners ({banners.length})
-              </h3>
-              <Button asChild size="sm" className="rounded-full text-xs font-bold">
-                <Link to="/admin/banners">Open Banner Editor →</Link>
+        {/* ========================================================================= */}
+        {/* TAB 6: OFFERS & DEALS */}
+        {/* ========================================================================= */}
+        <TabsContent value="offers" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Tag className="h-4 w-4 text-primary" /> Promotional Offers &amp; Seasonal Deals
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Manage promotional offer cards displayed on `/offers` and Homepage promotion banners.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    setEditingOffer({
+                      id: `off-${Date.now()}`,
+                      title: "New Seasonal Offer",
+                      description: "Special seasonal promotion description...",
+                      discount_percentage: 10,
+                      banner_url: "/coal-logs.jpg",
+                      is_active: true,
+                      ends_at: "2026-12-31",
+                    });
+                    setOfferModalOpen(true);
+                  }}
+                  className="rounded-full px-4 h-9 text-xs font-bold bg-slate-900 text-white gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add Offer</span>
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleSaveSection(
+                      "offers_data",
+                      "Promotional Offers",
+                      offersCms,
+                      "Promotional offers saved to Supabase!",
+                    )
+                  }
+                  disabled={saving}
+                  className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <span>Save Offers</span>
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(offersCms?.offers || []).map((off, idx) => (
+                <div
+                  key={off.id || idx}
+                  className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="h-32 w-full rounded-xl overflow-hidden bg-slate-900 relative">
+                      {off.banner_url && (
+                        <img src={off.banner_url} alt={off.title} className="h-full w-full object-cover" />
+                      )}
+                      <Badge className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold">
+                        {off.discount_percentage ? `${off.discount_percentage}% OFF` : "DEAL"}
+                      </Badge>
+                    </div>
+                    <h4 className="font-extrabold text-xs text-slate-900">{off.title}</h4>
+                    <p className="text-[11px] text-slate-500 leading-snug">{off.description}</p>
+                    {off.ends_at && (
+                      <span className="text-[10px] text-amber-700 font-bold block">
+                        Valid until: {off.ends_at}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
+                    <Badge variant={off.is_active ? "default" : "secondary"} className="text-[10px]">
+                      {off.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingOffer(off);
+                          setOfferModalOpen(true);
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 text-slate-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setOffersCms({
+                            ...offersCms,
+                            offers: (offersCms?.offers || []).filter((o) => o.id !== off.id),
+                          });
+                        }}
+                        className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* TAB 7: CONTACT & FAQS */}
+        {/* ========================================================================= */}
+        <TabsContent value="contact-faqs" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-primary" /> Contact Details &amp; Frequently Asked Questions
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Customer FAQ knowledge base and depot opening hours for `/contact`.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    setEditingFaq({
+                      id: `faq-${Date.now()}`,
+                      question: "New Frequently Asked Question?",
+                      answer: "Detailed answer explaining delivery or gas specifications...",
+                      category: "General",
+                      is_active: true,
+                    });
+                    setFaqModalOpen(true);
+                  }}
+                  className="rounded-full px-4 h-9 text-xs font-bold bg-slate-900 text-white gap-1.5"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add FAQ</span>
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleSaveSection(
+                      "contact_faqs_data",
+                      "Contact & FAQs",
+                      contactFaqsCms,
+                      "Contact details & FAQs saved to Supabase!",
+                    )
+                  }
+                  disabled={saving}
+                  className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  <span>Save Contact &amp; FAQs</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Office Contact Info */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Primary Contact Phone</Label>
+                <Input
+                  value={contactFaqsCms.phonePrimary}
+                  onChange={(e) =>
+                    setContactFaqsCms({ ...contactFaqsCms, phonePrimary: e.target.value })
+                  }
+                  className="rounded-xl h-9 text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Customer Support Email</Label>
+                <Input
+                  value={contactFaqsCms.emailPrimary}
+                  onChange={(e) =>
+                    setContactFaqsCms({ ...contactFaqsCms, emailPrimary: e.target.value })
+                  }
+                  className="rounded-xl h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-bold text-slate-700">Depot Address</Label>
+                <Input
+                  value={contactFaqsCms.headOfficeAddress}
+                  onChange={(e) =>
+                    setContactFaqsCms({ ...contactFaqsCms, headOfficeAddress: e.target.value })
+                  }
+                  className="rounded-xl h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-bold text-slate-700">Weekday Opening Hours</Label>
+                <Input
+                  value={contactFaqsCms.hoursWeekday}
+                  onChange={(e) =>
+                    setContactFaqsCms({ ...contactFaqsCms, hoursWeekday: e.target.value })
+                  }
+                  className="rounded-xl h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-bold text-slate-700">Weekend Opening Hours</Label>
+                <Input
+                  value={contactFaqsCms.hoursSaturday}
+                  onChange={(e) =>
+                    setContactFaqsCms({ ...contactFaqsCms, hoursSaturday: e.target.value })
+                  }
+                  className="rounded-xl h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* FAQs List */}
+            <div className="pt-4 border-t border-slate-100 space-y-3">
+              <Label className="text-xs font-bold text-slate-900 block">
+                Frequently Asked Questions ({(contactFaqsCms?.faqs || []).length} Questions)
+              </Label>
+              <div className="space-y-2">
+                {(contactFaqsCms?.faqs || []).map((faq, idx) => (
+                  <div
+                    key={faq.id || idx}
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 flex items-start justify-between gap-3"
+                  >
+                    <div className="space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-bold">
+                          {faq.category || "General"}
+                        </Badge>
+                        <span className="font-extrabold text-slate-900">{faq.question}</span>
+                      </div>
+                      <p className="text-slate-600 text-[11px] leading-relaxed pl-1">{faq.answer}</p>
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingFaq(faq);
+                          setFaqModalOpen(true);
+                        }}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 text-slate-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setContactFaqsCms({
+                            ...contactFaqsCms,
+                            faqs: (contactFaqsCms?.faqs || []).filter((f) => f.id !== faq.id),
+                          });
+                        }}
+                        className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ========================================================================= */}
+        {/* TAB 8: FOOTER & GLOBAL NOTIFICATION BANNER */}
+        {/* ========================================================================= */}
+        <TabsContent value="footer" className="space-y-6">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" /> Footer Content &amp; Global Announcement Banner
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Global emergency / operational alert bar, social links, and footer biography text.
+                </p>
+              </div>
+              <Button
+                onClick={() =>
+                  handleSaveSection(
+                    "footer_data",
+                    "Footer & Global Settings",
+                    footerCms,
+                    "Footer & Global alert settings saved to Supabase!",
+                  )
+                }
+                disabled={saving}
+                className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                <span>Save Global Settings</span>
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow className="text-[10px] uppercase font-bold text-slate-400">
-                  <TableHead>Title</TableHead>
-                  <TableHead>Announcement Message</TableHead>
-                  <TableHead>Destination Link</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody className="text-xs">
-                {banners.map((b) => (
-                  <TableRow key={b.id}>
-                    <td className="font-bold text-slate-900">
-                      {typeof b.title === "string" ? b.title : String(b.title || "")}
-                    </td>
-                    <td className="text-slate-500 max-w-md">
-                      {typeof b.message === "string" ? b.message : String(b.message || "")}
-                    </td>
-                    <td className="font-mono text-primary">{b.link_url || "/offers"}</td>
-                    <td>
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200/60 text-[10px]">
-                        {b.is_active ? "Active" : "Disabled"}
-                      </Badge>
-                    </td>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+
+            {/* Global Alert Bar */}
+            <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Megaphone className="h-4 w-4 text-amber-700" />
+                  <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                    Global Site-Wide Announcement Bar
+                  </span>
+                </div>
+                <label className="flex items-center gap-2 text-xs font-bold text-amber-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={footerCms.bannerActive}
+                    onChange={(e) => setFooterCms({ ...footerCms, bannerActive: e.target.checked })}
+                    className="h-4 w-4 rounded text-primary"
+                  />
+                  <span>Display on Website Header</span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-amber-950">Badge Tag</Label>
+                  <Input
+                    value={footerCms.bannerBadge}
+                    onChange={(e) => setFooterCms({ ...footerCms, bannerBadge: e.target.value })}
+                    className="rounded-xl h-9 text-xs bg-white font-bold"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs font-bold text-amber-950">Announcement Message</Label>
+                  <Input
+                    value={footerCms.bannerText}
+                    onChange={(e) => setFooterCms({ ...footerCms, bannerText: e.target.value })}
+                    className="rounded-xl h-9 text-xs bg-white"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-amber-950">Action Button Label</Label>
+                  <Input
+                    value={footerCms.bannerLinkText}
+                    onChange={(e) => setFooterCms({ ...footerCms, bannerLinkText: e.target.value })}
+                    className="rounded-xl h-9 text-xs bg-white"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <Label className="text-xs font-bold text-amber-950">Action Destination URL</Label>
+                  <Input
+                    value={footerCms.bannerLinkUrl}
+                    onChange={(e) => setFooterCms({ ...footerCms, bannerLinkUrl: e.target.value })}
+                    className="rounded-xl h-9 text-xs bg-white font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Bio & Socials */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-1 sm:col-span-3">
+                <Label className="text-xs font-bold text-slate-700">Footer Company Bio</Label>
+                <Textarea
+                  rows={2}
+                  value={footerCms.bio}
+                  onChange={(e) => setFooterCms({ ...footerCms, bio: e.target.value })}
+                  className="rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Facebook URL</Label>
+                <Input
+                  value={footerCms.facebookUrl}
+                  onChange={(e) => setFooterCms({ ...footerCms, facebookUrl: e.target.value })}
+                  className="rounded-xl h-9 text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Instagram URL</Label>
+                <Input
+                  value={footerCms.instagramUrl}
+                  onChange={(e) => setFooterCms({ ...footerCms, instagramUrl: e.target.value })}
+                  className="rounded-xl h-9 text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">YouTube Channel URL</Label>
+                <Input
+                  value={footerCms.youtubeUrl}
+                  onChange={(e) => setFooterCms({ ...footerCms, youtubeUrl: e.target.value })}
+                  className="rounded-xl h-9 text-xs font-mono"
+                />
+              </div>
+
+              <div className="space-y-1 sm:col-span-3">
+                <Label className="text-xs font-bold text-slate-700">Legal Notice &amp; Copyright</Label>
+                <Input
+                  value={footerCms.legalNotice}
+                  onChange={(e) => setFooterCms({ ...footerCms, legalNotice: e.target.value })}
+                  className="rounded-xl h-9 text-xs"
+                />
+              </div>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
 
-      {/* SERVICE MODAL */}
+      {/* ========================================================================= */}
+      {/* SERVICE EDIT MODAL */}
+      {/* ========================================================================= */}
       <Dialog open={serviceModalOpen} onOpenChange={setServiceModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-7">
+        <DialogContent className="max-w-md rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black tracking-tight">
-              {editingService ? "Edit Service" : "Add Service"}
+            <DialogTitle className="text-base font-black text-slate-900">
+              {editingService?.id?.startsWith("srv-") ? "Edit Service" : "Add Service"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div>
-              <Label className="text-xs font-bold">Service Title</Label>
-              <Input
-                value={serviceTitle}
-                onChange={(e) => setServiceTitle(e.target.value)}
-                placeholder="e.g. Gas Delivery"
-                className="mt-1 rounded-xl text-xs"
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-bold">Description</Label>
-              <Textarea
-                value={serviceDesc}
-                onChange={(e) => setServiceDesc(e.target.value)}
-                rows={3}
-                placeholder="Detailed description of service coverage..."
-                className="mt-1 rounded-xl text-xs"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-bold">Icon Name</Label>
+
+          {editingService && (
+            <div className="space-y-4 text-xs pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Service Title *</Label>
                 <Input
-                  value={serviceIcon}
-                  onChange={(e) => setServiceIcon(e.target.value)}
-                  placeholder="Truck / Container / Building2"
-                  className="mt-1 rounded-xl text-xs font-mono"
+                  value={editingService.title}
+                  onChange={(e) => setEditingService({ ...editingService, title: e.target.value })}
+                  className="rounded-xl h-10 text-xs font-bold"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Image URL / Upload</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Input
-                    value={serviceImage}
-                    onChange={(e) => setServiceImage(e.target.value)}
-                    placeholder="/service_gas_delivery.jpg"
-                    className="rounded-xl text-xs flex-1"
-                  />
-                  <label className="cursor-pointer">
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Description *</Label>
+                <Textarea
+                  rows={3}
+                  value={editingService.desc}
+                  onChange={(e) => setEditingService({ ...editingService, desc: e.target.value })}
+                  className="rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Service Image</Label>
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-16 rounded-xl bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
+                    <img
+                      src={editingService.image}
+                      alt="Preview"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <label className="flex-1">
+                    <div className="flex items-center justify-center gap-2 border border-dashed border-slate-300 hover:border-slate-400 p-2.5 rounded-xl cursor-pointer bg-slate-50 text-slate-700 font-bold text-xs">
+                      {uploadingImg ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 text-primary" />
+                      )}
+                      <span>{uploadingImg ? "Uploading..." : "Upload New Image"}</span>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handleUploadServiceImage}
                       className="hidden"
+                      onChange={(e) =>
+                        handleImageUpload(e, "services", (url) => {
+                          setEditingService({ ...editingService, image: url });
+                        })
+                      }
                     />
-                    <span className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-bold border border-slate-200 hover:bg-slate-50">
-                      {uploadingServiceImg ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Upload className="h-3 w-3" />
-                      )}
-                    </span>
                   </label>
                 </div>
               </div>
-            </div>
-            {serviceImage && (
-              <div className="h-24 w-full rounded-xl overflow-hidden bg-slate-50 border border-slate-200">
-                <img src={serviceImage} alt="Preview" className="h-full w-full object-cover" />
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-700">CTA Button Text</Label>
+                  <Input
+                    value={editingService.ctaText || ""}
+                    onChange={(e) =>
+                      setEditingService({ ...editingService, ctaText: e.target.value })
+                    }
+                    placeholder="e.g. Order Gas"
+                    className="rounded-xl h-10 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-700">CTA Destination URL</Label>
+                  <Input
+                    value={editingService.ctaLink || ""}
+                    onChange={(e) =>
+                      setEditingService({ ...editingService, ctaLink: e.target.value })
+                    }
+                    placeholder="e.g. /order-gas"
+                    className="rounded-xl h-10 text-xs font-mono"
+                  />
+                </div>
               </div>
-            )}
-          </div>
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setServiceModalOpen(false)}
-              className="rounded-full text-xs font-bold"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveService}
-              disabled={submitting}
-              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-            >
-              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {editingService ? "Save Service" : "Add Service"}
-            </Button>
-          </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <Label className="text-xs font-bold text-slate-700">Status</Label>
+                <select
+                  value={editingService.status}
+                  onChange={(e) =>
+                    setEditingService({
+                      ...editingService,
+                      status: e.target.value as "Active" | "Inactive",
+                    })
+                  }
+                  className="rounded-xl h-9 border border-slate-300 px-3 text-xs font-bold bg-white"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setServiceModalOpen(false)}
+                  className="rounded-full px-4 text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const currentServices = servicesCms?.services || [];
+                    const exists = currentServices.find((s) => s.id === editingService.id);
+                    const updated = exists
+                      ? currentServices.map((s) =>
+                          s.id === editingService.id ? editingService : s,
+                        )
+                      : [...currentServices, editingService];
+
+                    setServicesCms({ ...servicesCms, services: updated });
+                    setServiceModalOpen(false);
+                    toast.success("Service card updated in state. Click 'Save All Services' to publish.");
+                  }}
+                  className="rounded-full px-5 text-xs font-bold bg-primary text-white"
+                >
+                  Apply Changes
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* REVIEW MODAL */}
-      <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-7">
+      {/* ========================================================================= */}
+      {/* OFFER EDIT MODAL */}
+      {/* ========================================================================= */}
+      <Dialog open={offerModalOpen} onOpenChange={setOfferModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black tracking-tight">
-              {editingReview ? "Edit Review" : "Add Testimonial"}
+            <DialogTitle className="text-base font-black text-slate-900">
+              {editingOffer?.id?.startsWith("off-") ? "Edit Promotional Offer" : "Add Promotional Offer"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-bold">Customer Name</Label>
+
+          {editingOffer && (
+            <div className="space-y-4 text-xs pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Offer Title *</Label>
                 <Input
-                  value={reviewName}
-                  onChange={(e) => setReviewName(e.target.value)}
-                  placeholder="e.g. Sarah H."
-                  className="mt-1 rounded-xl text-xs"
+                  value={editingOffer.title}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, title: e.target.value })}
+                  className="rounded-xl h-10 text-xs font-bold"
                 />
               </div>
-              <div>
-                <Label className="text-xs font-bold">Customer Location/Role</Label>
-                <Input
-                  value={reviewRole}
-                  onChange={(e) => setReviewRole(e.target.value)}
-                  placeholder="Frampton on Severn"
-                  className="mt-1 rounded-xl text-xs"
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Description *</Label>
+                <Textarea
+                  rows={3}
+                  value={editingOffer.description}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, description: e.target.value })}
+                  className="rounded-xl text-xs"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-700">Discount %</Label>
+                  <Input
+                    type="number"
+                    value={editingOffer.discount_percentage || 0}
+                    onChange={(e) =>
+                      setEditingOffer({ ...editingOffer, discount_percentage: Number(e.target.value) })
+                    }
+                    className="rounded-xl h-10 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-700">Valid Until Date</Label>
+                  <Input
+                    type="date"
+                    value={editingOffer.ends_at || ""}
+                    onChange={(e) => setEditingOffer({ ...editingOffer, ends_at: e.target.value })}
+                    className="rounded-xl h-10 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Banner Image URL</Label>
+                <Input
+                  value={editingOffer.banner_url || ""}
+                  onChange={(e) => setEditingOffer({ ...editingOffer, banner_url: e.target.value })}
+                  placeholder="/coal-logs.jpg"
+                  className="rounded-xl h-10 text-xs font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <Label className="text-xs font-bold text-slate-700">Status</Label>
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editingOffer.is_active}
+                    onChange={(e) => setEditingOffer({ ...editingOffer, is_active: e.target.checked })}
+                    className="h-4 w-4 rounded text-primary"
+                  />
+                  <span>Active / Published</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setOfferModalOpen(false)}
+                  className="rounded-full px-4 text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const currentOffers = offersCms?.offers || [];
+                    const exists = currentOffers.find((o) => o.id === editingOffer.id);
+                    const updated = exists
+                      ? currentOffers.map((o) => (o.id === editingOffer.id ? editingOffer : o))
+                      : [...currentOffers, editingOffer];
+
+                    setOffersCms({ ...offersCms, offers: updated });
+                    setOfferModalOpen(false);
+                    toast.success("Offer updated in state. Click 'Save Offers' to publish.");
+                  }}
+                  className="rounded-full px-5 text-xs font-bold bg-primary text-white"
+                >
+                  Apply Offer
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label className="text-xs font-bold">Testimonial Quote</Label>
-              <Textarea
-                value={reviewQuote}
-                onChange={(e) => setReviewQuote(e.target.value)}
-                rows={3}
-                placeholder="Write customer feedback..."
-                className="mt-1 rounded-xl text-xs"
-              />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ========================================================================= */}
+      {/* FAQ EDIT MODAL */}
+      {/* ========================================================================= */}
+      <Dialog open={faqModalOpen} onOpenChange={setFaqModalOpen}>
+        <DialogContent className="max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-black text-slate-900">
+              {editingFaq?.id?.startsWith("faq-") ? "Edit FAQ" : "Add FAQ"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {editingFaq && (
+            <div className="space-y-4 text-xs pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Category</Label>
+                <Input
+                  value={editingFaq.category || ""}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, category: e.target.value })}
+                  placeholder="e.g. Delivery / Cylinders / Trade"
+                  className="rounded-xl h-10 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Question *</Label>
+                <Input
+                  value={editingFaq.question}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, question: e.target.value })}
+                  className="rounded-xl h-10 text-xs font-bold"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-bold text-slate-700">Answer *</Label>
+                <Textarea
+                  rows={4}
+                  value={editingFaq.answer}
+                  onChange={(e) => setEditingFaq({ ...editingFaq, answer: e.target.value })}
+                  className="rounded-xl text-xs"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFaqModalOpen(false)}
+                  className="rounded-full px-4 text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const currentFaqs = contactFaqsCms?.faqs || [];
+                    const exists = currentFaqs.find((f) => f.id === editingFaq.id);
+                    const updated = exists
+                      ? currentFaqs.map((f) => (f.id === editingFaq.id ? editingFaq : f))
+                      : [...currentFaqs, editingFaq];
+
+                    setContactFaqsCms({ ...contactFaqsCms, faqs: updated });
+                    setFaqModalOpen(false);
+                    toast.success("FAQ updated in state. Click 'Save Contact & FAQs' to publish.");
+                  }}
+                  className="rounded-full px-5 text-xs font-bold bg-primary text-white"
+                >
+                  Apply FAQ
+                </Button>
+              </div>
             </div>
-            <div>
-              <Label className="text-xs font-bold">Star Rating (1-5)</Label>
-              <Input
-                type="number"
-                min="1"
-                max="5"
-                value={reviewRating}
-                onChange={(e) => setReviewRating(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-mono"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setReviewModalOpen(false)}
-              className="rounded-full text-xs font-bold"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveReview}
-              disabled={submitting}
-              className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5"
-            >
-              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {editingReview ? "Save Review" : "Publish Review"}
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

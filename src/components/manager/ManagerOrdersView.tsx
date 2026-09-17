@@ -1,6 +1,19 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { ShoppingBag, Search, Eye, Filter, X, Clock, PackageCheck } from "lucide-react";
+import {
+  ShoppingBag,
+  Search,
+  Eye,
+  Filter,
+  X,
+  Clock,
+  PackageCheck,
+  Truck,
+  ArrowRight,
+  Calendar,
+  Edit2,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { OrderStatus } from "@/types/database.types";
 import { Button } from "@/components/ui/button";
@@ -39,6 +52,20 @@ export function ManagerOrdersView() {
     return "all";
   });
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+
+  // Delivery Schedule Management State
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [schedDate, setSchedDate] = useState("");
+  const [schedSlot, setSchedSlot] = useState("Morning (08:00 - 12:00)");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setSchedDate(selectedOrder.delivery_date || "");
+      setSchedSlot(selectedOrder.delivery_slot || "Morning (08:00 - 12:00)");
+      setEditingSchedule(false);
+    }
+  }, [selectedOrder]);
 
   // Keep statusFilter synchronized with live router location changes
   useEffect(() => {
@@ -175,6 +202,83 @@ export function ManagerOrdersView() {
       await loadOrders();
     } catch (err: any) {
       toast.error("Failed to update order status: " + err.message);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    if (!selectedOrder) return;
+    if (!schedDate) {
+      return toast.error("Please select a delivery date.");
+    }
+    setSavingSchedule(true);
+    try {
+      const { data: authUser } = await supabase.auth.getUser();
+
+      // 1. Update orders table in Supabase
+      const { error: orderErr } = await (supabase.from("orders") as any)
+        .update({
+          delivery_date: schedDate,
+          delivery_slot: schedSlot,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedOrder.id);
+
+      if (orderErr) throw orderErr;
+
+      // 2. Synchronize delivery_assignments table
+      try {
+        await (supabase.from("delivery_assignments") as any)
+          .update({
+            scheduled_date: schedDate,
+            time_slot: schedSlot,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("order_id", selectedOrder.id);
+      } catch (delErr) {
+        console.warn("delivery_assignments schedule sync notice:", delErr);
+      }
+
+      // 3. Log into order_status_history
+      try {
+        await supabase.from("order_status_history").insert([
+          {
+            order_id: selectedOrder.id,
+            status: selectedOrder.status || "Pending",
+            actor_id: authUser?.user?.id || null,
+            created_by: authUser?.user?.id || null,
+            notes: `Delivery schedule set to ${new Date(schedDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} (${schedSlot}) by Manager`,
+          },
+        ]);
+      } catch (histErr) {
+        console.warn("Status history notice:", histErr);
+      }
+
+      // 4. Send customer notification if schedule assigned/changed
+      if (selectedOrder.customer_id) {
+        try {
+          await (supabase.from("notifications") as any).insert([
+            {
+              user_id: selectedOrder.customer_id,
+              title: "Delivery Schedule Updated",
+              message: `Your order #${selectedOrder.order_number || selectedOrder.id.slice(0, 8)} is scheduled for delivery on ${new Date(schedDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} (${schedSlot}).`,
+              type: "delivery_update",
+            },
+          ]);
+        } catch (notifErr) {
+          console.warn("Notification insert notice:", notifErr);
+        }
+      }
+
+      toast.success(`Delivery schedule saved for order #${selectedOrder.order_number || selectedOrder.id.slice(0, 8)}`);
+      setSelectedOrder((prev: any) =>
+        prev ? { ...prev, delivery_date: schedDate, delivery_slot: schedSlot } : null,
+      );
+      setEditingSchedule(false);
+      await loadOrders();
+    } catch (err: any) {
+      toast.error("Failed to save delivery schedule: " + err.message);
+    } finally {
+      setSavingSchedule(false);
     }
   };
 
@@ -373,11 +477,196 @@ export function ManagerOrdersView() {
                 <SheetTitle className="font-black text-lg">
                   Order #{selectedOrder.order_number || selectedOrder.id.slice(0, 8)}
                 </SheetTitle>
+                <p className="text-muted-foreground text-[11px]">
+                  Placed on {new Date(selectedOrder.created_at).toLocaleString("en-GB")}
+                </p>
               </SheetHeader>
+
+              {/* DELIVERY ASSIGNMENT SECTION */}
+              <div className="p-4 rounded-2xl border bg-slate-50/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-primary" /> Delivery Assignment
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={`font-bold text-[10px] ${
+                      selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}
+                  >
+                    {selectedOrder.assigned_driver &&
+                    selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                      ? "Assigned"
+                      : "Unassigned"}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  <div>
+                    <p className="text-muted-foreground text-[11px]">Assigned Driver / Agent</p>
+                    <p className="font-extrabold text-foreground text-sm mt-0.5">
+                      {selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? selectedOrder.assigned_driver
+                        : "No Driver Assigned"}
+                    </p>
+                  </div>
+                  <Button
+                    asChild
+                    size="sm"
+                    className="rounded-full text-xs font-bold gap-1 bg-primary hover:bg-primary/90 shadow-2xs"
+                  >
+                    <Link to="/manager/delivery-assignment">
+                      {selectedOrder.assigned_driver &&
+                      selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
+                        ? "Reassign"
+                        : "Assign Agent"}{" "}
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
               <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
                 <p className="font-bold text-foreground">Customer</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_name}</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+                <p className="text-muted-foreground">{selectedOrder.customer_name || "Guest Customer"}</p>
+                {selectedOrder.customer_email && (
+                  <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+                )}
+                <p className="text-muted-foreground mt-1">
+                  {typeof selectedOrder.shipping_address === "string"
+                    ? selectedOrder.shipping_address
+                    : typeof selectedOrder.delivery_address === "string"
+                    ? selectedOrder.delivery_address
+                    : typeof selectedOrder.delivery_address === "object" && selectedOrder.delivery_address !== null
+                    ? [selectedOrder.delivery_address.street, selectedOrder.delivery_address.city, selectedOrder.delivery_address.postcode].filter(Boolean).join(", ")
+                    : "Gloucestershire Address"}
+                </p>
+              </div>
+
+              {/* Delivery Schedule Management Section */}
+              <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                    <Calendar className="h-4 w-4 text-primary" /> Delivery Schedule
+                  </span>
+                  {!editingSchedule && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingSchedule(true)}
+                      className="h-7 text-[11px] font-bold rounded-xl border-slate-300 gap-1 bg-white hover:bg-slate-100"
+                    >
+                      <Edit2 className="h-3 w-3" /> Edit Schedule
+                    </Button>
+                  )}
+                </div>
+
+                {editingSchedule ? (
+                  <div className="space-y-3 pt-1 animate-in fade-in">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Delivery Date
+                      </label>
+                      <Input
+                        type="date"
+                        value={schedDate}
+                        onChange={(e) => setSchedDate(e.target.value)}
+                        className="h-8 rounded-xl text-xs bg-white border-slate-300"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                        Delivery Slot
+                      </label>
+                      <Select value={schedSlot} onValueChange={setSchedSlot}>
+                        <SelectTrigger className="h-8 rounded-xl text-xs bg-white border-slate-300 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="Morning (08:00 - 12:00)">Morning (08:00 - 12:00)</SelectItem>
+                          <SelectItem value="Afternoon (12:00 - 16:00)">Afternoon (12:00 - 16:00)</SelectItem>
+                          <SelectItem value="Evening (16:00 - 20:00)">Evening (16:00 - 20:00)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSaveSchedule}
+                        disabled={savingSchedule}
+                        className="h-7 rounded-xl text-[11px] font-bold bg-primary hover:bg-primary/90 text-white"
+                      >
+                        {savingSchedule ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...
+                          </>
+                        ) : (
+                          "Save Delivery Schedule"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingSchedule(false);
+                          setSchedDate(selectedOrder.delivery_date || "");
+                          setSchedSlot(selectedOrder.delivery_slot || "Morning (08:00 - 12:00)");
+                        }}
+                        className="h-7 rounded-xl text-[11px] font-medium"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
+                    <div>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Date
+                      </span>
+                      <span className="font-extrabold text-foreground">
+                        {selectedOrder.delivery_date
+                          ? new Date(selectedOrder.delivery_date).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "Not scheduled"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                        Time Slot
+                      </span>
+                      <span className="font-extrabold text-foreground">
+                        {selectedOrder.delivery_slot || "Not scheduled"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-bold text-foreground">Order Items</p>
+                {selectedOrder.order_items?.map((item: any) => (
+                  <div key={item.id} className="flex justify-between py-1 border-b border-slate-100 last:border-0">
+                    <span>
+                      {item.product_name} x {item.quantity}
+                    </span>
+                    <span className="font-bold">{gbp(Number(item.total_price))}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-2 flex justify-between font-black text-foreground">
+                  <span>Total Amount</span>
+                  <span>{gbp(Number(selectedOrder.total))}</span>
+                </div>
               </div>
             </div>
           )}

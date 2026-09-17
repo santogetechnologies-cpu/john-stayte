@@ -16,6 +16,8 @@ import {
   Loader2,
   Sliders,
   ShieldAlert,
+  UserCheck,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -38,6 +46,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
+import {
+  getDeliveryAgents,
+  assignDeliveryAgentToDelivery,
+  type DeliveryAgentRecord,
+} from "@/lib/delivery-agent-service";
+import { deleteDeliveryAssignment } from "@/lib/order-service";
+import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 import { cn } from "@/lib/utils";
 import { DEFAULT_SLOTS, SlotConfig } from "@/lib/cylinder-service";
 
@@ -49,33 +64,66 @@ export function AdminDeliveriesView() {
 
   // Route Assignment Modal
   const [modalOpen, setModalOpen] = useState(false);
+  const [deliveryAgents, setDeliveryAgents] = useState<any[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState("");
   const [driverName, setDriverName] = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [routeArea, setRouteArea] = useState("Gloucestershire South");
   const [timeSlot, setTimeSlot] = useState("Morning Window (08:00 - 12:00)");
   const [creating, setCreating] = useState(false);
 
+  // Reassign / Direct Assign Delivery Agent Modal
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedDeliveryToAssign, setSelectedDeliveryToAssign] = useState<any | null>(null);
+  const [selectedAgentIdForAssign, setSelectedAgentIdForAssign] = useState("");
+  const [assigning, setAssigning] = useState(false);
+
   // Slots Configuration State
   const [slotConfigs, setSlotConfigs] = useState<SlotConfig[]>(DEFAULT_SLOTS);
   const [savingSlots, setSavingSlots] = useState(false);
 
+  // Delete Delivery Assignment Confirmation Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<any | null>(null);
+  const [deletingAssignment, setDeletingAssignment] = useState(false);
+
+  const handleConfirmDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
+    setDeletingAssignment(true);
+    try {
+      const res = await deleteDeliveryAssignment(assignmentToDelete.id);
+      toast.success(res.message || "Delivery assignment deleted successfully.");
+      setDeleteModalOpen(false);
+      setAssignmentToDelete(null);
+      await loadDeliveriesAndSlots();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete delivery assignment.");
+    } finally {
+      setDeletingAssignment(false);
+    }
+  };
+
   const loadDeliveriesAndSlots = async () => {
     setLoading(true);
     try {
-      const [{ data: delData, error: delErr }, { data: slotBlock }] = await Promise.all([
-        supabase
-          .from("delivery_assignments")
-          .select("*, orders(*)")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "delivery_pickup_slots_config")
-          .maybeSingle(),
-      ]);
+      const [{ data: delData, error: delErr }, { data: slotBlock }, agentsData] = await Promise.all(
+        [
+          supabase
+            .from("delivery_assignments")
+            .select("*, orders(*)")
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "delivery_pickup_slots_config")
+            .maybeSingle(),
+          getDeliveryAgents(),
+        ],
+      );
 
       if (delErr) throw delErr;
       setDeliveries(delData || []);
+      setDeliveryAgents(agentsData || []);
 
       if (slotBlock?.content) {
         try {
@@ -95,8 +143,9 @@ export function AdminDeliveriesView() {
   useEffect(() => {
     loadDeliveriesAndSlots();
 
+    const channelName = `admin_deliveries_realtime_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
-      .channel("admin_deliveries_realtime_sync")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "delivery_assignments" }, () =>
         loadDeliveriesAndSlots(),
       )
@@ -138,8 +187,10 @@ export function AdminDeliveriesView() {
     try {
       const { error } = await supabase.from("delivery_assignments").insert([
         {
+          agent_id: selectedAgentId || null,
           driver_name: driverName.trim(),
           vehicle_identifier: vehicleId.trim(),
+          vehicle_plate: vehicleId.trim(),
           route_area: routeArea,
           time_slot: timeSlot,
           status: "Out for Delivery",
@@ -149,6 +200,7 @@ export function AdminDeliveriesView() {
       if (error) throw error;
       toast.success("Delivery route assignment created!");
       setModalOpen(false);
+      setSelectedAgentId("");
       setDriverName("");
       setVehicleId("");
       await loadDeliveriesAndSlots();
@@ -156,6 +208,41 @@ export function AdminDeliveriesView() {
       toast.error("Failed to create assignment: " + err.message);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleAssignAgent = async () => {
+    if (!selectedDeliveryToAssign || !selectedAgentIdForAssign) {
+      toast.error("Please select an active driver.");
+      return;
+    }
+
+    const agent = deliveryAgents.find((a) => a.id === selectedAgentIdForAssign);
+    if (!agent) return;
+
+    setAssigning(true);
+    try {
+      await assignDeliveryAgentToDelivery({
+        assignmentId: selectedDeliveryToAssign.id,
+        orderId: selectedDeliveryToAssign.order_id,
+        agentId: agent.id,
+        agentName: agent.full_name,
+        vehicleIdentifier: agent.vehicle_type || "Cylinder Delivery Van",
+        vehiclePlate: agent.vehicle_plate,
+        assignedBy: "Admin Operations",
+      });
+
+      toast.success(
+        `Assigned ${agent.full_name} to #${selectedDeliveryToAssign.orders?.order_number || selectedDeliveryToAssign.id.slice(0, 8)}!`,
+      );
+      setAssignModalOpen(false);
+      setSelectedDeliveryToAssign(null);
+      setSelectedAgentIdForAssign("");
+      await loadDeliveriesAndSlots();
+    } catch (err: any) {
+      toast.error("Failed to assign agent: " + err.message);
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -423,6 +510,7 @@ export function AdminDeliveriesView() {
                   <TableRow>
                     <TableHead className="font-bold text-xs">Route / Assignment</TableHead>
                     <TableHead className="font-bold text-xs">Driver & Vehicle</TableHead>
+                    <TableHead className="font-bold text-xs">Cylinder Exchange</TableHead>
                     <TableHead className="font-bold text-xs">Area & Schedule</TableHead>
                     <TableHead className="font-bold text-xs">Associated Order</TableHead>
                     <TableHead className="font-bold text-xs">Status</TableHead>
@@ -432,6 +520,7 @@ export function AdminDeliveriesView() {
                 <TableBody>
                   {filtered.map((d) => {
                     const pickupType = isPickup(d);
+                    const exchangeReq = getOrderCylinderExchangeRequirement(d);
 
                     return (
                       <TableRow key={d.id} className="hover:bg-slate-50/60">
@@ -454,6 +543,26 @@ export function AdminDeliveriesView() {
                           <p className="text-[11px] text-muted-foreground">
                             {d.vehicle_identifier || "Fleet Van"}
                           </p>
+                        </TableCell>
+
+                        <TableCell className="text-xs">
+                          {exchangeReq.required ? (
+                            <div className="space-y-0.5">
+                              <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[10px]">
+                                Empty Required: Yes ({exchangeReq.expectedQuantity})
+                              </Badge>
+                              <p className="text-[10px] text-slate-500">Refill Exchange</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 font-extrabold text-[10px]">
+                                Empty Required: No
+                              </Badge>
+                              <p className="text-[10px] text-slate-500">
+                                {exchangeReq.orderType === "NEW_CYLINDER" ? "New Cylinder" : "Standard"}
+                              </p>
+                            </div>
+                          )}
                         </TableCell>
 
                         <TableCell className="text-xs">
@@ -502,16 +611,51 @@ export function AdminDeliveriesView() {
                         </TableCell>
 
                         <TableCell className="text-right">
-                          {d.orders && (
+                          <div className="flex items-center justify-end gap-1.5">
                             <Button
-                              asChild
                               variant="outline"
                               size="sm"
-                              className="h-7 rounded-full text-[10px] font-bold"
+                              onClick={() => {
+                                setSelectedDeliveryToAssign(d);
+                                setSelectedAgentIdForAssign(
+                                  d.agent_id || d.driver_id || (deliveryAgents[0]?.id || ""),
+                                );
+                                setAssignModalOpen(true);
+                              }}
+                              className="h-7 rounded-full text-[10px] font-bold px-2.5 border-slate-200 text-slate-800 hover:bg-slate-50 cursor-pointer"
                             >
-                              <Link to="/admin/orders">View Order</Link>
+                              <UserCheck className="h-3 w-3 mr-1 text-primary" />
+                              {d.driver_name &&
+                              d.driver_name !== "Unassigned" &&
+                              !d.driver_name.includes("Unassigned")
+                                ? "Reassign"
+                                : "Assign Driver"}
                             </Button>
-                          )}
+
+                            {d.orders && (
+                              <Button
+                                asChild
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 rounded-full text-[10px] font-bold text-slate-600"
+                              >
+                                <Link to="/admin/orders">View Order</Link>
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setAssignmentToDelete(d);
+                                setDeleteModalOpen(true);
+                              }}
+                              className="h-7 w-7 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600 cursor-pointer"
+                              title="Delete delivery assignment"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -523,6 +667,130 @@ export function AdminDeliveriesView() {
         </div>
       )}
 
+      {/* ASSIGN / REASSIGN DRIVER MODAL */}
+      <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white border border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="font-display font-extrabold text-lg text-slate-900 flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-primary" /> Assign Driver
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedDeliveryToAssign && (
+            <div className="space-y-4 pt-2 text-xs">
+              {/* Delivery / Order Summary */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono font-bold text-primary">
+                    #{selectedDeliveryToAssign.orders?.order_number || selectedDeliveryToAssign.id.slice(0, 8)}
+                  </span>
+                  <Badge className="bg-slate-200 text-slate-800 font-bold text-[10px]">
+                    Current: {selectedDeliveryToAssign.driver_name || "Unassigned"}
+                  </Badge>
+                </div>
+                <p className="font-bold text-slate-900">
+                  {selectedDeliveryToAssign.orders?.shipping_name ||
+                    selectedDeliveryToAssign.orders?.customer_name ||
+                    selectedDeliveryToAssign.customer_name ||
+                    "Customer Delivery"}
+                </p>
+                <p className="text-[11px] text-slate-500 truncate">
+                  Area: {selectedDeliveryToAssign.route_area || "Gloucestershire"} &bull;{" "}
+                  {selectedDeliveryToAssign.time_slot || "Morning Window"}
+                </p>
+              </div>
+
+              {/* Cylinder Exchange Indicator */}
+              {(() => {
+                const req = getOrderCylinderExchangeRequirement(selectedDeliveryToAssign);
+                return (
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold uppercase text-slate-400">
+                        CYLINDER EXCHANGE
+                      </span>
+                      <Badge
+                        className={cn(
+                          "text-[9px] font-extrabold",
+                          req.required
+                            ? "bg-amber-100 text-amber-900 border-amber-300"
+                            : "bg-emerald-100 text-emerald-900 border-emerald-300",
+                        )}
+                      >
+                        Empty Cylinder Required: {req.required ? "Yes" : "No"}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium">{req.reason}</p>
+                  </div>
+                );
+              })()}
+
+              <div>
+                <label className="font-bold text-slate-800 block mb-1">
+                  Select Active Driver
+                </label>
+                <Select
+                  value={selectedAgentIdForAssign}
+                  onValueChange={setSelectedAgentIdForAssign}
+                >
+                  <SelectTrigger className="rounded-xl text-xs font-semibold bg-white border-slate-200">
+                    <SelectValue placeholder="Choose a driver..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deliveryAgents.map((ag) => (
+                      <SelectItem key={ag.id} value={ag.id}>
+                        {ag.full_name} ({ag.agent_code}) &bull; {ag.vehicle_plate || "Van"} [
+                        {ag.status || "Active"}]
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {selectedAgentIdForAssign && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-[11px] space-y-1">
+                  {(() => {
+                    const ag = deliveryAgents.find((a) => a.id === selectedAgentIdForAssign);
+                    if (!ag) return null;
+                    return (
+                      <>
+                        <p className="font-bold text-slate-800">{ag.full_name}</p>
+                        <p className="text-slate-500">
+                          Vehicle: {ag.vehicle_type} ({ag.vehicle_plate})
+                        </p>
+                        <p className="text-slate-500">
+                          Zone: {ag.delivery_zone || "Gloucestershire"} &bull; Rating:{" "}
+                          {ag.rating || 5.0}★
+                        </p>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setAssignModalOpen(false)}
+                  className="rounded-full text-xs font-bold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAssignAgent}
+                  disabled={assigning || !selectedAgentIdForAssign}
+                  className="rounded-full font-bold text-xs gap-1.5 shadow-md bg-primary hover:bg-primary/90 text-white"
+                >
+                  {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                  {assigning ? "Assigning..." : "Confirm Assignment"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* CREATE MODAL */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white">
@@ -530,6 +798,35 @@ export function AdminDeliveriesView() {
             <DialogTitle className="font-black text-lg">Add Delivery / Pickup Route</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateAssignment} className="space-y-4 pt-2 text-xs">
+            {deliveryAgents.length > 0 && (
+              <div>
+                <label className="font-bold text-slate-800">Assign Registered Driver</label>
+                <Select
+                  value={selectedAgentId}
+                  onValueChange={(agentId) => {
+                    setSelectedAgentId(agentId);
+                    const matched = deliveryAgents.find((a) => a.id === agentId);
+                    if (matched) {
+                      setDriverName(matched.full_name);
+                      setVehicleId(matched.vehicle_plate || "");
+                      if (matched.delivery_zone) setRouteArea(matched.delivery_zone);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="Choose from registered agents..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deliveryAgents.map((ag) => (
+                      <SelectItem key={ag.id} value={ag.id}>
+                        {ag.full_name} ({ag.agent_code}) — {ag.vehicle_plate}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <label className="font-bold text-muted-foreground">Driver Name *</label>
               <Input
@@ -577,6 +874,94 @@ export function AdminDeliveriesView() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Delivery Assignment Confirmation Modal */}
+      <Dialog
+        open={deleteModalOpen}
+        onOpenChange={(open) => !deletingAssignment && setDeleteModalOpen(open)}
+      >
+        <DialogContent className="sm:max-w-[440px] rounded-3xl p-6 bg-white border border-slate-200 shadow-xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="font-extrabold text-lg text-slate-900">
+                  Delete delivery assignment?
+                </DialogTitle>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  This will permanently remove the route assignment from Supabase.
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {assignmentToDelete && (
+            <div className="my-3 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Route / Area:</span>
+                <span className="font-bold text-slate-900">
+                  {assignmentToDelete.route_area || "Gloucestershire"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Driver:</span>
+                <span className="font-bold text-slate-900">
+                  {assignmentToDelete.driver_name || "Unassigned"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Vehicle:</span>
+                <span className="font-mono font-bold text-slate-700">
+                  {assignmentToDelete.vehicle_identifier || "Fleet Van"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Associated Order:</span>
+                <span className="font-mono font-extrabold text-primary">
+                  {assignmentToDelete.orders?.order_number
+                    ? `#${assignmentToDelete.orders.order_number}`
+                    : "Standalone Route"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500 font-medium">Status:</span>
+                <span className="font-bold text-slate-700">
+                  {assignmentToDelete.status || "Pending"}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={deletingAssignment}
+              className="rounded-xl text-xs font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleConfirmDeleteAssignment}
+              disabled={deletingAssignment}
+              className="rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deletingAssignment ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> Deleting...
+                </>
+              ) : (
+                "Delete Assignment"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

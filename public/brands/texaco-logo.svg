@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" fill="none" className="w-full h-full">
+  <!-- Red Circle -->
+  <circle cx="100" cy="100" r="88" fill="#D91E27" />
+  <!-- White Star -->
+  <!-- 5 point star centered at 100, 100 with outer radius ~66, inner radius ~28 -->
+  <polygon points="100,34 116.5,78 163,80 126,108 140,154 100,128 60,154 74,108 37,80 83.5,78" fill="#FFFFFF" />
+  <!-- Red T -->
+  <path d="M68,64 L132,64 L132,77 L107.5,77 L107.5,134 L92.5,134 L92.5,77 L68,77 Z" fill="#D91E27" />
+  <!-- TEXACO Text -->
+  <text x="100" y="222" text-anchor="middle" fill="#D91E27" font-family="'Arial Black', 'Trebuchet MS', 'Inter', sans-serif" font-weight="900" font-size="33" letter-spacing="2.5">TEXACO</text>
+</svg>

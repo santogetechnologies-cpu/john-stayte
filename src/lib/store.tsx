@@ -10,14 +10,16 @@ import {
 import { type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
+import { INITIAL_ACTIVE_AGENTS } from "@/lib/delivery-agent-service";
 
-export type Role = "customer" | "manager" | "admin";
-export type User = { id?: string; name: string; email: string; role: Role };
+export type Role = "customer" | "manager" | "admin" | "delivery_agent";
+export type User = { id?: string; name: string; email: string; role: Role; avatar?: string };
 
 export type CartLine = { slug: string; qty: number };
 
 type Store = {
   user: User | null;
+  authLoading: boolean;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: User }>;
   register: (
     name: string,
@@ -72,8 +74,70 @@ function usePersisted<T>(key: string, initial: T) {
   return [value, setValue] as const;
 }
 
+function resolveUserRole(
+  uid?: string,
+  email?: string | null,
+  metadataRole?: string | null,
+  profileRole?: string | null,
+): Role {
+  const normEmail = (email || "").trim().toLowerCase();
+
+  // 1. Direct match with canonical active delivery agents (Aswin & Astin)
+  const isDeliveryAgent = INITIAL_ACTIVE_AGENTS.some(
+    (ag) =>
+      (uid && ag.id === uid) ||
+      (ag.email && ag.email.toLowerCase() === normEmail) ||
+      (ag.full_name && ag.full_name.toLowerCase() === normEmail),
+  );
+  if (isDeliveryAgent) {
+    return "delivery_agent";
+  }
+
+  // 2. Explicit elevated role in Supabase Auth user_metadata
+  if (
+    metadataRole === "delivery_agent" ||
+    metadataRole === "manager" ||
+    metadataRole === "admin"
+  ) {
+    return metadataRole as Role;
+  }
+
+  // 3. Explicit elevated role in Supabase profiles table
+  if (
+    profileRole === "delivery_agent" ||
+    profileRole === "manager" ||
+    profileRole === "admin"
+  ) {
+    return profileRole as Role;
+  }
+
+  return "customer";
+}
+
+function resolveUserName(
+  email?: string | null,
+  metadataName?: string | null,
+  profileName?: string | null,
+): string {
+  const normEmail = (email || "").trim().toLowerCase();
+  const matchedAgent = INITIAL_ACTIVE_AGENTS.find(
+    (ag) => ag.email?.toLowerCase() === normEmail,
+  );
+  if (matchedAgent?.full_name) {
+    return matchedAgent.full_name;
+  }
+  if (metadataName && metadataName.trim()) {
+    return metadataName.trim();
+  }
+  if (profileName && profileName.trim() && profileName !== email) {
+    return profileName.trim();
+  }
+  return email ? email.split("@")[0] : "User";
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [cart, setCart] = usePersisted<CartLine[]>("jss.cart", []);
   const [wishlist, setWishlist] = useState<string[]>(() => {
     try {
@@ -151,7 +215,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       // 3. Migrate any guest wishlist items from localStorage if not already in DB
-      let finalSlugs = [...dbSlugs];
+      const finalSlugs = [...dbSlugs];
       try {
         const rawLocal = localStorage.getItem("jss.wishlist");
         if (rawLocal) {
@@ -192,37 +256,90 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Listen to Supabase Auth State Changes
   useEffect(() => {
     const fetchSessionUser = async (session: any) => {
-      if (!session?.user?.id) {
-        setUser(null);
-        return;
-      }
-
-      const currentUid = session.user.id;
-
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentUid)
-          .single();
+        if (!session?.user?.id) {
+          setUser(null);
+          try {
+            localStorage.removeItem("jss.auth_user");
+          } catch {}
+          return;
+        }
+        const currentUid = session.user.id;
 
-        setUser({
-          id: currentUid,
-          name: profile?.full_name || session.user.email?.split("@")[0] || "Customer",
-          email: session.user.email || "",
-          role: (profile?.role as Role) || "customer",
-        });
-      } catch {
-        setUser({
-          id: currentUid,
-          name: session.user.email?.split("@")[0] || "Customer",
-          email: session.user.email || "",
-          role: "customer",
-        });
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", currentUid)
+            .maybeSingle();
+
+          let resolvedRole: Role = resolveUserRole(
+            currentUid,
+            session.user.email,
+            session.user.user_metadata?.role,
+            profile?.role,
+          );
+
+          // If role is still customer, check delivery_agents table by id or email
+          if (resolvedRole === "customer") {
+            const { data: da } = await (supabase.from("delivery_agents") as any)
+              .select("id")
+              .or(`id.eq.${currentUid},email.ilike.${session.user.email || ""}`)
+              .maybeSingle();
+            if (da) {
+              resolvedRole = "delivery_agent";
+            }
+          }
+
+          let userAvatar: string | undefined = undefined;
+          if (
+            profile?.notification_prefs &&
+            typeof profile.notification_prefs === "object" &&
+            !Array.isArray(profile.notification_prefs)
+          ) {
+            const prefs = profile.notification_prefs as Record<string, unknown>;
+            if (typeof prefs.avatar_url === "string") {
+              userAvatar = prefs.avatar_url;
+            }
+          }
+
+          const u: User = {
+            id: currentUid,
+            name: resolveUserName(
+              session.user.email,
+              session.user.user_metadata?.full_name,
+              profile?.full_name,
+            ),
+            email: session.user.email || "",
+            role: resolvedRole,
+            avatar: userAvatar,
+          };
+          setUser(u);
+        } catch {
+          let resolvedRole: Role = resolveUserRole(
+            currentUid,
+            session.user.email,
+            session.user.user_metadata?.role,
+            null,
+          );
+          const u: User = {
+            id: currentUid,
+            name: resolveUserName(
+              session.user.email,
+              session.user.user_metadata?.full_name,
+              null,
+            ),
+            email: session.user.email || "",
+            role: resolvedRole,
+          };
+          setUser(u);
+        }
+
+        // Sync Supabase-backed Wishlist for authenticated user
+        syncWishlistWithDb(currentUid);
+      } finally {
+        setAuthLoading(false);
       }
-
-      // Sync Supabase-backed Wishlist for authenticated user
-      syncWishlistWithDb(currentUid);
     };
 
     // Initial session check
@@ -235,45 +352,96 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       fetchSessionUser(session);
     });
 
+    const handleProfileUpdated = () => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        fetchSessionUser(session);
+      });
+    };
+    window.addEventListener("user_profile_updated", handleProfileUpdated);
+
     return () => {
       authListener?.subscription.unsubscribe();
+      window.removeEventListener("user_profile_updated", handleProfileUpdated);
     };
   }, [syncWishlistWithDb]);
 
   const login: Store["login"] = useCallback(
     async (email, password) => {
+      const cleanEmail = email.trim();
+
+      if (!cleanEmail || !password) {
+        return { ok: false, error: "Please enter both email address and password." };
+      }
+
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
+        const authRes = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
           password,
         });
 
-        if (error) {
-          return { ok: false, error: error.message };
-        }
-
-        if (data.user?.id) {
-          const uid = data.user.id;
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", uid)
-            .single();
-
-          const u: User = {
-            id: uid,
-            name: profile?.full_name || data.user.email?.split("@")[0] || "Customer",
-            email: data.user.email || email,
-            role: (profile?.role as Role) || "customer",
+        // If Supabase authentication failed (wrong password, account not found, etc.)
+        if (authRes.error || !authRes.data?.user?.id) {
+          return {
+            ok: false,
+            error: authRes.error?.message || "Invalid email or password.",
           };
-          setUser(u);
-          syncWishlistWithDb(uid);
-          return { ok: true, user: u };
         }
 
-        return { ok: false, error: "Sign in failed" };
+        // Supabase Auth genuinely succeeded
+        const uid = authRes.data.user.id;
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", uid)
+          .maybeSingle();
+
+        let resolvedRole: Role = resolveUserRole(
+          uid,
+          authRes.data.user.email || cleanEmail,
+          authRes.data.user.user_metadata?.role,
+          profile?.role,
+        );
+
+        // Check if user is registered in delivery_agents table
+        if (resolvedRole === "customer") {
+          const { data: da } = await (supabase.from("delivery_agents") as any)
+            .select("id")
+            .or(`id.eq.${uid},email.ilike.${cleanEmail}`)
+            .maybeSingle();
+          if (da) {
+            resolvedRole = "delivery_agent";
+          }
+        }
+
+        let userAvatar: string | undefined = undefined;
+        if (
+          profile?.notification_prefs &&
+          typeof profile.notification_prefs === "object" &&
+          !Array.isArray(profile.notification_prefs)
+        ) {
+          const prefs = profile.notification_prefs as Record<string, unknown>;
+          if (typeof prefs.avatar_url === "string") {
+            userAvatar = prefs.avatar_url;
+          }
+        }
+
+        const u: User = {
+          id: uid,
+          name: resolveUserName(
+            authRes.data.user.email || cleanEmail,
+            authRes.data.user.user_metadata?.full_name,
+            profile?.full_name,
+          ),
+          email: authRes.data.user.email || cleanEmail,
+          role: resolvedRole,
+          avatar: userAvatar,
+        };
+
+        setUser(u);
+        syncWishlistWithDb(uid);
+        return { ok: true, user: u };
       } catch (err: any) {
-        return { ok: false, error: err?.message || "Authentication failed" };
+        return { ok: false, error: err?.message || "Authentication failed. Please try again." };
       }
     },
     [syncWishlistWithDb],
@@ -320,15 +488,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      localStorage.removeItem("jss.wishlist");
+      localStorage.removeItem("jss.auth_user");
     } catch {
       /* ignore */
     }
     setUser(null);
     setWishlist([]);
     try {
-      localStorage.removeItem("jss.wishlist");
-    } catch {}
+      await supabase.auth.signOut();
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const toggleWishlist = useCallback(
@@ -361,7 +532,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? current.filter((s) => s !== slug)
             : [...current, slug];
           localStorage.setItem("jss.wishlist", JSON.stringify(next));
-        } catch {}
+        } catch {
+          /* ignore */
+        }
         return;
       }
 
@@ -434,6 +607,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       user,
+      authLoading,
       login,
       register,
       logout,
@@ -451,7 +625,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       wishlist,
       toggleWishlist,
     }),
-    [user, cart, wishlist, login, register, logout, setCart, toggleWishlist],
+    [user, authLoading, cart, wishlist, login, register, logout, setCart, toggleWishlist],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
@@ -465,6 +639,29 @@ export function useStore() {
 
 export const gbp = (n: number) =>
   new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(n);
+
+export function getOrderPaymentMethod(order: any): string {
+  if (!order) return "Credit / Debit Card";
+  if (order.payment_method) return order.payment_method;
+  if (typeof order.delivery_address === "object" && order.delivery_address?.payment_method) {
+    return order.delivery_address.payment_method;
+  }
+  if (typeof order.notes === "string") {
+    const match = order.notes.match(/\[Payment:\s*([^\]]+)\]/i);
+    if (match?.[1]) return match[1].trim();
+    if (order.notes.toLowerCase().includes("paypal")) return "PayPal";
+    if (
+      order.notes.toLowerCase().includes("delivery / collection") ||
+      order.notes.toLowerCase().includes("pay on delivery")
+    ) {
+      return "Pay on Delivery / Collection";
+    }
+  }
+  if (order.payment_status?.toLowerCase() === "paid") {
+    return "Credit / Debit Card";
+  }
+  return "Pay on Delivery / Collection";
+}
 
 export interface CartSystemSettings {
   vatRate: number;

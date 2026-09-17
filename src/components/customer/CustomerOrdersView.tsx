@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ShoppingBag,
@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Loader2,
   HelpCircle,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OrderReviewModal } from "@/components/customer/OrderReviewModal";
+import { normalizeReviewRecord } from "@/lib/review-service";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl, cn } from "@/lib/utils";
@@ -44,6 +47,44 @@ const CANCELLATION_REASONS = [
   "Product no longer needed",
   "Other",
 ];
+
+const getRatingColorClasses = (rating: number) => {
+  const rounded = Math.min(5, Math.max(1, Math.round(rating || 5)));
+  if (rounded <= 2) {
+    return {
+      text: "text-red-600",
+      fill: "fill-red-500 text-red-500",
+      badge: "bg-red-50 text-red-700 border-red-200",
+    };
+  }
+  if (rounded === 3) {
+    return {
+      text: "text-amber-600",
+      fill: "fill-amber-400 text-amber-400",
+      badge: "bg-amber-50 text-amber-800 border-amber-200",
+    };
+  }
+  return {
+    text: "text-emerald-600",
+    fill: "fill-emerald-500 text-emerald-500",
+    badge: "bg-emerald-50 text-emerald-800 border-emerald-200",
+  };
+};
+
+const renderRatingStars = (rating: number, sizeClass = "h-3.5 w-3.5") => {
+  const rounded = Math.min(5, Math.max(1, Math.round(rating || 5)));
+  const { fill } = getRatingColorClasses(rounded);
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={cn(sizeClass, star <= rounded ? fill : "text-slate-200 fill-slate-100")}
+        />
+      ))}
+    </span>
+  );
+};
 
 export function CustomerOrdersView() {
   const { user, addToCart } = useStore();
@@ -62,8 +103,16 @@ export function CustomerOrdersView() {
   const [cancelling, setCancelling] = useState(false);
   const [reorderingId, setReorderingId] = useState<string | null>(null);
 
+  // Reviews State
+  const [orderReviews, setOrderReviews] = useState<Map<string, any>>(new Map());
+  const [reviewTarget, setReviewTarget] = useState<{
+    order: any;
+    product: { id: string; name: string; image_url?: string | null };
+    agent?: { id?: string | null; name?: string | null };
+  } | null>(null);
+
   // Load real customer orders from Supabase with items and product images
-  const loadCustomerOrders = async () => {
+  const loadCustomerOrders = useCallback(async () => {
     setLoading(true);
     try {
       const { data: authUser } = await supabase.auth.getUser();
@@ -75,13 +124,27 @@ export function CustomerOrdersView() {
         return;
       }
 
-      const { data: orderData, error } = await supabase
-        .from("orders")
-        .select("*, order_items(*), order_status_history(*)")
-        .or(`customer_email.eq.${currentEmail},customer_id.eq.${authUser?.user?.id}`)
-        .order("created_at", { ascending: false });
+      const [{ data: orderData, error }, { data: reviewData }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*, order_items(*), order_status_history(*), delivery_assignments(*)")
+          .or(`customer_email.eq.${currentEmail},customer_id.eq.${authUser?.user?.id}`)
+          .order("created_at", { ascending: false }),
+        supabase.from("reviews").select("*").order("created_at", { ascending: false }),
+      ]);
 
       if (error) throw error;
+
+      if (reviewData) {
+        const revMap = new Map<string, any>();
+        reviewData.forEach((rawRev) => {
+          const rev = normalizeReviewRecord(rawRev);
+          if (rev.order_id) {
+            revMap.set(rev.order_id, rev);
+          }
+        });
+        setOrderReviews(revMap);
+      }
 
       if (orderData && orderData.length > 0) {
         const productIds = Array.from(
@@ -93,7 +156,7 @@ export function CustomerOrdersView() {
           ),
         );
 
-        let productMap = new Map<string, any>();
+        const productMap = new Map<string, any>();
         if (productIds.length > 0) {
           const { data: prodData } = await supabase
             .from("products")
@@ -123,11 +186,11 @@ export function CustomerOrdersView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     loadCustomerOrders();
-  }, [user]);
+  }, [loadCustomerOrders]);
 
   // Filter & Sort Orders
   const filteredOrders = useMemo(() => {
@@ -478,12 +541,35 @@ export function CustomerOrdersView() {
                           <XCircle className="mr-1 h-3.5 w-3.5" /> Cancelled
                         </Badge>
                       ) : o.status === "Delivered" || o.status === "Completed" ? (
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[11px] px-3 py-1"
-                        >
-                          <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Delivered
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[11px] px-3 py-1"
+                          >
+                            <CheckCircle2 className="mr-1 h-3.5 w-3.5" /> Delivered
+                          </Badge>
+                          {orderReviews.has(o.id) &&
+                            (() => {
+                              const rev = orderReviews.get(o.id);
+                              const ratingVal = Math.min(
+                                5,
+                                Math.max(1, Math.round(rev.rating || 5)),
+                              );
+                              const color = getRatingColorClasses(ratingVal);
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "font-bold text-[11px] px-2.5 py-1 gap-1",
+                                    color.badge,
+                                  )}
+                                >
+                                  <Star className={cn("h-3 w-3", color.fill)} /> Reviewed (
+                                  {ratingVal}★)
+                                </Badge>
+                              );
+                            })()}
+                        </div>
                       ) : (
                         <Badge
                           variant="outline"
@@ -520,6 +606,38 @@ export function CustomerOrdersView() {
                         </Button>
                       )}
 
+                      {/* Post-Delivery Customer Review Button */}
+                      {(o.status === "Delivered" || o.status === "Completed") &&
+                        !orderReviews.has(o.id) && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const firstItem = o.order_items?.[0];
+                              setReviewTarget({
+                                order: o,
+                                product: {
+                                  id: firstItem?.product_id || o.id,
+                                  name:
+                                    firstItem?.name ||
+                                    firstItem?.product_name ||
+                                    "Ordered Fuel / Product",
+                                  image_url: firstItem?.product_info?.image_url,
+                                },
+                                agent: {
+                                  id: o.delivery_assignments?.[0]?.agent_id || null,
+                                  name:
+                                    o.delivery_assignments?.[0]?.driver_name ||
+                                    o.assigned_driver ||
+                                    null,
+                                },
+                              });
+                            }}
+                            className="rounded-full text-xs font-bold gap-1 bg-red-600 hover:bg-red-700 text-white shadow-2xs"
+                          >
+                            <Star className="h-3.5 w-3.5 fill-white" /> Rate & Review
+                          </Button>
+                        )}
+
                       {(isNewCylinder || isRefillOrder) && (
                         <Button
                           size="sm"
@@ -532,7 +650,7 @@ export function CustomerOrdersView() {
                         </Button>
                       )}
 
-                      {!isCancelled && o.status !== "Delivered" && (
+                      {!isCancelled && o.status !== "Delivered" && o.status !== "Completed" && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -557,10 +675,103 @@ export function CustomerOrdersView() {
                     </div>
                   </div>
                 </div>
+
+                {/* Compact Integrated "Your Review" Section */}
+                {orderReviews.has(o.id) &&
+                  (() => {
+                    const rev = orderReviews.get(o.id);
+                    const overallRating = Number(rev.rating || 5);
+                    const qualityRating = rev.product_quality_rating
+                      ? Number(rev.product_quality_rating)
+                      : null;
+                    const deliveryRating = rev.delivery_agent_rating
+                      ? Number(rev.delivery_agent_rating)
+                      : null;
+                    const commentText = rev.comment?.trim() || "";
+                    const ratingColor = getRatingColorClasses(overallRating);
+
+                    return (
+                      <div className="px-5 pb-5 pt-0">
+                        <div className="bg-slate-50/70 border border-slate-200/70 rounded-2xl p-3.5 sm:p-4 transition-colors">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-6">
+                            {/* Rating Summary Row */}
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6">
+                              {/* Overall Score with Stars */}
+                              <div className="flex items-center gap-2.5 shrink-0 sm:pr-4 sm:border-r sm:border-slate-200">
+                                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                                  Your Review
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  {renderRatingStars(overallRating, "h-3.5 w-3.5")}
+                                  <span className={cn("font-black text-xs", ratingColor.text)}>
+                                    {overallRating.toFixed(1)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Category Breakdowns */}
+                              <div className="flex items-center gap-3 sm:gap-5 flex-wrap text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-500 text-[11px] font-medium">
+                                    Product
+                                  </span>
+                                  {renderRatingStars(overallRating, "h-3 w-3")}
+                                </div>
+
+                                {qualityRating !== null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-slate-500 text-[11px] font-medium">
+                                      Quality
+                                    </span>
+                                    {renderRatingStars(qualityRating, "h-3 w-3")}
+                                  </div>
+                                )}
+
+                                {deliveryRating !== null && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-slate-500 text-[11px] font-medium">
+                                      Delivery
+                                    </span>
+                                    {renderRatingStars(deliveryRating, "h-3 w-3")}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Written Feedback Preview (if provided) */}
+                            {commentText && (
+                              <div className="min-w-0 lg:max-w-md lg:text-right border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-200/60">
+                                <p
+                                  className="text-[11px] text-slate-600 italic truncate"
+                                  title={commentText}
+                                >
+                                  "{commentText}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* 6. POST-DELIVERY ORDER REVIEW MODAL */}
+      {reviewTarget && (
+        <OrderReviewModal
+          isOpen={Boolean(reviewTarget)}
+          onClose={() => setReviewTarget(null)}
+          order={reviewTarget.order}
+          product={reviewTarget.product}
+          deliveryAgent={reviewTarget.agent}
+          onReviewSubmitted={() => {
+            loadCustomerOrders();
+          }}
+        />
       )}
 
       {/* 5. CANCELLATION CONFIRMATION DIALOG WITH REASON SELECTION */}

@@ -274,9 +274,19 @@ export function CustomerApplicationView() {
           </div>
 
           <div className="space-y-1">
-            <span className="text-slate-500 font-medium">Cylinder Status:</span>
+            <span className="text-slate-500 font-medium">Cylinder Exchange Status:</span>
             <p className="font-extrabold text-slate-900">
               {application.existing_cylinder_status || "Standard Exchange"}
+            </p>
+          </div>
+
+          <div className="space-y-1 md:col-span-2">
+            <span className="text-slate-500 font-medium">Gas Types &amp; Cylinder Sizes Selected:</span>
+            <p className="font-bold text-slate-800 text-xs">
+              {application.cylinder_type || "Propane LPG"} • {application.cylinder_size || "13kg Propane"}
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Account is unrestricted — you may order any product from the catalogue.
             </p>
           </div>
 

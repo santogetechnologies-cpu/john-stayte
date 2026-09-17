@@ -13,10 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AutoGasRouteImport } from './routes/auto-gas'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as FillingStationsRouteImport } from './routes/filling-stations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManagerRouteImport } from './routes/manager'
@@ -32,6 +34,7 @@ import { Route as AccountInvoicesRouteImport } from './routes/account.invoices'
 import { Route as AccountNotificationsRouteImport } from './routes/account.notifications'
 import { Route as AccountOrdersRouteImport } from './routes/account.orders'
 import { Route as AccountProfileRouteImport } from './routes/account.profile'
+import { Route as AccountReturnsRouteImport } from './routes/account.returns'
 import { Route as AccountSettingsRouteImport } from './routes/account.settings'
 import { Route as AccountSupportRouteImport } from './routes/account.support'
 import { Route as AccountTrackingRouteImport } from './routes/account.tracking'
@@ -40,13 +43,16 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminApplicationsRouteImport } from './routes/admin.applications'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminAutoGasRouteImport } from './routes/admin.auto-gas'
 import { Route as AdminBannersRouteImport } from './routes/admin.banners'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminCmsRouteImport } from './routes/admin.cms'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
+import { Route as AdminCylinderDepositsRouteImport } from './routes/admin.cylinder-deposits'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin.deliveries'
+import { Route as AdminDeliveryAgentsRouteImport } from './routes/admin.delivery-agents'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin.enquiries'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
@@ -63,10 +69,23 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminStationsRouteImport } from './routes/admin.stations'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as BrandsIndexRouteImport } from './routes/brands.index'
 import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
+import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
+import { Route as DeliveryCompletedRouteImport } from './routes/delivery.completed'
+import { Route as DeliveryDeliveriesRouteImport } from './routes/delivery.deliveries'
+import { Route as DeliveryIssuesRouteImport } from './routes/delivery.issues'
+import { Route as DeliveryMyDeliveriesRouteImport } from './routes/delivery.my-deliveries'
+import { Route as DeliveryNotificationsRouteImport } from './routes/delivery.notifications'
+import { Route as DeliveryProfileRouteImport } from './routes/delivery.profile'
+import { Route as DeliveryReturnsRouteImport } from './routes/delivery.returns'
+import { Route as DeliverySupportRouteImport } from './routes/delivery.support'
+import { Route as DeliveryTodayRouteImport } from './routes/delivery.today'
 import { Route as ManagerIndexRouteImport } from './routes/manager.index'
 import { Route as ManagerCustomersRouteImport } from './routes/manager.customers'
 import { Route as ManagerDeliveriesRouteImport } from './routes/manager.deliveries'
+import { Route as ManagerDeliveryAgentsRouteImport } from './routes/manager.delivery-agents'
+import { Route as ManagerDeliveryAssignmentRouteImport } from './routes/manager.delivery-assignment'
 import { Route as ManagerEnquiriesRouteImport } from './routes/manager.enquiries'
 import { Route as ManagerInventoryRouteImport } from './routes/manager.inventory'
 import { Route as ManagerNotificationsRouteImport } from './routes/manager.notifications'
@@ -80,6 +99,7 @@ import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as AccountOrdersIndexRouteImport } from './routes/account.orders.index'
 import { Route as AccountOrdersOrderIdRouteImport } from './routes/account.orders.$orderId'
+import { Route as AdminOrderGasAutogasRouteImport } from './routes/admin.order-gas.autogas'
 import { Route as AdminOrderGasBulkRouteImport } from './routes/admin.order-gas.bulk'
 import { Route as AdminOrderGasCommercialRouteImport } from './routes/admin.order-gas.commercial'
 import { Route as AdminOrderGasDomesticRouteImport } from './routes/admin.order-gas.domestic'
@@ -104,6 +124,11 @@ const AdminRoute = AdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutoGasRoute = AutoGasRouteImport.update({
+  id: '/auto-gas',
+  path: '/auto-gas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogRoute = BlogRouteImport.update({
   id: '/blog',
   path: '/blog',
@@ -122,6 +147,11 @@ const CheckoutRoute = CheckoutRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryRoute = DeliveryRouteImport.update({
+  id: '/delivery',
+  path: '/delivery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FillingStationsRoute = FillingStationsRouteImport.update({
@@ -199,6 +229,11 @@ const AccountProfileRoute = AccountProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AccountRoute,
 } as any)
+const AccountReturnsRoute = AccountReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => AccountRoute,
+} as any)
 const AccountSettingsRoute = AccountSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -239,6 +274,11 @@ const AdminAuditRoute = AdminAuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAutoGasRoute = AdminAutoGasRouteImport.update({
+  id: '/auto-gas',
+  path: '/auto-gas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminBannersRoute = AdminBannersRouteImport.update({
   id: '/banners',
   path: '/banners',
@@ -269,9 +309,19 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCylinderDepositsRoute = AdminCylinderDepositsRouteImport.update({
+  id: '/cylinder-deposits',
+  path: '/cylinder-deposits',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
   id: '/deliveries',
   path: '/deliveries',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliveryAgentsRoute = AdminDeliveryAgentsRouteImport.update({
+  id: '/delivery-agents',
+  path: '/delivery-agents',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
@@ -354,10 +404,65 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const BrandsIndexRoute = BrandsIndexRouteImport.update({
+  id: '/brands/',
+  path: '/brands/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriesSlugRoute = CategoriesSlugRouteImport.update({
   id: '/categories/$slug',
   path: '/categories/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DeliveryIndexRoute = DeliveryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryCompletedRoute = DeliveryCompletedRouteImport.update({
+  id: '/completed',
+  path: '/completed',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryDeliveriesRoute = DeliveryDeliveriesRouteImport.update({
+  id: '/deliveries',
+  path: '/deliveries',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryIssuesRoute = DeliveryIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryMyDeliveriesRoute = DeliveryMyDeliveriesRouteImport.update({
+  id: '/my-deliveries',
+  path: '/my-deliveries',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryNotificationsRoute = DeliveryNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryProfileRoute = DeliveryProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryReturnsRoute = DeliveryReturnsRouteImport.update({
+  id: '/returns',
+  path: '/returns',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliverySupportRoute = DeliverySupportRouteImport.update({
+  id: '/support',
+  path: '/support',
+  getParentRoute: () => DeliveryRoute,
+} as any)
+const DeliveryTodayRoute = DeliveryTodayRouteImport.update({
+  id: '/today',
+  path: '/today',
+  getParentRoute: () => DeliveryRoute,
 } as any)
 const ManagerIndexRoute = ManagerIndexRouteImport.update({
   id: '/',
@@ -374,6 +479,17 @@ const ManagerDeliveriesRoute = ManagerDeliveriesRouteImport.update({
   path: '/deliveries',
   getParentRoute: () => ManagerRoute,
 } as any)
+const ManagerDeliveryAgentsRoute = ManagerDeliveryAgentsRouteImport.update({
+  id: '/delivery-agents',
+  path: '/delivery-agents',
+  getParentRoute: () => ManagerRoute,
+} as any)
+const ManagerDeliveryAssignmentRoute =
+  ManagerDeliveryAssignmentRouteImport.update({
+    id: '/delivery-assignment',
+    path: '/delivery-assignment',
+    getParentRoute: () => ManagerRoute,
+  } as any)
 const ManagerEnquiriesRoute = ManagerEnquiriesRouteImport.update({
   id: '/enquiries',
   path: '/enquiries',
@@ -439,6 +555,11 @@ const AccountOrdersOrderIdRoute = AccountOrdersOrderIdRouteImport.update({
   path: '/$orderId',
   getParentRoute: () => AccountOrdersRoute,
 } as any)
+const AdminOrderGasAutogasRoute = AdminOrderGasAutogasRouteImport.update({
+  id: '/order-gas/autogas',
+  path: '/order-gas/autogas',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOrderGasBulkRoute = AdminOrderGasBulkRouteImport.update({
   id: '/order-gas/bulk',
   path: '/order-gas/bulk',
@@ -460,10 +581,12 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/account': typeof AccountRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/auto-gas': typeof AutoGasRoute
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
@@ -478,6 +601,7 @@ export interface FileRoutesByFullPath {
   '/account/notifications': typeof AccountNotificationsRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/account/profile': typeof AccountProfileRoute
+  '/account/returns': typeof AccountReturnsRoute
   '/account/settings': typeof AccountSettingsRoute
   '/account/support': typeof AccountSupportRoute
   '/account/tracking': typeof AccountTrackingRoute
@@ -485,13 +609,16 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/auto-gas': typeof AdminAutoGasRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -508,8 +635,19 @@ export interface FileRoutesByFullPath {
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/delivery/completed': typeof DeliveryCompletedRoute
+  '/delivery/deliveries': typeof DeliveryDeliveriesRoute
+  '/delivery/issues': typeof DeliveryIssuesRoute
+  '/delivery/my-deliveries': typeof DeliveryMyDeliveriesRoute
+  '/delivery/notifications': typeof DeliveryNotificationsRoute
+  '/delivery/profile': typeof DeliveryProfileRoute
+  '/delivery/returns': typeof DeliveryReturnsRoute
+  '/delivery/support': typeof DeliverySupportRoute
+  '/delivery/today': typeof DeliveryTodayRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
+  '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
+  '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
@@ -523,9 +661,12 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/brands/': typeof BrandsIndexRoute
+  '/delivery/': typeof DeliveryIndexRoute
   '/manager/': typeof ManagerIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/account/orders/$orderId': typeof AccountOrdersOrderIdRoute
+  '/admin/order-gas/autogas': typeof AdminOrderGasAutogasRoute
   '/admin/order-gas/bulk': typeof AdminOrderGasBulkRoute
   '/admin/order-gas/commercial': typeof AdminOrderGasCommercialRoute
   '/admin/order-gas/domestic': typeof AdminOrderGasDomesticRoute
@@ -534,6 +675,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/auto-gas': typeof AutoGasRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -549,6 +691,7 @@ export interface FileRoutesByTo {
   '/account/invoices': typeof AccountInvoicesRoute
   '/account/notifications': typeof AccountNotificationsRoute
   '/account/profile': typeof AccountProfileRoute
+  '/account/returns': typeof AccountReturnsRoute
   '/account/settings': typeof AccountSettingsRoute
   '/account/support': typeof AccountSupportRoute
   '/account/tracking': typeof AccountTrackingRoute
@@ -556,13 +699,16 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/auto-gas': typeof AdminAutoGasRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -579,8 +725,19 @@ export interface FileRoutesByTo {
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/delivery/completed': typeof DeliveryCompletedRoute
+  '/delivery/deliveries': typeof DeliveryDeliveriesRoute
+  '/delivery/issues': typeof DeliveryIssuesRoute
+  '/delivery/my-deliveries': typeof DeliveryMyDeliveriesRoute
+  '/delivery/notifications': typeof DeliveryNotificationsRoute
+  '/delivery/profile': typeof DeliveryProfileRoute
+  '/delivery/returns': typeof DeliveryReturnsRoute
+  '/delivery/support': typeof DeliverySupportRoute
+  '/delivery/today': typeof DeliveryTodayRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
+  '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
+  '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
@@ -594,9 +751,12 @@ export interface FileRoutesByTo {
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
   '/blog': typeof BlogIndexRoute
+  '/brands': typeof BrandsIndexRoute
+  '/delivery': typeof DeliveryIndexRoute
   '/manager': typeof ManagerIndexRoute
   '/products': typeof ProductsIndexRoute
   '/account/orders/$orderId': typeof AccountOrdersOrderIdRoute
+  '/admin/order-gas/autogas': typeof AdminOrderGasAutogasRoute
   '/admin/order-gas/bulk': typeof AdminOrderGasBulkRoute
   '/admin/order-gas/commercial': typeof AdminOrderGasCommercialRoute
   '/admin/order-gas/domestic': typeof AdminOrderGasDomesticRoute
@@ -608,10 +768,12 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/account': typeof AccountRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/auto-gas': typeof AutoGasRoute
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/delivery': typeof DeliveryRouteWithChildren
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
@@ -626,6 +788,7 @@ export interface FileRoutesById {
   '/account/notifications': typeof AccountNotificationsRoute
   '/account/orders': typeof AccountOrdersRouteWithChildren
   '/account/profile': typeof AccountProfileRoute
+  '/account/returns': typeof AccountReturnsRoute
   '/account/settings': typeof AccountSettingsRoute
   '/account/support': typeof AccountSupportRoute
   '/account/tracking': typeof AccountTrackingRoute
@@ -633,13 +796,16 @@ export interface FileRoutesById {
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/applications': typeof AdminApplicationsRoute
   '/admin/audit': typeof AdminAuditRoute
+  '/admin/auto-gas': typeof AdminAutoGasRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/blog': typeof AdminBlogRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
+  '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -656,8 +822,19 @@ export interface FileRoutesById {
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/delivery/completed': typeof DeliveryCompletedRoute
+  '/delivery/deliveries': typeof DeliveryDeliveriesRoute
+  '/delivery/issues': typeof DeliveryIssuesRoute
+  '/delivery/my-deliveries': typeof DeliveryMyDeliveriesRoute
+  '/delivery/notifications': typeof DeliveryNotificationsRoute
+  '/delivery/profile': typeof DeliveryProfileRoute
+  '/delivery/returns': typeof DeliveryReturnsRoute
+  '/delivery/support': typeof DeliverySupportRoute
+  '/delivery/today': typeof DeliveryTodayRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
+  '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
+  '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
@@ -671,9 +848,12 @@ export interface FileRoutesById {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/brands/': typeof BrandsIndexRoute
+  '/delivery/': typeof DeliveryIndexRoute
   '/manager/': typeof ManagerIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/account/orders/$orderId': typeof AccountOrdersOrderIdRoute
+  '/admin/order-gas/autogas': typeof AdminOrderGasAutogasRoute
   '/admin/order-gas/bulk': typeof AdminOrderGasBulkRoute
   '/admin/order-gas/commercial': typeof AdminOrderGasCommercialRoute
   '/admin/order-gas/domestic': typeof AdminOrderGasDomesticRoute
@@ -686,10 +866,12 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/auto-gas'
     | '/blog'
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/delivery'
     | '/filling-stations'
     | '/login'
     | '/manager'
@@ -704,6 +886,7 @@ export interface FileRouteTypes {
     | '/account/notifications'
     | '/account/orders'
     | '/account/profile'
+    | '/account/returns'
     | '/account/settings'
     | '/account/support'
     | '/account/tracking'
@@ -711,13 +894,16 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/applications'
     | '/admin/audit'
+    | '/admin/auto-gas'
     | '/admin/banners'
     | '/admin/blog'
     | '/admin/categories'
     | '/admin/cms'
     | '/admin/coupons'
     | '/admin/customers'
+    | '/admin/cylinder-deposits'
     | '/admin/deliveries'
+    | '/admin/delivery-agents'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -734,8 +920,19 @@ export interface FileRouteTypes {
     | '/admin/stations'
     | '/blog/$slug'
     | '/categories/$slug'
+    | '/delivery/completed'
+    | '/delivery/deliveries'
+    | '/delivery/issues'
+    | '/delivery/my-deliveries'
+    | '/delivery/notifications'
+    | '/delivery/profile'
+    | '/delivery/returns'
+    | '/delivery/support'
+    | '/delivery/today'
     | '/manager/customers'
     | '/manager/deliveries'
+    | '/manager/delivery-agents'
+    | '/manager/delivery-assignment'
     | '/manager/enquiries'
     | '/manager/inventory'
     | '/manager/notifications'
@@ -749,9 +946,12 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/blog/'
+    | '/brands/'
+    | '/delivery/'
     | '/manager/'
     | '/products/'
     | '/account/orders/$orderId'
+    | '/admin/order-gas/autogas'
     | '/admin/order-gas/bulk'
     | '/admin/order-gas/commercial'
     | '/admin/order-gas/domestic'
@@ -760,6 +960,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/auto-gas'
     | '/cart'
     | '/checkout'
     | '/contact'
@@ -775,6 +976,7 @@ export interface FileRouteTypes {
     | '/account/invoices'
     | '/account/notifications'
     | '/account/profile'
+    | '/account/returns'
     | '/account/settings'
     | '/account/support'
     | '/account/tracking'
@@ -782,13 +984,16 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/applications'
     | '/admin/audit'
+    | '/admin/auto-gas'
     | '/admin/banners'
     | '/admin/blog'
     | '/admin/categories'
     | '/admin/cms'
     | '/admin/coupons'
     | '/admin/customers'
+    | '/admin/cylinder-deposits'
     | '/admin/deliveries'
+    | '/admin/delivery-agents'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -805,8 +1010,19 @@ export interface FileRouteTypes {
     | '/admin/stations'
     | '/blog/$slug'
     | '/categories/$slug'
+    | '/delivery/completed'
+    | '/delivery/deliveries'
+    | '/delivery/issues'
+    | '/delivery/my-deliveries'
+    | '/delivery/notifications'
+    | '/delivery/profile'
+    | '/delivery/returns'
+    | '/delivery/support'
+    | '/delivery/today'
     | '/manager/customers'
     | '/manager/deliveries'
+    | '/manager/delivery-agents'
+    | '/manager/delivery-assignment'
     | '/manager/enquiries'
     | '/manager/inventory'
     | '/manager/notifications'
@@ -820,9 +1036,12 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/blog'
+    | '/brands'
+    | '/delivery'
     | '/manager'
     | '/products'
     | '/account/orders/$orderId'
+    | '/admin/order-gas/autogas'
     | '/admin/order-gas/bulk'
     | '/admin/order-gas/commercial'
     | '/admin/order-gas/domestic'
@@ -833,10 +1052,12 @@ export interface FileRouteTypes {
     | '/about'
     | '/account'
     | '/admin'
+    | '/auto-gas'
     | '/blog'
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/delivery'
     | '/filling-stations'
     | '/login'
     | '/manager'
@@ -851,6 +1072,7 @@ export interface FileRouteTypes {
     | '/account/notifications'
     | '/account/orders'
     | '/account/profile'
+    | '/account/returns'
     | '/account/settings'
     | '/account/support'
     | '/account/tracking'
@@ -858,13 +1080,16 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/applications'
     | '/admin/audit'
+    | '/admin/auto-gas'
     | '/admin/banners'
     | '/admin/blog'
     | '/admin/categories'
     | '/admin/cms'
     | '/admin/coupons'
     | '/admin/customers'
+    | '/admin/cylinder-deposits'
     | '/admin/deliveries'
+    | '/admin/delivery-agents'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -881,8 +1106,19 @@ export interface FileRouteTypes {
     | '/admin/stations'
     | '/blog/$slug'
     | '/categories/$slug'
+    | '/delivery/completed'
+    | '/delivery/deliveries'
+    | '/delivery/issues'
+    | '/delivery/my-deliveries'
+    | '/delivery/notifications'
+    | '/delivery/profile'
+    | '/delivery/returns'
+    | '/delivery/support'
+    | '/delivery/today'
     | '/manager/customers'
     | '/manager/deliveries'
+    | '/manager/delivery-agents'
+    | '/manager/delivery-assignment'
     | '/manager/enquiries'
     | '/manager/inventory'
     | '/manager/notifications'
@@ -896,9 +1132,12 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/blog/'
+    | '/brands/'
+    | '/delivery/'
     | '/manager/'
     | '/products/'
     | '/account/orders/$orderId'
+    | '/admin/order-gas/autogas'
     | '/admin/order-gas/bulk'
     | '/admin/order-gas/commercial'
     | '/admin/order-gas/domestic'
@@ -910,10 +1149,12 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AccountRoute: typeof AccountRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  AutoGasRoute: typeof AutoGasRoute
   BlogRoute: typeof BlogRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
+  DeliveryRoute: typeof DeliveryRouteWithChildren
   FillingStationsRoute: typeof FillingStationsRoute
   LoginRoute: typeof LoginRoute
   ManagerRoute: typeof ManagerRouteWithChildren
@@ -923,6 +1164,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriesSlugRoute: typeof CategoriesSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
+  BrandsIndexRoute: typeof BrandsIndexRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
 }
 
@@ -956,6 +1198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auto-gas': {
+      id: '/auto-gas'
+      path: '/auto-gas'
+      fullPath: '/auto-gas'
+      preLoaderRoute: typeof AutoGasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog': {
       id: '/blog'
       path: '/blog'
@@ -982,6 +1231,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/delivery': {
+      id: '/delivery'
+      path: '/delivery'
+      fullPath: '/delivery'
+      preLoaderRoute: typeof DeliveryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/filling-stations': {
@@ -1089,6 +1345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountProfileRouteImport
       parentRoute: typeof AccountRoute
     }
+    '/account/returns': {
+      id: '/account/returns'
+      path: '/returns'
+      fullPath: '/account/returns'
+      preLoaderRoute: typeof AccountReturnsRouteImport
+      parentRoute: typeof AccountRoute
+    }
     '/account/settings': {
       id: '/account/settings'
       path: '/settings'
@@ -1145,6 +1408,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/auto-gas': {
+      id: '/admin/auto-gas'
+      path: '/auto-gas'
+      fullPath: '/admin/auto-gas'
+      preLoaderRoute: typeof AdminAutoGasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/banners': {
       id: '/admin/banners'
       path: '/banners'
@@ -1187,11 +1457,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCustomersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/cylinder-deposits': {
+      id: '/admin/cylinder-deposits'
+      path: '/cylinder-deposits'
+      fullPath: '/admin/cylinder-deposits'
+      preLoaderRoute: typeof AdminCylinderDepositsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/deliveries': {
       id: '/admin/deliveries'
       path: '/deliveries'
       fullPath: '/admin/deliveries'
       preLoaderRoute: typeof AdminDeliveriesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/delivery-agents': {
+      id: '/admin/delivery-agents'
+      path: '/delivery-agents'
+      fullPath: '/admin/delivery-agents'
+      preLoaderRoute: typeof AdminDeliveryAgentsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/enquiries': {
@@ -1306,12 +1590,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/brands/': {
+      id: '/brands/'
+      path: '/brands'
+      fullPath: '/brands/'
+      preLoaderRoute: typeof BrandsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categories/$slug': {
       id: '/categories/$slug'
       path: '/categories/$slug'
       fullPath: '/categories/$slug'
       preLoaderRoute: typeof CategoriesSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/delivery/': {
+      id: '/delivery/'
+      path: '/'
+      fullPath: '/delivery/'
+      preLoaderRoute: typeof DeliveryIndexRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/completed': {
+      id: '/delivery/completed'
+      path: '/completed'
+      fullPath: '/delivery/completed'
+      preLoaderRoute: typeof DeliveryCompletedRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/deliveries': {
+      id: '/delivery/deliveries'
+      path: '/deliveries'
+      fullPath: '/delivery/deliveries'
+      preLoaderRoute: typeof DeliveryDeliveriesRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/issues': {
+      id: '/delivery/issues'
+      path: '/issues'
+      fullPath: '/delivery/issues'
+      preLoaderRoute: typeof DeliveryIssuesRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/my-deliveries': {
+      id: '/delivery/my-deliveries'
+      path: '/my-deliveries'
+      fullPath: '/delivery/my-deliveries'
+      preLoaderRoute: typeof DeliveryMyDeliveriesRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/notifications': {
+      id: '/delivery/notifications'
+      path: '/notifications'
+      fullPath: '/delivery/notifications'
+      preLoaderRoute: typeof DeliveryNotificationsRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/profile': {
+      id: '/delivery/profile'
+      path: '/profile'
+      fullPath: '/delivery/profile'
+      preLoaderRoute: typeof DeliveryProfileRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/returns': {
+      id: '/delivery/returns'
+      path: '/returns'
+      fullPath: '/delivery/returns'
+      preLoaderRoute: typeof DeliveryReturnsRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/support': {
+      id: '/delivery/support'
+      path: '/support'
+      fullPath: '/delivery/support'
+      preLoaderRoute: typeof DeliverySupportRouteImport
+      parentRoute: typeof DeliveryRoute
+    }
+    '/delivery/today': {
+      id: '/delivery/today'
+      path: '/today'
+      fullPath: '/delivery/today'
+      preLoaderRoute: typeof DeliveryTodayRouteImport
+      parentRoute: typeof DeliveryRoute
     }
     '/manager/': {
       id: '/manager/'
@@ -1332,6 +1693,20 @@ declare module '@tanstack/react-router' {
       path: '/deliveries'
       fullPath: '/manager/deliveries'
       preLoaderRoute: typeof ManagerDeliveriesRouteImport
+      parentRoute: typeof ManagerRoute
+    }
+    '/manager/delivery-agents': {
+      id: '/manager/delivery-agents'
+      path: '/delivery-agents'
+      fullPath: '/manager/delivery-agents'
+      preLoaderRoute: typeof ManagerDeliveryAgentsRouteImport
+      parentRoute: typeof ManagerRoute
+    }
+    '/manager/delivery-assignment': {
+      id: '/manager/delivery-assignment'
+      path: '/delivery-assignment'
+      fullPath: '/manager/delivery-assignment'
+      preLoaderRoute: typeof ManagerDeliveryAssignmentRouteImport
       parentRoute: typeof ManagerRoute
     }
     '/manager/enquiries': {
@@ -1425,6 +1800,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountOrdersOrderIdRouteImport
       parentRoute: typeof AccountOrdersRoute
     }
+    '/admin/order-gas/autogas': {
+      id: '/admin/order-gas/autogas'
+      path: '/order-gas/autogas'
+      fullPath: '/admin/order-gas/autogas'
+      preLoaderRoute: typeof AdminOrderGasAutogasRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/order-gas/bulk': {
       id: '/admin/order-gas/bulk'
       path: '/order-gas/bulk'
@@ -1471,6 +1853,7 @@ interface AccountRouteChildren {
   AccountNotificationsRoute: typeof AccountNotificationsRoute
   AccountOrdersRoute: typeof AccountOrdersRouteWithChildren
   AccountProfileRoute: typeof AccountProfileRoute
+  AccountReturnsRoute: typeof AccountReturnsRoute
   AccountSettingsRoute: typeof AccountSettingsRoute
   AccountSupportRoute: typeof AccountSupportRoute
   AccountTrackingRoute: typeof AccountTrackingRoute
@@ -1486,6 +1869,7 @@ const AccountRouteChildren: AccountRouteChildren = {
   AccountNotificationsRoute: AccountNotificationsRoute,
   AccountOrdersRoute: AccountOrdersRouteWithChildren,
   AccountProfileRoute: AccountProfileRoute,
+  AccountReturnsRoute: AccountReturnsRoute,
   AccountSettingsRoute: AccountSettingsRoute,
   AccountSupportRoute: AccountSupportRoute,
   AccountTrackingRoute: AccountTrackingRoute,
@@ -1500,13 +1884,16 @@ interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminApplicationsRoute: typeof AdminApplicationsRoute
   AdminAuditRoute: typeof AdminAuditRoute
+  AdminAutoGasRoute: typeof AdminAutoGasRoute
   AdminBannersRoute: typeof AdminBannersRoute
   AdminBlogRoute: typeof AdminBlogRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCmsRoute: typeof AdminCmsRoute
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminCylinderDepositsRoute: typeof AdminCylinderDepositsRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
+  AdminDeliveryAgentsRoute: typeof AdminDeliveryAgentsRoute
   AdminEnquiriesRoute: typeof AdminEnquiriesRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
@@ -1522,6 +1909,7 @@ interface AdminRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminStationsRoute: typeof AdminStationsRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminOrderGasAutogasRoute: typeof AdminOrderGasAutogasRoute
   AdminOrderGasBulkRoute: typeof AdminOrderGasBulkRoute
   AdminOrderGasCommercialRoute: typeof AdminOrderGasCommercialRoute
   AdminOrderGasDomesticRoute: typeof AdminOrderGasDomesticRoute
@@ -1531,13 +1919,16 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApplicationsRoute: AdminApplicationsRoute,
   AdminAuditRoute: AdminAuditRoute,
+  AdminAutoGasRoute: AdminAutoGasRoute,
   AdminBannersRoute: AdminBannersRoute,
   AdminBlogRoute: AdminBlogRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCmsRoute: AdminCmsRoute,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminCylinderDepositsRoute: AdminCylinderDepositsRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
+  AdminDeliveryAgentsRoute: AdminDeliveryAgentsRoute,
   AdminEnquiriesRoute: AdminEnquiriesRoute,
   AdminFaqsRoute: AdminFaqsRoute,
   AdminInventoryRoute: AdminInventoryRoute,
@@ -1553,6 +1944,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminStationsRoute: AdminStationsRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminOrderGasAutogasRoute: AdminOrderGasAutogasRoute,
   AdminOrderGasBulkRoute: AdminOrderGasBulkRoute,
   AdminOrderGasCommercialRoute: AdminOrderGasCommercialRoute,
   AdminOrderGasDomesticRoute: AdminOrderGasDomesticRoute,
@@ -1572,9 +1964,41 @@ const BlogRouteChildren: BlogRouteChildren = {
 
 const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
+interface DeliveryRouteChildren {
+  DeliveryCompletedRoute: typeof DeliveryCompletedRoute
+  DeliveryDeliveriesRoute: typeof DeliveryDeliveriesRoute
+  DeliveryIssuesRoute: typeof DeliveryIssuesRoute
+  DeliveryMyDeliveriesRoute: typeof DeliveryMyDeliveriesRoute
+  DeliveryNotificationsRoute: typeof DeliveryNotificationsRoute
+  DeliveryProfileRoute: typeof DeliveryProfileRoute
+  DeliveryReturnsRoute: typeof DeliveryReturnsRoute
+  DeliverySupportRoute: typeof DeliverySupportRoute
+  DeliveryTodayRoute: typeof DeliveryTodayRoute
+  DeliveryIndexRoute: typeof DeliveryIndexRoute
+}
+
+const DeliveryRouteChildren: DeliveryRouteChildren = {
+  DeliveryCompletedRoute: DeliveryCompletedRoute,
+  DeliveryDeliveriesRoute: DeliveryDeliveriesRoute,
+  DeliveryIssuesRoute: DeliveryIssuesRoute,
+  DeliveryMyDeliveriesRoute: DeliveryMyDeliveriesRoute,
+  DeliveryNotificationsRoute: DeliveryNotificationsRoute,
+  DeliveryProfileRoute: DeliveryProfileRoute,
+  DeliveryReturnsRoute: DeliveryReturnsRoute,
+  DeliverySupportRoute: DeliverySupportRoute,
+  DeliveryTodayRoute: DeliveryTodayRoute,
+  DeliveryIndexRoute: DeliveryIndexRoute,
+}
+
+const DeliveryRouteWithChildren = DeliveryRoute._addFileChildren(
+  DeliveryRouteChildren,
+)
+
 interface ManagerRouteChildren {
   ManagerCustomersRoute: typeof ManagerCustomersRoute
   ManagerDeliveriesRoute: typeof ManagerDeliveriesRoute
+  ManagerDeliveryAgentsRoute: typeof ManagerDeliveryAgentsRoute
+  ManagerDeliveryAssignmentRoute: typeof ManagerDeliveryAssignmentRoute
   ManagerEnquiriesRoute: typeof ManagerEnquiriesRoute
   ManagerInventoryRoute: typeof ManagerInventoryRoute
   ManagerNotificationsRoute: typeof ManagerNotificationsRoute
@@ -1590,6 +2014,8 @@ interface ManagerRouteChildren {
 const ManagerRouteChildren: ManagerRouteChildren = {
   ManagerCustomersRoute: ManagerCustomersRoute,
   ManagerDeliveriesRoute: ManagerDeliveriesRoute,
+  ManagerDeliveryAgentsRoute: ManagerDeliveryAgentsRoute,
+  ManagerDeliveryAssignmentRoute: ManagerDeliveryAssignmentRoute,
   ManagerEnquiriesRoute: ManagerEnquiriesRoute,
   ManagerInventoryRoute: ManagerInventoryRoute,
   ManagerNotificationsRoute: ManagerNotificationsRoute,
@@ -1610,10 +2036,12 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AccountRoute: AccountRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  AutoGasRoute: AutoGasRoute,
   BlogRoute: BlogRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
+  DeliveryRoute: DeliveryRouteWithChildren,
   FillingStationsRoute: FillingStationsRoute,
   LoginRoute: LoginRoute,
   ManagerRoute: ManagerRouteWithChildren,
@@ -1623,6 +2051,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriesSlugRoute: CategoriesSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
+  BrandsIndexRoute: BrandsIndexRoute,
   ProductsIndexRoute: ProductsIndexRoute,
 }
 export const routeTree = rootRouteImport

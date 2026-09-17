@@ -18,12 +18,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
 import { products as catalogProducts } from "@/data/catalog";
-import { MeeshoDeliveryTracker } from "./MeeshoDeliveryTracker";
+import { DeliveryTracker } from "./DeliveryTracker";
 
 export function CustomerDeliveriesView() {
   const { user } = useStore();
@@ -35,7 +35,7 @@ export function CustomerDeliveriesView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"active" | "all">("active");
 
-  // Selected delivery for Meesho-style Track Order modal
+  // Selected delivery for Track Order modal
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   const loadCustomerDeliveries = useCallback(async () => {
@@ -162,17 +162,25 @@ export function CustomerDeliveriesView() {
       );
     }
 
-    if (s === "out for delivery" || aStatus === "out for delivery") {
+    if (s === "delivered") {
       return (
-        <Badge className="bg-emerald-600 text-white border-transparent text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-          <Truck className="h-3 w-3" /> Out for Delivery
+        <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+          Delivered
         </Badge>
       );
     }
 
-    if (s === "packed" || s === "processing") {
+    if (s === "out for delivery" || aStatus === "out for delivery") {
       return (
-        <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+        <Badge className="bg-indigo-50 text-indigo-800 border-indigo-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+          Out for Delivery
+        </Badge>
+      );
+    }
+
+    if (s === "packed") {
+      return (
+        <Badge className="bg-purple-50 text-purple-800 border-purple-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
           Packed
         </Badge>
       );
@@ -180,23 +188,15 @@ export function CustomerDeliveriesView() {
 
     if (s === "approved") {
       return (
-        <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+        <Badge className="bg-sky-50 text-sky-800 border-sky-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
           Confirmed
-        </Badge>
-      );
-    }
-
-    if (s === "delivered") {
-      return (
-        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-          Delivered
         </Badge>
       );
     }
 
     if (s === "cancelled") {
       return (
-        <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+        <Badge className="bg-rose-50 text-rose-800 border-rose-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
           Cancelled
         </Badge>
       );
@@ -245,7 +245,7 @@ export function CustomerDeliveriesView() {
               variant="outline"
               size="sm"
               onClick={loadCustomerDeliveries}
-              className="h-8 rounded-full text-xs font-bold gap-1 border-slate-200 bg-white"
+              className="h-8 rounded-full text-xs font-bold gap-1 border-slate-200 bg-white cursor-pointer"
             >
               <RotateCcw className="h-3 w-3" /> Refresh
             </Button>
@@ -254,20 +254,20 @@ export function CustomerDeliveriesView() {
 
         {/* Tab & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
             <button
               onClick={() => setActiveTab("active")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "active"
                   ? "bg-slate-900 text-white shadow-2xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
-              Active ({activeDeliveries.length})
+              Active Deliveries ({activeDeliveries.length})
             </button>
             <button
               onClick={() => setActiveTab("all")}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 activeTab === "all"
                   ? "bg-slate-900 text-white shadow-2xs"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -282,14 +282,14 @@ export function CustomerDeliveriesView() {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search order or item..."
+              placeholder="Search order number or item..."
               className="pl-8.5 h-8.5 rounded-full text-xs bg-slate-50 border-slate-200"
             />
           </div>
         </div>
       </div>
 
-      {/* 2. Deliveries List (Meesho-Style Compact Cards) */}
+      {/* 2. Order List */}
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center shadow-xs space-y-2">
           <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
@@ -312,7 +312,7 @@ export function CustomerDeliveriesView() {
             <Button
               asChild
               size="sm"
-              className="rounded-full text-xs font-bold bg-primary text-white"
+              className="rounded-full text-xs font-bold bg-primary text-white cursor-pointer"
             >
               <Link to="/products">Browse Gas Cylinders</Link>
             </Button>
@@ -342,14 +342,18 @@ export function CustomerDeliveriesView() {
 
             const productName = firstItem?.product_name || "Gas Cylinder Supply";
 
-            const expectedDate = assignment?.dispatched_at
-              ? formatDate(assignment.dispatched_at)
-              : formatDate(
-                  new Date(
-                    new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000,
-                  ).toISOString(),
-                );
-            const timeSlot = assignment?.time_slot || "Morning (08:00 - 12:00)";
+            const expectedDate = order.delivery_date
+              ? formatDate(order.delivery_date)
+              : assignment?.scheduled_date
+                ? formatDate(assignment.scheduled_date)
+                : assignment?.dispatched_at
+                  ? formatDate(assignment.dispatched_at)
+                  : formatDate(
+                      new Date(
+                        new Date(order.created_at).getTime() + 24 * 60 * 60 * 1000,
+                      ).toISOString(),
+                    );
+            const timeSlot = order.delivery_slot || assignment?.time_slot || "Morning (08:00 - 12:00)";
 
             return (
               <div
@@ -415,14 +419,15 @@ export function CustomerDeliveriesView() {
                   </div>
                 </div>
 
-                {/* Right: Clean "Track Order" Button */}
-                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+                {/* Right: Actions */}
+                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0 flex-wrap">
                   <Button
                     onClick={() => setSelectedOrder(order)}
                     className="rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-white h-9 px-5 shadow-xs gap-1.5 cursor-pointer"
                   >
                     Track Order
                   </Button>
+
                   <Link
                     to={`/account/orders/${order.id}` as never}
                     className="text-[11px] text-slate-500 hover:text-primary font-semibold transition-colors flex items-center gap-0.5"
@@ -436,11 +441,11 @@ export function CustomerDeliveriesView() {
         </div>
       )}
 
-      {/* 3. Clean Meesho-Style Track Order Dialog Modal */}
+      {/* 3. Track Order Dialog Modal */}
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent className="max-w-md p-5 sm:p-6 bg-white rounded-3xl overflow-y-auto max-h-[90vh]">
           {selectedOrder && (
-            <MeeshoDeliveryTracker
+            <DeliveryTracker
               order={selectedOrder}
               deliveryAssignment={assignments[selectedOrder.id]}
               productInfo={

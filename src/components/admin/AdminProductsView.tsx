@@ -22,6 +22,7 @@ import {
   Building2,
   Factory,
   Home,
+  Car,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -52,9 +53,14 @@ import {
 } from "@/components/ui/dialog";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { logAdminAuditAction } from "@/lib/audit";
-import { INITIAL_GAS_PRODUCTS } from "@/lib/cylinder-service";
 import { cleanImageUrl } from "@/lib/utils";
+import { logAdminAuditAction } from "@/lib/audit";
+import {
+  syncFullCatalogToSupabase,
+  CANONICAL_PRODUCTS,
+  CANONICAL_CATEGORIES,
+  getProductsForCategory,
+} from "@/lib/catalog-source-of-truth";
 
 const GAS_TYPE_OPTIONS = [
   "Propane",
@@ -63,7 +69,9 @@ const GAS_TYPE_OPTIONS = [
   "Forklift Gas",
   "Pub Gas",
   "Bulk Propane",
+  "Autogas (Automotive LPG)",
   "Autogas",
+  "Hardware & Adapter",
   "Solid Fuel",
   "Other",
 ];
@@ -87,11 +95,17 @@ const USAGE_TYPES = [
     icon: Factory,
     color: "bg-purple-50 text-purple-700 border-purple-200",
   },
+  {
+    value: "AUTOGAS",
+    label: "Vehicle LPG / Autogas",
+    icon: Car,
+    color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
 ];
 
 export interface AdminProductsViewProps {
-  initialUsageType?: "all" | "DOMESTIC" | "COMMERCIAL" | "BULK";
-  lockedUsageType?: "DOMESTIC" | "COMMERCIAL" | "BULK";
+  initialUsageType?: "all" | "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
+  lockedUsageType?: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
   viewTitle?: string;
   viewDescription?: string;
 }
@@ -114,6 +128,17 @@ export function AdminProductsView({
   const [stockFilter, setStockFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("newest");
+
+  // Read URL search params for category filter if present
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const catParam = params.get("category");
+      if (catParam) {
+        setCategoryFilter(catParam);
+      }
+    } catch (_) {}
+  }, []);
 
   // Keep usageFilter in sync if lockedUsageType changes
   useEffect(() => {
@@ -149,24 +174,24 @@ export function AdminProductsView({
           supabase
             .from("categories")
             .select("*")
-            .eq("is_active", true)
             .order("display_order", { ascending: true }),
         ]);
 
-      if (prodErr) throw prodErr;
       if (catErr) throw catErr;
+      if (prodErr) throw prodErr;
 
-      if (!prodData || prodData.length === 0) {
-        // Seed initial products if DB is completely empty
+      if (!prodData || prodData.length < 50) {
+        // Automatically sync canonical catalogue on initial start
         await handleSeedInitialProducts();
       } else {
         setProducts(prodData || []);
+        setCategories(catData || []);
       }
-      setCategories(catData || []);
     } catch (err: any) {
       console.error("Products query error:", err);
       toast.error("Failed to load products: " + err.message);
-      setProducts([]);
+      setProducts(CANONICAL_PRODUCTS);
+      setCategories(CANONICAL_CATEGORIES);
     } finally {
       setLoading(false);
     }
@@ -175,40 +200,14 @@ export function AdminProductsView({
   const handleSeedInitialProducts = async () => {
     setSyncing(true);
     try {
-      let count = 0;
-      for (const seed of INITIAL_GAS_PRODUCTS) {
-        const payload = {
-          name: seed.name,
-          slug: seed.slug,
-          brand: seed.brand,
-          category_slug: seed.category_slug,
-          subcategory: seed.subcategory,
-          description: seed.description,
-          price: seed.price,
-          stock: seed.stock,
-          image_url: seed.image_url,
-          specs: {
-            usage_type: seed.usage_type,
-            gas_type: seed.gas_type,
-            cylinder_size: seed.cylinder_size,
-            deposit_price: seed.deposit_price,
-            refill_price: seed.refill_price,
-            delivery_charge: seed.delivery_charge,
-            is_active: seed.is_active,
-            images: seed.images || [seed.image_url],
-            features: seed.features || [],
-            suitable_for: seed.suitable_for || [],
-          },
-        };
-        const { error } = await supabase.from("products").upsert(payload, { onConflict: "slug" });
-        if (!error) count++;
-      }
-      const { data: refreshed } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (refreshed) setProducts(refreshed);
-      toast.success(`Synced ${count} gas catalog products!`);
+      const res = await syncFullCatalogToSupabase(supabase);
+      const [{ data: refreshedProds }, { data: refreshedCats }] = await Promise.all([
+        supabase.from("products").select("*").order("created_at", { ascending: false }),
+        supabase.from("categories").select("*").order("display_order", { ascending: true }),
+      ]);
+      if (refreshedProds) setProducts(refreshedProds);
+      if (refreshedCats) setCategories(refreshedCats);
+      toast.success(`Synchronized ${res.productsSynced} products across ${res.categoriesSynced} categories!`);
     } catch (e: any) {
       toast.error("Sync error: " + e.message);
     } finally {
@@ -218,23 +217,78 @@ export function AdminProductsView({
 
   useEffect(() => {
     loadProductsAndCategories();
+
+    const channel = supabase
+      .channel("admin-products-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          loadProductsAndCategories();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  // Compute Metrics
-  const totalProducts = products.length;
-  const activeProducts = products.filter((p) => {
+  // Canonical usage resolver shared across Admin and Customer
+  const resolveProductUsage = (p: any): "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS" => {
+    const specs = p.specs && typeof p.specs === "object" ? p.specs : {};
+    if (specs.usage_type) return specs.usage_type;
+    const catSlug = (p.category_slug || "").toLowerCase();
+    const name = (p.name || "").toLowerCase();
+    if (catSlug === "vehicle-lpg-autogas" || catSlug === "autogas" || name.includes("autogas")) {
+      return "AUTOGAS";
+    }
+    if (
+      catSlug === "bulk-gas" ||
+      catSlug === "bulk-lpg" ||
+      name.includes("bulk") ||
+      name.includes("tanker") ||
+      name.includes("vessel")
+    ) {
+      return "BULK";
+    }
+    if (
+      catSlug === "commercial-lpg" ||
+      name.includes("commercial") ||
+      name.includes("flt") ||
+      name.includes("forklift") ||
+      name.includes("pub gas") ||
+      name.includes("47kg") ||
+      name.includes("19kg") ||
+      name.includes("18kg")
+    ) {
+      return "COMMERCIAL";
+    }
+    return "DOMESTIC";
+  };
+
+  // Compute Metrics scoped strictly to the active view / usage filter
+  const scopedProducts = useMemo(() => {
+    const targetUsage = lockedUsageType || (usageFilter !== "all" ? usageFilter : null);
+    if (targetUsage) {
+      return products.filter((p) => resolveProductUsage(p) === targetUsage);
+    }
+    return products;
+  }, [products, lockedUsageType, usageFilter]);
+
+  const totalProducts = scopedProducts.length;
+  const activeProducts = scopedProducts.filter((p) => {
     const specs = p.specs && typeof p.specs === "object" ? p.specs : {};
     return p.is_active !== false && specs.is_active !== false;
   }).length;
-  const lowStockProducts = products.filter((p) => p.stock > 0 && p.stock <= 10).length;
-  const outOfStockProducts = products.filter((p) => p.stock === 0).length;
+  const lowStockProducts = scopedProducts.filter((p) => p.stock > 0 && p.stock <= 10).length;
+  const outOfStockProducts = scopedProducts.filter((p) => p.stock === 0).length;
 
   // Filtered and Sorted Products List
   const filteredProducts = useMemo(() => {
     let result = products.filter((p) => {
       const specs = p.specs && typeof p.specs === "object" ? p.specs : {};
-      const productUsage =
-        specs.usage_type || (p.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC");
+      const productUsage = resolveProductUsage(p);
       const productGasType =
         specs.gas_type || (p.name.toLowerCase().includes("butane") ? "Butane" : "Propane");
       const isActive = p.is_active !== false && specs.is_active !== false;
@@ -248,7 +302,10 @@ export function AdminProductsView({
       const matchesUsage = usageFilter === "all" || productUsage === usageFilter;
       const matchesGasType =
         gasTypeFilter === "all" || productGasType.toLowerCase() === gasTypeFilter.toLowerCase();
-      const matchesCategory = categoryFilter === "all" || p.category_slug === categoryFilter;
+      const matchesCategory =
+        categoryFilter === "all" ||
+        p.category_slug === categoryFilter ||
+        getProductsForCategory(categoryFilter, [p]).length > 0;
 
       let matchesStatus = true;
       if (statusFilter === "active") matchesStatus = isActive;
@@ -300,37 +357,50 @@ export function AdminProductsView({
     const defaultUsage = lockedUsageType || (usageFilter !== "all" ? usageFilter : "DOMESTIC");
     const isBulk = defaultUsage === "BULK";
     const isCommercial = defaultUsage === "COMMERCIAL";
+    const isAutogas = defaultUsage === "AUTOGAS";
 
     setEditProduct({
       name: "",
       slug: `gas-${Date.now()}`,
-      brand: isBulk ? "Stayte Bulk LPG" : "Calor",
-      category_slug: isBulk ? "bulk-gas" : "bottled-gas",
+      brand: isBulk ? "Stayte Bulk LPG" : isAutogas ? "John Stayte Services" : "Calor",
+      category_slug: isBulk ? "bulk-gas" : isAutogas ? "vehicle-lpg-autogas" : "bottled-gas",
       subcategory: isBulk
         ? "Bulk Tank Supply"
         : isCommercial
           ? "Commercial Propane"
-          : "Propane Cylinders",
-      price: isBulk ? 780.0 : isCommercial ? 94.0 : 45.0,
+          : isAutogas
+            ? "Forecourt Autogas Refuelling"
+            : "Propane Cylinders",
+      price: isBulk ? 780.0 : isCommercial ? 94.0 : isAutogas ? 0.89 : 45.0,
       stock: 25,
       image_url: isBulk
         ? "/own_vehicle_fleet_truck_1787408938768.jpg"
         : isCommercial
           ? "/safety_storage_v2.jpg"
-          : "/domestic_kitchen_cylinder.jpg",
+          : isAutogas
+            ? "/station.jpg"
+            : "/domestic_kitchen_cylinder.jpg",
       images: [
         isBulk
           ? "/own_vehicle_fleet_truck_1787408938768.jpg"
           : isCommercial
             ? "/safety_storage_v2.jpg"
-            : "/domestic_kitchen_cylinder.jpg",
+            : isAutogas
+              ? "/station.jpg"
+              : "/domestic_kitchen_cylinder.jpg",
       ],
       description: "",
       usage_type: defaultUsage,
-      gas_type: isBulk ? "Bulk Propane" : "Propane",
-      cylinder_size: isBulk ? "1,000L - 4,000L Vessel" : isCommercial ? "47kg" : "13kg",
-      deposit_price: isBulk ? 0 : isCommercial ? 59.99 : 39.99,
-      refill_price: isBulk ? 780.0 : isCommercial ? 94.0 : 45.0,
+      gas_type: isBulk ? "Bulk Propane" : isAutogas ? "Autogas (Automotive LPG)" : "Propane",
+      cylinder_size: isBulk
+        ? "1,000L - 4,000L Vessel"
+        : isCommercial
+          ? "47kg"
+          : isAutogas
+            ? "Per Litre Forecourt Dispensed"
+            : "13kg",
+      deposit_price: 0,
+      refill_price: isBulk ? 780.0 : isCommercial ? 94.0 : isAutogas ? 0.89 : 45.0,
       delivery_charge: 0,
       is_active: true,
       features: isBulk
@@ -345,26 +415,37 @@ export function AdminProductsView({
               "Heavy-duty commercial propane for continuous commercial kitchens & heating",
               "Direct Stayte commercial supply and site delivery",
             ]
-          : [
-              "Standard POL screw fitting (Female 5/8 inch LH)",
-              "High-performance domestic heating & cooking",
-              "Direct Stayte forecourt & home delivery",
-            ],
+          : isAutogas
+            ? [
+                "EN 589 compliant automotive grade LPG fuel",
+                "High octane 105+ for smooth engine performance and low emissions",
+                "Available at Fromebridge and Wild Goose Garage forecourts",
+                "Compatible with all UK bayonet filler nozzles",
+              ]
+            : [
+                "Standard POL screw fitting (Female 5/8 inch LH)",
+                "High-performance domestic heating & cooking",
+                "Direct Stayte forecourt & home delivery",
+              ],
       suitable_for: isBulk
         ? [
-            "Poultry & Livestock Rearing",
-            "Crop & Grain Drying",
-            "Commercial Glasshouses",
-            "Large Rural Estates",
+            "Commercial Grain Drying & Agriculture",
+            "Off-Grid Industrial Heating & Warehouses",
+            "Holiday Parks & Caravan Sites",
           ]
         : isCommercial
           ? [
-              "Commercial Kitchens & Hospitality",
-              "Hotels & Restaurants",
-              "Holiday Parks",
-              "Workshops",
+              "Hotels, Pubs & Commercial Kitchens",
+              "Forklift Truck Fleets",
+              "Light Industrial Heating",
             ]
-          : ["Home Central Heating", "Gas Cookers", "Space Heaters"],
+          : isAutogas
+            ? ["LPG Cars & Taxis", "Bi-fuel Vans & Light Commercials", "Motorhomes & Campervans"]
+            : [
+                "Domestic Central Heating & Cookers",
+                "Gas BBQ & Patio Heaters",
+                "Mobile Room Heaters",
+              ],
     });
     setNewFeatureInput("");
     setNewSuitableInput("");
@@ -403,11 +484,11 @@ export function AdminProductsView({
 
     setEditProduct({
       ...prod,
-      usage_type: specs.usage_type || (prod.category_slug === "bulk-gas" ? "BULK" : "DOMESTIC"),
+      usage_type: resolveProductUsage(prod),
       gas_type:
         specs.gas_type || (prod.name.toLowerCase().includes("butane") ? "Butane" : "Propane"),
       cylinder_size: specs.cylinder_size || prod.name.match(/\d+(\.\d+)?kg/i)?.[0] || "13kg",
-      deposit_price: Number(specs.deposit_price ?? 39.99),
+      deposit_price: Number(specs.deposit_price ?? 0),
       refill_price: Number(specs.refill_price ?? prod.price ?? 45.0),
       delivery_charge: Number(specs.delivery_charge ?? 0),
       is_active: prod.is_active !== false && specs.is_active !== false,
@@ -506,14 +587,8 @@ export function AdminProductsView({
     if (!editProduct.name?.trim()) {
       return toast.error("Product Name is required.");
     }
-    if (!editProduct.usage_type) {
-      return toast.error("Usage Type (Domestic, Commercial, or Bulk) is mandatory.");
-    }
-    if (!editProduct.gas_type) {
-      return toast.error("Gas Type is required.");
-    }
-    if (isNaN(Number(editProduct.price)) || Number(editProduct.price) <= 0) {
-      return toast.error("Please enter a valid positive price.");
+    if (isNaN(Number(editProduct.price)) || Number(editProduct.price) < 0) {
+      return toast.error("Please enter a valid price.");
     }
     if (!editProduct.image_url?.trim()) {
       return toast.error("Main Product Image is required.");
@@ -524,21 +599,33 @@ export function AdminProductsView({
 
     setSaving(true);
     try {
-      const selectedCategoryObj = categories.find((c) => c.slug === editProduct.category_slug);
+      const selectedCategoryObj =
+        categories.find((c) => c.slug === editProduct.category_slug) ||
+        categories.find((c) => c.slug === "gas") ||
+        categories[0];
 
       const imagesArray =
         Array.isArray(editProduct.images) && editProduct.images.length > 0
           ? editProduct.images
           : [editProduct.image_url];
 
+      const isGas =
+        editProduct.category_slug === "gas" ||
+        editProduct.category_slug === "pub-gas" ||
+        editProduct.category_slug === "bulk-gas" ||
+        editProduct.category_slug === "vehicle-lpg-autogas" ||
+        editProduct.category_slug === "bottled-gas" ||
+        editProduct.category_slug === "campingaz" ||
+        Boolean(editProduct.gas_type);
+
       const specsPayload = {
-        usage_type: editProduct.usage_type,
-        gas_type: editProduct.gas_type,
-        cylinder_size: editProduct.cylinder_size || "13kg",
-        deposit_price: Number(editProduct.deposit_price ?? 39.99),
+        usage_type: editProduct.usage_type || "DOMESTIC",
+        gas_type: editProduct.gas_type || (isGas ? "Propane" : "General"),
+        cylinder_size: editProduct.cylinder_size || "",
+        deposit_price: Number(editProduct.deposit_price ?? 0),
         refill_price: Number(editProduct.refill_price ?? editProduct.price),
         delivery_charge: Number(editProduct.delivery_charge ?? 0),
-        is_gas_product: true,
+        is_gas_product: isGas,
         is_active: editProduct.is_active !== false,
         images: imagesArray,
         features: editProduct.features || [],
@@ -669,7 +756,7 @@ export function AdminProductsView({
             ) : (
               <RotateCcw className="h-3.5 w-3.5" />
             )}
-            Sync Standard Catalog
+            Sync Complete Catalogue ({CANONICAL_PRODUCTS.length})
           </Button>
 
           <Button
@@ -678,15 +765,7 @@ export function AdminProductsView({
             className="rounded-full font-bold text-xs gap-1.5 bg-[#c8102e] hover:bg-[#a50d24] text-white shadow-md"
           >
             <Plus className="h-4 w-4" />
-            <span>
-              {lockedUsageType === "DOMESTIC"
-                ? "Add Domestic Product"
-                : lockedUsageType === "COMMERCIAL"
-                  ? "Add Commercial Product"
-                  : lockedUsageType === "BULK"
-                    ? "Add Bulk Product"
-                    : "Add Gas Product"}
-            </span>
+            <span>Add Product</span>
           </Button>
         </div>
       </div>
@@ -756,6 +835,23 @@ export function AdminProductsView({
             />
           </div>
 
+          {/* Category Filter */}
+          <div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="rounded-xl h-10 text-xs bg-white font-medium">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories ({categories.length})</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.slug} value={c.slug}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Usage Type Filter */}
           <div>
             <Select value={usageFilter} onValueChange={setUsageFilter}>
@@ -767,23 +863,7 @@ export function AdminProductsView({
                 <SelectItem value="DOMESTIC">🏠 Domestic LPG</SelectItem>
                 <SelectItem value="COMMERCIAL">🏨 Commercial LPG</SelectItem>
                 <SelectItem value="BULK">🏭 Bulk LPG</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Gas Type Filter */}
-          <div>
-            <Select value={gasTypeFilter} onValueChange={setGasTypeFilter}>
-              <SelectTrigger className="rounded-xl h-10 text-xs bg-white">
-                <SelectValue placeholder="Gas Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Gas Types</SelectItem>
-                {GAS_TYPE_OPTIONS.map((g) => (
-                  <SelectItem key={g} value={g}>
-                    {g}
-                  </SelectItem>
-                ))}
+                <SelectItem value="AUTOGAS">🚗 Vehicle LPG / Autogas</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1058,182 +1138,273 @@ export function AdminProductsView({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Product Category</label>
+                    <label className="font-bold text-slate-800">Product Category *</label>
                     <Select
-                      value={editProduct.category_slug || "bottled-gas"}
-                      onValueChange={(v) => setEditProduct({ ...editProduct, category_slug: v })}
+                      value={editProduct.category_slug || (categories[0]?.slug || "gas")}
+                      onValueChange={(v) => {
+                        const matchedCat = categories.find((c) => c.slug === v);
+                        const subOptions = Array.isArray(matchedCat?.subcategories)
+                          ? matchedCat.subcategories
+                          : [];
+                        setEditProduct({
+                          ...editProduct,
+                          category_slug: v,
+                          subcategory: subOptions.length > 0 ? subOptions[0] : editProduct.subcategory,
+                        });
+                      }}
                     >
-                      <SelectTrigger className="rounded-xl h-10 text-xs bg-white">
-                        <SelectValue />
+                      <SelectTrigger className="rounded-xl h-10 text-xs bg-white font-medium">
+                        <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bottled-gas">Bottled Gas Cylinders</SelectItem>
-                        <SelectItem value="bulk-gas">Bulk Gas & Tanks</SelectItem>
-                        <SelectItem value="gas-appliances">Gas Appliances</SelectItem>
-                        <SelectItem value="gas-spares">Gas Spares & Regulators</SelectItem>
-                        <SelectItem value="coal-logs">Coal & Logs</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Subcategory / Range</label>
-                    <Input
-                      value={editProduct.subcategory || ""}
-                      onChange={(e) =>
-                        setEditProduct({ ...editProduct, subcategory: e.target.value })
-                      }
-                      placeholder="e.g. Propane Cylinders / Patio Gas / Commercial FLT"
-                      className="rounded-xl h-10 text-xs bg-white"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION B: USAGE TYPE & GAS SPECIFICATIONS */}
-              <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-sans flex items-center gap-1.5">
-                  <Flame className="h-3.5 w-3.5 text-red-600" />
-                  <span>2. Usage Type & Gas Classification (Mandatory)</span>
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Usage Type */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Usage Type *</label>
-                    <Select
-                      value={editProduct.usage_type || "DOMESTIC"}
-                      onValueChange={(v) => setEditProduct({ ...editProduct, usage_type: v })}
-                    >
-                      <SelectTrigger className="rounded-xl h-10 text-xs bg-white font-bold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DOMESTIC">🏠 DOMESTIC LPG</SelectItem>
-                        <SelectItem value="COMMERCIAL">🏨 COMMERCIAL LPG</SelectItem>
-                        <SelectItem value="BULK">🏭 BULK LPG</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Gas Type */}
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Gas Type *</label>
-                    <Select
-                      value={editProduct.gas_type || "Propane"}
-                      onValueChange={(v) => setEditProduct({ ...editProduct, gas_type: v })}
-                    >
-                      <SelectTrigger className="rounded-xl h-10 text-xs bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GAS_TYPE_OPTIONS.map((g) => (
-                          <SelectItem key={g} value={g}>
-                            {g}
+                        {categories.map((c) => (
+                          <SelectItem key={c.slug} value={c.slug}>
+                            {c.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Cylinder Size */}
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Cylinder Size / Weight *</label>
-                    <Input
-                      required
-                      value={editProduct.cylinder_size || "13kg"}
-                      onChange={(e) =>
-                        setEditProduct({ ...editProduct, cylinder_size: e.target.value })
-                      }
-                      placeholder="e.g. 13kg / 47kg / 15kg / 1,000L Vessel"
-                      className="rounded-xl h-10 text-xs bg-white"
-                    />
+                    <label className="font-bold text-slate-800">Subcategory / Range</label>
+                    {(() => {
+                      const currentCat = categories.find((c) => c.slug === editProduct.category_slug);
+                      const availableSubs: string[] = Array.isArray(currentCat?.subcategories)
+                        ? currentCat.subcategories
+                        : [];
+                      
+                      return (
+                        <div className="space-y-1">
+                          <Input
+                            list="subcategory-suggestions"
+                            value={editProduct.subcategory || ""}
+                            onChange={(e) =>
+                              setEditProduct({ ...editProduct, subcategory: e.target.value })
+                            }
+                            placeholder="e.g. Patio Cylinders / CO2 / Baits"
+                            className="rounded-xl h-10 text-xs bg-white"
+                          />
+                          {availableSubs.length > 0 && (
+                            <datalist id="subcategory-suggestions">
+                              {availableSubs.map((sub, i) => (
+                                <option key={i} value={sub} />
+                              ))}
+                            </datalist>
+                          )}
+                          {availableSubs.length > 0 && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {availableSubs.map((sub, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setEditProduct({ ...editProduct, subcategory: sub })}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                                    editProduct.subcategory === sub
+                                      ? "bg-slate-900 text-white border-slate-900"
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
+                                  }`}
+                                >
+                                  {sub}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
+
+              {/* SECTION B: USAGE TYPE & GAS SPECIFICATIONS */}
+              {/* SECTION B: SPECIFICATIONS & RANGE ATTRIBUTES */}
+              {(() => {
+                const isGasProduct =
+                  editProduct.category_slug === "gas" ||
+                  editProduct.category_slug === "calor-gas" ||
+                  editProduct.category_slug === "pub-gas" ||
+                  editProduct.category_slug === "bulk-gas" ||
+                  editProduct.category_slug === "vehicle-lpg-autogas" ||
+                  editProduct.category_slug === "campingaz" ||
+                  Boolean(editProduct.gas_type && editProduct.gas_type !== "General");
+
+                return (
+                  <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-sans flex items-center gap-1.5">
+                      <Flame className="h-3.5 w-3.5 text-red-600" />
+                      <span>2. Product Specifications & Attributes</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Gas / Product Type */}
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-800">
+                          {isGasProduct ? "Gas / Product Type" : "Product Type / Specification"}
+                        </label>
+                        {isGasProduct ? (
+                          <Select
+                            value={editProduct.gas_type || "Propane"}
+                            onValueChange={(v) => setEditProduct({ ...editProduct, gas_type: v })}
+                          >
+                            <SelectTrigger className="rounded-xl h-10 text-xs bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {GAS_TYPE_OPTIONS.map((g) => (
+                                <SelectItem key={g} value={g}>
+                                  {g}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            value={editProduct.gas_type || "General"}
+                            onChange={(e) => setEditProduct({ ...editProduct, gas_type: e.target.value })}
+                            placeholder="e.g. Standard, Premium, Stainless Steel"
+                            className="rounded-xl h-10 text-xs bg-white"
+                          />
+                        )}
+                      </div>
+
+                      {/* Size / Capacity / Weight */}
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-800">Size / Capacity / Weight</label>
+                        <Input
+                          value={editProduct.cylinder_size || ""}
+                          onChange={(e) =>
+                            setEditProduct({ ...editProduct, cylinder_size: e.target.value })
+                          }
+                          placeholder={isGasProduct ? "e.g. 13kg / 19kg / 47kg / 10L" : "e.g. 20kg Bag / 1kg / 4-Burner"}
+                          className="rounded-xl h-10 text-xs bg-white"
+                        />
+                      </div>
+
+                      {/* Optional Application / Usage */}
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-800">Application / Usage Type (Optional)</label>
+                        <Select
+                          value={editProduct.usage_type || "GENERAL"}
+                          onValueChange={(v) => setEditProduct({ ...editProduct, usage_type: v })}
+                        >
+                          <SelectTrigger className="rounded-xl h-10 text-xs bg-white font-bold">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="GENERAL">🌐 General / Multi-purpose</SelectItem>
+                            <SelectItem value="DOMESTIC">🏠 Domestic / Residential</SelectItem>
+                            <SelectItem value="COMMERCIAL">🏨 Commercial / Hospitality</SelectItem>
+                            <SelectItem value="AGRICULTURAL">🌾 Agricultural & Farm</SelectItem>
+                            <SelectItem value="BULK">🏭 Bulk Industrial Supply</SelectItem>
+                            <SelectItem value="AUTOGAS">🚗 Autogas / Vehicle</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* SECTION C: PRICING & INVENTORY */}
-              <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-sans flex items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>3. Pricing & Stock</span>
-                </h3>
+              {(() => {
+                const isGasProduct =
+                  editProduct.category_slug === "gas" ||
+                  editProduct.category_slug === "calor-gas" ||
+                  editProduct.category_slug === "pub-gas" ||
+                  editProduct.category_slug === "bulk-gas" ||
+                  editProduct.category_slug === "vehicle-lpg-autogas" ||
+                  editProduct.category_slug === "campingaz" ||
+                  Boolean(editProduct.gas_type && editProduct.gas_type !== "General");
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">New Purchase Price (£) *</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      required
-                      value={editProduct.price || 0}
-                      onChange={(e) =>
-                        setEditProduct({ ...editProduct, price: parseFloat(e.target.value) || 0 })
-                      }
-                      className="rounded-xl h-10 text-xs bg-white font-bold"
-                    />
+                return (
+                  <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-sans flex items-center gap-1.5">
+                      <Tag className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>3. Pricing & Stock</span>
+                    </h3>
+
+                    <div className={`grid grid-cols-2 ${isGasProduct ? "sm:grid-cols-4" : "sm:grid-cols-2"} gap-3`}>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-800">Purchase Price (£) *</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={editProduct.price || 0}
+                          onChange={(e) =>
+                            setEditProduct({ ...editProduct, price: parseFloat(e.target.value) || 0 })
+                          }
+                          className="rounded-xl h-10 text-xs bg-white font-bold"
+                        />
+                      </div>
+
+                      {isGasProduct && (
+                        <>
+                          <div className="space-y-1">
+                            <label className="font-bold text-slate-800">Refill / Exchange (£)</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editProduct.refill_price || 0}
+                              onChange={(e) =>
+                                setEditProduct({
+                                  ...editProduct,
+                                  refill_price: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              className="rounded-xl h-10 text-xs bg-white"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="font-bold text-slate-800">Cylinder Deposit (£)</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={editProduct.deposit_price || 0}
+                              onChange={(e) =>
+                                setEditProduct({
+                                  ...editProduct,
+                                  deposit_price: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              className="rounded-xl h-10 text-xs bg-white"
+                            />
+                          </div>
+                        </>
+                      )}
+
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-800">Stock Quantity *</label>
+                        <Input
+                          type="number"
+                          required
+                          value={editProduct.stock || 0}
+                          onChange={(e) =>
+                            setEditProduct({ ...editProduct, stock: parseInt(e.target.value) || 0 })
+                          }
+                          className="rounded-xl h-10 text-xs bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 pt-2">
+                      <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
+                        <input
+                          type="checkbox"
+                          checked={editProduct.is_active !== false}
+                          onChange={(e) =>
+                            setEditProduct({ ...editProduct, is_active: e.target.checked })
+                          }
+                          className="h-4 w-4 rounded text-primary"
+                        />
+                        <span>Active in Order Gas & Store</span>
+                      </label>
+                    </div>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Refill / Exchange (£)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={editProduct.refill_price || 0}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          refill_price: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="rounded-xl h-10 text-xs bg-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Cylinder Deposit (£)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={editProduct.deposit_price || 0}
-                      onChange={(e) =>
-                        setEditProduct({
-                          ...editProduct,
-                          deposit_price: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      className="rounded-xl h-10 text-xs bg-white"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-800">Stock Quantity *</label>
-                    <Input
-                      type="number"
-                      required
-                      value={editProduct.stock || 0}
-                      onChange={(e) =>
-                        setEditProduct({ ...editProduct, stock: parseInt(e.target.value) || 0 })
-                      }
-                      className="rounded-xl h-10 text-xs bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-6 pt-2">
-                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
-                    <input
-                      type="checkbox"
-                      checked={editProduct.is_active !== false}
-                      onChange={(e) =>
-                        setEditProduct({ ...editProduct, is_active: e.target.checked })
-                      }
-                      className="h-4 w-4 rounded text-primary"
-                    />
-                    <span>Active in Order Gas & Store</span>
-                  </label>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* SECTION D: DESCRIPTION & DETAILS */}
               <div className="space-y-3 bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80">

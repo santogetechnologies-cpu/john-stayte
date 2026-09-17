@@ -158,8 +158,8 @@ export function AdminInvoicesView() {
     <div>
       <div class="invoice-title">JOHN STAYTE SERVICES</div>
       <div class="company-info" style="margin-top: 6px;">
-        Eastington Depot, Springhill, Stonehouse, GL10 3SX<br>
-        VAT Reg No: GB 275 8841 02 &bull; Phone: 01452 741234
+        Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom<br>
+        VAT Reg No: GB 275 8841 02 &bull; Phone: +44 (0)1453 822859
       </div>
     </div>
     <div style="text-align: right;">

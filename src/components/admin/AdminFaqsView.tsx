@@ -28,7 +28,7 @@ export const ALL_EXISTING_FAQS = [
   },
   {
     q: "Can I exchange an empty cylinder?",
-    a: "Yes — simply hand over your matching empty cylinder to our driver on delivery or swap it immediately at any of our three filling stations in Fromebridge, Cambridge, or Frampton on Severn.",
+    a: "Yes — simply hand over your matching empty cylinder to our driver on delivery or swap it immediately at any of our three filling stations in Dursley, Whitminster, or Stonehouse.",
     category: "Cylinders",
     is_active: true,
     display_order: 3,

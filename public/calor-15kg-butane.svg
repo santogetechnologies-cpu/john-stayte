@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 420" width="100%" height="100%">
+  <defs>
+    <!-- Realistic Blue Cylinder Gradient -->
+    <linearGradient id="butaneBodyGrad15" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#002d62" />
+      <stop offset="18%" stop-color="#004b99" />
+      <stop offset="42%" stop-color="#0066cc" />
+      <stop offset="65%" stop-color="#0052a3" />
+      <stop offset="88%" stop-color="#003366" />
+      <stop offset="100%" stop-color="#001f3f" />
+    </linearGradient>
+
+    <!-- Metallic Handle / Shroud Gradient -->
+    <linearGradient id="shroudGrad15" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#003066" />
+      <stop offset="25%" stop-color="#0055aa" />
+      <stop offset="50%" stop-color="#006cd9" />
+      <stop offset="75%" stop-color="#004488" />
+      <stop offset="100%" stop-color="#002244" />
+    </linearGradient>
+
+    <!-- Collar Rim Gradient -->
+    <linearGradient id="collarGrad15" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="50%" stop-color="#4b5563" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+
+    <!-- Valve Brass / Gold -->
+    <linearGradient id="brassGrad15" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#b45309" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#92400e" />
+    </linearGradient>
+
+    <!-- Shadow -->
+    <radialGradient id="dropShadow15" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgba(15, 23, 42, 0.45)" />
+      <stop offset="60%" stop-color="rgba(15, 23, 42, 0.15)" />
+      <stop offset="100%" stop-color="rgba(15, 23, 42, 0)" />
+    </radialGradient>
+  </defs>
+
+  <!-- Ground Drop Shadow -->
+  <ellipse cx="140" cy="405" rx="85" ry="12" fill="url(#dropShadow15)" />
+
+  <!-- Foot Ring / Base -->
+  <path d="M 75 385 C 75 375, 205 375, 205 385 C 205 397, 75 397, 75 385 Z" fill="#002244" />
+  <ellipse cx="140" cy="386" rx="63" ry="7" fill="#001830" />
+
+  <!-- Cylinder Main Body -->
+  <path d="
+    M 65 170
+    C 65 110, 215 110, 215 170
+    L 215 350
+    C 215 392, 65 392, 65 350
+    Z
+  " fill="url(#butaneBodyGrad15)" />
+
+  <!-- Body Specular Highlight (Vertical reflection sheen) -->
+  <path d="
+    M 102 140
+    C 102 125, 125 125, 125 140
+    L 125 365
+    C 125 375, 102 375, 102 365
+    Z
+  " fill="white" opacity="0.12" />
+
+  <!-- Weld Seam Ring (Middle circumferential weld) -->
+  <ellipse cx="140" cy="275" rx="74.5" ry="4" fill="none" stroke="#002d62" stroke-width="2" opacity="0.6" />
+  <ellipse cx="140" cy="274" rx="74.5" ry="3.8" fill="none" stroke="#0077ee" stroke-width="1.2" opacity="0.4" />
+
+  <!-- Valve Assembly Inside Shroud -->
+  <rect x="133" y="88" width="14" height="22" rx="2" fill="url(#brassGrad15)" />
+  <circle cx="140" cy="85" r="7" fill="#dc2626" />
+  <circle cx="140" cy="85" r="4" fill="#991b1b" />
+
+  <!-- Top Handle Shroud Collar (Calor 2-handle shroud) -->
+  <path d="
+    M 88 128
+    C 88 65, 192 65, 192 128
+    C 192 145, 88 145, 88 128
+    Z
+  " fill="url(#shroudGrad15)" stroke="#002244" stroke-width="2" />
+
+  <!-- Shroud Cutouts / Hand Grips -->
+  <rect x="105" y="86" width="70" height="24" rx="12" fill="#001f3f" stroke="#001830" stroke-width="2" />
+  <ellipse cx="140" cy="98" rx="32" ry="9" fill="#0a101d" />
+
+  <!-- Top Rim Edge -->
+  <path d="M 96 76 C 110 68, 170 68, 184 76" fill="none" stroke="#4da6ff" stroke-width="2.5" stroke-linecap="round" opacity="0.7" />
+
+  <!-- Front Brand Graphics (Calor Gas White Typography & Logo) -->
+  <g transform="translate(140, 205)">
+    <!-- Calor Flame Logo Icon -->
+    <path d="
+      M 0 -38
+      C 10 -26, 12 -15, 0 -3
+      C -12 -15, -10 -26, 0 -38
+      Z
+    " fill="#ffffff" />
+    <circle cx="0" cy="-21" r="5" fill="#0052a3" />
+
+    <!-- Brand Name CALOR -->
+    <text x="0" y="5" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="900" font-size="25" fill="#ffffff" letter-spacing="1">
+      CALOR
+    </text>
+    <text x="0" y="24" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="13" fill="#ffffff" letter-spacing="2">
+      Gas
+    </text>
+
+    <!-- Subtitle: 15 kg Butane -->
+    <rect x="-56" y="38" width="112" height="26" rx="6" fill="rgba(0, 30, 70, 0.7)" stroke="rgba(255, 255, 255, 0.4)" stroke-width="1" />
+    <text x="0" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="14" fill="#ffffff">
+      15 kg Butane
+    </text>
+  </g>
+</svg>

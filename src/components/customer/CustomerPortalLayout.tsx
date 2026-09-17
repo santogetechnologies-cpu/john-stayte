@@ -17,7 +17,9 @@ import {
   ExternalLink,
   Menu,
   ShoppingCart,
+  RotateCcw,
   Truck,
+  Loader2,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -52,7 +54,7 @@ type NavGroup = {
 };
 
 export function CustomerPortalLayout({ children }: { children: ReactNode }) {
-  const { user, logout, wishlist, cart } = useStore();
+  const { user, authLoading, logout, wishlist, cart } = useStore();
   const cartCount = (cart || []).reduce((acc, l) => acc + l.qty, 0);
   const navigate = useNavigate();
   const routerState = useRouterState();
@@ -63,21 +65,58 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   const [activeDeliveriesCount, setActiveDeliveriesCount] = useState<number>(0);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
 
+  // Strict role guard: if user is not authenticated or not a customer, redirect appropriately
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      navigate({ to: "/login" });
+      return;
+    }
+
+    if (user.role === "delivery_agent") {
+      navigate({ to: "/delivery" });
+      return;
+    }
+
+    if (user.role === "admin") {
+      navigate({ to: "/admin" });
+      return;
+    }
+
+    if (user.role === "manager") {
+      navigate({ to: "/manager" });
+      return;
+    }
+  }, [user, authLoading, navigate]);
+
   // Live real-time Supabase query for customer's active deliveries & unread notifications badge
   useEffect(() => {
     async function fetchBadgeCounts() {
       try {
         const { data: authUser } = await supabase.auth.getUser();
-        const currentUserId = authUser?.user?.id || user?.id;
+        const rawUserId = authUser?.user?.id || user?.id;
+        const isUuid = rawUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUserId);
+        const currentUserId = isUuid ? rawUserId : null;
         const currentEmail = authUser?.user?.email || user?.email;
         if (!currentUserId && !currentEmail) return;
 
-        // 1. Active Deliveries Count
-        const { count: delivCount, error: delivErr } = await supabase
+        // 1. Active Deliveries Count (not Delivered or Cancelled)
+        let ordersQuery = supabase
           .from("orders")
           .select("*", { count: "exact", head: true })
-          .or(`customer_id.eq.${currentUserId},customer_email.eq.${currentEmail}`)
-          .not("status", "in", '("Delivered","Cancelled")');
+          .neq("status", "Delivered")
+          .neq("status", "Cancelled");
+
+        if (currentUserId && currentEmail) {
+          ordersQuery = ordersQuery.or(`customer_id.eq.${currentUserId},customer_email.eq.${currentEmail}`);
+        } else if (currentUserId) {
+          ordersQuery = ordersQuery.eq("customer_id", currentUserId);
+        } else if (currentEmail) {
+          ordersQuery = ordersQuery.eq("customer_email", currentEmail);
+        }
+
+        const { count: delivCount, error: delivErr } = await ordersQuery;
 
         if (!delivErr && delivCount !== null) {
           setActiveDeliveriesCount(delivCount);
@@ -96,14 +135,15 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
           }
         }
       } catch (e) {
-        console.warn("Failed to fetch customer badge counts:", e);
+        console.warn("Notice fetching customer badge counts:", e);
       }
     }
 
     fetchBadgeCounts();
 
+    const channelName = `customer_portal_badges_${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
-      .channel("customer_portal_badges_channel")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
         fetchBadgeCounts(),
       )
@@ -256,6 +296,102 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
       ))}
     </div>
   );
+
+  // 1. Session verification loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#f8f8fa] font-sans">
+        <div className="flex flex-col items-center gap-3 text-slate-500 text-xs font-semibold">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span>Verifying session...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated Gate UI
+  if (!user) {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#f8f8fa] px-4 font-sans">
+        <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
+          <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
+          <h1 className="text-xl font-bold font-display text-slate-900">Sign In Required</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Please sign in to access your account orders, deliveries, and settings.
+          </p>
+          <Button
+            asChild
+            className="w-full rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 text-white h-10 shadow-xs"
+          >
+            <Link to="/login">Go to Sign In</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Driver Gate (Immediate redirection to /delivery)
+  if (user.role === "delivery_agent") {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#f8f8fa] px-4 font-sans">
+        <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
+          <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
+          <h1 className="text-xl font-bold font-display text-slate-900">Driver Portal</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your account is authenticated as a Driver. Taking you to your active dispatch portal...
+          </p>
+          <Button
+            asChild
+            className="w-full rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white h-10 shadow-xs"
+          >
+            <Link to="/delivery">Open Driver Portal</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 4. Admin Gate
+  if (user.role === "admin") {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#f8f8fa] px-4 font-sans">
+        <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
+          <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
+          <h1 className="text-xl font-bold font-display text-slate-900">Admin Control Center</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your account is authenticated as an Administrator. Taking you to Admin Control Center...
+          </p>
+          <Button
+            asChild
+            className="w-full rounded-xl font-bold text-xs bg-red-600 hover:bg-red-700 text-white h-10 shadow-xs"
+          >
+            <Link to="/admin">Open Admin Portal</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. Manager Gate
+  if (user.role === "manager") {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#f8f8fa] px-4 font-sans">
+        <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
+          <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
+          <h1 className="text-xl font-bold font-display text-slate-900">Manager Operations Portal</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your account is authenticated as an Operations Manager. Taking you to Manager Portal...
+          </p>
+          <Button
+            asChild
+            className="w-full rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 text-white h-10 shadow-xs"
+          >
+            <Link to="/manager">Open Manager Portal</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8f8fa] text-foreground font-sans antialiased flex flex-col">
@@ -462,8 +598,8 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-5 sm:p-7 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-7 animate-rise">{children}</div>
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:px-6 lg:py-6">
+          <div className="w-full max-w-7xl mx-auto space-y-6 animate-rise">{children}</div>
         </main>
       </div>
     </div>

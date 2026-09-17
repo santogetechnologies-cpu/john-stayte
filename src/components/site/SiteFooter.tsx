@@ -90,21 +90,64 @@ export function RedWaveFooterBanner() {
 export function SiteFooter({ className }: { className?: string } = {}) {
   const routerState = useRouterState();
   const [categories, setCategories] = useState<any[]>(defaultCategories);
+  const [footerCms, setFooterCms] = useState({
+    bio: "Family-run supplier of bottled gas, solid fuel, animal feed and outdoor living since 1972. Delivering across Gloucestershire.",
+    companyPhone: "+44 (0)1453 822859",
+    companyEmail: "info@johnstayteservices.co.uk",
+    companyAddress: "Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom",
+    copyrightText: "John Stayte Services. All rights reserved.",
+    vatNumber: "Registered in England · VAT GB 123 4567 89",
+    facebookUrl: "https://facebook.com",
+    instagramUrl: "https://instagram.com",
+    youtubeUrl: "https://youtube.com",
+  });
 
   useEffect(() => {
-    async function loadCats() {
+    async function loadData() {
       try {
-        const { data } = await supabase
-          .from("categories")
-          .select("*")
-          .eq("is_active", true)
-          .order("display_order", { ascending: true });
-        if (data && data.length > 0) {
-          setCategories(data);
+        const [{ data: catData }, { data: footerBlock }] = await Promise.all([
+          supabase
+            .from("categories")
+            .select("*")
+            .eq("is_active", true)
+            .order("display_order", { ascending: true }),
+          supabase
+            .from("cms_content_blocks")
+            .select("content")
+            .eq("section_key", "footer_data")
+            .maybeSingle(),
+        ]);
+
+        if (catData && catData.length > 0) {
+          setCategories(catData);
+        }
+
+        if (footerBlock?.content) {
+          try {
+            const parsed = JSON.parse(footerBlock.content);
+            if (parsed && typeof parsed === "object") {
+              setFooterCms((prev) => ({
+                ...prev,
+                bio: parsed.bio || prev.bio,
+                companyPhone: parsed.companyPhone || prev.companyPhone,
+                companyEmail: parsed.companyEmail || prev.companyEmail,
+                companyAddress: parsed.companyAddress || prev.companyAddress,
+                copyrightText: parsed.copyrightText || prev.copyrightText,
+                vatNumber: parsed.vatNumber || prev.vatNumber,
+                facebookUrl: parsed.facebookUrl || prev.facebookUrl,
+                instagramUrl: parsed.instagramUrl || prev.instagramUrl,
+                youtubeUrl: parsed.youtubeUrl || prev.youtubeUrl,
+              }));
+            }
+          } catch {}
         }
       } catch {}
     }
-    loadCats();
+    loadData();
+
+    const handleUpdate = () => loadData();
+    window.addEventListener("cms_footer_updated", handleUpdate);
+    return () => window.removeEventListener("cms_footer_updated", handleUpdate);
   }, []);
 
   const pathname = routerState?.location?.pathname || "";
@@ -130,14 +173,24 @@ export function SiteFooter({ className }: { className?: string } = {}) {
               <span className="font-display text-lg font-extrabold">JOHN STAYTE SERVICES</span>
             </div>
             <p className="mt-4 max-w-xs text-sm text-ink-foreground/70">
-              Family-run supplier of bottled gas, solid fuel, animal feed and outdoor living since
-              1972. Delivering across Gloucestershire.
+              {footerCms.bio}
             </p>
             <div className="mt-5 flex gap-2">
-              {[Facebook, Instagram, Youtube, Mail].map((Icon, i) => (
-                <span key={i} className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
+              {[
+                { Icon: Facebook, url: footerCms.facebookUrl },
+                { Icon: Instagram, url: footerCms.instagramUrl },
+                { Icon: Youtube, url: footerCms.youtubeUrl },
+                { Icon: Mail, url: `mailto:${footerCms.companyEmail}` },
+              ].map(({ Icon, url }, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                >
                   <Icon className="h-4 w-4" />
-                </span>
+                </a>
               ))}
             </div>
           </div>
@@ -162,6 +215,11 @@ export function SiteFooter({ className }: { className?: string } = {}) {
           <div>
             <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Information</h4>
             <ul className="mt-4 space-y-2 text-sm text-ink-foreground/75">
+              <li>
+                <Link to="/brands" className="hover:text-primary">
+                  Shop by Brand
+                </Link>
+              </li>
               <li>
                 <Link to="/about" className="hover:text-primary">
                   About us
@@ -237,21 +295,21 @@ export function SiteFooter({ className }: { className?: string } = {}) {
             </form>
             <ul className="mt-6 space-y-2 text-sm text-ink-foreground/75">
               <li className="flex gap-2">
-                <MapPin className="h-4 w-4 shrink-0 text-primary" /> Whitminster, Gloucester GL2 7PD
+                <MapPin className="h-4 w-4 shrink-0 text-primary" /> {footerCms.companyAddress}
               </li>
               <li className="flex gap-2">
-                <Phone className="h-4 w-4 shrink-0 text-primary" /> 01452 741234
+                <Phone className="h-4 w-4 shrink-0 text-primary" /> {footerCms.companyPhone}
               </li>
               <li className="flex gap-2">
-                <Mail className="h-4 w-4 shrink-0 text-primary" /> sales@johnstayte.co.uk
+                <Mail className="h-4 w-4 shrink-0 text-primary" /> {footerCms.companyEmail}
               </li>
             </ul>
           </div>
         </div>
         <div className="border-t border-white/10">
           <div className="container-page flex flex-col gap-2 py-5 text-xs text-ink-foreground/60 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} John Stayte Services. All rights reserved.</p>
-            <p>Registered in England · VAT GB 123 4567 89</p>
+            <p>© {new Date().getFullYear()} {footerCms.copyrightText}</p>
+            <p>{footerCms.vatNumber}</p>
           </div>
         </div>
       </footer>

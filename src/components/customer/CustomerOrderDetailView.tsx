@@ -24,6 +24,8 @@ import {
   ShieldCheck,
   Flame,
   Check,
+  Star,
+  PackageCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,9 +39,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { gbp, useStore } from "@/lib/store";
+import { OrderReviewModal } from "@/components/customer/OrderReviewModal";
+import { normalizeReviewRecord } from "@/lib/review-service";
+import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
+import { gbp, useStore, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { cleanImageUrl } from "@/lib/utils";
+import { cleanImageUrl, cn } from "@/lib/utils";
 
 const TRACKING_STEPS = [
   { key: "Pending", label: "Order Placed", desc: "Order submitted via website" },
@@ -82,6 +87,13 @@ export function CustomerOrderDetailView() {
   const [customReasonText, setCustomReasonText] = useState("");
   const [cancelling, setCancelling] = useState(false);
 
+  // Review State
+  const [orderReview, setOrderReview] = useState<any | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+
+  // Delivery Assignment & Exchange State
+  const [deliveryAssignment, setDeliveryAssignment] = useState<any | null>(null);
+
   // Load Order Details & verify customer authorization
   const loadOrder = useCallback(async () => {
     if (!orderId) {
@@ -98,7 +110,9 @@ export function CustomerOrderDetailView() {
       const currentEmail = authUser?.user?.email || user?.email;
 
       // Query order by UUID id or order_number
-      let query = supabase.from("orders").select("*, order_items(*), order_status_history(*)");
+      let query = supabase
+        .from("orders")
+        .select("*, order_items(*), order_status_history(*), delivery_assignments(*)");
 
       if (orderId.includes("-") && orderId.length === 36) {
         query = query.eq("id", orderId);
@@ -130,12 +144,32 @@ export function CustomerOrderDetailView() {
         return;
       }
 
+      // Fetch customer review for this order if exists
+      const { data: userReviews } = await supabase
+        .from("reviews")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      let matchedRev = null;
+      if (userReviews && userReviews.length > 0) {
+        matchedRev = userReviews
+          .map(normalizeReviewRecord)
+          .find(
+            (r: any) =>
+              r.order_id === orderData.id ||
+              (orderData.id && r.comment?.includes(orderData.id)) ||
+              (orderData.order_number && r.comment?.includes(orderData.order_number)),
+          );
+      }
+
+      setOrderReview(matchedRev || null);
+
       // Enhance order items with product images and slugs
       const productIds = (orderData.order_items || [])
         .map((i: any) => i.product_id)
         .filter(Boolean);
 
-      let productMap = new Map<string, any>();
+      const productMap = new Map<string, any>();
       if (productIds.length > 0) {
         const { data: prodData } = await supabase
           .from("products")
@@ -156,6 +190,17 @@ export function CustomerOrderDetailView() {
       };
 
       setOrder(enhancedOrder);
+
+      // Fetch delivery assignment for cylinder exchange / verification tracking
+      try {
+        const { data: assignmentData } = await (supabase.from("delivery_assignments") as any)
+          .select("*")
+          .eq("order_id", orderData.id)
+          .maybeSingle();
+        setDeliveryAssignment(assignmentData || null);
+      } catch (err) {
+        console.warn("Could not load delivery assignment for order:", err);
+      }
 
       // Load recommended products
       loadRecommendations(productMap);
@@ -190,7 +235,7 @@ export function CustomerOrderDetailView() {
     loadOrder();
   }, [loadOrder]);
 
-  // Realtime subscription for this specific order
+  // Realtime subscription for this specific order and delivery assignments
   useEffect(() => {
     if (!order?.id) return;
 
@@ -203,6 +248,15 @@ export function CustomerOrderDetailView() {
           schema: "public",
           table: "orders",
           filter: `id=eq.${order.id}`,
+        },
+        () => loadOrder(),
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "delivery_assignments",
         },
         () => loadOrder(),
       )
@@ -221,6 +275,12 @@ export function CustomerOrderDetailView() {
     const idx = TRACKING_STEPS.findIndex((s) => s.key.toLowerCase() === status.toLowerCase());
     return idx >= 0 ? idx : 0;
   }, [order]);
+
+  // Evaluate cylinder exchange requirement using shared single-source service
+  const cylinderExchangeReq = useMemo(
+    () => getOrderCylinderExchangeRequirement(order),
+    [order],
+  );
 
   // Handle Reorder
   const handleReorder = async () => {
@@ -311,8 +371,8 @@ export function CustomerOrderDetailView() {
     <div class="header-flex">
       <div>
         <h1 class="company-title">JOHN STAYTE SERVICES</h1>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Whitminster Depot, Gloucestershire, GL2 7NY</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: 01452 740326</p>
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom</p>
+        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: +44 (0)1453 822859</p>
       </div>
       <div>
         <h2 class="inv-title">VAT TAX INVOICE</h2>
@@ -522,7 +582,7 @@ export function CustomerOrderDetailView() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-5xl">
+      <div className="space-y-6 w-full">
         <div className="h-8 w-48 bg-slate-100 rounded-xl animate-pulse" />
         <div className="bg-white rounded-2xl border p-8 space-y-6 shadow-xs animate-pulse">
           <div className="h-6 w-1/3 bg-slate-100 rounded-md" />
@@ -562,7 +622,7 @@ export function CustomerOrderDetailView() {
   const isCancelled = order.status === "Cancelled";
 
   return (
-    <div className="space-y-6 sm:space-y-7 max-w-5xl">
+    <div className="space-y-6 sm:space-y-7 w-full">
       {/* ============================================================ */}
       {/* 1. TOP BAR & ORDER HEADER                                    */}
       {/* ============================================================ */}
@@ -613,6 +673,8 @@ export function CustomerOrderDetailView() {
             >
               <Download className="h-3.5 w-3.5" /> VAT Invoice
             </Button>
+
+            {/* Header VAT Invoice Button */}
 
             {!isCancelled && (
               <Button
@@ -951,6 +1013,17 @@ export function CustomerOrderDetailView() {
                     <span className="text-slate-500">Depot:</span>{" "}
                     {order.assigned_depot || "Whitminster Main Depot (GL2)"}
                   </p>
+                  {(order.delivery_date || deliveryAssignment?.scheduled_date) && (
+                    <p className="font-semibold text-emerald-700">
+                      <span className="text-slate-500 font-normal">Expected Delivery:</span>{" "}
+                      {new Date(order.delivery_date || deliveryAssignment?.scheduled_date).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}{" "}
+                      ({order.delivery_slot || deliveryAssignment?.time_slot || "Morning (08:00 - 12:00)"})
+                    </p>
+                  )}
                   {order.assigned_driver && (
                     <p className="font-semibold text-primary">
                       <span className="text-slate-500 font-normal">Assigned Driver:</span>{" "}
@@ -961,6 +1034,233 @@ export function CustomerOrderDetailView() {
               </div>
             </div>
           </div>
+
+          {/* ============================================================ */}
+          {/* EMPTY CYLINDER EXCHANGE / DELIVERY STATUS BANNER             */}
+          {/* ============================================================ */}
+          {cylinderExchangeReq.orderType === "NEW_CYLINDER" &&
+            order.status !== "Delivered" &&
+            order.status !== "Cancelled" && (
+              <div className="bg-sky-50/80 rounded-2xl border border-sky-200/90 p-5 sm:p-6 shadow-xs flex items-start sm:items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+                  <PackageCheck className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <h3 className="text-sm font-display font-extrabold text-slate-900 flex items-center gap-2">
+                    New Cylinder Purchase
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    No empty cylinder required. Our driver will deliver your full cylinder directly to your door.
+                  </p>
+                </div>
+              </div>
+            )}
+
+          {cylinderExchangeReq.required &&
+            order.status !== "Delivered" &&
+            order.status !== "Cancelled" && (
+              <div className="bg-amber-50/80 rounded-2xl border border-amber-200/90 p-5 sm:p-6 shadow-xs flex items-start sm:items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <PackageCheck className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <h3 className="text-sm font-display font-extrabold text-slate-900 flex items-center gap-2">
+                    Empty Cylinder Required
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                    Please keep your empty cylinder ready for collection when your order is delivered. (Expected: {cylinderExchangeReq.expectedQuantity} bottle(s)).
+                  </p>
+                </div>
+              </div>
+            )}
+
+          {cylinderExchangeReq.orderType !== "NON_GAS" && order.status === "Delivered" && (
+            <div>
+              {deliveryAssignment?.notes?.includes("[Exception:") ||
+              deliveryAssignment?.status === "Exception" ? (
+                <div className="bg-rose-50/80 rounded-2xl border border-rose-200 p-4 sm:p-5 shadow-xs flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-rose-900">
+                      Empty Cylinder Collection — Exception Reported
+                    </h4>
+                    <p className="text-[11px] text-rose-700 font-medium">
+                      A delivery exception was recorded during cylinder exchange. Depot dispatch has
+                      been notified.
+                    </p>
+                  </div>
+                </div>
+              ) : deliveryAssignment?.notes?.includes("[Empty Return:") ? (
+                <div className="bg-emerald-50/80 rounded-2xl border border-emerald-200 p-4 sm:p-5 shadow-xs flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-900">
+                      Cylinder Delivered ✓ &bull; Empty Cylinder Collected ✓
+                    </h4>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      Physical cylinder handover and empty bottle exchange verified by John Stayte
+                      Services logistics.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-emerald-50/80 rounded-2xl border border-emerald-200 p-4 sm:p-5 shadow-xs flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4.5 w-4.5" />
+                  </div>
+                  <h4 className="text-xs font-bold text-emerald-900">Cylinder Delivered ✓</h4>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* POST-DELIVERY CUSTOMER REVIEW SECTION */}
+          {(order.status === "Delivered" || order.status === "Completed") && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                  <h2 className="text-sm font-display font-extrabold text-slate-900">
+                    {orderReview
+                      ? "Your Verified Customer Review"
+                      : "Rate & Review Your Experience"}
+                  </h2>
+                </div>
+                {orderReview && (
+                  <Badge
+                    variant="outline"
+                    className="bg-amber-50 text-amber-800 border-amber-200 font-extrabold text-[10px] px-2 py-0.5"
+                  >
+                    Submitted
+                  </Badge>
+                )}
+              </div>
+
+              {orderReview ? (
+                /* REVIEWED STATE */
+                <div className="space-y-3.5 bg-slate-50/60 p-4 rounded-xl border border-slate-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-white p-3 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                        Product Rating
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${
+                                i < orderReview.rating
+                                  ? "text-amber-500 fill-amber-500"
+                                  : "text-slate-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-black text-slate-900 ml-1">
+                          {orderReview.rating}/5
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                        Product Quality
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${
+                                i < (orderReview.product_quality_rating || orderReview.rating)
+                                  ? "text-amber-500 fill-amber-500"
+                                  : "text-slate-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-black text-slate-900 ml-1">
+                          {orderReview.product_quality_rating || orderReview.rating}/5
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                        Driver (
+                        {orderReview.delivery_agent_name || order.assigned_driver || "Driver"})
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3 w-3 ${
+                                i < (orderReview.delivery_agent_rating || orderReview.rating)
+                                  ? "text-amber-500 fill-amber-500"
+                                  : "text-slate-200"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-black text-slate-900 ml-1">
+                          {orderReview.delivery_agent_rating || orderReview.rating}/5
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {orderReview.comment && (
+                    <div className="bg-white p-3.5 rounded-xl border border-slate-100 space-y-1">
+                      <span className="text-[10px] font-bold text-slate-400 block">
+                        Written Experience:
+                      </span>
+                      <p className="text-xs text-slate-700 italic leading-relaxed">
+                        "{orderReview.comment}"
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-medium px-1">
+                    <span>Verified Purchase & Delivery</span>
+                    <span>
+                      Reviewed on{" "}
+                      {new Date(orderReview.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* UNREVIEWED CTA STATE */
+                <div className="bg-slate-50/70 p-5 rounded-xl border border-slate-200/70 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-slate-900">
+                      How was your delivery and products?
+                    </p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed max-w-md">
+                      Your order has been completed. Share your feedback regarding product quality
+                      and delivery service to help our Gloucestershire team maintain the highest
+                      standards.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setReviewModalOpen(true)}
+                    className="rounded-full text-xs font-extrabold bg-red-600 hover:bg-red-700 text-white shadow-xs gap-1.5 shrink-0 h-9 px-4"
+                  >
+                    <Star className="h-3.5 w-3.5 fill-white" /> Rate & Review Order
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* RIGHT COLUMN: PRICE SUMMARY & USEFUL ACTIONS */}
@@ -988,6 +1288,23 @@ export function CustomerOrderDetailView() {
                 <span>VAT (Standard 20%)</span>
                 <span className="font-bold text-slate-900">
                   {gbp(Number(order.subtotal || 0) * 0.2)}
+                </span>
+              </div>
+
+              <div className="flex justify-between text-slate-600 font-medium">
+                <span>Payment Method</span>
+                <span className="font-bold text-slate-900">{getOrderPaymentMethod(order)}</span>
+              </div>
+
+              <div className="flex justify-between text-slate-600 font-medium">
+                <span>Payment Status</span>
+                <span
+                  className={cn(
+                    "font-extrabold",
+                    order.payment_status === "Paid" ? "text-emerald-700" : "text-amber-700",
+                  )}
+                >
+                  {order.payment_status === "Paid" ? "Paid in Full" : "Pending (Due on Delivery)"}
                 </span>
               </div>
 
@@ -1022,6 +1339,8 @@ export function CustomerOrderDetailView() {
               >
                 <Download className="h-3.5 w-3.5" /> Download VAT Invoice
               </Button>
+
+              {/* Download Invoice & Cancel Order */}
 
               {isCancellable(order.status) && (
                 <Button
@@ -1224,6 +1543,29 @@ export function CustomerOrderDetailView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* POST-DELIVERY REVIEW MODAL */}
+      {reviewModalOpen && (
+        <OrderReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => setReviewModalOpen(false)}
+          order={order}
+          product={{
+            id: order.order_items?.[0]?.product_id || order.id,
+            name: order.order_items?.[0]?.product_name || "Ordered Product",
+            image_url: order.order_items?.[0]?.product_info?.image_url,
+          }}
+          deliveryAgent={{
+            id: order.delivery_assignments?.[0]?.agent_id || null,
+            name: order.delivery_assignments?.[0]?.driver_name || order.assigned_driver || null,
+          }}
+          onReviewSubmitted={() => {
+            loadOrder();
+          }}
+        />
+      )}
+
+      {/* CYLINDER RETURN REQUEST MODAL REMOVED */}
     </div>
   );
 }
