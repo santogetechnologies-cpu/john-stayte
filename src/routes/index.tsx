@@ -69,6 +69,7 @@ import stationBridge76 from "@/assets/station-bridge-76.png";
 import coalLogs from "@/assets/coal-logs.jpg";
 import bbqPro3 from "@/assets/char_broil_professionalpro3_1.jpg";
 import truckImg from "@/assets/image-3.png";
+import doorstepDeliveryImg from "@/assets/doorstep-gas-delivery.jpg";
 import { FeaturedSafetyGuide } from "@/components/site/FeaturedSafetyGuide";
 import { CalorBusinessHighlightSection } from "@/components/site/CalorBusinessHighlightSection";
 import { TexacoForecourtHighlightSection } from "@/components/site/TexacoForecourtHighlightSection";
@@ -1688,26 +1689,11 @@ function Home() {
                 <div className="lg:col-span-5 relative rounded-none overflow-hidden bg-[#f4f5f7] border border-slate-200/80 aspect-[4/3] sm:min-h-[300px] md:min-h-[340px] flex items-center justify-center group shadow-xs">
                   {/* Lorry Image */}
                   <img
-                    src={truckImg}
-                    alt="John Stayte dedicated gas delivery lorry"
+                    src={doorstepDeliveryImg}
+                    alt="John Stayte dedicated gas delivery driver and lorry"
                     className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 relative z-1 rounded-none"
                     loading="lazy"
                   />
-
-                  {/* Floating Badge (Top-Left): NEXT-DAY LOCAL DELIVERY */}
-                  <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 shadow-xs border border-slate-100/90 flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/15">
-                      <Truck className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-[11px] sm:text-xs font-extrabold text-slate-900 uppercase tracking-tight leading-none">
-                        NEXT-DAY LOCAL DELIVERY
-                      </h4>
-                      <p className="text-[10px] sm:text-[11px] font-medium text-slate-500 mt-0.5 leading-none">
-                        Across Gloucestershire
-                      </p>
-                    </div>
-                  </div>
 
                   {/* Red Curved Accent Graphic around bottom/right edge of truck */}
                   <div className="absolute -bottom-16 -right-16 w-56 h-56 rounded-full border-[24px] border-primary/90 pointer-events-none z-0" />
@@ -1766,18 +1752,6 @@ function Home() {
         3. OUR SERVICES (Strict Reference Rebuild - Editorial 3 Cards)
     ========================================================================= */}
       <section className="py-12 md:py-16 bg-white border-b border-slate-200/60 relative overflow-hidden">
-        {/* Subtle Decorative Dotted Pattern in upper right corner */}
-        <div className="absolute top-6 right-8 w-64 h-36 pointer-events-none opacity-40 hidden sm:block">
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="core-services-dots" width="14" height="14" patternUnits="userSpaceOnUse">
-                <circle cx="2" cy="2" r="1.5" className="fill-primary/25" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#core-services-dots)" />
-          </svg>
-        </div>
-
         <div className="container-page">
           <ScrollRevealSection className="space-y-8">
             {/* Section Header */}

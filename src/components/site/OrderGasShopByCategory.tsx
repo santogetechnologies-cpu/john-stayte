@@ -12,7 +12,6 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   Tent,
   UtensilsCrossed,
   type LucideIcon,
@@ -340,32 +339,23 @@ export function OrderGasShopByCategory({
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 shrink-0">
-              {/* Circular Navigation Controls */}
-              <div className="flex items-center gap-1.5 mr-1">
-                <button
-                  type="button"
-                  onClick={() => scrollCategory("left")}
-                  aria-label="Scroll left"
-                  className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary transition-all flex items-center justify-center text-slate-700 cursor-pointer"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollCategory("right")}
-                  aria-label="Scroll right"
-                  className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary transition-all flex items-center justify-center text-slate-700 cursor-pointer"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-
-              {/* Categories Available Pill */}
-              <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
-                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span>{activeCategories.length} Categories</span>
-              </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => scrollCategory("left")}
+                aria-label="Scroll left"
+                className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary transition-all flex items-center justify-center text-slate-700 cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollCategory("right")}
+                aria-label="Scroll right"
+                className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary transition-all flex items-center justify-center text-slate-700 cursor-pointer"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </OrderGasReveal3D>
