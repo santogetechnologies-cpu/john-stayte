@@ -8,8 +8,6 @@ import {
   Users,
   Package,
   Layers,
-  Tag,
-  Ticket,
   UserCheck,
   Building2,
   BarChart3,
@@ -108,7 +106,6 @@ const adminNavGroups: NavGroup[] = [
       { title: "Products", href: "/admin/products", icon: Package },
       { title: "Categories", href: "/admin/categories", icon: Layers },
       { title: "Reviews", href: "/admin/reviews", icon: Star },
-      { title: "Coupons", href: "/admin/coupons", icon: Ticket, moduleKey: "coupons" },
     ],
   },
   {

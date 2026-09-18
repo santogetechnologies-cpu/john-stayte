@@ -47,7 +47,6 @@ import { Route as AdminBannersRouteImport } from './routes/admin.banners'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminCmsRouteImport } from './routes/admin.cms'
-import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminCylinderDepositsRouteImport } from './routes/admin.cylinder-deposits'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin.deliveries'
@@ -290,11 +289,6 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
 const AdminCmsRoute = AdminCmsRouteImport.update({
   id: '/cms',
   path: '/cms',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminCouponsRoute = AdminCouponsRouteImport.update({
-  id: '/coupons',
-  path: '/coupons',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
@@ -601,7 +595,6 @@ export interface FileRoutesByFullPath {
   '/admin/blog': typeof AdminBlogRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
-  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -689,7 +682,6 @@ export interface FileRoutesByTo {
   '/admin/blog': typeof AdminBlogRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
-  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -784,7 +776,6 @@ export interface FileRoutesById {
   '/admin/blog': typeof AdminBlogRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
-  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
@@ -880,7 +871,6 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/categories'
     | '/admin/cms'
-    | '/admin/coupons'
     | '/admin/customers'
     | '/admin/cylinder-deposits'
     | '/admin/deliveries'
@@ -968,7 +958,6 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/categories'
     | '/admin/cms'
-    | '/admin/coupons'
     | '/admin/customers'
     | '/admin/cylinder-deposits'
     | '/admin/deliveries'
@@ -1062,7 +1051,6 @@ export interface FileRouteTypes {
     | '/admin/blog'
     | '/admin/categories'
     | '/admin/cms'
-    | '/admin/coupons'
     | '/admin/customers'
     | '/admin/cylinder-deposits'
     | '/admin/deliveries'
@@ -1409,13 +1397,6 @@ declare module '@tanstack/react-router' {
       path: '/cms'
       fullPath: '/admin/cms'
       preLoaderRoute: typeof AdminCmsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/coupons': {
-      id: '/admin/coupons'
-      path: '/coupons'
-      fullPath: '/admin/coupons'
-      preLoaderRoute: typeof AdminCouponsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/customers': {
@@ -1850,7 +1831,6 @@ interface AdminRouteChildren {
   AdminBlogRoute: typeof AdminBlogRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCmsRoute: typeof AdminCmsRoute
-  AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminCylinderDepositsRoute: typeof AdminCylinderDepositsRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
@@ -1884,7 +1864,6 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminBlogRoute: AdminBlogRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCmsRoute: AdminCmsRoute,
-  AdminCouponsRoute: AdminCouponsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminCylinderDepositsRoute: AdminCylinderDepositsRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,

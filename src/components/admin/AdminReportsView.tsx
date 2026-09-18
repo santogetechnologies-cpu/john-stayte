@@ -9,7 +9,6 @@ import {
   Package,
   Users,
   Truck,
-  Tag,
   DollarSign,
   Loader2,
   FileSpreadsheet,
@@ -41,7 +40,6 @@ export function AdminReportsView() {
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
-  const [coupons, setCoupons] = useState<any[]>([]);
 
   // Calculate start/end JS dates based on selection
   const getDateBounds = () => {
@@ -74,7 +72,6 @@ export function AdminReportsView() {
         { data: orderData },
         { data: prodData },
         { data: custData },
-        { data: couponData },
       ] = await Promise.all([
         supabase
           .from("orders")
@@ -84,13 +81,11 @@ export function AdminReportsView() {
           .order("created_at", { ascending: false }),
         supabase.from("products").select("*"),
         supabase.from("profiles").select("*").eq("role", "customer"),
-        supabase.from("coupons").select("*"),
       ]);
 
       setOrders(orderData || []);
       setProducts(prodData || []);
       setCustomers(custData || []);
-      setCoupons(couponData || []);
 
       toast.success(`Report generated for ${orders.length} orders.`);
     } catch (err: any) {
@@ -125,8 +120,6 @@ export function AdminReportsView() {
 
   const totalCustomers = customers.length;
   const activeCustomers = new Set(orders.map((o) => o.customer_email)).size;
-
-  const activeCouponsCount = coupons.filter((c) => c.is_active).length;
 
   // CSV Generator Helper
   const downloadCsv = (filename: string, headers: string[], rows: (string | number)[][]) => {
@@ -197,18 +190,6 @@ export function AdminReportsView() {
       new Date(c.created_at).toLocaleDateString("en-GB"),
     ]);
     downloadCsv("customer_report.csv", headers, rows);
-  };
-
-  const handleExportPromotionsReport = () => {
-    const headers = ["Type", "Code", "Discount", "Status", "Created At"];
-    const couponRows = coupons.map((c) => [
-      "Coupon Code",
-      c.code,
-      c.discount_type === "percentage" ? `${c.discount_value}%` : `£${c.discount_value}`,
-      c.is_active ? "Active" : "Disabled",
-      new Date(c.created_at).toLocaleDateString("en-GB"),
-    ]);
-    downloadCsv("coupons_report.csv", headers, couponRows);
   };
 
   return (
@@ -527,48 +508,6 @@ export function AdminReportsView() {
               className="w-full rounded-xl text-xs font-bold gap-1.5 border-slate-200"
             >
               <Download className="h-3.5 w-3.5" /> Download Delivery CSV
-            </Button>
-          </div>
-        </div>
-
-        {/* 6. COUPONS REPORT */}
-        <div className="surface-card p-6 rounded-3xl border bg-white flex flex-col justify-between space-y-4 shadow-xs">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="p-3 rounded-2xl bg-rose-50 text-rose-600 border border-rose-100">
-                <Tag className="h-6 w-6" />
-              </div>
-              <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold">
-                Coupons
-              </Badge>
-            </div>
-            <div>
-              <h3 className="font-extrabold text-base text-foreground">
-                Coupons & Discounts Report
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Active promotional discount codes and redemption rules.
-              </p>
-            </div>
-
-            <div className="pt-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                  Active Coupons
-                </p>
-                <p className="text-sm font-extrabold text-foreground">{activeCouponsCount}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2 flex gap-2 border-t">
-            <Button
-              onClick={handleExportPromotionsReport}
-              variant="outline"
-              size="sm"
-              className="w-full rounded-xl text-xs font-bold gap-1.5 border-slate-200"
-            >
-              <Download className="h-3.5 w-3.5" /> Download Coupons CSV
             </Button>
           </div>
         </div>

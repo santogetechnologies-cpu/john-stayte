@@ -76,8 +76,6 @@ function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
 function Checkout() {
   const { lines, subtotal, shipping, vat, total, settings, loading: cartLoading } = useCartTotals();
   const { clearCart, removeFromCart, user } = useStore();
-  const [coupon, setCoupon] = useState("");
-  const [discount, setDiscount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [emailVerifyModalOpen, setEmailVerifyModalOpen] = useState(false);
@@ -290,57 +288,6 @@ function Checkout() {
     loadCustomerAddresses();
   }, [user]);
 
-  const applyCoupon = async () => {
-    const cleanCode = coupon.trim().toUpperCase();
-    if (!cleanCode) return toast.error("Please enter a coupon code.");
-
-    try {
-      const { data: dbCoupon, error } = await supabase
-        .from("coupons")
-        .select("*")
-        .eq("code", cleanCode)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (error || !dbCoupon) {
-        if (cleanCode === "JSS10") {
-          setDiscount(subtotal * 0.1);
-          return toast.success("Coupon JSS10 applied — 10% off");
-        }
-        return toast.error("That coupon isn't valid or has expired.");
-      }
-
-      // Check min order amount
-      if (dbCoupon.min_order_amount && subtotal < Number(dbCoupon.min_order_amount)) {
-        return toast.error(
-          `Minimum order total of ${gbp(Number(dbCoupon.min_order_amount))} required for this coupon.`,
-        );
-      }
-
-      // Check expiration
-      if (dbCoupon.expires_at && new Date(dbCoupon.expires_at) < new Date()) {
-        return toast.error("This coupon code has expired.");
-      }
-
-      // Calculate discount
-      let computedDiscount = 0;
-      if (dbCoupon.discount_type === "percentage") {
-        computedDiscount = (subtotal * Number(dbCoupon.discount_value)) / 100;
-      } else {
-        computedDiscount = Number(dbCoupon.discount_value);
-      }
-
-      if (dbCoupon.max_discount && computedDiscount > Number(dbCoupon.max_discount)) {
-        computedDiscount = Number(dbCoupon.max_discount);
-      }
-
-      setDiscount(computedDiscount);
-      toast.success(`Coupon ${cleanCode} applied! Saved ${gbp(computedDiscount)}`);
-    } catch (err: any) {
-      toast.error("Error applying coupon: " + err.message);
-    }
-  };
-
   const place = async (e: React.FormEvent) => {
     e.preventDefault();
     if (lines.length === 0) return toast.error("Your basket is empty.");
@@ -463,7 +410,7 @@ function Checkout() {
       }
 
       const finalSubtotal = verifiedItems.reduce((s, i) => s + i.total_price, 0);
-      const finalTotal = Math.max(0, finalSubtotal + shipping + vat - discount);
+      const finalTotal = Math.max(0, finalSubtotal + shipping + vat);
       const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
 
       const finalPaymentStatus =
@@ -1137,7 +1084,7 @@ function Checkout() {
                     </span>
                   </div>
                   <span className="text-xs font-black text-primary">
-                    {gbp(Math.max(0, total - discount))}
+                    {gbp(total)}
                   </span>
                 </div>
 
@@ -1225,7 +1172,7 @@ function Checkout() {
                     </span>
                   </div>
                   <span className="text-xs font-black text-[#003087]">
-                    {gbp(Math.max(0, total - discount))}
+                    {gbp(total)}
                   </span>
                 </div>
 
@@ -1243,7 +1190,7 @@ function Checkout() {
                 <div className="rounded-xl bg-white/80 border border-sky-100 p-3 flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-medium">Total Payable Amount:</span>
                   <span className="text-sm font-black text-slate-900">
-                    {gbp(Math.max(0, total - discount))}
+                    {gbp(total)}
                   </span>
                 </div>
               </div>
@@ -1257,7 +1204,7 @@ function Checkout() {
                     <Banknote className="h-4 w-4 text-amber-700" /> Pay upon Delivery / Collection
                   </p>
                   <span className="font-black text-amber-950">
-                    {gbp(Math.max(0, total - discount))}
+                    {gbp(total)}
                   </span>
                 </div>
                 <p className="text-amber-800 text-[11px] leading-relaxed">
@@ -1289,35 +1236,11 @@ function Checkout() {
             </ul>
           )}
 
-          <div className="flex gap-2 pt-2">
-            <Input
-              value={coupon}
-              onChange={(e) => setCoupon(e.target.value)}
-              placeholder="Coupon code"
-              maxLength={20}
-              className="rounded-full text-xs"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="rounded-full text-xs font-bold cursor-pointer"
-              onClick={applyCoupon}
-            >
-              Apply
-            </Button>
-          </div>
-
           <dl className="space-y-2 border-t border-slate-100 pt-4 text-xs font-medium">
             <div className="flex justify-between text-slate-600">
               <dt>Subtotal</dt>
               <dd className="font-bold text-slate-900">{gbp(subtotal)}</dd>
             </div>
-            {discount > 0 && (
-              <div className="flex justify-between text-primary">
-                <dt>Discount</dt>
-                <dd className="font-bold">−{gbp(discount)}</dd>
-              </div>
-            )}
             <div className="flex justify-between text-slate-600">
               <dt>Delivery</dt>
               <dd className="font-bold text-slate-900">
@@ -1330,7 +1253,7 @@ function Checkout() {
             </div>
             <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-black text-slate-900">
               <dt>Total</dt>
-              <dd className="text-primary">{gbp(Math.max(0, total - discount))}</dd>
+              <dd className="text-primary">{gbp(total)}</dd>
             </div>
           </dl>
 
@@ -1369,12 +1292,12 @@ function Checkout() {
             ) : paymentMethod === "paypal" ? (
               <>
                 <PayPalIcon className="h-4 w-4 fill-white" />
-                <span>Pay {gbp(Math.max(0, total - discount))} with PayPal</span>
+                <span>Pay {gbp(total)} with PayPal</span>
               </>
             ) : paymentMethod === "card" ? (
-              `Pay ${gbp(Math.max(0, total - discount))}`
+              `Pay ${gbp(total)}`
             ) : (
-              `Confirm & Place Order (${gbp(Math.max(0, total - discount))})`
+              `Confirm & Place Order (${gbp(total)})`
             )}
           </Button>
 
