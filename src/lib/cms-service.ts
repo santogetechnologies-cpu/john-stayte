@@ -539,60 +539,6 @@ export const DEFAULT_STATIONS_CMS: StationsCmsData = {
 };
 
 // ============================================================================
-// 6. OFFERS CMS TYPES & DEFAULTS
-// ============================================================================
-export interface PromoOfferItem {
-  id: string;
-  title: string;
-  description: string;
-  discount_percentage?: number;
-  banner_url?: string;
-  is_active: boolean;
-  ends_at?: string;
-  cta_text?: string;
-  cta_link?: string;
-}
-
-export interface OffersCmsData {
-  heroEyebrow: string;
-  heroHeading: string;
-  heroSubtitle: string;
-  offers: PromoOfferItem[];
-}
-
-export const DEFAULT_OFFERS_CMS: OffersCmsData = {
-  heroEyebrow: "SPECIAL PROMOTIONS",
-  heroHeading: "Latest Deals, Bundles & Seasonal Offers",
-  heroSubtitle: "Save on cylinder refills, winter heating fuel packs, and outdoor living equipment.",
-  offers: [
-    {
-      id: "off-1",
-      title: "Winter Fuel Bundle Saver",
-      description:
-        "Save 15% when ordering 3 or more bags of kiln-dried hardwood logs with any smokeless fuel pack.",
-      discount_percentage: 15,
-      banner_url: "/coal-logs.jpg",
-      is_active: true,
-      ends_at: "2026-12-31",
-      cta_text: "Shop Winter Fuels",
-      cta_link: "/products",
-    },
-    {
-      id: "off-2",
-      title: "Patio Gas & BBQ Cylinder Offer",
-      description:
-        "Special seasonal discount on 13kg & 5kg green Patio Gas bottles with free regulator check.",
-      discount_percentage: 10,
-      banner_url: "/char_broil_professionalpro3_1.jpg",
-      is_active: true,
-      ends_at: "2026-11-30",
-      cta_text: "Order Patio Gas",
-      cta_link: "/order-gas",
-    },
-  ],
-};
-
-// ============================================================================
 // 7. CONTACT & FAQS CMS TYPES & DEFAULTS
 // ============================================================================
 export interface FaqItem {
@@ -791,26 +737,6 @@ export async function fetchCmsBlock<T>(sectionKey: string, fallback: T): Promise
       }
     }
 
-    if (sectionKey === "offers_data") {
-      if (Array.isArray(parsed)) {
-        return {
-          ...DEFAULT_OFFERS_CMS,
-          ...(fallback && typeof fallback === "object" && !Array.isArray(fallback) ? fallback : {}),
-          offers: parsed.length > 0 ? parsed : DEFAULT_OFFERS_CMS.offers,
-        } as T;
-      }
-      if (parsed && typeof parsed === "object") {
-        return {
-          ...DEFAULT_OFFERS_CMS,
-          ...(fallback && typeof fallback === "object" && !Array.isArray(fallback) ? fallback : {}),
-          ...parsed,
-          offers: Array.isArray(parsed.offers)
-            ? parsed.offers
-            : DEFAULT_OFFERS_CMS.offers,
-        } as T;
-      }
-    }
-
     if (sectionKey === "contact_faqs_data" || sectionKey === "faqs_data") {
       if (Array.isArray(parsed)) {
         return {
@@ -906,7 +832,6 @@ export async function saveCmsBlock<T>(
     if (sectionKey === "about_data") window.dispatchEvent(new CustomEvent("cms_about_updated", { detail: content }));
     if (sectionKey === "services_data") window.dispatchEvent(new CustomEvent("cms_services_updated", { detail: content }));
     if (sectionKey === "stations_data") window.dispatchEvent(new CustomEvent("cms_stations_updated", { detail: content }));
-    if (sectionKey === "offers_data") window.dispatchEvent(new CustomEvent("cms_offers_updated", { detail: content }));
     if (sectionKey === "contact_faqs_data" || sectionKey === "faqs_data") window.dispatchEvent(new CustomEvent("cms_faqs_updated", { detail: content }));
     if (sectionKey === "testimonials_data") window.dispatchEvent(new CustomEvent("cms_testimonials_updated", { detail: content }));
   }

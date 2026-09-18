@@ -64,7 +64,6 @@ import {
   DEFAULT_SERVICES_CMS,
   DEFAULT_SHOP_ORDER_GAS_CMS,
   DEFAULT_STATIONS_CMS,
-  DEFAULT_OFFERS_CMS,
   DEFAULT_CONTACT_FAQS_CMS,
   DEFAULT_FOOTER_CMS,
   HomeCmsData,
@@ -72,12 +71,10 @@ import {
   ServicesCmsData,
   ShopOrderGasCmsData,
   StationsCmsData,
-  OffersCmsData,
   ContactFaqsCmsData,
   FooterCmsData,
   ServiceItem,
   FaqItem,
-  PromoOfferItem,
   ForecourtStationItem,
   AboutTimelineItem,
   AboutValueItem,
@@ -96,7 +93,6 @@ export function AdminCmsView() {
   const [servicesCms, setServicesCms] = useState<ServicesCmsData>(DEFAULT_SERVICES_CMS);
   const [shopGasCms, setShopGasCms] = useState<ShopOrderGasCmsData>(DEFAULT_SHOP_ORDER_GAS_CMS);
   const [stationsCms, setStationsCms] = useState<StationsCmsData>(DEFAULT_STATIONS_CMS);
-  const [offersCms, setOffersCms] = useState<OffersCmsData>(DEFAULT_OFFERS_CMS);
   const [contactFaqsCms, setContactFaqsCms] = useState<ContactFaqsCmsData>(DEFAULT_CONTACT_FAQS_CMS);
   const [footerCms, setFooterCms] = useState<FooterCmsData>(DEFAULT_FOOTER_CMS);
   const [reviews, setReviews] = useState<any[]>([
@@ -134,9 +130,6 @@ export function AdminCmsView() {
   const [faqModalOpen, setFaqModalOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
 
-  const [offerModalOpen, setOfferModalOpen] = useState(false);
-  const [editingOffer, setEditingOffer] = useState<PromoOfferItem | null>(null);
-
   const [stationModalOpen, setStationModalOpen] = useState(false);
   const [editingStation, setEditingStation] = useState<ForecourtStationItem | null>(null);
 
@@ -170,7 +163,6 @@ export function AdminCmsView() {
           fetchCmsBlock("services_data", DEFAULT_SERVICES_CMS),
           fetchCmsBlock("shop_order_gas_data", DEFAULT_SHOP_ORDER_GAS_CMS),
           fetchCmsBlock("stations_data", DEFAULT_STATIONS_CMS),
-          fetchCmsBlock("offers_data", DEFAULT_OFFERS_CMS),
           fetchCmsBlock("contact_faqs_data", DEFAULT_CONTACT_FAQS_CMS),
           fetchCmsBlock("footer_data", DEFAULT_FOOTER_CMS),
           fetchCmsBlock("testimonials_data", reviews),
@@ -181,7 +173,6 @@ export function AdminCmsView() {
         setServicesCms(sData);
         setShopGasCms(gData);
         setStationsCms(stData);
-        setOffersCms(oData);
         setContactFaqsCms(cfData);
         setFooterCms(fData);
         if (Array.isArray(revData) && revData.length > 0) {
@@ -311,12 +302,6 @@ export function AdminCmsView() {
               className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
             >
               <Fuel className="h-3.5 w-3.5" /> Filling Stations
-            </TabsTrigger>
-            <TabsTrigger
-              value="offers"
-              className="rounded-xl px-4 py-2.5 text-xs font-bold data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-xs gap-1.5"
-            >
-              <Tag className="h-3.5 w-3.5" /> Offers &amp; Deals
             </TabsTrigger>
             <TabsTrigger
               value="contact-faqs"
@@ -1018,117 +1003,6 @@ export function AdminCmsView() {
           </div>
         </TabsContent>
 
-        {/* ========================================================================= */}
-        {/* TAB 6: OFFERS & DEALS */}
-        {/* ========================================================================= */}
-        <TabsContent value="offers" className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 space-y-6 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <Tag className="h-4 w-4 text-primary" /> Promotional Offers &amp; Seasonal Deals
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Manage promotional offer cards displayed on `/offers` and Homepage promotion banners.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => {
-                    setEditingOffer({
-                      id: `off-${Date.now()}`,
-                      title: "New Seasonal Offer",
-                      description: "Special seasonal promotion description...",
-                      discount_percentage: 10,
-                      banner_url: "/coal-logs.jpg",
-                      is_active: true,
-                      ends_at: "2026-12-31",
-                    });
-                    setOfferModalOpen(true);
-                  }}
-                  className="rounded-full px-4 h-9 text-xs font-bold bg-slate-900 text-white gap-1.5"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Add Offer</span>
-                </Button>
-                <Button
-                  onClick={() =>
-                    handleSaveSection(
-                      "offers_data",
-                      "Promotional Offers",
-                      offersCms,
-                      "Promotional offers saved to Supabase!",
-                    )
-                  }
-                  disabled={saving}
-                  className="rounded-full px-5 h-9 text-xs font-bold bg-primary hover:bg-primary/90 text-white gap-1.5"
-                >
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  <span>Save Offers</span>
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(offersCms?.offers || []).map((off, idx) => (
-                <div
-                  key={off.id || idx}
-                  className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-3 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="h-32 w-full rounded-xl overflow-hidden bg-slate-900 relative">
-                      {off.banner_url && (
-                        <img src={off.banner_url} alt={off.title} className="h-full w-full object-cover" />
-                      )}
-                      <Badge className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold">
-                        {off.discount_percentage ? `${off.discount_percentage}% OFF` : "DEAL"}
-                      </Badge>
-                    </div>
-                    <h4 className="font-extrabold text-xs text-slate-900">{off.title}</h4>
-                    <p className="text-[11px] text-slate-500 leading-snug">{off.description}</p>
-                    {off.ends_at && (
-                      <span className="text-[10px] text-amber-700 font-bold block">
-                        Valid until: {off.ends_at}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
-                    <Badge variant={off.is_active ? "default" : "secondary"} className="text-[10px]">
-                      {off.is_active ? "Active" : "Inactive"}
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingOffer(off);
-                          setOfferModalOpen(true);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Edit2 className="h-3.5 w-3.5 text-slate-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setOffersCms({
-                            ...offersCms,
-                            offers: (offersCms?.offers || []).filter((o) => o.id !== off.id),
-                          });
-                        }}
-                        className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
 
         {/* ========================================================================= */}
         {/* TAB 7: CONTACT & FAQS */}
@@ -1571,115 +1445,7 @@ export function AdminCmsView() {
         </DialogContent>
       </Dialog>
 
-      {/* ========================================================================= */}
-      {/* OFFER EDIT MODAL */}
-      {/* ========================================================================= */}
-      <Dialog open={offerModalOpen} onOpenChange={setOfferModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-black text-slate-900">
-              {editingOffer?.id?.startsWith("off-") ? "Edit Promotional Offer" : "Add Promotional Offer"}
-            </DialogTitle>
-          </DialogHeader>
 
-          {editingOffer && (
-            <div className="space-y-4 text-xs pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-700">Offer Title *</Label>
-                <Input
-                  value={editingOffer.title}
-                  onChange={(e) => setEditingOffer({ ...editingOffer, title: e.target.value })}
-                  className="rounded-xl h-10 text-xs font-bold"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-700">Description *</Label>
-                <Textarea
-                  rows={3}
-                  value={editingOffer.description}
-                  onChange={(e) => setEditingOffer({ ...editingOffer, description: e.target.value })}
-                  className="rounded-xl text-xs"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold text-slate-700">Discount %</Label>
-                  <Input
-                    type="number"
-                    value={editingOffer.discount_percentage || 0}
-                    onChange={(e) =>
-                      setEditingOffer({ ...editingOffer, discount_percentage: Number(e.target.value) })
-                    }
-                    className="rounded-xl h-10 text-xs font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold text-slate-700">Valid Until Date</Label>
-                  <Input
-                    type="date"
-                    value={editingOffer.ends_at || ""}
-                    onChange={(e) => setEditingOffer({ ...editingOffer, ends_at: e.target.value })}
-                    className="rounded-xl h-10 text-xs font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-bold text-slate-700">Banner Image URL</Label>
-                <Input
-                  value={editingOffer.banner_url || ""}
-                  onChange={(e) => setEditingOffer({ ...editingOffer, banner_url: e.target.value })}
-                  placeholder="/coal-logs.jpg"
-                  className="rounded-xl h-10 text-xs font-mono"
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <Label className="text-xs font-bold text-slate-700">Status</Label>
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-900 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editingOffer.is_active}
-                    onChange={(e) => setEditingOffer({ ...editingOffer, is_active: e.target.checked })}
-                    className="h-4 w-4 rounded text-primary"
-                  />
-                  <span>Active / Published</span>
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setOfferModalOpen(false)}
-                  className="rounded-full px-4 text-xs font-bold"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const currentOffers = offersCms?.offers || [];
-                    const exists = currentOffers.find((o) => o.id === editingOffer.id);
-                    const updated = exists
-                      ? currentOffers.map((o) => (o.id === editingOffer.id ? editingOffer : o))
-                      : [...currentOffers, editingOffer];
-
-                    setOffersCms({ ...offersCms, offers: updated });
-                    setOfferModalOpen(false);
-                    toast.success("Offer updated in state. Click 'Save Offers' to publish.");
-                  }}
-                  className="rounded-full px-5 text-xs font-bold bg-primary text-white"
-                >
-                  Apply Offer
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* ========================================================================= */}
       {/* FAQ EDIT MODAL */}

@@ -108,7 +108,6 @@ const adminNavGroups: NavGroup[] = [
       { title: "Products", href: "/admin/products", icon: Package },
       { title: "Categories", href: "/admin/categories", icon: Layers },
       { title: "Reviews", href: "/admin/reviews", icon: Star },
-      { title: "Offers", href: "/admin/offers", icon: Tag, moduleKey: "offers" },
       { title: "Coupons", href: "/admin/coupons", icon: Ticket, moduleKey: "coupons" },
     ],
   },

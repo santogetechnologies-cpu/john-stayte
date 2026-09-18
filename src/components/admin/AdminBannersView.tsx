@@ -368,7 +368,7 @@ export function AdminBannersView() {
               <Input
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="/products or /offers"
+                placeholder="/products or /order-gas"
                 className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
               />
             </div>

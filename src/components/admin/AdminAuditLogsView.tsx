@@ -137,7 +137,6 @@ export function AdminAuditLogsView() {
               <SelectItem value="all">All Modules</SelectItem>
               <SelectItem value="product">Products</SelectItem>
               <SelectItem value="order">Orders</SelectItem>
-              <SelectItem value="offer">Offers</SelectItem>
               <SelectItem value="coupon">Coupons</SelectItem>
               <SelectItem value="category">Categories</SelectItem>
               <SelectItem value="banner">Banners</SelectItem>

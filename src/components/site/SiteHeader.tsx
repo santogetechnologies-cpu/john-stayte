@@ -35,7 +35,6 @@ const navLinks = [
   { to: "/filling-stations", label: "Filling Stations" },
   { to: "/auto-gas", label: "Auto Gas" },
   { to: "/services", label: "Services" },
-  { to: "/offers", label: "Offers" },
   { to: "/blog", label: "Blog" },
   { to: "/contact", label: "Contact" },
 ];

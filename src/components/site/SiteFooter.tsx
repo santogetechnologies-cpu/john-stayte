@@ -236,11 +236,6 @@ export function SiteFooter({ className }: { className?: string } = {}) {
                 </Link>
               </li>
               <li>
-                <Link to="/offers" className="hover:text-primary">
-                  Offers
-                </Link>
-              </li>
-              <li>
                 <Link to="/blog" className="hover:text-primary">
                   Blog
                 </Link>

@@ -41,7 +41,6 @@ export function AdminReportsView() {
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
-  const [offers, setOffers] = useState<any[]>([]);
   const [coupons, setCoupons] = useState<any[]>([]);
 
   // Calculate start/end JS dates based on selection
@@ -75,7 +74,6 @@ export function AdminReportsView() {
         { data: orderData },
         { data: prodData },
         { data: custData },
-        { data: offerData },
         { data: couponData },
       ] = await Promise.all([
         supabase
@@ -86,14 +84,12 @@ export function AdminReportsView() {
           .order("created_at", { ascending: false }),
         supabase.from("products").select("*"),
         supabase.from("profiles").select("*").eq("role", "customer"),
-        supabase.from("offers").select("*"),
         supabase.from("coupons").select("*"),
       ]);
 
       setOrders(orderData || []);
       setProducts(prodData || []);
       setCustomers(custData || []);
-      setOffers(offerData || []);
       setCoupons(couponData || []);
 
       toast.success(`Report generated for ${orders.length} orders.`);
@@ -130,7 +126,6 @@ export function AdminReportsView() {
   const totalCustomers = customers.length;
   const activeCustomers = new Set(orders.map((o) => o.customer_email)).size;
 
-  const activeOffersCount = offers.filter((o) => o.is_active).length;
   const activeCouponsCount = coupons.filter((c) => c.is_active).length;
 
   // CSV Generator Helper
@@ -205,14 +200,7 @@ export function AdminReportsView() {
   };
 
   const handleExportPromotionsReport = () => {
-    const headers = ["Type", "Title/Code", "Discount", "Status", "Created At"];
-    const offerRows = offers.map((o) => [
-      "Special Offer",
-      o.title,
-      `${o.discount_percentage || 0}%`,
-      o.is_active ? "Active" : "Disabled",
-      new Date(o.created_at).toLocaleDateString("en-GB"),
-    ]);
+    const headers = ["Type", "Code", "Discount", "Status", "Created At"];
     const couponRows = coupons.map((c) => [
       "Coupon Code",
       c.code,
@@ -220,7 +208,7 @@ export function AdminReportsView() {
       c.is_active ? "Active" : "Disabled",
       new Date(c.created_at).toLocaleDateString("en-GB"),
     ]);
-    downloadCsv("promotions_report.csv", headers, [...offerRows, ...couponRows]);
+    downloadCsv("coupons_report.csv", headers, couponRows);
   };
 
   return (
@@ -543,7 +531,7 @@ export function AdminReportsView() {
           </div>
         </div>
 
-        {/* 6. PROMOTIONS REPORT */}
+        {/* 6. COUPONS REPORT */}
         <div className="surface-card p-6 rounded-3xl border bg-white flex flex-col justify-between space-y-4 shadow-xs">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -551,25 +539,19 @@ export function AdminReportsView() {
                 <Tag className="h-6 w-6" />
               </div>
               <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[10px] font-bold">
-                Promotions
+                Coupons
               </Badge>
             </div>
             <div>
               <h3 className="font-extrabold text-base text-foreground">
-                Promotions & Offers Report
+                Coupons & Discounts Report
               </h3>
               <p className="text-xs text-muted-foreground">
-                Active special deals, promotional banners, and coupon codes.
+                Active promotional discount codes and redemption rules.
               </p>
             </div>
 
-            <div className="pt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-50 border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase">
-                  Active Deals
-                </p>
-                <p className="text-sm font-extrabold text-foreground">{activeOffersCount}</p>
-              </div>
+            <div className="pt-2 text-xs">
               <div className="p-2.5 rounded-xl bg-slate-50 border">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase">
                   Active Coupons
@@ -586,7 +568,7 @@ export function AdminReportsView() {
               size="sm"
               className="w-full rounded-xl text-xs font-bold gap-1.5 border-slate-200"
             >
-              <Download className="h-3.5 w-3.5" /> Download Promotions CSV
+              <Download className="h-3.5 w-3.5" /> Download Coupons CSV
             </Button>
           </div>
         </div>

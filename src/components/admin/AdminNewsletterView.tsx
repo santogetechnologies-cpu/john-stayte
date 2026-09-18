@@ -236,7 +236,7 @@ export function AdminNewsletterView() {
             <Mail className="h-7 w-7 text-primary" /> Newsletter Subscribers ({subscribers.length})
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            View, search, manage and export verified email subscribers collected across the
+            View, search, manage and export newsletter subscribers collected across the
             storefront.
           </p>
         </div>

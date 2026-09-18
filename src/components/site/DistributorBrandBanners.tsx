@@ -21,7 +21,7 @@ export function DistributorBrandBanners() {
 
       {/* 3D Floating 4-Brand Visual Showcase (Slightly increased size ~10%) */}
       <div className="relative w-full max-w-[520px] sm:max-w-[580px] md:max-w-[620px] lg:max-w-[590px] xl:max-w-[660px] flex items-center justify-center select-none py-1 group">
-        
+
         {/* Soft Volumetric Atmosphere Glows Behind Pedestals */}
         <div className="absolute top-[25%] left-[25%] -translate-x-1/2 -translate-y-1/2 w-52 sm:w-64 h-52 sm:h-64 bg-red-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
         <div className="absolute top-[25%] right-[25%] translate-x-1/2 -translate-y-1/2 w-52 sm:w-64 h-52 sm:h-64 bg-blue-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
