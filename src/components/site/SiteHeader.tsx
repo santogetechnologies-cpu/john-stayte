@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Menu,
   Search,
@@ -16,6 +16,7 @@ import logo from "@/assets/image-5.png";
 import { categories as defaultCategories } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -68,6 +69,31 @@ export function SiteHeader() {
   const [categories, setCategories] = useState<any[]>(defaultCategories);
   const count = cart.reduce((s, l) => s + l.qty, 0);
   const [activeBanner, setActiveBanner] = useState<any | null>(null);
+  const [blogDropdownOpen, setBlogDropdownOpen] = useState(false);
+  const [mobileBlogOpen, setMobileBlogOpen] = useState(false);
+  const blogDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click/tap outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (
+        blogDropdownRef.current &&
+        !blogDropdownRef.current.contains(event.target as Node)
+      ) {
+        setBlogDropdownOpen(false);
+      }
+    }
+
+    if (blogDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [blogDropdownOpen]);
 
   useEffect(() => {
     async function loadCats() {
@@ -132,6 +158,10 @@ export function SiteHeader() {
 
   // Subscribe to current router location pathname
   const currentPath = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    setBlogDropdownOpen(false);
+  }, [currentPath]);
 
   const dashPath =
     user?.role === "admin"
@@ -319,6 +349,54 @@ export function SiteHeader() {
               <nav className="mt-8 grid gap-1">
                 {navLinks.map((l) => {
                   const isActive = isLinkActive(l.to, currentPath);
+                  if (l.to === "/blog") {
+                    return (
+                      <div key={l.to} className="space-y-1">
+                        <button
+                          type="button"
+                          onClick={() => setMobileBlogOpen((prev) => !prev)}
+                          className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${
+                            isActive
+                              ? "bg-primary text-primary-foreground font-extrabold"
+                              : "text-slate-700 hover:bg-surface hover:text-slate-900"
+                          }`}
+                        >
+                          <span>{l.label}</span>
+                          <ChevronDown
+                            className={cn(
+                              "h-4 w-4 transition-transform",
+                              mobileBlogOpen && "rotate-180",
+                            )}
+                          />
+                        </button>
+                        {mobileBlogOpen && (
+                          <div className="pl-4 space-y-1 border-l-2 border-primary/20 ml-3 my-1">
+                            <Link
+                              to="/blog"
+                              onClick={() => {
+                                setMobileBlogOpen(false);
+                                setOpen(false);
+                              }}
+                              className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface hover:text-primary"
+                            >
+                              Knowledge Centre
+                            </Link>
+                            <Link
+                              to="/blog/$slug"
+                              params={{ slug: "safe-cylinder-storage" }}
+                              onClick={() => {
+                                setMobileBlogOpen(false);
+                                setOpen(false);
+                              }}
+                              className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface hover:text-primary"
+                            >
+                              Safety Guide
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                   return (
                     <Link
                       key={l.to}
@@ -389,9 +467,64 @@ export function SiteHeader() {
       </div>
 
       <nav className="hidden border-t border-border/70 lg:block">
-        <div className="container-page flex items-center gap-1 overflow-x-auto py-1.5">
+        <div className="container-page flex items-center gap-1 py-1.5">
           {navLinks.map((l) => {
             const isActive = isLinkActive(l.to, currentPath);
+            if (l.to === "/blog") {
+              return (
+                <div
+                  key={l.to}
+                  ref={blogDropdownRef}
+                  className="relative py-1"
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setBlogDropdownOpen((prev) => !prev);
+                    }}
+                    aria-expanded={blogDropdownOpen}
+                    aria-haspopup="true"
+                    className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] uppercase tracking-wide transition-colors inline-flex items-center gap-1 cursor-pointer outline-none select-none ${
+                      isActive
+                        ? "bg-primary text-primary-foreground font-extrabold hover:bg-primary hover:text-primary-foreground shadow-2xs"
+                        : "text-slate-700 font-semibold hover:bg-surface hover:text-slate-900"
+                    }`}
+                  >
+                    <span>{l.label}</span>
+                    <ChevronDown
+                      className={cn(
+                        "h-3 w-3 transition-transform duration-200 opacity-70",
+                        blogDropdownOpen && "rotate-180",
+                      )}
+                    />
+                  </button>
+
+                  {/* Clean, stable click-friendly dropdown menu */}
+                  {blogDropdownOpen && (
+                    <div className="absolute left-0 top-full pt-1.5 z-50">
+                      <div className="w-52 rounded-2xl p-1.5 border border-border shadow-xl bg-white animate-in fade-in-0 duration-150">
+                        <Link
+                          to="/blog"
+                          onClick={() => setBlogDropdownOpen(false)}
+                          className="block rounded-xl font-bold text-xs py-2.5 px-3 text-slate-800 hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
+                        >
+                          Knowledge Centre
+                        </Link>
+                        <Link
+                          to="/blog/$slug"
+                          params={{ slug: "safe-cylinder-storage" }}
+                          onClick={() => setBlogDropdownOpen(false)}
+                          className="block rounded-xl font-bold text-xs py-2.5 px-3 text-slate-800 hover:bg-slate-100 hover:text-primary transition-colors cursor-pointer"
+                        >
+                          Safety Guide
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
             return (
               <Link
                 key={l.to}

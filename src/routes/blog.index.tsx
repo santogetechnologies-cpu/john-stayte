@@ -2178,7 +2178,7 @@ function BlogKnowledgeCentrePage() {
           {/* =========================================================================
               6. ESSENTIAL GAS SAFETY INFORMATION (3 Large Editorial Columns)
           ========================================================================= */}
-          <section className="space-y-8 py-4">
+          <section id="safety-guidance" className="space-y-8 py-4 scroll-mt-24">
             <div className="space-y-2 text-left">
               <h2 className="text-3xl sm:text-4xl lg:text-[40px] font-black text-primary tracking-tight font-display">
                 Essential Gas Safety Information
@@ -2890,18 +2890,14 @@ function BlogKnowledgeCentrePage() {
                     </div>
 
                     <div className="pt-3 border-t border-slate-100">
-                      <a
-                        href="#safety-guidance"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          const el = document.getElementById("safety-guidance");
-                          if (el) el.scrollIntoView({ behavior: "smooth" });
-                        }}
+                      <Link
+                        to="/blog/$slug"
+                        params={{ slug: "safe-cylinder-storage" }}
                         className="inline-flex items-center gap-1.5 text-xs font-black text-primary hover:underline font-display cursor-pointer"
                       >
                         <span>Safety information</span>
                         <ArrowRight className="h-3.5 w-3.5 stroke-[2.5]" />
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 </div>
