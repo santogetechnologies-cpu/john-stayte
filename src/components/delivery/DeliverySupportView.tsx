@@ -27,8 +27,9 @@ export function DeliverySupportView() {
 
       {/* Emergency & Direct Dispatch Contacts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-red-600 text-white rounded-3xl p-6 shadow-md shadow-red-600/10 space-y-4">
-          <div className="h-10 w-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+        <div className="surface-card rounded-[26px] bg-gradient-to-br from-red-600 to-rose-700 text-white p-6 shadow-lg shadow-red-600/20 border border-red-500/30 space-y-4 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="h-10 w-10 rounded-2xl bg-white/15 flex items-center justify-center border border-white/20 shadow-2xs">
             <Phone className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -42,14 +43,14 @@ export function DeliverySupportView() {
           </div>
           <Button
             asChild
-            className="rounded-full bg-white text-red-600 hover:bg-red-50 font-extrabold text-xs h-9 px-5 shadow-xs"
+            className="rounded-full bg-white text-red-600 hover:bg-red-50 font-extrabold text-xs h-9 px-5 shadow-2xs cursor-pointer"
           >
             <a href="tel:01452740375">Call Emergency Dispatch</a>
           </Button>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/90 shadow-xs space-y-4">
-          <div className="h-10 w-10 rounded-2xl bg-slate-100 text-slate-700 flex items-center justify-center border border-slate-200">
+        <div className="surface-card rounded-[26px] p-6 border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+          <div className="h-10 w-10 rounded-2xl bg-slate-100/80 text-slate-700 flex items-center justify-center border border-slate-200/60 shadow-2xs">
             <Clock className="h-5 w-5" />
           </div>
           <div>
@@ -66,7 +67,7 @@ export function DeliverySupportView() {
           <Button
             asChild
             variant="outline"
-            className="rounded-full border-slate-200 text-slate-700 font-bold text-xs h-9 px-5 hover:bg-slate-50"
+            className="rounded-full border-white/80 bg-white/70 backdrop-blur-md text-slate-700 font-bold text-xs h-9 px-5 hover:bg-white shadow-2xs cursor-pointer"
           >
             <a href="tel:01452740376">Contact Depot Desk</a>
           </Button>
@@ -74,20 +75,22 @@ export function DeliverySupportView() {
       </div>
 
       {/* Depot Location & Facilities */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
-        <h2 className="text-base font-display font-extrabold text-slate-900">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+        <h2 className="text-base font-display font-black text-slate-900">
           Main Depot & Filling Station Facilities
         </h2>
 
-        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
-          <div className="flex items-start gap-2 text-slate-700 font-semibold">
-            <MapPin className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-2 text-xs">
+          <div className="flex items-start gap-3 text-slate-700 font-semibold">
+            <div className="h-8 w-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100 shadow-2xs mt-0.5">
+              <MapPin className="h-4 w-4 text-red-600" />
+            </div>
             <div>
               <p className="font-bold text-slate-900">John Stayte Services Main Logistics Depot</p>
-              <p className="text-slate-600">
+              <p className="text-slate-600 text-xs mt-0.5">
                 Unit 4 Whitminster Industrial Estate, Whitminster, Gloucestershire, GL2 7PN
               </p>
-              <p className="text-slate-400 text-[11px] mt-0.5">
+              <p className="text-slate-400 text-[11px] mt-1 font-medium">
                 Operating Hours: Monday – Friday: 07:30 - 17:30 · Saturday: 08:00 - 13:00
               </p>
             </div>
@@ -96,13 +99,13 @@ export function DeliverySupportView() {
       </div>
 
       {/* Driver LPG Safety & Verification Protocols */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
-        <h2 className="text-base font-display font-extrabold text-slate-900">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+        <h2 className="text-base font-display font-black text-slate-900">
           LPG Cylinder Safety Checklist for Drivers
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-white space-y-1">
+          <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-1">
             <div className="flex items-center gap-2 font-bold text-slate-900">
               <Flame className="h-4 w-4 text-red-600" /> Upright Transport
             </div>
@@ -112,7 +115,7 @@ export function DeliverySupportView() {
             </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-white space-y-1">
+          <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-1">
             <div className="flex items-center gap-2 font-bold text-slate-900">
               <ShieldCheck className="h-4 w-4 text-emerald-600" /> Valve & Cap Inspection
             </div>
@@ -122,7 +125,7 @@ export function DeliverySupportView() {
             </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-white space-y-1">
+          <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-1">
             <div className="flex items-center gap-2 font-bold text-slate-900">
               <AlertTriangle className="h-4 w-4 text-amber-600" /> Customer Drop-off Zone
             </div>
@@ -132,7 +135,7 @@ export function DeliverySupportView() {
             </p>
           </div>
 
-          <div className="p-3.5 rounded-2xl border border-slate-200/80 bg-white space-y-1">
+          <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-1">
             <div className="flex items-center gap-2 font-bold text-slate-900">
               <FileText className="h-4 w-4 text-blue-600" /> Real-time Handover Log
             </div>

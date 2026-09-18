@@ -250,28 +250,31 @@ export function ManagerPerformanceView() {
       {/* 1. PAGE HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground font-bold">My Performance</span>
+            <span className="text-slate-900 font-bold">My Performance</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Award className="h-7 w-7 text-primary" /> My Performance & Operational Metrics
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+            <div className="p-2 rounded-2xl bg-red-500/10 text-red-600 border border-red-500/20">
+              <Award className="h-6 w-6" />
+            </div>
+            My Performance & Operational Metrics
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Track operational throughput, order fulfillment SLAs, and daily handled trends.
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[130px] h-9 rounded-full border-slate-200 text-xs font-semibold bg-white shadow-2xs">
-              <Calendar className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+            <SelectTrigger className="w-[130px] h-9 rounded-full border-slate-200/80 text-xs font-bold bg-white/80 backdrop-blur-md shadow-2xs">
+              <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl text-xs font-medium">
+            <SelectContent className="rounded-2xl text-xs font-medium bg-white/95 backdrop-blur-xl border-white/80 shadow-xl">
               <SelectItem value="today">Today</SelectItem>
               <SelectItem value="7d">Last 7 Days</SelectItem>
               <SelectItem value="30d">Last 30 Days</SelectItem>
@@ -282,20 +285,20 @@ export function ManagerPerformanceView() {
       </div>
 
       {loading ? (
-        <div className="surface-card p-12 rounded-3xl border bg-white text-center space-y-3 shadow-xs">
-          <Clock className="mx-auto h-6 w-6 text-primary animate-spin" />
-          <p className="text-xs font-bold text-muted-foreground">Loading performance data...</p>
+        <div className="surface-card p-12 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl text-center space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+          <Clock className="mx-auto h-6 w-6 text-red-600 animate-spin" />
+          <p className="text-xs font-bold text-slate-500">Loading performance data...</p>
         </div>
       ) : error ? (
-        <div className="p-12 text-center space-y-3 surface-card rounded-3xl border bg-white shadow-xs">
+        <div className="p-12 text-center space-y-3 surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
           <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
-          <h3 className="font-bold text-sm text-foreground">Unable to load performance data</h3>
-          <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
+          <h3 className="font-bold text-sm text-slate-900">Unable to load performance data</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">{error}</p>
           <Button
             onClick={loadPerformanceData}
             size="sm"
             variant="outline"
-            className="rounded-full text-xs font-bold gap-1.5 mt-2"
+            className="rounded-full text-xs font-black gap-1.5 mt-2 border-white/80 bg-white/80 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
           >
             <RotateCcw className="h-3.5 w-3.5" /> Retry
           </Button>
@@ -305,19 +308,19 @@ export function ManagerPerformanceView() {
           {/* 2. PERFORMANCE HERO SCORE & SUMMARY */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Performance Score Card */}
-            <div className="surface-card p-6 rounded-3xl border border-slate-200/80 bg-white flex flex-col items-center justify-center text-center space-y-3 shadow-2xs">
-              <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+            <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl flex flex-col items-center justify-center text-center space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+              <p className="text-xs font-black uppercase tracking-wider text-slate-400">
                 Performance Score
               </p>
               <div
-                className={`relative flex items-center justify-center h-28 w-28 rounded-full border-4 transition-colors ${scoreColor}`}
+                className={`relative flex items-center justify-center h-28 w-28 rounded-full border-4 shadow-sm transition-colors ${scoreColor}`}
               >
                 <span className="text-4xl font-black">{performanceScore}</span>
-                <span className="text-xs font-extrabold text-muted-foreground align-top mt-1">
+                <span className="text-xs font-extrabold text-slate-400 align-top mt-1">
                   %
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium">
+              <p className="text-[11px] text-slate-500 font-medium">
                 {totalOrdersCount === 0
                   ? "No operational activity recorded in date window"
                   : `${approvedOrdersCount} approved & ${completedDeliveriesCount} delivered out of ${totalOrdersCount} orders`}
@@ -326,38 +329,38 @@ export function ManagerPerformanceView() {
 
             {/* Performance Overview KPI Grid */}
             <div className="md:col-span-2 grid grid-cols-2 gap-3">
-              <div className="surface-card p-4 rounded-2xl border bg-white space-y-1 shadow-2xs">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <div className="surface-card p-4 rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-1 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Orders Processed
                 </p>
-                <p className="text-2xl font-black text-foreground">{totalOrdersCount}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-2xl font-black text-slate-900">{totalOrdersCount}</p>
+                <p className="text-[11px] text-slate-500 font-medium">
                   {pendingOrdersCount} pending approval
                 </p>
               </div>
 
-              <div className="surface-card p-4 rounded-2xl border bg-white space-y-1 shadow-2xs">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <div className="surface-card p-4 rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-1 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Orders Approved
                 </p>
                 <p className="text-2xl font-black text-blue-600">{approvedOrdersCount}</p>
-                <p className="text-[11px] text-muted-foreground">Depot approved</p>
+                <p className="text-[11px] text-slate-500 font-medium">Depot approved</p>
               </div>
 
-              <div className="surface-card p-4 rounded-2xl border bg-white space-y-1 shadow-2xs">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <div className="surface-card p-4 rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-1 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Deliveries Completed
                 </p>
                 <p className="text-2xl font-black text-emerald-600">{completedDeliveriesCount}</p>
-                <p className="text-[11px] text-muted-foreground">Dispatched & delivered</p>
+                <p className="text-[11px] text-slate-500 font-medium">Dispatched & delivered</p>
               </div>
 
-              <div className="surface-card p-4 rounded-2xl border bg-white space-y-1 shadow-2xs">
-                <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+              <div className="surface-card p-4 rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-1 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                   Support SLA Met
                 </p>
                 <p className="text-2xl font-black text-purple-600">{slaPercentage}%</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-slate-500 font-medium">
                   {resolvedTicketsCount} of {totalTicketsCount} tickets resolved
                 </p>
               </div>
@@ -371,21 +374,21 @@ export function ManagerPerformanceView() {
                 title: "Order Processing",
                 metric: `${approvedOrdersCount} Approved`,
                 detail: `${totalOrdersCount} Total Handled`,
-                color: "text-blue-700 bg-blue-50 border-blue-100",
+                color: "text-blue-700 bg-blue-50/70 border-blue-200/60",
                 icon: ShoppingBag,
               },
               {
                 title: "Delivery Fulfillment",
                 metric: `${completedDeliveriesCount} Completed`,
                 detail: `${deliveries.length} Route Dispatches`,
-                color: "text-purple-700 bg-purple-50 border-purple-100",
+                color: "text-purple-700 bg-purple-50/70 border-purple-200/60",
                 icon: Truck,
               },
               {
                 title: "Customer Service",
                 metric: `${resolvedTicketsCount} Resolved`,
                 detail: `${totalTicketsCount} Enquiries Total`,
-                color: "text-emerald-700 bg-emerald-50 border-emerald-100",
+                color: "text-emerald-700 bg-emerald-50/70 border-emerald-200/60",
                 icon: MessageSquare,
               },
               {
@@ -394,49 +397,49 @@ export function ManagerPerformanceView() {
                 detail: `${products.length} Products Monitored`,
                 color:
                   lowStockCount > 0
-                    ? "text-amber-700 bg-amber-50 border-amber-100"
-                    : "text-emerald-700 bg-emerald-50 border-emerald-100",
+                    ? "text-amber-700 bg-amber-50/70 border-amber-200/60"
+                    : "text-emerald-700 bg-emerald-50/70 border-emerald-200/60",
                 icon: Package,
               },
             ].map((sec) => (
               <div
                 key={sec.title}
-                className={`surface-card p-4 rounded-2xl border ${sec.color} space-y-1 shadow-2xs`}
+                className={`surface-card p-4 rounded-[22px] border ${sec.color} space-y-1 shadow-2xs backdrop-blur-md transition-all duration-300 hover:-translate-y-1`}
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-black text-foreground">{sec.title}</p>
+                  <p className="text-xs font-black text-slate-900">{sec.title}</p>
                   <sec.icon className="h-4 w-4 opacity-70" />
                 </div>
-                <p className="text-lg font-black text-foreground">{sec.metric}</p>
-                <p className="text-[11px] text-muted-foreground font-medium">{sec.detail}</p>
+                <p className="text-lg font-black text-slate-900">{sec.metric}</p>
+                <p className="text-[11px] text-slate-500 font-medium">{sec.detail}</p>
               </div>
             ))}
           </div>
 
           {/* 4. PERFORMANCE CHART — DYNAMIC TREND STYLED & RECONCILED */}
-          <div className="surface-card p-6 rounded-3xl border border-slate-200/80 bg-white space-y-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3">
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100/80 pb-3">
               <div>
-                <h2 className="text-base font-black text-foreground">Orders Handled Trend</h2>
-                <p className="text-xs text-muted-foreground">
+                <h2 className="text-base font-black text-slate-900">Orders Handled Trend</h2>
+                <p className="text-xs text-slate-500 font-medium">
                   Daily orders handled in selected window (Reconciled Total: {graphTotalHandled}{" "}
                   orders).
                 </p>
               </div>
 
-              <Badge className={`${trendState.badgeColor} text-xs font-extrabold px-3 py-1 border`}>
+              <Badge className={`${trendState.badgeColor} text-xs font-extrabold px-3 py-1 border shadow-2xs rounded-full`}>
                 <trendState.icon className="h-3.5 w-3.5 mr-1" /> {trendState.label}
               </Badge>
             </div>
 
             <div className="h-64 w-full pt-2">
               {chartData.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed rounded-2xl bg-slate-50/50">
-                  <Activity className="h-8 w-8 text-muted-foreground/30" />
-                  <p className="text-xs font-bold text-foreground">
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-slate-50/50">
+                  <Activity className="h-8 w-8 text-slate-400/40" />
+                  <p className="text-xs font-bold text-slate-900">
                     No performance history in date window
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-slate-500 font-medium">
                     Daily performance trend graphs will render when orders are placed.
                   </p>
                 </div>
@@ -454,22 +457,24 @@ export function ManagerPerformanceView() {
                       dataKey="date"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: "#64748b" }}
+                      tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
                     />
                     <YAxis
                       allowDecimals={false}
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fontSize: 11, fill: "#64748b" }}
+                      tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
                     />
                     <Tooltip
                       formatter={(val: any) => [`${val} orders`, "Orders Handled"]}
                       contentStyle={{
-                        backgroundColor: "#ffffff",
-                        borderRadius: "16px",
+                        backgroundColor: "rgba(255, 255, 255, 0.95)",
+                        backdropFilter: "blur(12px)",
+                        borderRadius: "18px",
                         border: `1px solid ${trendState.strokeColor}40`,
                         fontSize: "12px",
-                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+                        fontWeight: "bold",
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
                       }}
                     />
                     <Area
@@ -487,23 +492,23 @@ export function ManagerPerformanceView() {
           </div>
 
           {/* 5. PERFORMANCE INSIGHTS */}
-          <div className="surface-card p-6 rounded-3xl border border-slate-200/80 bg-white space-y-3 shadow-xs">
-            <h2 className="text-base font-black text-foreground">Operational Insights</h2>
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+            <h2 className="text-base font-black text-slate-900">Operational Insights</h2>
             {totalOrdersCount === 0 ? (
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-xs text-slate-500 font-medium">
                 No performance insights available for this period. Insights generate automatically
                 as order activity occurs.
               </p>
             ) : (
               <div className="space-y-2 text-xs">
-                <div className="p-3 rounded-2xl border bg-emerald-50/50 border-emerald-100 flex items-center gap-2">
+                <div className="p-3.5 rounded-2xl border bg-emerald-50/50 border-emerald-100 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span className="font-semibold text-emerald-950">
                     Order throughput is active with {approvedOrdersCount} orders approved and{" "}
                     {completedDeliveriesCount} completed deliveries.
                   </span>
                 </div>
-                <div className="p-3 rounded-2xl border bg-blue-50/50 border-blue-100 flex items-center gap-2">
+                <div className="p-3.5 rounded-2xl border bg-blue-50/50 border-blue-100 flex items-center gap-2">
                   <Activity className="h-4 w-4 text-blue-600 shrink-0" />
                   <span className="font-semibold text-blue-950">
                     Customer support SLA resolution rate is operating at {slaPercentage}% across{" "}

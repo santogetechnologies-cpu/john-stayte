@@ -341,7 +341,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
       {managerNavGroups.map((group) => (
         <div key={group.groupLabel} className="space-y-1">
           {(!collapsed || isMobile) && (
-            <p className="px-3 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest mb-1.5 select-none">
+            <p className="px-3 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 select-none">
               {group.groupLabel}
             </p>
           )}
@@ -355,15 +355,15 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                 to={item.href as never}
                 className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all select-none ${
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                    ? "bg-red-600 text-white font-extrabold shadow-md shadow-red-600/20"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-white/80"
                 } ${collapsed && !isMobile ? "justify-center px-2 py-2.5" : ""}`}
               >
                 <item.icon
                   className={`h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110 ${
                     isActive
-                      ? "text-primary-foreground"
-                      : "text-muted-foreground group-hover:text-foreground"
+                      ? "text-white"
+                      : "text-slate-500 group-hover:text-slate-900"
                   }`}
                 />
                 {(!collapsed || isMobile) && (
@@ -374,7 +374,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                         className={`ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                           isActive
                             ? "bg-white/25 text-white"
-                            : "bg-slate-100 text-slate-700 dark:bg-slate-800"
+                            : "bg-red-50 text-red-700 border border-red-200/60"
                         }`}
                       >
                         {badgeCount}
@@ -390,7 +390,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                 <TooltipProvider key={item.href + item.title} delayDuration={100}>
                   <Tooltip>
                     <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                    <TooltipContent side="right" className="font-bold text-xs">
+                    <TooltipContent side="right" className="font-bold text-xs bg-slate-900 text-white">
                       {item.title}
                     </TooltipContent>
                   </Tooltip>
@@ -406,29 +406,36 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-foreground font-sans antialiased flex flex-col">
+    <div className="min-h-screen w-screen bg-[#fafafd] text-slate-800 font-sans antialiased flex flex-col relative selection:bg-red-500/20 selection:text-red-900">
+      {/* Dynamic Ambient Background Glow Layers */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-10%] left-[-5%] w-[500px] h-[500px] rounded-full bg-gradient-to-br from-red-600/6 via-rose-500/4 to-transparent blur-3xl" />
+        <div className="absolute top-[20%] right-[-5%] w-[600px] h-[600px] rounded-full bg-gradient-to-bl from-rose-500/5 via-red-500/3 to-transparent blur-3xl" />
+        <div className="absolute bottom-[-10%] left-[30%] w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-slate-200/40 via-red-500/2 to-transparent blur-3xl" />
+      </div>
+
       {/* GLOBAL SEARCH DIALOG */}
       <ManagerGlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 h-16 border-b border-slate-200/80 bg-white/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-4 shadow-xs">
+      <header className="sticky top-0 z-40 h-16 border-b border-white/70 bg-white/65 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between gap-4 shadow-2xs">
         {/* Left Branding */}
         <div className="flex items-center gap-3">
           {/* Mobile Sheet Trigger */}
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden rounded-xl">
+              <Button variant="ghost" size="icon" className="lg:hidden rounded-full hover:bg-white/80">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-4 pt-6 bg-white">
+            <SheetContent side="left" className="w-72 p-4 pt-6 bg-white/95 backdrop-blur-2xl border-r border-white/80">
               <div className="flex items-center gap-3 px-2 mb-6">
-                <img src={logo} alt="JSS" className="h-8 w-8 rounded-lg" />
+                <img src={logo} alt="JSS" className="h-8 w-8 rounded-xl shadow-2xs" />
                 <div>
-                  <h2 className="font-display font-extrabold text-sm tracking-tight text-foreground">
+                  <h2 className="font-display font-black text-sm tracking-tight text-slate-900">
                     JSS MANAGER PORTAL
                   </h2>
-                  <p className="text-[10px] text-muted-foreground font-medium">
+                  <p className="text-[10px] text-slate-500 font-medium">
                     John Stayte Services
                   </p>
                 </div>
@@ -447,14 +454,14 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
             />
             <div className="hidden sm:block">
               <div className="flex items-center gap-2">
-                <span className="font-display font-black text-sm tracking-tight text-foreground">
+                <span className="font-display font-black text-sm tracking-tight text-slate-900">
                   JSS MANAGER PORTAL
                 </span>
-                <span className="px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 text-[9px] font-black uppercase tracking-wide">
+                <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200/80 text-[9px] font-black uppercase tracking-wide">
                   Operations
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground font-medium -mt-0.5">
+              <p className="text-[11px] text-slate-500 font-medium -mt-0.5">
                 John Stayte Services
               </p>
             </div>
@@ -465,13 +472,13 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
         <div className="flex-1 max-w-md hidden md:block">
           <button
             onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center justify-between gap-3 px-3.5 py-2 rounded-full border border-slate-200 bg-slate-50/80 hover:bg-slate-100/80 hover:border-slate-300 transition-all text-xs text-muted-foreground group"
+            className="w-full flex items-center justify-between gap-3 px-4 py-2 rounded-full border border-white/80 bg-white/60 backdrop-blur-md hover:bg-white/90 hover:border-red-500/40 hover:shadow-xs transition-all text-xs text-slate-500 group cursor-pointer"
           >
             <span className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+              <Search className="h-4 w-4 text-slate-400 group-hover:text-red-600 transition-colors" />
               <span>Search orders, customers, enquiries...</span>
             </span>
-            <kbd className="flex items-center gap-1 rounded bg-white px-2 py-0.5 text-[10px] font-bold border text-muted-foreground shadow-2xs">
+            <kbd className="flex items-center gap-1 rounded-md bg-white/80 px-2 py-0.5 text-[10px] font-extrabold border border-slate-200 text-slate-500 shadow-2xs">
               <span>⌘</span>K
             </kbd>
           </button>
@@ -483,9 +490,9 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
             variant="ghost"
             size="icon"
             onClick={() => setSearchOpen(true)}
-            className="md:hidden rounded-full hover:bg-slate-100"
+            className="md:hidden rounded-full hover:bg-white/80 text-slate-600"
           >
-            <Search className="h-4 w-4 text-muted-foreground" />
+            <Search className="h-4 w-4" />
           </Button>
 
           {/* Notifications */}
@@ -497,32 +504,34 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-full hover:bg-slate-100 text-muted-foreground"
+                  className="rounded-full hover:bg-white/80 text-slate-500"
                 >
                   <LifeBuoy className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="font-semibold text-xs">Manager Ops Support</TooltipContent>
+              <TooltipContent side="bottom" className="font-bold text-xs bg-slate-900 text-white">
+                Manager Ops Support
+              </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          <div className="h-5 w-[1px] bg-slate-200 mx-1 hidden sm:block" />
+          <div className="h-5 w-[1px] bg-slate-200/80 mx-1 hidden sm:block" />
 
           {/* Manager User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 p-1 rounded-full hover:bg-slate-100 transition-colors focus:outline-none select-none">
-                <Avatar className="h-8 w-8 border border-slate-200 shadow-2xs">
+              <button className="flex items-center gap-2.5 p-1 rounded-full hover:bg-white/80 transition-colors focus:outline-none select-none cursor-pointer">
+                <Avatar className="h-8.5 w-8.5 border border-white/80 shadow-2xs">
                   <AvatarImage src="" />
-                  <AvatarFallback className="bg-blue-600 text-white font-black text-xs">
+                  <AvatarFallback className="bg-gradient-to-br from-red-600 to-rose-600 text-white font-black text-xs shadow-xs">
                     {managerName.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="hidden xl:block text-left pr-1">
-                  <p className="text-xs font-bold leading-tight text-foreground truncate max-w-[120px]">
+                  <p className="text-xs font-extrabold leading-tight text-slate-900 truncate max-w-[120px]">
                     {managerName}
                   </p>
-                  <p className="text-[10px] font-medium text-muted-foreground leading-tight">
+                  <p className="text-[10px] font-semibold text-slate-500 leading-tight">
                     Operations Manager
                   </p>
                 </div>
@@ -530,33 +539,33 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-56 rounded-2xl p-1.5 shadow-xl border bg-white"
+              className="w-56 rounded-2xl p-1.5 shadow-xl border border-white/80 bg-white/95 backdrop-blur-2xl"
             >
               <DropdownMenuLabel className="p-2">
-                <p className="text-xs font-bold text-foreground">{managerName}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{managerEmail}</p>
+                <p className="text-xs font-bold text-slate-900">{managerName}</p>
+                <p className="text-[11px] text-slate-500 truncate">{managerEmail}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
-                <Link to="/manager/profile" className="flex items-center gap-2 text-xs font-medium">
-                  <User className="h-4 w-4 text-muted-foreground" /> My Profile
+                <Link to="/manager/profile" className="flex items-center gap-2 text-xs font-semibold">
+                  <User className="h-4 w-4 text-slate-400" /> My Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
                 <Link
                   to="/manager/settings"
-                  className="flex items-center gap-2 text-xs font-medium"
+                  className="flex items-center gap-2 text-xs font-semibold"
                 >
-                  <Settings className="h-4 w-4 text-muted-foreground" /> Manager Settings
+                  <Settings className="h-4 w-4 text-slate-400" /> Manager Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild className="rounded-xl cursor-pointer">
                 <Link
                   to="/"
                   target="_blank"
-                  className="flex items-center gap-2 text-xs font-medium"
+                  className="flex items-center gap-2 text-xs font-semibold"
                 >
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" /> View Customer Site
+                  <ExternalLink className="h-4 w-4 text-slate-400" /> View Customer Site
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -565,7 +574,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
                   logout();
                   navigate({ to: "/" });
                 }}
-                className="rounded-xl cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10 text-xs font-semibold"
+                className="rounded-xl cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 text-xs font-extrabold"
               >
                 <LogOut className="h-4 w-4 mr-2" /> Sign out
               </DropdownMenuItem>
@@ -575,16 +584,16 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* BODY WRAPPER */}
-      <div className="flex-1 flex min-h-0">
-        {/* DESKTOP COLLAPSIBLE SIDEBAR */}
+      <div className="flex-1 flex min-h-0 relative z-10">
+        {/* DESKTOP COLLAPSIBLE FROSTED GLASS SIDEBAR */}
         <aside
-          className={`hidden lg:flex flex-col border-r border-slate-200/80 bg-white transition-all duration-300 relative z-20 ${
-            collapsed ? "w-18" : "w-64"
+          className={`hidden lg:flex flex-col border-r border-white/70 bg-white/60 backdrop-blur-2xl transition-all duration-300 relative z-20 shrink-0 shadow-2xs ${
+            collapsed ? "w-20" : "w-64"
           }`}
         >
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="absolute -right-3 top-6 z-30 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-md flex items-center justify-center text-muted-foreground hover:text-foreground transition-all hover:scale-110"
+            className="absolute -right-3 top-6 z-30 h-6 w-6 rounded-full border border-white/80 bg-white/90 shadow-md flex items-center justify-center text-slate-500 hover:text-slate-900 hover:scale-110 transition-all cursor-pointer"
             title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             {collapsed ? (
@@ -597,14 +606,14 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
           <div className="flex-1 overflow-y-auto p-3.5 space-y-6">{renderNavItems(false)}</div>
 
           {!collapsed && (
-            <div className="p-3.5 border-t border-slate-100 bg-slate-50/50">
-              <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
-                <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />
+            <div className="shrink-0 p-3.5 border-t border-white/60 bg-white/40">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-2xl bg-white/80 border border-white/90 shadow-2xs backdrop-blur-md">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <div className="min-w-0">
-                  <p className="text-[11px] font-bold text-foreground truncate">
+                  <p className="text-[11px] font-extrabold text-slate-900 truncate">
                     Fromebridge Station
                   </p>
-                  <p className="text-[10px] text-muted-foreground truncate">Depot Ops Active</p>
+                  <p className="text-[10px] text-slate-500 truncate font-semibold">Depot Ops Active</p>
                 </div>
               </div>
             </div>
@@ -612,7 +621,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 relative z-10">
           <div className="max-w-7xl mx-auto space-y-8 animate-rise">{children}</div>
         </main>
       </div>

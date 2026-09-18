@@ -215,11 +215,11 @@ export function DeliveryReturnPickupModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl rounded-3xl p-6 sm:p-7 bg-white border border-slate-200 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-xl rounded-3xl p-6 sm:p-7 bg-white/95 backdrop-blur-2xl border border-white/80 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="border-b border-slate-100 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge className="bg-red-50 text-red-700 border-red-200 font-extrabold text-[11px] px-2.5 py-0.5">
+              <Badge className="bg-red-50 text-red-700 border-red-200 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase shadow-2xs">
                 <RotateCcw className="h-3 w-3 mr-1" /> Return Pickup
               </Badge>
               <span className="font-mono text-xs font-black text-slate-900">
@@ -227,11 +227,11 @@ export function DeliveryReturnPickupModal({
               </span>
             </div>
 
-            <Badge variant="outline" className="font-bold text-[11px]">
+            <Badge variant="outline" className="font-bold text-[10px] rounded-full border-slate-200 text-slate-700">
               {returnRecord.status}
             </Badge>
           </div>
-          <DialogTitle className="text-xl font-display font-black text-slate-900 pt-1">
+          <DialogTitle className="text-xl font-display font-black text-slate-900 pt-1 tracking-tight">
             Doorstep Cylinder Return & Verification
           </DialogTitle>
         </DialogHeader>

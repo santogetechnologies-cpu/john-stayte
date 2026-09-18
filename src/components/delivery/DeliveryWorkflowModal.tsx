@@ -336,25 +336,25 @@ export function DeliveryWorkflowModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl border border-slate-200 shadow-2xl bg-white">
+      <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto p-0 rounded-3xl border border-white/80 shadow-2xl bg-white/95 backdrop-blur-2xl">
         {/* Modal Header */}
-        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-xl px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-2xl bg-red-50 text-red-600 border border-red-200/60 flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="h-10 w-10 rounded-2xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center shrink-0 shadow-2xs">
               <Truck className="h-5 w-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <Badge
                   className={cn(
-                    "font-extrabold text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5",
+                    "font-extrabold text-[10px] uppercase tracking-wider rounded-full px-2.5 py-0.5 shadow-2xs",
                     status === "Delivered"
-                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                       : status === "Exception"
-                        ? "bg-rose-100 text-rose-800 border-rose-300"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
                         : status === "Out for Delivery"
-                          ? "bg-orange-100 text-orange-800 border-orange-300"
-                          : "bg-blue-100 text-blue-800 border-blue-300",
+                          ? "bg-orange-50 text-orange-700 border-orange-200"
+                          : "bg-blue-50 text-blue-700 border-blue-200",
                   )}
                 >
                   {status}
@@ -363,7 +363,7 @@ export function DeliveryWorkflowModal({
                   #{order.order_number || delivery.id.slice(0, 8)}
                 </span>
               </div>
-              <h2 className="font-display font-extrabold text-base text-slate-900 truncate mt-0.5">
+              <h2 className="font-display font-black text-base text-slate-900 truncate mt-0.5">
                 {order.customer_name || "Customer Delivery"}
               </h2>
             </div>
@@ -371,12 +371,17 @@ export function DeliveryWorkflowModal({
         </div>
 
         {/* Workflow Navigation Pills */}
-        <div className="px-6 pt-4 pb-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-100 bg-slate-50/50">
+        <div className="px-6 pt-3.5 pb-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-100 bg-slate-50/40">
           <Button
             size="sm"
             variant={activeTab === "overview" ? "default" : "ghost"}
             onClick={() => setActiveTab("overview")}
-            className="rounded-full text-xs font-bold h-7 px-3 shrink-0"
+            className={cn(
+              "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all",
+              activeTab === "overview"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+            )}
           >
             Overview
           </Button>
@@ -384,7 +389,12 @@ export function DeliveryWorkflowModal({
             size="sm"
             variant={activeTab === "verify_customer" ? "default" : "ghost"}
             onClick={() => setActiveTab("verify_customer")}
-            className="rounded-full text-xs font-bold h-7 px-3 shrink-0"
+            className={cn(
+              "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all",
+              activeTab === "verify_customer"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+            )}
           >
             1. Verify Customer
           </Button>
@@ -392,7 +402,12 @@ export function DeliveryWorkflowModal({
             size="sm"
             variant={activeTab === "cylinder_handover" ? "default" : "ghost"}
             onClick={() => setActiveTab("cylinder_handover")}
-            className="rounded-full text-xs font-bold h-7 px-3 shrink-0"
+            className={cn(
+              "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all",
+              activeTab === "cylinder_handover"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+            )}
           >
             2. Handover
           </Button>
@@ -401,7 +416,12 @@ export function DeliveryWorkflowModal({
               size="sm"
               variant={activeTab === "empty_return" ? "default" : "ghost"}
               onClick={() => setActiveTab("empty_return")}
-              className="rounded-full text-xs font-bold h-7 px-3 shrink-0"
+              className={cn(
+                "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all",
+                activeTab === "empty_return"
+                  ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+              )}
             >
               3. Empty Return
             </Button>
@@ -411,8 +431,12 @@ export function DeliveryWorkflowModal({
             variant={activeTab === "otp_verification" ? "default" : "ghost"}
             onClick={() => setActiveTab("otp_verification")}
             className={cn(
-              "rounded-full text-xs font-bold h-7 px-3 shrink-0",
-              otpVerified && "text-emerald-700 bg-emerald-50",
+              "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all",
+              activeTab === "otp_verification"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black"
+                : otpVerified
+                  ? "text-emerald-700 bg-emerald-50 border border-emerald-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
             )}
           >
             {exchangeReq.required ? "4. Customer OTP" : "3. Customer OTP"}
@@ -422,7 +446,12 @@ export function DeliveryWorkflowModal({
             size="sm"
             variant={activeTab === "final_confirmation" ? "default" : "ghost"}
             onClick={() => setActiveTab("final_confirmation")}
-            className="rounded-full text-xs font-bold h-7 px-3 shrink-0"
+            className={cn(
+              "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all",
+              activeTab === "final_confirmation"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100",
+            )}
           >
             {exchangeReq.required ? "5. Confirm & Complete" : "4. Confirm & Complete"}
           </Button>
@@ -430,7 +459,10 @@ export function DeliveryWorkflowModal({
             size="sm"
             variant={activeTab === "exception" ? "destructive" : "ghost"}
             onClick={() => setActiveTab("exception")}
-            className="rounded-full text-xs font-bold h-7 px-3 shrink-0 text-red-600"
+            className={cn(
+              "rounded-full text-xs font-bold h-7 px-3 shrink-0 transition-all text-red-600 hover:bg-red-50",
+              activeTab === "exception" && "bg-rose-600 text-white hover:bg-rose-700",
+            )}
           >
             Report Issue
           </Button>

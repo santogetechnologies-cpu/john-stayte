@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -185,72 +185,135 @@ export function AdminDashboardView() {
   ).length;
   const averageOrderValue = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
 
-  // Chart data calculations from real orders
-  const chartData =
-    orders.length > 0
-      ? orders
-          .slice(0, 12)
-          .reverse()
-          .map((o) => ({
-            month: new Date(o.created_at).toLocaleDateString("en-GB", {
-              month: "short",
-              day: "numeric",
-            }),
-            revenue: Number(o.total || 0),
-            orders: 1,
-            aov: Number(o.total || 0),
-          }))
-      : [
-          { month: "Jan", revenue: 0, orders: 0, aov: 0 },
-          { month: "Feb", revenue: 0, orders: 0, aov: 0 },
-          { month: "Mar", revenue: 0, orders: 0, aov: 0 },
-          { month: "Apr", revenue: 0, orders: 0, aov: 0 },
-          { month: "May", revenue: 0, orders: 0, aov: 0 },
-          { month: "Jun", revenue: 0, orders: 0, aov: 0 },
-        ];
-
-  // Dynamic trend calculation based on actual Supabase values
-  const metricValues = chartData.map((d) => Number(d[analyticsMetric] || 0));
-  let trend: "positive" | "negative" | "neutral" = "neutral";
-
-  if (metricValues.length >= 2) {
-    const mid = Math.floor(metricValues.length / 2);
-    const firstHalfAvg = metricValues.slice(0, mid).reduce((sum, v) => sum + v, 0) / (mid || 1);
-    const secondHalfAvg =
-      metricValues.slice(mid).reduce((sum, v) => sum + v, 0) / (metricValues.length - mid || 1);
-
-    if (secondHalfAvg > firstHalfAvg * 1.01) {
-      trend = "positive";
-    } else if (secondHalfAvg < firstHalfAvg * 0.99) {
-      trend = "negative";
-    } else {
-      trend = "neutral";
+  // Chart data calculations from real orders grouped chronologically
+  const chartData = useMemo(() => {
+    if (!orders || orders.length === 0) {
+      return [
+        { month: "Jan", revenue: 0, orders: 0, aov: 0 },
+        { month: "Feb", revenue: 0, orders: 0, aov: 0 },
+        { month: "Mar", revenue: 0, orders: 0, aov: 0 },
+        { month: "Apr", revenue: 0, orders: 0, aov: 0 },
+        { month: "May", revenue: 0, orders: 0, aov: 0 },
+        { month: "Jun", revenue: 0, orders: 0, aov: 0 },
+      ];
     }
-  } else if (metricValues.length === 1 && metricValues[0] > 0) {
-    trend = "positive";
-  }
 
-  // Dynamic Theme palette (JSS Red theme accent)
-  const chartTheme = {
-    positive: {
-      stroke: "#dc2626", // JSS Red
-      badgeBg: "bg-red-50 text-red-700 border-red-200",
-      badgeText: "Positive Growth",
-      Icon: TrendingUp,
-    },
-    negative: {
-      stroke: "#ef4444", // Red
-      badgeBg: "bg-red-50 text-red-700 border-red-200",
-      badgeText: "Declining",
-      Icon: TrendingDown,
-    },
-    neutral: {
-      stroke: "#475569", // Slate Neutral
-      badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
-      badgeText: "Stable",
-      Icon: Activity,
-    },
-  }[trend];
+    // Sort valid non-cancelled orders chronologically
+    const sortedOrders = [...orders]
+      .filter((o) => o.status !== "Cancelled")
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    if (sortedOrders.length === 0) {
+      return [{ month: "Today", revenue: 0, orders: 0, aov: 0 }];
+    }
+
+    // Group real orders by date bucket (up to 14 latest date groups)
+    const dateMap = new Map<string, { revenue: number; orders: number }>();
+    sortedOrders.forEach((o) => {
+      const dateKey = new Date(o.created_at).toLocaleDateString("en-GB", {
+        month: "short",
+        day: "numeric",
+      });
+      const existing = dateMap.get(dateKey) || { revenue: 0, orders: 0 };
+      dateMap.set(dateKey, {
+        revenue: existing.revenue + Number(o.total || 0),
+        orders: existing.orders + 1,
+      });
+    });
+
+    const grouped = Array.from(dateMap.entries()).map(([month, stats]) => ({
+      month,
+      revenue: stats.revenue,
+      orders: stats.orders,
+      aov: stats.orders > 0 ? stats.revenue / stats.orders : 0,
+    }));
+
+    return grouped.slice(-12);
+  }, [orders]);
+
+  // Dynamic performance trend calculation based on actual Supabase data
+  const { trend, trendPercent } = useMemo(() => {
+    const metricValues = chartData.map((d) => Number(d[analyticsMetric] || 0));
+    const validValues = metricValues.filter((v) => !isNaN(v));
+
+    if (validValues.length === 0 || validValues.every((v) => v === 0)) {
+      return { trend: "neutral" as const, trendPercent: 0 };
+    }
+
+    if (validValues.length === 1) {
+      return {
+        trend: validValues[0] > 0 ? ("positive" as const) : ("neutral" as const),
+        trendPercent: 0,
+      };
+    }
+
+    // Divide the series into two halves to measure actual trajectory
+    const mid = Math.floor(validValues.length / 2);
+    const firstHalf = validValues.slice(0, mid);
+    const secondHalf = validValues.slice(mid);
+
+    const firstHalfAvg = firstHalf.reduce((sum, v) => sum + v, 0) / (firstHalf.length || 1);
+    const secondHalfAvg = secondHalf.reduce((sum, v) => sum + v, 0) / (secondHalf.length || 1);
+
+    let pct = 0;
+    if (firstHalfAvg > 0) {
+      pct = Math.round(((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100);
+    } else if (secondHalfAvg > 0) {
+      pct = 100;
+    }
+
+    // Performance state evaluation:
+    // GREEN = strong / healthy / clearly positive revenue performance (pct >= +3% or strong positive volume)
+    // BLUE  = normal / stable / medium performance (-3% to +3% or steady positive baseline)
+    // RED   = low / significantly declining performance (pct <= -3% or zero/downward volume)
+    if (pct >= 3 || (secondHalfAvg > firstHalfAvg && secondHalfAvg > 0)) {
+      return { trend: "positive" as const, trendPercent: pct };
+    } else if (pct <= -3 || (secondHalfAvg === 0 && firstHalfAvg > 0)) {
+      return { trend: "negative" as const, trendPercent: pct };
+    } else {
+      return { trend: "neutral" as const, trendPercent: pct };
+    }
+  }, [chartData, analyticsMetric]);
+
+  // Dynamic Theme palette based on performance trend:
+  // - GREEN = strong / healthy / positive
+  // - BLUE = normal / stable / medium
+  // - RED = low / significantly declining
+  const chartTheme = useMemo(() => {
+    switch (trend) {
+      case "positive":
+        return {
+          stroke: "#10b981", // Emerald Green
+          gradientStop: "#10b981",
+          badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200/80 shadow-2xs",
+          badgeText: trendPercent > 0 ? `+${trendPercent}% Growth` : "Healthy Growth",
+          tooltipBorder: "#a7f3d0",
+          activeTab: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs font-black",
+          Icon: TrendingUp,
+        };
+      case "negative":
+        return {
+          stroke: "#dc2626", // JSS Red
+          gradientStop: "#dc2626",
+          badgeBg: "bg-rose-50 text-rose-700 border-rose-200/80 shadow-2xs",
+          badgeText: trendPercent < 0 ? `${trendPercent}% Declining` : "Declining",
+          tooltipBorder: "#fecaca",
+          activeTab: "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black",
+          Icon: TrendingDown,
+        };
+      case "neutral":
+      default:
+        return {
+          stroke: "#2563eb", // Royal Blue
+          gradientStop: "#2563eb",
+          badgeBg: "bg-blue-50 text-blue-700 border-blue-200/80 shadow-2xs",
+          badgeText: "Stable Performance",
+          tooltipBorder: "#bfdbfe",
+          activeTab: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs font-black",
+          Icon: Activity,
+        };
+    }
+  }, [trend, trendPercent]);
 
   const categoryData =
     products.length > 0
@@ -734,8 +797,12 @@ export function AdminDashboardView() {
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-black text-slate-900">Revenue Analytics</h2>
                 <span
-                  className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${chartTheme.badgeBg}`}
+                  className={cn(
+                    "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1",
+                    chartTheme.badgeBg,
+                  )}
                 >
+                  <chartTheme.Icon className="h-3 w-3" />
                   {chartTheme.badgeText}
                 </span>
               </div>
@@ -747,9 +814,10 @@ export function AdminDashboardView() {
                 variant={analyticsMetric === "revenue" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("revenue")}
                 className={cn(
-                  "h-7 text-[11px] font-bold rounded-lg px-3",
-                  analyticsMetric === "revenue" &&
-                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                  "h-7 text-[11px] font-bold rounded-lg px-3 transition-all",
+                  analyticsMetric === "revenue"
+                    ? chartTheme.activeTab
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60",
                 )}
               >
                 Revenue
@@ -759,9 +827,10 @@ export function AdminDashboardView() {
                 variant={analyticsMetric === "orders" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("orders")}
                 className={cn(
-                  "h-7 text-[11px] font-bold rounded-lg px-3",
-                  analyticsMetric === "orders" &&
-                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                  "h-7 text-[11px] font-bold rounded-lg px-3 transition-all",
+                  analyticsMetric === "orders"
+                    ? chartTheme.activeTab
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60",
                 )}
               >
                 Orders
@@ -771,9 +840,10 @@ export function AdminDashboardView() {
                 variant={analyticsMetric === "aov" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("aov")}
                 className={cn(
-                  "h-7 text-[11px] font-bold rounded-lg px-3",
-                  analyticsMetric === "aov" &&
-                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                  "h-7 text-[11px] font-bold rounded-lg px-3 transition-all",
+                  analyticsMetric === "aov"
+                    ? chartTheme.activeTab
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60",
                 )}
               >
                 AOV
@@ -794,9 +864,9 @@ export function AdminDashboardView() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorMetricRed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#dc2626" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#dc2626" stopOpacity={0.0} />
+                    <linearGradient id="colorMetricDynamic" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={chartTheme.gradientStop} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={chartTheme.gradientStop} stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -815,7 +885,7 @@ export function AdminDashboardView() {
                     contentStyle={{
                       backgroundColor: "#ffffff",
                       borderRadius: "16px",
-                      border: "1px solid #fee2e2",
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
                       fontSize: "12px",
                       boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
                     }}
@@ -827,10 +897,10 @@ export function AdminDashboardView() {
                   <Area
                     type="monotone"
                     dataKey={analyticsMetric}
-                    stroke="#dc2626"
+                    stroke={chartTheme.stroke}
                     strokeWidth={3}
                     fillOpacity={1}
-                    fill="url(#colorMetricRed)"
+                    fill="url(#colorMetricDynamic)"
                   />
                 </AreaChart>
               </ResponsiveContainer>

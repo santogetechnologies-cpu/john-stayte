@@ -169,15 +169,20 @@ export function ManagerSettingsView() {
     <div className="max-w-5xl space-y-6">
       {/* 1. PAGE HEADER */}
       <div>
-        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-          <Link to="/manager" className="hover:text-primary transition-colors">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+          <Link to="/manager" className="hover:text-red-600 transition-colors">
             Manager
           </Link>
           <span>/</span>
-          <span className="text-foreground font-bold">Settings</span>
+          <span className="text-slate-900 font-bold">Settings</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Settings</h1>
-        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+          <div className="p-2 rounded-2xl bg-red-500/10 text-red-600 border border-red-500/20">
+            <Building2 className="h-6 w-6" />
+          </div>
+          Settings
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
           Manage your manager account, preferences and operational settings.
         </p>
       </div>
@@ -185,7 +190,7 @@ export function ManagerSettingsView() {
       {/* 2. TWO-COLUMN RESPONSIVE LAYOUT */}
       <div className="grid gap-6 lg:grid-cols-[240px_1fr] items-start">
         {/* LEFT COLUMN: SETTINGS SIDEBAR TABS */}
-        <div className="surface-card p-2 rounded-3xl border bg-white space-y-1 shadow-2xs">
+        <div className="surface-card p-2 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-1 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
           {[
             {
               id: "account",
@@ -219,15 +224,15 @@ export function ManagerSettingsView() {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`w-full p-3 rounded-2xl text-left transition-all flex items-center gap-3 relative ${
                   isActive
-                    ? "bg-slate-900 text-white shadow-xs font-bold"
-                    : "text-slate-700 hover:bg-slate-50 font-medium"
+                    ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/25 font-black"
+                    : "text-slate-700 hover:bg-slate-100/60 font-semibold"
                 }`}
               >
                 <div
                   className={`p-2 rounded-xl border shrink-0 ${
                     isActive
-                      ? "bg-white/10 border-white/20 text-white"
-                      : "bg-slate-50 border-slate-100 text-slate-600"
+                      ? "bg-white/20 border-white/30 text-white"
+                      : "bg-slate-50 border-slate-200/60 text-slate-600"
                   }`}
                 >
                   <tab.icon className="h-4 w-4" />
@@ -236,7 +241,7 @@ export function ManagerSettingsView() {
                   <p className="text-xs font-bold truncate">{tab.label}</p>
                   <p
                     className={`text-[10px] truncate ${
-                      isActive ? "text-slate-300" : "text-muted-foreground"
+                      isActive ? "text-white/80 font-medium" : "text-slate-400"
                     }`}
                   >
                     {tab.desc}
@@ -250,9 +255,9 @@ export function ManagerSettingsView() {
         {/* RIGHT COLUMN: CONTENT PANEL */}
         <div className="space-y-6">
           {loading ? (
-            <div className="surface-card p-12 rounded-3xl border bg-white text-center space-y-3">
-              <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin" />
-              <p className="text-xs font-bold text-muted-foreground">Loading profile settings...</p>
+            <div className="surface-card p-12 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl text-center space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+              <Loader2 className="mx-auto h-6 w-6 text-red-600 animate-spin" />
+              <p className="text-xs font-bold text-slate-500">Loading profile settings...</p>
             </div>
           ) : (
             <>
@@ -260,31 +265,31 @@ export function ManagerSettingsView() {
               {activeTab === "account" && (
                 <div className="space-y-6">
                   {/* Profile Card Overview */}
-                  <div className="surface-card p-6 rounded-3xl border bg-white space-y-6 shadow-2xs">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-6">
+                  <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100/80 pb-6">
                       <div className="flex items-center gap-4">
-                        <Avatar className="h-16 w-16 border-2 border-primary shadow-xs">
-                          <AvatarFallback className="bg-blue-600 text-white font-black text-xl">
+                        <Avatar className="h-16 w-16 border-2 border-red-500/40 shadow-md">
+                          <AvatarFallback className="bg-gradient-to-tr from-red-600 to-rose-500 text-white font-black text-xl">
                             {(fullName || "M").charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h2 className="text-base font-black text-foreground">
+                          <h2 className="text-base font-black text-slate-900">
                             {fullName || "Manager Account"}
                           </h2>
-                          <p className="text-xs text-muted-foreground font-semibold">
+                          <p className="text-xs text-slate-500 font-semibold">
                             {email || "manager@jss.com"}
                           </p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <Badge
                               variant="outline"
-                              className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] font-bold"
+                              className="bg-red-50 text-red-700 border-red-200/80 shadow-2xs text-[10px] font-extrabold px-2.5 py-0.5 rounded-full"
                             >
                               Operations Manager
                             </Badge>
                             <Badge
                               variant="outline"
-                              className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold"
+                              className="bg-emerald-50 text-emerald-700 border-emerald-200/80 shadow-2xs text-[10px] font-extrabold px-2.5 py-0.5 rounded-full"
                             >
                               Active
                             </Badge>
@@ -296,63 +301,63 @@ export function ManagerSettingsView() {
                     <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="font-bold text-muted-foreground">Full Name</label>
+                          <label className="font-bold text-slate-700">Full Name</label>
                           <Input
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
                             placeholder="Dave Miller"
-                            className="mt-1 rounded-xl text-xs font-semibold"
+                            className="mt-1 rounded-xl text-xs font-semibold bg-slate-50/80 border-slate-200/80 focus-visible:ring-red-500/20 focus-visible:border-red-500"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="font-bold text-muted-foreground">
+                          <label className="font-bold text-slate-700">
                             Email Address (Supabase Auth)
                           </label>
                           <Input
                             value={email}
                             disabled
-                            className="mt-1 rounded-xl text-xs font-semibold bg-slate-50 cursor-not-allowed text-muted-foreground"
+                            className="mt-1 rounded-xl text-xs font-semibold bg-slate-100/60 border-slate-200/60 cursor-not-allowed text-slate-400"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="font-bold text-muted-foreground">Phone Number</label>
+                          <label className="font-bold text-slate-700">Phone Number</label>
                           <Input
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                             placeholder="07700 900123"
-                            className="mt-1 rounded-xl text-xs font-semibold"
+                            className="mt-1 rounded-xl text-xs font-semibold bg-slate-50/80 border-slate-200/80 focus-visible:ring-red-500/20 focus-visible:border-red-500"
                           />
                         </div>
 
                         <div>
-                          <label className="font-bold text-muted-foreground">Job Title</label>
+                          <label className="font-bold text-slate-700">Job Title</label>
                           <Input
                             value={jobTitle}
                             onChange={(e) => setJobTitle(e.target.value)}
                             placeholder="Operations Manager"
-                            className="mt-1 rounded-xl text-xs font-semibold"
+                            className="mt-1 rounded-xl text-xs font-semibold bg-slate-50/80 border-slate-200/80 focus-visible:ring-red-500/20 focus-visible:border-red-500"
                           />
                         </div>
                       </div>
 
-                      <div className="pt-4 border-t flex justify-end gap-2">
+                      <div className="pt-4 border-t border-slate-100/80 flex justify-end gap-2">
                         <Button
                           type="button"
                           variant="ghost"
                           onClick={() => window.location.reload()}
-                          className="rounded-full text-xs font-bold"
+                          className="rounded-full text-xs font-bold text-slate-500 hover:text-slate-900"
                         >
                           Cancel
                         </Button>
                         <Button
                           type="submit"
                           disabled={saving}
-                          className="rounded-full font-bold text-xs gap-1.5 shadow-md"
+                          className="rounded-full font-black text-xs gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/25"
                         >
                           <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save Changes"}
                         </Button>
@@ -366,21 +371,21 @@ export function ManagerSettingsView() {
               {activeTab === "preferences" && (
                 <div className="space-y-6">
                   {/* Notification Preferences */}
-                  <div className="surface-card p-6 rounded-3xl border bg-white space-y-6 shadow-2xs">
+                  <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
                     <div>
-                      <h2 className="text-base font-black text-foreground">
+                      <h2 className="text-base font-black text-slate-900">
                         Notification Controls
                       </h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
                         Choose which operational events trigger alerts in your dashboard.
                       </p>
                     </div>
 
-                    <div className="space-y-4 text-xs divide-y divide-slate-100">
+                    <div className="space-y-4 text-xs divide-y divide-slate-100/80">
                       <div className="pt-3 flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-foreground">New Order Alerts</p>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="font-bold text-slate-900">New Order Alerts</p>
+                          <p className="text-[11px] text-slate-500 font-medium">
                             Notify when a new customer order is placed.
                           </p>
                         </div>
@@ -389,8 +394,8 @@ export function ManagerSettingsView() {
 
                       <div className="pt-3 flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-foreground">Order Approval Requests</p>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="font-bold text-slate-900">Order Approval Requests</p>
+                          <p className="text-[11px] text-slate-500 font-medium">
                             Notify when high-value orders require manager review.
                           </p>
                         </div>
@@ -399,8 +404,8 @@ export function ManagerSettingsView() {
 
                       <div className="pt-3 flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-foreground">Delivery Delays</p>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="font-bold text-slate-900">Delivery Delays</p>
+                          <p className="text-[11px] text-slate-500 font-medium">
                             Notify when a driver logs a route delay.
                           </p>
                         </div>
@@ -409,8 +414,8 @@ export function ManagerSettingsView() {
 
                       <div className="pt-3 flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-foreground">Low Stock Threshold Alerts</p>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="font-bold text-slate-900">Low Stock Threshold Alerts</p>
+                          <p className="text-[11px] text-slate-500 font-medium">
                             Notify when inventory drops below reorder points.
                           </p>
                         </div>
@@ -419,8 +424,8 @@ export function ManagerSettingsView() {
 
                       <div className="pt-3 flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-foreground">Customer Support Messages</p>
-                          <p className="text-[11px] text-muted-foreground">
+                          <p className="font-bold text-slate-900">Customer Support Messages</p>
+                          <p className="text-[11px] text-slate-500 font-medium">
                             Notify when a new customer support ticket is opened.
                           </p>
                         </div>
@@ -430,10 +435,10 @@ export function ManagerSettingsView() {
                   </div>
 
                   {/* Appearance Theme Options */}
-                  <div className="surface-card p-6 rounded-3xl border bg-white space-y-4 shadow-2xs">
+                  <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
                     <div>
-                      <h2 className="text-base font-black text-foreground">Appearance</h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <h2 className="text-base font-black text-slate-900">Appearance</h2>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
                         Customize the visual theme for your manager workspace.
                       </p>
                     </div>
@@ -451,8 +456,8 @@ export function ManagerSettingsView() {
                             onClick={() => setTheme(item.id as any)}
                             className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 ${
                               isSelected
-                                ? "border-primary bg-primary/5 font-extrabold text-primary"
-                                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium"
+                                ? "border-red-500/50 bg-red-50/50 font-black text-red-600 shadow-2xs"
+                                : "border-slate-200/80 bg-white text-slate-700 hover:bg-slate-50 font-bold"
                             }`}
                           >
                             <item.icon className="h-5 w-5" />
@@ -467,26 +472,26 @@ export function ManagerSettingsView() {
 
               {/* TAB 3: OPERATIONS SETTINGS */}
               {activeTab === "operations" && (
-                <div className="surface-card p-6 rounded-3xl border bg-white space-y-6 shadow-2xs">
+                <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
                   <div>
-                    <h2 className="text-base font-black text-foreground">
+                    <h2 className="text-base font-black text-slate-900">
                       Operational Depot Preferences
                     </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
                       Configure default depot dispatch parameters and order management rules.
                     </p>
                   </div>
 
                   <div className="space-y-4 text-xs">
                     <div>
-                      <label className="font-bold text-muted-foreground">
+                      <label className="font-bold text-slate-700">
                         Default Depot Station
                       </label>
                       <Select value={defaultDepot} onValueChange={setDefaultDepot}>
-                        <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10">
+                        <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200/80 bg-white/80">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
+                        <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border-white/80 shadow-xl">
                           <SelectItem value="Fromebridge Main Station">
                             Fromebridge Main Station (A38 Whitminster)
                           </SelectItem>
@@ -499,14 +504,14 @@ export function ManagerSettingsView() {
                     </div>
 
                     <div>
-                      <label className="font-bold text-muted-foreground">
+                      <label className="font-bold text-slate-700">
                         Primary Delivery Region
                       </label>
                       <Select value={deliveryArea} onValueChange={setDeliveryArea}>
-                        <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10">
+                        <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200/80 bg-white/80">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
+                        <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border-white/80 shadow-xl">
                           <SelectItem value="Gloucester, Stroud & Frampton">
                             Gloucester, Stroud & Frampton
                           </SelectItem>
@@ -518,14 +523,14 @@ export function ManagerSettingsView() {
                     </div>
 
                     <div>
-                      <label className="font-bold text-muted-foreground">
+                      <label className="font-bold text-slate-700">
                         Default Dispatch Slot
                       </label>
                       <Select value={timeSlot} onValueChange={setTimeSlot}>
-                        <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10">
+                        <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200/80 bg-white/80">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
+                        <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border-white/80 shadow-xl">
                           <SelectItem value="Morning (07:30 - 12:00)">
                             Morning (07:30 - 12:00)
                           </SelectItem>
@@ -539,7 +544,7 @@ export function ManagerSettingsView() {
                     <div className="pt-2">
                       <Button
                         onClick={() => toast.success("Operational preferences updated")}
-                        className="rounded-full font-bold text-xs gap-1.5 shadow-md"
+                        className="rounded-full font-black text-xs gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/25"
                       >
                         <Save className="h-4 w-4" /> Save Operational Defaults
                       </Button>
@@ -552,20 +557,20 @@ export function ManagerSettingsView() {
               {activeTab === "security" && (
                 <div className="space-y-6">
                   {/* Security Overview */}
-                  <div className="surface-card p-6 rounded-3xl border bg-white space-y-6 shadow-2xs">
+                  <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300">
                     <div>
-                      <h2 className="text-base font-black text-foreground">
+                      <h2 className="text-base font-black text-slate-900">
                         Password & Authentication
                       </h2>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
                         Manage your account credentials through Supabase Auth.
                       </p>
                     </div>
 
-                    <div className="p-4 rounded-2xl border bg-slate-50/60 flex items-center justify-between gap-4 text-xs">
+                    <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 flex items-center justify-between gap-4 text-xs">
                       <div>
-                        <p className="font-bold text-foreground">Account Password</p>
-                        <p className="text-muted-foreground text-[11px]">
+                        <p className="font-bold text-slate-900">Account Password</p>
+                        <p className="text-slate-500 text-[11px] font-medium">
                           Secure password authentication enabled.
                         </p>
                       </div>
@@ -573,31 +578,31 @@ export function ManagerSettingsView() {
                         onClick={() => setPasswordModal(true)}
                         variant="outline"
                         size="sm"
-                        className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white"
+                        className="rounded-full text-xs font-black gap-1.5 border-white/80 bg-white/80 backdrop-blur-md text-slate-700 hover:bg-white hover:text-red-600 shadow-2xs transition-all"
                       >
                         <Key className="h-3.5 w-3.5" /> Change Password
                       </Button>
                     </div>
 
-                    <div className="p-4 rounded-2xl border bg-slate-50/60 space-y-2 text-xs">
+                    <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-2 text-xs">
                       <div className="flex items-center gap-2">
                         <Smartphone className="h-4 w-4 text-blue-600" />
-                        <p className="font-bold text-foreground">Active Session</p>
+                        <p className="font-bold text-slate-900">Active Session</p>
                       </div>
-                      <p className="text-muted-foreground text-[11px]">
+                      <p className="text-slate-500 text-[11px] font-medium">
                         Current session authenticated via Supabase Auth JWT token.
                       </p>
                     </div>
                   </div>
 
                   {/* Danger Zone */}
-                  <div className="surface-card p-6 rounded-3xl border border-red-200/80 bg-red-50/20 space-y-4 shadow-2xs">
-                    <div className="flex items-center gap-2 text-red-700">
+                  <div className="surface-card p-6 rounded-[26px] border border-rose-200/80 bg-rose-50/30 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <ShieldAlert className="h-5 w-5" />
                       <h2 className="text-base font-black">Account Security Actions</h2>
                     </div>
 
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500 font-medium">
                       Sign out of all active browser sessions across devices.
                     </p>
 
@@ -605,7 +610,7 @@ export function ManagerSettingsView() {
                       onClick={handleSignOutAll}
                       variant="outline"
                       size="sm"
-                      className="rounded-full text-xs font-bold text-red-700 border-red-200 bg-white hover:bg-red-50"
+                      className="rounded-full text-xs font-black text-rose-700 border-rose-200/80 bg-white hover:bg-rose-50 shadow-2xs"
                     >
                       <LogOut className="h-3.5 w-3.5 mr-1" /> Sign Out of All Sessions
                     </Button>
@@ -619,20 +624,20 @@ export function ManagerSettingsView() {
 
       {/* CHANGE PASSWORD DIALOG */}
       <Dialog open={passwordModal} onOpenChange={setPasswordModal}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-6">
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 shadow-2xl text-slate-900">
           <DialogHeader>
-            <DialogTitle className="font-black text-lg">Change Password</DialogTitle>
+            <DialogTitle className="font-black text-lg text-slate-900">Change Password</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleChangePassword} className="space-y-4 pt-2 text-xs">
             <div>
-              <label className="font-bold text-muted-foreground">New Password</label>
+              <label className="font-bold text-slate-700">New Password</label>
               <Input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
-                className="mt-1 rounded-xl text-xs font-semibold"
+                className="mt-1 rounded-xl text-xs font-semibold bg-slate-50/80 border-slate-200/80 focus-visible:ring-red-500/20 focus-visible:border-red-500"
                 required
               />
             </div>
@@ -642,14 +647,14 @@ export function ManagerSettingsView() {
                 type="button"
                 variant="ghost"
                 onClick={() => setPasswordModal(false)}
-                className="rounded-full text-xs font-bold"
+                className="rounded-full text-xs font-bold text-slate-500 hover:text-slate-900"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={changingPassword}
-                className="rounded-full font-bold text-xs gap-1.5 shadow-md"
+                className="rounded-full font-black text-xs gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/25"
               >
                 <Key className="h-4 w-4" />
                 {changingPassword ? "Updating..." : "Update Password"}

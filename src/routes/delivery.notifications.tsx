@@ -206,7 +206,7 @@ function DeliveryNotificationsView() {
               Home
             </Link>
             <span>/</span>
-            <span className="text-slate-700 font-bold">Notifications</span>
+            <span className="text-slate-800 font-bold">Notifications</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 leading-tight flex items-center gap-2.5">
             <Bell className="h-7 w-7 text-red-600" /> Dispatch Notifications
@@ -222,9 +222,9 @@ function DeliveryNotificationsView() {
             variant="outline"
             size="sm"
             onClick={loadNotifications}
-            className="rounded-full text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-3.5 cursor-pointer"
+            className="rounded-full text-xs font-bold border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs h-9 px-3.5 cursor-pointer transition-all"
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1" /> Refresh
+            <RotateCcw className="h-3.5 w-3.5 mr-1 text-slate-500" /> Refresh
           </Button>
 
           {unreadCount > 0 && (
@@ -232,7 +232,7 @@ function DeliveryNotificationsView() {
               variant="default"
               size="sm"
               onClick={markAllRead}
-              className="rounded-full text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white h-9 px-4 cursor-pointer shadow-xs"
+              className="rounded-full text-xs font-black bg-slate-900 hover:bg-slate-800 text-white h-9 px-4 cursor-pointer shadow-2xs"
             >
               <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Mark All Read ({unreadCount})
             </Button>
@@ -241,7 +241,7 @@ function DeliveryNotificationsView() {
       </div>
 
       {/* 2. Filter Pills */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-3 shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="surface-card bg-white/70 backdrop-blur-xl rounded-[26px] border border-white/80 p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
         {[
           { id: "all", label: `All Alerts (${notifications.length})` },
           { id: "unread", label: `Unread (${unreadCount})`, highlight: unreadCount > 0 },
@@ -263,8 +263,8 @@ function DeliveryNotificationsView() {
             className={cn(
               "rounded-full text-xs font-bold h-8 px-4 shrink-0 transition-all cursor-pointer",
               filterTab === tab.id
-                ? "bg-red-600 text-white shadow-xs"
-                : "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50",
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black border-transparent"
+                : "border-transparent bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/80",
             )}
           >
             {tab.label}
@@ -273,7 +273,7 @@ function DeliveryNotificationsView() {
       </div>
 
       {/* 3. Notifications List */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden divide-y divide-slate-100">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100">
         {loading ? (
           <div className="p-16 text-center">
             <Loader2 className="h-7 w-7 text-red-600 animate-spin mx-auto mb-2" />
@@ -316,8 +316,8 @@ function DeliveryNotificationsView() {
                 className={cn(
                   "p-4 sm:p-5 transition-all duration-150 flex flex-col md:flex-row md:items-start justify-between gap-4",
                   isUnread
-                    ? "bg-red-50/35 border-l-4 border-l-red-600"
-                    : "hover:bg-slate-50/70 border-l-4 border-l-transparent",
+                    ? "bg-red-50/40 border-l-4 border-l-red-600"
+                    : "hover:bg-slate-50/50 border-l-4 border-l-transparent",
                 )}
               >
                 <div className="flex items-start gap-3.5 flex-1 min-w-0">
@@ -348,7 +348,7 @@ function DeliveryNotificationsView() {
                   {/* Notification Content Body */}
                   <div className="space-y-2 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-display font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
+                      <h3 className="font-display font-black text-sm sm:text-base text-slate-900 leading-snug">
                         {n.title}
                       </h3>
 
@@ -359,7 +359,7 @@ function DeliveryNotificationsView() {
                       )}
 
                       {orderRef && (
-                        <Badge variant="outline" className="font-mono text-[10px] font-bold border-slate-300 text-slate-700">
+                        <Badge variant="outline" className="font-mono text-[10px] font-bold border-slate-200 text-slate-700 rounded-full">
                           #{orderRef}
                         </Badge>
                       )}
@@ -377,7 +377,7 @@ function DeliveryNotificationsView() {
 
                     {/* Rich assignment breakdown card if metadata is present */}
                     {isAssignment && (customerName || deliveryArea || orderRef) ? (
-                      <div className="p-3.5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5">
+                      <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-2.5">
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
                           <p className="font-extrabold text-xs text-slate-900">
                             {customerName ? `${customerName} · ${deliveryArea}` : deliveryArea || "Customer Delivery"}
@@ -431,7 +431,7 @@ function DeliveryNotificationsView() {
                     <Button
                       size="sm"
                       onClick={() => handleOpenDelivery(n)}
-                      className="rounded-full font-bold text-xs bg-red-600 hover:bg-red-700 text-white shadow-xs px-4 h-8 gap-1.5 cursor-pointer"
+                      className="rounded-full font-black text-xs bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/20 px-4 h-8 gap-1.5 cursor-pointer"
                     >
                       <span>View Delivery</span>
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -443,7 +443,7 @@ function DeliveryNotificationsView() {
                       variant="ghost"
                       size="sm"
                       onClick={() => markSingleAsRead(n.id)}
-                      className="rounded-xl text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 px-2.5 cursor-pointer"
+                      className="rounded-full text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 px-2.5 cursor-pointer"
                       title="Mark as Read"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-600" />
@@ -455,7 +455,7 @@ function DeliveryNotificationsView() {
                     variant="ghost"
                     size="icon"
                     onClick={() => deleteNotification(n.id)}
-                    className="rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0 cursor-pointer"
+                    className="rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0 cursor-pointer"
                     title="Dismiss"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
