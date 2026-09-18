@@ -257,40 +257,39 @@ export function ManagerDeliveryAssignmentView() {
   return (
     <div className="space-y-6">
       {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground">Orders & Dispatch</span>
+            <span className="text-slate-500">Orders & Dispatch</span>
             <span>/</span>
-            <span className="text-foreground font-bold">Delivery Assignment</span>
+            <span className="text-slate-700 font-bold">Delivery Assignment</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2.5">
-            <UserCheck className="h-7 w-7 text-primary" /> Delivery Agent Dispatch & Assignment
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
+            <UserCheck className="h-7 w-7 text-red-600" /> Delivery Agent Dispatch & Assignment
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Assign and reassign customer cylinder orders to active fleet delivery drivers.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             onClick={loadData}
-            className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white"
+            className="rounded-full text-xs font-bold gap-1.5 border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs h-9.5 cursor-pointer"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", loading ? "animate-spin text-primary" : "")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", loading ? "animate-spin text-red-600" : "text-slate-400")} />
             <span>Sync Live Dispatches</span>
           </Button>
           <Button
             asChild
             size="sm"
-            variant="default"
-            className="rounded-full text-xs font-bold gap-1.5 shadow-md bg-slate-900 hover:bg-slate-800 text-white"
+            className="rounded-full text-xs font-black gap-1.5 shadow-md shadow-red-600/25 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer h-9.5"
           >
             <Link to="/manager/deliveries">
               <Truck className="h-3.5 w-3.5" /> All Deliveries Grid
@@ -300,9 +299,9 @@ export function ManagerDeliveryAssignmentView() {
       </div>
 
       {/* 2. Operational Filter Tabs & Search Bar */}
-      <div className="surface-card p-4 rounded-3xl border bg-white shadow-xs space-y-3">
+      <div className="surface-card p-4 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-3">
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
             {[
               { id: "all", label: "All Orders", count: counts.all },
               {
@@ -319,10 +318,10 @@ export function ManagerDeliveryAssignmentView() {
                 type="button"
                 onClick={() => setFilterType(tab.id as any)}
                 className={cn(
-                  "px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
+                  "px-4 py-1.5 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs",
                   filterType === tab.id
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                    ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                    : "border border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white",
                 )}
               >
                 <span>{tab.label}</span>
@@ -343,44 +342,44 @@ export function ManagerDeliveryAssignmentView() {
           </div>
 
           <div className="relative w-full sm:w-72">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-3.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search order #, customer, postcode, driver..."
-              className="pl-8.5 rounded-full bg-slate-50 border-slate-200 text-xs font-medium"
+              className="pl-9 h-9 rounded-full bg-white/90 border-slate-200/80 text-xs font-medium text-slate-900 shadow-2xs"
             />
           </div>
         </div>
       </div>
 
       {/* 3. Dispatches Table */}
-      <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {loading ? (
-          <div className="p-16 text-center text-xs text-muted-foreground font-bold">
-            <Loader2 className="mx-auto h-6 w-6 text-primary animate-spin mb-2" />
+          <div className="p-16 text-center text-xs text-slate-400 font-bold">
+            <Loader2 className="mx-auto h-6 w-6 text-red-600 animate-spin mb-2" />
             Loading delivery assignment matrix...
           </div>
         ) : filteredDeliveries.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <Truck className="mx-auto h-10 w-10 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">No dispatches matching filter</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            <Truck className="mx-auto h-10 w-10 text-slate-300" />
+            <h3 className="font-black text-sm text-slate-900">No dispatches matching filter</h3>
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
               All active customer delivery assignments will be shown here in real-time.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/80">
+              <TableHeader className="bg-slate-50/50 border-slate-100">
                 <TableRow>
-                  <TableHead className="font-bold text-xs">Order & Customer</TableHead>
-                  <TableHead className="font-bold text-xs">Delivery Address</TableHead>
-                  <TableHead className="font-bold text-xs">Cylinder Requirement</TableHead>
-                  <TableHead className="font-bold text-xs">Slot & Schedule</TableHead>
-                  <TableHead className="font-bold text-xs">Assigned Driver</TableHead>
-                  <TableHead className="font-bold text-xs">Status</TableHead>
-                  <TableHead className="font-bold text-xs text-right">Dispatch Action</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Order & Customer</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Delivery Address</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Cylinder Requirement</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Slot & Schedule</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Assigned Driver</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Status</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400 text-right">Dispatch Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -409,16 +408,16 @@ export function ManagerDeliveryAssignmentView() {
                   }
 
                   return (
-                    <TableRow key={d.id} className="hover:bg-slate-50/60">
+                    <TableRow key={d.id} className="hover:bg-slate-50/60 transition-colors">
                       {/* Order & Customer */}
                       <TableCell className="text-xs">
-                        <p className="font-mono font-black text-primary">
+                        <p className="font-mono font-black text-slate-900">
                           #{o.order_number || d.order_ref || d.id.slice(0, 8)}
                         </p>
-                        <p className="font-extrabold text-slate-900 mt-0.5">
+                        <p className="font-bold text-slate-900 mt-0.5">
                           {o.customer_name || d.customer_name || "Customer"}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-semibold">
+                        <p className="text-[11px] text-slate-500 font-medium">
                           Total: {gbp(Number(o.total || 0))} &bull;{" "}
                           {new Date(d.created_at || o.created_at).toLocaleDateString("en-GB")}
                         </p>
@@ -436,17 +435,17 @@ export function ManagerDeliveryAssignmentView() {
                       <TableCell className="text-xs">
                         {req.required ? (
                           <div className="space-y-0.5">
-                            <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[10px]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 font-black text-[10px] shadow-2xs">
                               Empty Required: Yes ({req.expectedQuantity})
-                            </Badge>
-                            <p className="text-[10px] text-slate-500 font-medium">Refill Exchange</p>
+                            </span>
+                            <p className="text-[10px] text-slate-400 font-medium">Refill Exchange</p>
                           </div>
                         ) : (
                           <div className="space-y-0.5">
-                            <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 font-extrabold text-[10px]">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-300 font-black text-[10px] shadow-2xs">
                               Empty Required: No
-                            </Badge>
-                            <p className="text-[10px] text-slate-500 font-medium">
+                            </span>
+                            <p className="text-[10px] text-slate-400 font-medium">
                               {req.orderType === "NEW_CYLINDER" ? "New Cylinder Purchase" : "Standard Goods"}
                             </p>
                           </div>
@@ -455,10 +454,10 @@ export function ManagerDeliveryAssignmentView() {
 
                       {/* Schedule & Slot */}
                       <TableCell className="text-xs">
-                        <p className="font-semibold text-slate-800">
+                        <p className="font-bold text-slate-800">
                           {d.time_slot || "Morning Window (08:00 - 12:00)"}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-[11px] text-slate-500 font-medium">
                           {d.route_area || "Gloucestershire Central"}
                         </p>
                       </TableCell>
@@ -466,16 +465,16 @@ export function ManagerDeliveryAssignmentView() {
                       {/* Assigned Driver */}
                       <TableCell className="text-xs">
                         {isUnassigned ? (
-                          <Badge className="bg-rose-100 text-rose-800 border-rose-200 font-extrabold text-[10px] flex items-center gap-1 w-fit">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200/80 font-black text-[10px] shadow-2xs">
                             <UserX className="h-3 w-3" /> Unassigned
-                          </Badge>
+                          </span>
                         ) : (
                           <div className="space-y-0.5">
-                            <p className="font-extrabold text-slate-900 flex items-center gap-1">
+                            <p className="font-black text-slate-900 flex items-center gap-1">
                               <UserCheck className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                               {driverName}
                             </p>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[11px] text-slate-500 font-medium">
                               {d.vehicle_identifier || "Delivery Van"}{" "}
                               {d.vehicle_plate ? `(${d.vehicle_plate})` : ""}
                             </p>
@@ -485,23 +484,22 @@ export function ManagerDeliveryAssignmentView() {
 
                       {/* Status */}
                       <TableCell>
-                        <Badge
-                          variant="outline"
+                        <span
                           className={cn(
-                            "font-extrabold text-[10px] uppercase rounded-full px-2.5 py-0.5",
+                            "font-black text-[10px] uppercase rounded-full px-2.5 py-0.5 inline-flex items-center border shadow-2xs",
                             d.status === "Delivered"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
                               : d.status === "Exception"
-                                ? "bg-rose-50 text-rose-700 border-rose-200"
+                                ? "bg-rose-50 text-rose-700 border-rose-200/80"
                                 : d.status === "Out for Delivery"
-                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200/80"
                                   : isUnassigned
-                                    ? "bg-amber-50 text-amber-700 border-amber-200"
-                                    : "bg-blue-50 text-blue-700 border-blue-200",
+                                    ? "bg-amber-50 text-amber-700 border-amber-200/80"
+                                    : "bg-blue-50 text-blue-700 border-blue-200/80",
                           )}
                         >
                           {d.status || "Pending"}
-                        </Badge>
+                        </span>
                       </TableCell>
 
                       {/* Dispatch Actions */}
@@ -510,10 +508,10 @@ export function ManagerDeliveryAssignmentView() {
                           size="sm"
                           onClick={() => handleOpenAssignModal(d)}
                           className={cn(
-                            "rounded-full text-xs font-extrabold h-8 px-3.5 shadow-xs cursor-pointer gap-1.5",
+                            "rounded-full text-xs font-black h-8 px-3.5 shadow-2xs cursor-pointer gap-1.5",
                             isUnassigned
-                              ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/10"
-                              : "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200",
+                              ? "bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/20"
+                              : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/80",
                           )}
                         >
                           <UserCheck className="h-3.5 w-3.5" />
@@ -531,10 +529,10 @@ export function ManagerDeliveryAssignmentView() {
 
       {/* 4. ASSIGN / REASSIGN MODAL */}
       <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-        <DialogContent className="sm:max-w-lg rounded-3xl p-6 bg-white border border-slate-200">
+        <DialogContent className="sm:max-w-lg rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 text-slate-900 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-display font-extrabold text-lg text-slate-900 flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-primary" />
+            <DialogTitle className="font-display font-black text-xl text-slate-900 flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-red-600" />
               {selectedDelivery?.driver_name &&
               selectedDelivery?.driver_name !== "Unassigned" &&
               !selectedDelivery?.driver_name.includes("Unassigned")
@@ -550,21 +548,21 @@ export function ManagerDeliveryAssignmentView() {
           {selectedDelivery && (
             <div className="space-y-4 pt-2 text-xs">
               {/* Order Details Summary Box */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-primary">
+                  <span className="font-mono font-black text-slate-900">
                     #{selectedDelivery.orders?.order_number || selectedDelivery.id.slice(0, 8)}
                   </span>
-                  <Badge className="bg-slate-200 text-slate-800 font-bold text-[10px]">
-                    Current Status: {selectedDelivery.status || "Pending"}
-                  </Badge>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-black text-[10px]">
+                    Status: {selectedDelivery.status || "Pending"}
+                  </span>
                 </div>
 
                 <div className="space-y-0.5">
-                  <p className="font-extrabold text-slate-900">
+                  <p className="font-black text-slate-900">
                     {selectedDelivery.orders?.customer_name || selectedDelivery.customer_name}
                   </p>
-                  <p className="text-[11px] text-slate-600 flex items-start gap-1">
+                  <p className="text-[11px] text-slate-500 font-medium flex items-start gap-1">
                     <MapPin className="h-3 w-3 text-slate-400 mt-0.5 shrink-0" />
                     <span>
                       {typeof selectedDelivery.orders?.delivery_address === "string"
@@ -578,14 +576,14 @@ export function ManagerDeliveryAssignmentView() {
                 {(() => {
                   const req = getOrderCylinderExchangeRequirement(selectedDelivery);
                   return (
-                    <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                       <span className="text-slate-500 font-medium">Cylinder Exchange:</span>
                       {req.required ? (
-                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-[10px]">
+                        <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 text-[10px]">
                           Required ({req.expectedQuantity} Bottle{req.expectedQuantity > 1 ? "s" : ""})
                         </span>
                       ) : (
-                        <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 text-[10px]">
+                        <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]">
                           Not Required (New Purchase)
                         </span>
                       )}
@@ -601,7 +599,7 @@ export function ManagerDeliveryAssignmentView() {
                 </label>
 
                 {activeAgents.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs text-center font-medium">
+                  <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs text-center font-medium">
                     No active delivery agents found in system. Please activate an agent account.
                   </div>
                 ) : (
@@ -613,28 +611,28 @@ export function ManagerDeliveryAssignmentView() {
                           key={agent.id}
                           onClick={() => setSelectedAgentId(agent.id)}
                           className={cn(
-                            "p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between",
+                            "p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between shadow-2xs",
                             isSelected
-                              ? "bg-red-50/70 border-primary ring-1 ring-primary"
+                              ? "bg-red-50/70 border-red-500 ring-1 ring-red-500"
                               : "bg-white border-slate-200/90 hover:bg-slate-50",
                           )}
                         >
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2">
-                              <p className="font-extrabold text-xs text-slate-900">{agent.full_name}</p>
-                              <Badge className="text-[9px] font-bold bg-slate-100 text-slate-700">
+                              <p className="font-black text-xs text-slate-900">{agent.full_name}</p>
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700">
                                 {agent.agent_code}
-                              </Badge>
-                              <Badge
+                              </span>
+                              <span
                                 className={cn(
-                                  "text-[9px] font-bold",
+                                  "text-[9px] font-black px-1.5 py-0.2 rounded-full border",
                                   agent.status === "Active"
-                                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                                    : "bg-blue-100 text-blue-800 border-blue-200",
+                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                    : "bg-blue-50 text-blue-800 border-blue-200",
                                 )}
                               >
                                 {agent.status}
-                              </Badge>
+                              </span>
                             </div>
                             <p className="text-[11px] text-slate-500 font-medium">
                               Vehicle: {agent.vehicle_type} ({agent.vehicle_plate}) &bull; Zone:{" "}
@@ -643,10 +641,10 @@ export function ManagerDeliveryAssignmentView() {
                           </div>
 
                           <div className="text-right shrink-0 pl-2">
-                            <p className="text-xs font-black text-slate-800">
+                            <p className="text-xs font-black text-slate-900">
                               {agent.active_deliveries || 0} active
                             </p>
-                            <p className="text-[10px] text-slate-400 font-semibold">
+                            <p className="text-[10px] text-slate-400 font-medium">
                               {agent.completed_deliveries || 0} completed today
                             </p>
                           </div>
@@ -662,14 +660,14 @@ export function ManagerDeliveryAssignmentView() {
                   type="button"
                   variant="outline"
                   onClick={() => setAssignModalOpen(false)}
-                  className="rounded-full text-xs font-bold"
+                  className="rounded-full text-xs font-bold border-slate-200 text-slate-700"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleInitiateAssignment}
                   disabled={assigning || !selectedAgentId || activeAgents.length === 0}
-                  className="rounded-full font-bold text-xs gap-1.5 shadow-md bg-red-600 hover:bg-red-700 text-white cursor-pointer"
+                  className="rounded-full font-black text-xs gap-1.5 shadow-md shadow-red-600/20 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer"
                 >
                   {assigning ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -690,12 +688,12 @@ export function ManagerDeliveryAssignmentView() {
 
       {/* 5. CONFIRM REASSIGNMENT CONFIRMATION DIALOG */}
       <Dialog open={confirmReassignOpen} onOpenChange={setConfirmReassignOpen}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white border border-slate-200">
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 text-slate-900 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-display font-extrabold text-base text-slate-900 flex items-center gap-2">
+            <DialogTitle className="font-display font-black text-lg text-slate-900 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" /> Reassign Delivery Agent?
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-600 font-medium pt-1">
+            <DialogDescription className="text-xs text-slate-500 font-medium pt-1">
               Are you sure you want to reassign order #
               {selectedDelivery?.orders?.order_number || selectedDelivery?.id?.slice(0, 8)} to{" "}
               <strong>
@@ -709,14 +707,14 @@ export function ManagerDeliveryAssignmentView() {
             <Button
               variant="outline"
               onClick={() => setConfirmReassignOpen(false)}
-              className="rounded-full text-xs font-bold"
+              className="rounded-full text-xs font-bold border-slate-200 text-slate-700"
             >
               Cancel
             </Button>
             <Button
               onClick={executeAssignment}
               disabled={assigning}
-              className="rounded-full font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
+              className="rounded-full font-black text-xs bg-amber-600 hover:bg-amber-700 text-white cursor-pointer"
             >
               {assigning ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
               Confirm Reassignment

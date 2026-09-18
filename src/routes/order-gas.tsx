@@ -60,6 +60,7 @@ import { DistributorBrandBanners } from "@/components/site/DistributorBrandBanne
 import { OrderGasHeroNetworkMesh } from "@/components/site/OrderGasHeroNetworkMesh";
 import { OrderGasShopByCategory } from "@/components/site/OrderGasShopByCategory";
 import { OrderGasReveal3D } from "@/components/site/OrderGasReveal3D";
+import { speakLoginError, speakLoginSuccess } from "@/lib/auth-voice";
 
 export const Route = createFileRoute("/order-gas")({
   validateSearch: (search: Record<string, unknown>): { brand?: string; category?: string; usage?: string } => {
@@ -548,11 +549,33 @@ function OrderGasPage() {
   const deliveryFee = selectedProduct?.delivery_charge || 0;
   const totalAmount = gasTotal + depositTotal + deliveryFee;
 
+  // Scroll directly to the active order step section accounting for sticky navbar
+  const scrollToStepSection = (targetStep?: number) => {
+    // Run after React state commits and DOM renders
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const stepTarget =
+          (targetStep !== undefined ? document.getElementById(`order-gas-step-${targetStep}`) : null) ||
+          document.getElementById("order-wizard-step-container");
+
+        if (stepTarget) {
+          stepTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          const container = document.getElementById("order-wizard-step-container");
+          if (container) {
+            container.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      }, 60);
+    });
+  };
+
   // Step 0: Usage selection handler
   const handleSelectUsage = (type: UsageType) => {
     setUsageType(type);
     setSelectedFromCatalogue(false);
     setStep(1); // Proceed to choose product
+    scrollToStepSection(1);
   };
 
   // Step 1: Product selection handler
@@ -562,9 +585,11 @@ function OrderGasPage() {
       // Autogas and non-cylinder products bypass New / Refill exchange
       setOrderType("NEW_CYLINDER");
       setStep(3);
+      scrollToStepSection(3);
       return;
     }
     setStep(2); // Proceed to New vs Refill
+    scrollToStepSection(2);
   };
 
   // Step 2: Order type handler
@@ -588,6 +613,7 @@ function OrderGasPage() {
     }
 
     setStep(3); // Proceed to Delivery/Schedule
+    scrollToStepSection(3);
   };
 
   // Step 3: Schedule validation handler
@@ -603,17 +629,29 @@ function OrderGasPage() {
       return toast.error("Please choose your preferred delivery date.");
     }
     setStep(4); // Proceed to Order Summary & Payment
+    scrollToStepSection(4);
   };
 
   // Inline auth handler
   const handleInlineAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authEmail || !authPassword) return toast.error("Email and password are required.");
+    if (!authEmail || !authPassword) {
+      if (!authEmail || !authEmail.includes("@")) {
+        speakLoginError("wrong email", authEmail);
+      } else {
+        speakLoginError("Sign in failed. Please check your details and try again.", authEmail);
+      }
+      return toast.error("Email and password are required.");
+    }
     setAuthLoading(true);
     try {
       if (authMode === "login") {
         const res = await login(authEmail, authPassword);
-        if (!res.ok) throw new Error(res.error || "Invalid credentials.");
+        if (!res.ok) {
+          speakLoginError(res.error, authEmail);
+          throw new Error(res.error || "Invalid credentials.");
+        }
+        speakLoginSuccess(res.user?.role);
         toast.success("Signed in successfully!");
         setAuthModalOpen(false);
 
@@ -636,6 +674,7 @@ function OrderGasPage() {
         setShowApplicationModal(true);
       }
     } catch (err: any) {
+      speakLoginError(err.message, authEmail);
       toast.error(err.message);
     } finally {
       setAuthLoading(false);
@@ -730,6 +769,7 @@ function OrderGasPage() {
       });
 
       setStep(5); // Step 5: Confirmation
+      scrollToStepSection(5);
       toast.success(`Order #${res.orderNumber} placed successfully!`);
     } catch (err: any) {
       toast.error(err.message || "Failed to place order.");
@@ -857,7 +897,10 @@ function OrderGasPage() {
         {/* ========================================================================= */}
         {/* 3. ORDERING STEPS & PRODUCT CATALOGUE */}
         {/* ========================================================================= */}
-        <div className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 py-6 sm:py-10 space-y-6 sm:space-y-8">
+        <div
+          id="order-wizard-step-container"
+          className="container-page max-w-[88rem] px-2 sm:px-3.5 lg:px-4 py-6 sm:py-10 space-y-6 sm:space-y-8 scroll-mt-24 sm:scroll-mt-28"
+        >
           {/* Stepper Indicator with 3D Scroll Reveal */}
           {step < 5 && (
             <OrderGasReveal3D translateY={18} rotateX={4} scale={0.98} duration={700}>
@@ -892,7 +935,10 @@ function OrderGasPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (idx < step && !isBypassed) setStep(idx);
+                            if (idx < step && !isBypassed) {
+                              setStep(idx);
+                              scrollToStepSection(idx);
+                            }
                           }}
                           disabled={idx > step || isBypassed}
                           className={cn(
@@ -946,7 +992,7 @@ function OrderGasPage() {
           {/* STEP 0: CHOOSE USAGE (LANDING PAGE - FIRST VIEW) */}
           {/* ========================================================================= */}
           {step === 0 && (
-            <div className="space-y-12 text-left">
+            <div id="order-gas-step-0" className="space-y-12 text-left scroll-mt-24 sm:scroll-mt-28">
               {/* FIRST SECTION: CATALOGUE & CATEGORY BROWSING (PRODUCTS LISTING FIRST) */}
               <OrderGasCatalogueSection
                 selectedCategoryOverride={selectedCatalogueCategory}
@@ -989,6 +1035,7 @@ function OrderGasPage() {
                     ? isRefillableLpgCylinderProduct(productObj) && uType !== "AUTOGAS"
                     : uType !== "AUTOGAS";
 
+                  const nextStep = !isCyl ? 3 : 2;
                   if (!isCyl) {
                     setOrderType("NEW_CYLINDER");
                     setStep(3);
@@ -996,7 +1043,7 @@ function OrderGasPage() {
                     setStep(2); // Go directly to Step 2 (3. Refill Option)
                   }
 
-                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollToStepSection(nextStep);
                 }}
                 onViewProductDetail={(prod) => {
                   setDetailProduct(prod as any);
@@ -1009,7 +1056,7 @@ function OrderGasPage() {
           {/* STEP 1: CHOOSE GAS / CYLINDER (Strictly Backend Filtered by Usage) */}
           {/* ========================================================================= */}
           {step === 1 && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8">
+            <div id="order-gas-step-1" className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 scroll-mt-24 sm:scroll-mt-28">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1230,7 +1277,7 @@ function OrderGasPage() {
           {/* STEP 2: NEW CYLINDER VS REFILL / EXCHANGE */}
           {/* ========================================================================= */}
           {step === 2 && selectedProduct && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 max-w-4xl mx-auto">
+            <div id="order-gas-step-2" className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 max-w-4xl mx-auto scroll-mt-24 sm:scroll-mt-28">
               <div className="text-left space-y-1">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
                   Do you have an empty cylinder to exchange?
@@ -1374,7 +1421,10 @@ function OrderGasPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setStep(1)}
+                  onClick={() => {
+                    setStep(1);
+                    scrollToStepSection(1);
+                  }}
                   className="text-xs font-bold text-primary hover:underline hover:text-red-700 cursor-pointer shrink-0 ml-3"
                 >
                   Change product
@@ -1427,7 +1477,11 @@ function OrderGasPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => (selectedFromCatalogue ? setStep(0) : setStep(1))}
+                  onClick={() => {
+                    const target = selectedFromCatalogue ? 0 : 1;
+                    setStep(target);
+                    scrollToStepSection(target);
+                  }}
                   className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700 cursor-pointer"
                 >
                   Back
@@ -1449,7 +1503,7 @@ function OrderGasPage() {
           {/* STEP 3: DELIVERY & PICKUP DETAILS (With Saved Address & Backend Slots) */}
           {/* ========================================================================= */}
           {step === 3 && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8">
+            <div id="order-gas-step-3" className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 scroll-mt-24 sm:scroll-mt-28">
               <div className="text-left space-y-1">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
                   Choose Delivery Address &amp; Date
@@ -1620,13 +1674,15 @@ function OrderGasPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    !isCylinderProduct || usageType === "AUTOGAS"
+                  onClick={() => {
+                    const target = !isCylinderProduct || usageType === "AUTOGAS"
                       ? selectedFromCatalogue
-                        ? setStep(0)
-                        : setStep(1)
-                      : setStep(2)
-                  }
+                        ? 0
+                        : 1
+                      : 2;
+                    setStep(target);
+                    scrollToStepSection(target);
+                  }}
                   className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700"
                 >
                   Back
@@ -1648,7 +1704,7 @@ function OrderGasPage() {
           {/* STEP 4: ORDER SUMMARY & PAYMENT */}
           {/* ========================================================================= */}
           {step === 4 && selectedProduct && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 max-w-3xl mx-auto">
+            <div id="order-gas-step-4" className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-10 space-y-8 max-w-3xl mx-auto scroll-mt-24 sm:scroll-mt-28">
               <div className="text-left space-y-1">
                 <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
                   Order Summary & Payment
@@ -2004,7 +2060,10 @@ function OrderGasPage() {
                   type="button"
                   variant="outline"
                   disabled={submittingOrder || isProcessingPayment}
-                  onClick={() => setStep(3)}
+                  onClick={() => {
+                    setStep(3);
+                    scrollToStepSection(3);
+                  }}
                   className="rounded-full px-6 py-2.5 h-11 font-bold text-slate-700"
                 >
                   Back
@@ -2069,7 +2128,7 @@ function OrderGasPage() {
           {/* STEP 5: ORDER CONFIRMATION */}
           {/* ========================================================================= */}
           {step === 5 && completedOrder && (
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-6">
+            <div id="order-gas-step-5" className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 sm:p-12 text-center max-w-2xl mx-auto space-y-6 scroll-mt-24 sm:scroll-mt-28">
               <div className="h-16 w-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm border border-emerald-100">
                 <Check className="h-8 w-8 stroke-[3]" />
               </div>
@@ -2216,6 +2275,7 @@ function OrderGasPage() {
           setQuantity(qty || 1);
           setDetailProduct(null);
           const isCyl = isRefillableLpgCylinderProduct(prod) && usageType !== "AUTOGAS";
+          const nextStep = !isCyl ? 3 : 2;
           if (!isCyl) {
             setOrderType("NEW_CYLINDER");
             setStep(3);
@@ -2225,6 +2285,7 @@ function OrderGasPage() {
             setStep(2); // Continue to Step 2 (New vs Refill)
           }
           toast.success(`Selected ${prod.name}`);
+          scrollToStepSection(nextStep);
         }}
       />
 

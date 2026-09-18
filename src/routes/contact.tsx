@@ -313,7 +313,7 @@ function Contact() {
           </div>
 
           {/* 5. CONTACT INFORMATION CARD */}
-          <aside className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 flex flex-col justify-between space-y-6">
+          <aside className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 space-y-6">
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display mb-2">
                 Contact information
@@ -383,16 +383,6 @@ function Contact() {
                   </div>
                 </li>
               </ul>
-            </div>
-
-            {/* 6. MAP */}
-            <div className="overflow-hidden rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-2xs bg-slate-100 mt-2">
-              <iframe
-                title="Our location"
-                className="h-52 sm:h-60 w-full border-0"
-                loading="lazy"
-                src="https://www.openstreetmap.org/export/embed.html?bbox=-2.42%2C51.74%2C-2.30%2C51.80&layer=mapnik"
-              />
             </div>
           </aside>
         </div>

@@ -233,17 +233,20 @@ export function ManagerNotificationsView() {
       {/* 1. HEADER & ACTIONS */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground font-bold">Notifications</span>
+            <span className="text-slate-900 font-bold">Notifications</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Bell className="h-7 w-7 text-primary" /> Manager Notifications
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+            <div className="p-2 rounded-2xl bg-red-500/10 text-red-600 border border-red-500/20">
+              <Bell className="h-6 w-6" />
+            </div>
+            Manager Notifications
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Real-time customer orders, support enquiries, and operational updates.
           </p>
         </div>
@@ -253,7 +256,7 @@ export function ManagerNotificationsView() {
             onClick={handleMarkAllAsRead}
             disabled={markingAll}
             variant="outline"
-            className="rounded-full text-xs font-extrabold gap-1.5 border-slate-200 bg-white hover:bg-slate-50 text-foreground shrink-0 self-start sm:self-center"
+            className="rounded-full text-xs font-black gap-1.5 border-white/80 bg-white/80 backdrop-blur-md hover:bg-white text-slate-700 shadow-2xs shrink-0 self-start sm:self-center"
           >
             <Check className="h-3.5 w-3.5 text-emerald-600" />
             {markingAll ? "Marking all..." : "Mark all as read"}
@@ -270,10 +273,10 @@ export function ManagerNotificationsView() {
               <button
                 key={tab.id}
                 onClick={() => setActiveFilter(tab.id as "all" | "unread")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-extrabold transition-all whitespace-nowrap border cursor-pointer ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-black transition-all whitespace-nowrap border cursor-pointer ${
                   isActive
-                    ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-gradient-to-r from-red-600 to-rose-600 text-white border-transparent shadow-md shadow-red-600/25"
+                    : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs font-bold"
                 }`}
               >
                 <span>{tab.label}</span>
@@ -281,7 +284,7 @@ export function ManagerNotificationsView() {
                   <Badge
                     variant="secondary"
                     className={`px-1.5 py-0 text-[10px] font-black rounded-full ${
-                      isActive ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
+                      isActive ? "bg-white/20 text-white" : "bg-red-50 text-red-600 border-red-200/60"
                     }`}
                   >
                     {tab.count}
@@ -297,7 +300,7 @@ export function ManagerNotificationsView() {
           <Button
             onClick={() => setDeleteAllDialogOpen(true)}
             disabled={deletingAll}
-            className="rounded-full text-xs font-bold gap-1.5 bg-red-600 hover:bg-red-700 text-white shadow-sm border-transparent shrink-0 h-9 px-4 self-start sm:self-auto cursor-pointer"
+            className="rounded-full text-xs font-black gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/25 shrink-0 h-9 px-4 self-start sm:self-auto cursor-pointer"
           >
             <Trash2 className="h-3.5 w-3.5 text-white" />
             {deletingAll ? "Deleting all..." : "Delete All"}
@@ -306,9 +309,9 @@ export function ManagerNotificationsView() {
       </div>
 
       {/* 3. NOTIFICATION LIST CONTAINER */}
-      <div className="surface-card rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {loading ? (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100/80">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="p-4 sm:p-5 flex items-start gap-3.5 animate-pulse">
                 <div className="h-8 w-8 rounded-full bg-slate-100 shrink-0" />
@@ -325,41 +328,41 @@ export function ManagerNotificationsView() {
         ) : error ? (
           <div className="p-12 text-center space-y-3">
             <AlertCircle className="mx-auto h-9 w-9 text-rose-500" />
-            <h3 className="font-bold text-sm text-foreground">Unable to load notifications</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">{error}</p>
+            <h3 className="font-bold text-sm text-slate-900">Unable to load notifications</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">{error}</p>
             <Button
               onClick={loadNotifications}
               size="sm"
               variant="outline"
-              className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white mt-2"
+              className="rounded-full text-xs font-black gap-1.5 border-white/80 bg-white/80 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs mt-2"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Try again
             </Button>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto text-slate-400">
+            <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
               {activeFilter === "unread" ? (
                 <Sparkles className="h-6 w-6 text-emerald-500" />
               ) : (
                 <Bell className="h-6 w-6" />
               )}
             </div>
-            <h3 className="font-bold text-sm text-foreground">
+            <h3 className="font-extrabold text-base text-slate-900">
               {activeFilter === "unread"
                 ? "You're all caught up"
                 : activeFilter === "all"
                   ? "No notifications yet"
                   : `No ${activeFilter} notifications`}
             </h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {activeFilter === "unread"
                 ? "There are no unread notifications right now."
                 : "Customer orders, delivery updates and enquiries will appear here in real-time."}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100/80">
             {filteredNotifications.map((n: any) => {
               const isUnread = !n.is_read && !n.read;
               return (
@@ -368,16 +371,16 @@ export function ManagerNotificationsView() {
                   onClick={() => handleNotificationClick(n)}
                   className={`p-4 sm:p-5 flex items-start justify-between gap-3.5 transition-colors cursor-pointer group ${
                     isUnread
-                      ? "bg-slate-50/70 hover:bg-slate-100/70"
-                      : "bg-white hover:bg-slate-50/60"
+                      ? "bg-rose-50/20 hover:bg-rose-50/40"
+                      : "bg-white/40 hover:bg-slate-50/60"
                   }`}
                 >
                   <div className="flex items-start gap-3.5 flex-1 min-w-0">
                     <div
                       className={`p-2.5 rounded-2xl border shrink-0 transition-transform group-hover:scale-105 ${
                         isUnread
-                          ? "bg-white border-slate-200/80 shadow-2xs"
-                          : "bg-slate-50 border-slate-100"
+                          ? "bg-white border-red-200/60 shadow-2xs"
+                          : "bg-slate-50/80 border-slate-200/60"
                       }`}
                     >
                       {getCategoryIcon(n.category || n.type)}
@@ -388,8 +391,8 @@ export function ManagerNotificationsView() {
                         <p
                           className={`text-xs sm:text-sm tracking-tight truncate ${
                             isUnread
-                              ? "font-extrabold text-foreground"
-                              : "font-semibold text-slate-700"
+                              ? "font-black text-slate-900"
+                              : "font-bold text-slate-700"
                           }`}
                         >
                           {typeof n.title === "string"
@@ -399,7 +402,7 @@ export function ManagerNotificationsView() {
                         {n.status === "Pending" && n.type === "order" && (
                           <Badge
                             variant="outline"
-                            className="bg-blue-50 text-blue-800 border-blue-200 text-[9px] font-extrabold"
+                            className="bg-blue-50 text-blue-700 border-blue-200/80 shadow-2xs text-[9px] font-black px-2 py-0.5 rounded-full"
                           >
                             New Order
                           </Badge>
@@ -407,13 +410,13 @@ export function ManagerNotificationsView() {
                         {n.status === "Open" && n.type === "support" && (
                           <Badge
                             variant="outline"
-                            className="bg-amber-50 text-amber-800 border-amber-200 text-[9px] font-extrabold"
+                            className="bg-amber-50 text-amber-800 border-amber-300 shadow-2xs text-[9px] font-black px-2 py-0.5 rounded-full"
                           >
                             Pending Review
                           </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed line-clamp-2">
                         {typeof (n.message || n.description) === "string"
                           ? n.message || n.description
                           : String(n.message || n.description || "")}
@@ -425,12 +428,12 @@ export function ManagerNotificationsView() {
                     className="flex items-center gap-2 shrink-0 pt-0.5"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <span className="text-[11px] font-bold text-slate-400">
                       {formatRelativeTime(n.created_at)}
                     </span>
                     {isUnread && (
                       <span
-                        className="h-2 w-2 rounded-full bg-primary shrink-0"
+                        className="h-2 w-2 rounded-full bg-red-600 shrink-0 shadow-xs"
                         title="Unread notification"
                       />
                     )}
@@ -442,7 +445,7 @@ export function ManagerNotificationsView() {
                         e.stopPropagation();
                         setNotificationToDelete(n);
                       }}
-                      className="h-7 w-7 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="h-7 w-7 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -461,26 +464,26 @@ export function ManagerNotificationsView() {
           if (!open && !deleting) setNotificationToDelete(null);
         }}
       >
-        <AlertDialogContent className="rounded-3xl p-6 bg-white border max-w-md">
+        <AlertDialogContent className="rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 shadow-2xl text-slate-900 max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-black text-foreground flex items-center gap-2">
-              <Trash2 className="h-4 w-4 text-rose-600" />
+            <AlertDialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+              <Trash2 className="h-4 w-4 text-red-600" />
               Delete Notification Permanently?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+            <AlertDialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
               Are you sure you want to permanently delete{" "}
-              <span className="text-foreground font-bold">"{notificationToDelete?.title}"</span>{" "}
+              <span className="text-slate-900 font-bold">"{notificationToDelete?.title}"</span>{" "}
               from the Supabase database? This record will be permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2">
-            <AlertDialogCancel disabled={deleting} className="rounded-full text-xs font-bold h-9">
+            <AlertDialogCancel disabled={deleting} className="rounded-full text-xs font-bold h-9 border-slate-200">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={deleting}
               onClick={handleDeleteNotification}
-              className="rounded-full text-xs font-bold h-9 bg-rose-600 hover:bg-rose-700 text-white"
+              className="rounded-full text-xs font-black h-9 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/25"
             >
               {deleting ? "Deleting..." : "Permanently Delete"}
             </AlertDialogAction>
@@ -495,15 +498,15 @@ export function ManagerNotificationsView() {
           if (!open && !deletingAll) setDeleteAllDialogOpen(false);
         }}
       >
-        <AlertDialogContent className="rounded-3xl p-6 bg-white border max-w-md">
+        <AlertDialogContent className="rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 shadow-2xl text-slate-900 max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-black text-foreground flex items-center gap-2">
+            <AlertDialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
               <Trash2 className="h-4 w-4 text-red-600" />
               Delete All Notifications Permanently?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+            <AlertDialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
               Are you sure you want to permanently delete all{" "}
-              <strong className="text-foreground font-bold">{notifications.length}</strong> manager
+              <strong className="text-slate-900 font-bold">{notifications.length}</strong> manager
               notifications from the database? This action will permanently remove all notifications
               and cannot be undone.
             </AlertDialogDescription>
@@ -511,14 +514,14 @@ export function ManagerNotificationsView() {
           <AlertDialogFooter className="mt-4 gap-2">
             <AlertDialogCancel
               disabled={deletingAll}
-              className="rounded-full text-xs font-bold h-9"
+              className="rounded-full text-xs font-bold h-9 border-slate-200"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={deletingAll}
               onClick={handleDeleteAll}
-              className="rounded-full text-xs font-bold h-9 bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-full text-xs font-black h-9 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/25"
             >
               {deletingAll ? "Deleting..." : "Permanently Delete All"}
             </AlertDialogAction>
@@ -528,3 +531,4 @@ export function ManagerNotificationsView() {
     </div>
   );
 }
+

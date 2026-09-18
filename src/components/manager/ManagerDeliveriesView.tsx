@@ -328,28 +328,28 @@ export function ManagerDeliveriesView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground font-bold">Deliveries & Returns</span>
+            <span className="text-slate-700 font-bold">Deliveries & Returns</span>
             {statusFilter !== "all" && (
               <>
                 <span>/</span>
-                <span className="text-primary font-bold capitalize">
+                <span className="text-red-600 font-bold capitalize">
                   {statusFilter.replace(/_/g, " ")}
                 </span>
               </>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             Truck Logistics & Cylinder Returns ({filtered.length}
             {statusFilter !== "all" ? ` of ${deliveries.length}` : ""})
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Dispatch routes, assign drivers, and manage customer cylinder return verification.
           </p>
         </div>
@@ -360,7 +360,11 @@ export function ManagerDeliveriesView() {
             size="sm"
             variant={statusFilter === "all" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("all")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              statusFilter === "all"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             All ({deliveries.length})
           </Button>
@@ -368,7 +372,11 @@ export function ManagerDeliveriesView() {
             size="sm"
             variant={getSelectValue() === "returns" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("returns")}
-            className="rounded-full text-xs h-8 font-bold flex items-center gap-1"
+            className={`rounded-full text-xs h-8.5 font-bold flex items-center gap-1 transition-all ${
+              getSelectValue() === "returns"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             <RotateCcw className="h-3 w-3" />
             Cylinder Returns ({returnsCount})
@@ -377,7 +385,11 @@ export function ManagerDeliveriesView() {
             size="sm"
             variant={getSelectValue() === "out_for_delivery" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("out_for_delivery")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              getSelectValue() === "out_for_delivery"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             Out for Delivery ({outCount})
           </Button>
@@ -385,7 +397,11 @@ export function ManagerDeliveriesView() {
             size="sm"
             variant={getSelectValue() === "delivered" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("delivered")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              getSelectValue() === "delivered"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             Delivered ({deliveredCount})
           </Button>
@@ -393,31 +409,35 @@ export function ManagerDeliveriesView() {
             size="sm"
             variant={getSelectValue() === "delayed" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("delayed")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              getSelectValue() === "delayed"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             Delayed ({delayedCount})
           </Button>
         </div>
       </div>
 
-      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+      <div className="surface-card p-4 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search driver, return code, customer, order #..."
-            className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs"
+            className="pl-9.5 h-9 rounded-full bg-white/90 border-slate-200/80 text-xs text-slate-900 placeholder:text-slate-400 font-medium shadow-2xs"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Select value={getSelectValue()} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-52 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
-              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+            <SelectTrigger className="w-52 h-9 rounded-full text-xs font-bold bg-white/90 border-slate-200/80 text-slate-700 shadow-2xs">
+              <Filter className="h-3.5 w-3.5 mr-1 text-slate-400" />
               <SelectValue placeholder="Status Filter" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl font-medium text-xs">
+            <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80 font-medium text-xs">
               <SelectItem value="all">All Dispatches ({deliveries.length})</SelectItem>
               <SelectItem value="returns">Cylinder Returns ({returnsCount})</SelectItem>
               <SelectItem value="out_for_delivery">Out for Delivery ({outCount})</SelectItem>
@@ -431,7 +451,7 @@ export function ManagerDeliveriesView() {
               variant="ghost"
               size="sm"
               onClick={() => handleStatusFilterChange("all")}
-              className="rounded-full text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground"
+              className="rounded-full text-xs h-9 px-3 text-slate-500 hover:text-slate-900"
             >
               <X className="h-3.5 w-3.5 mr-1" /> Clear
             </Button>
@@ -439,20 +459,20 @@ export function ManagerDeliveriesView() {
         </div>
       </div>
 
-      <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground font-bold">
+          <div className="p-12 text-center text-xs text-slate-400 font-bold">
             Loading logistics and return records...
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <Truck className="mx-auto h-10 w-10 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">
+            <Truck className="mx-auto h-10 w-10 text-slate-300" />
+            <h3 className="font-black text-sm text-slate-900">
               {statusFilter !== "all"
                 ? `No records matching "${statusFilter.replace(/_/g, " ")}"`
                 : "No active delivery assignments"}
             </h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
               {statusFilter !== "all"
                 ? "Try clearing the status filter or searching for another route or driver."
                 : "Real delivery truck and cylinder return records will render here."}
@@ -462,227 +482,228 @@ export function ManagerDeliveriesView() {
                 variant="outline"
                 size="sm"
                 onClick={() => handleStatusFilterChange("all")}
-                className="rounded-full text-xs font-bold mt-2"
+                className="rounded-full text-xs font-bold mt-2 border-slate-200"
               >
                 Show All Records
               </Button>
             )}
           </div>
         ) : (
-          <Table>
-            <TableHeader className="bg-slate-50/80">
-              <TableRow>
-                <TableHead className="font-bold text-xs">Type / Reference</TableHead>
-                <TableHead className="font-bold text-xs">Driver & Vehicle</TableHead>
-                <TableHead className="font-bold text-xs">Route / Details</TableHead>
-                <TableHead className="font-bold text-xs">Status</TableHead>
-                <TableHead className="font-bold text-xs text-right">Actions</TableHead>
-                <TableHead className="font-bold text-xs text-right">Quick Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((d) => {
-                const meta = parseReturnMetadata(d);
-                const isReturn =
-                  d.route_area === "Cylinder Return Pickup" ||
-                  (d.notes && d.notes.includes('"type":"cylinder_return"')) ||
-                  meta !== null;
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50/50 border-slate-100">
+                <TableRow>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Type / Reference</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Driver & Vehicle</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Route / Details</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Status</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400 text-right">Actions</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400 text-right">Quick Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((d) => {
+                  const meta = parseReturnMetadata(d);
+                  const isReturn =
+                    d.route_area === "Cylinder Return Pickup" ||
+                    (d.notes && d.notes.includes('"type":"cylinder_return"')) ||
+                    meta !== null;
 
-                return (
-                  <TableRow key={d.id} className="hover:bg-slate-50/60">
-                    <TableCell className="font-bold text-xs text-foreground">
-                      {isReturn ? (
-                        <div className="space-y-0.5">
-                          <Badge className="bg-red-50 text-red-700 border-red-200 font-extrabold text-[10px]">
-                            <RotateCcw className="h-2.5 w-2.5 mr-1" /> Return Pickup
-                          </Badge>
-                          <p className="font-mono text-[11px] font-extrabold text-slate-800">
-                            {meta?.return_code || d.id.slice(0, 8).toUpperCase()}
-                          </p>
-                          <p className="text-[10px] text-slate-400">
-                            Order #{d.orders?.order_number || meta?.order_number || "ORDER"}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-0.5">
-                          <Badge className="bg-slate-100 text-slate-700 border-slate-200 font-bold text-[10px]">
-                            Delivery
-                          </Badge>
-                          <p className="font-mono text-[11px] font-bold text-slate-700">
-                            #{d.orders?.order_number || d.id.slice(0, 8)}
-                          </p>
-                        </div>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-xs">
-                      <p className="font-bold text-slate-900">
-                        {d.driver_name && !d.driver_name.includes("Unassigned")
-                          ? d.driver_name
-                          : "Unassigned"}
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        {d.vehicle_identifier || "Cylinder Van"}{" "}
-                        {d.vehicle_plate ? `(${d.vehicle_plate})` : ""}
-                      </p>
-                    </TableCell>
-
-                    <TableCell className="text-xs">
-                      {isReturn ? (
-                        <div className="space-y-0.5">
-                          <p className="font-bold text-slate-800 flex items-center gap-1">
-                            <Flame className="h-3 w-3 text-red-600 shrink-0" />
-                            {meta?.quantity || 1}x {meta?.cylinder_name || "LPG Cylinder"}
-                          </p>
-                          <p className="text-[11px] text-slate-500">
-                            {meta?.customer_name || d.orders?.customer_name || "Customer"} &bull;{" "}
-                            {meta?.reason || "Empty Return"}
-                          </p>
-                          {meta?.scheduled_date && (
-                            <p className="text-[10px] text-sky-700 font-semibold">
-                              Pickup: {meta.scheduled_date} ({meta.time_slot || "Morning"})
+                  return (
+                    <TableRow key={d.id} className="hover:bg-slate-50/60 transition-colors">
+                      <TableCell className="font-bold text-xs text-slate-900">
+                        {isReturn ? (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200/80 font-black text-[10px] shadow-2xs">
+                              <RotateCcw className="h-2.5 w-2.5 mr-1" /> Return Pickup
+                            </span>
+                            <p className="font-mono text-[11px] font-black text-slate-900">
+                              {meta?.return_code || d.id.slice(0, 8).toUpperCase()}
                             </p>
-                          )}
-                          {meta?.condition && (
-                            <p className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
-                              <ShieldCheck className="h-3 w-3" /> Verified: {meta.condition}
+                            <p className="text-[10px] text-slate-400 font-medium">
+                              Order #{d.orders?.order_number || meta?.order_number || "ORDER"}
                             </p>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <p className="text-slate-800 font-semibold">{d.route_area}</p>
-                          <p className="text-[11px] text-slate-500">
-                            {d.time_slot || "Standard Slot"}
-                          </p>
-                          {(() => {
-                            const req = getOrderCylinderExchangeRequirement(d);
-                            return req.required ? (
-                              <Badge className="bg-amber-100 text-amber-900 border-amber-300 font-extrabold text-[9px] px-2 py-0.2">
-                                Empty Required: Yes ({req.expectedQuantity})
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 font-extrabold text-[9px] px-2 py-0.2">
-                                Empty Required: No
-                              </Badge>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </TableCell>
+                          </div>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60 font-black text-[10px]">
+                              Delivery
+                            </span>
+                            <p className="font-mono text-[11px] font-black text-slate-900">
+                              #{d.orders?.order_number || d.id.slice(0, 8)}
+                            </p>
+                          </div>
+                        )}
+                      </TableCell>
 
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`font-bold text-[10px] ${
-                          d.status === "Delivered" ||
-                          d.status === "Completed" ||
-                          d.status === "Verified"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : d.status === "Delayed" ||
-                                d.status === "Rejected" ||
-                                d.status === "Issue Reported"
-                              ? "bg-rose-50 text-rose-700 border-rose-200"
-                              : d.status === "Out for Delivery" || d.status === "Out for Pickup"
-                                ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                : d.status === "Requested"
-                                  ? "bg-amber-50 text-amber-700 border-amber-200"
-                                  : "bg-blue-50 text-blue-700 border-blue-200"
-                        }`}
-                      >
-                        {d.status}
-                      </Badge>
-                    </TableCell>
+                      <TableCell className="text-xs">
+                        <p className="font-black text-slate-900">
+                          {d.driver_name && !d.driver_name.includes("Unassigned")
+                            ? d.driver_name
+                            : "Unassigned"}
+                        </p>
+                        <p className="text-[11px] text-slate-500 font-medium">
+                          {d.vehicle_identifier || "Cylinder Van"}{" "}
+                          {d.vehicle_plate ? `(${d.vehicle_plate})` : ""}
+                        </p>
+                      </TableCell>
 
-                    <TableCell className="text-right">
-                      {isReturn &&
-                      (d.status === "Requested" ||
-                        d.status === "Under Review" ||
-                        d.status === "Approved") ? (
-                        <div className="flex items-center justify-end gap-1.5">
+                      <TableCell className="text-xs">
+                        {isReturn ? (
+                          <div className="space-y-0.5">
+                            <p className="font-bold text-slate-900 flex items-center gap-1">
+                              <Flame className="h-3 w-3 text-red-600 shrink-0" />
+                              {meta?.quantity || 1}x {meta?.cylinder_name || "LPG Cylinder"}
+                            </p>
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              {meta?.customer_name || d.orders?.customer_name || "Customer"} &bull;{" "}
+                              {meta?.reason || "Empty Return"}
+                            </p>
+                            {meta?.scheduled_date && (
+                              <p className="text-[10px] text-sky-700 font-bold">
+                                Pickup: {meta.scheduled_date} ({meta.time_slot || "Morning"})
+                              </p>
+                            )}
+                            {meta?.condition && (
+                              <p className="text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                                <ShieldCheck className="h-3 w-3" /> Verified: {meta.condition}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <p className="text-slate-800 font-bold">{d.route_area}</p>
+                            <p className="text-[11px] text-slate-500 font-medium">
+                              {d.time_slot || "Standard Slot"}
+                            </p>
+                            {(() => {
+                              const req = getOrderCylinderExchangeRequirement(d);
+                              return req.required ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-300 font-black text-[9px] shadow-2xs">
+                                  Empty Required: Yes ({req.expectedQuantity})
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-300 font-black text-[9px] shadow-2xs">
+                                  Empty Required: No
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </TableCell>
+
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-black text-[10px] border shadow-2xs ${
+                            d.status === "Delivered" ||
+                            d.status === "Completed" ||
+                            d.status === "Verified"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                              : d.status === "Delayed" ||
+                                  d.status === "Rejected" ||
+                                  d.status === "Issue Reported"
+                                ? "bg-rose-50 text-rose-700 border-rose-200/80"
+                                : d.status === "Out for Delivery" || d.status === "Out for Pickup"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200/80"
+                                  : d.status === "Requested"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200/80"
+                                    : "bg-blue-50 text-blue-700 border-blue-200/80"
+                          }`}
+                        >
+                          {d.status}
+                        </span>
+                      </TableCell>
+
+                      <TableCell className="text-right">
+                        {isReturn &&
+                        (d.status === "Requested" ||
+                          d.status === "Under Review" ||
+                          d.status === "Approved") ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setSelectedReturnToReview(d);
+                                setScheduleDate(
+                                  meta?.scheduled_date || new Date().toISOString().split("T")[0],
+                                );
+                                setScheduleTimeSlot(meta?.time_slot || "Morning (08:00 - 12:00)");
+                                setScheduleAgentId(d.agent_id || agents[0]?.id || "");
+                                setScheduleModalOpen(true);
+                              }}
+                              className="h-8 text-[11px] font-black rounded-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white gap-1 shadow-md shadow-red-600/20 cursor-pointer"
+                            >
+                              <Calendar className="h-3 w-3" /> Review & Assign
+                            </Button>
+                          </div>
+                        ) : (
                           <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => {
-                              setSelectedReturnToReview(d);
-                              setScheduleDate(
-                                meta?.scheduled_date || new Date().toISOString().split("T")[0],
-                              );
-                              setScheduleTimeSlot(meta?.time_slot || "Morning (08:00 - 12:00)");
-                              setScheduleAgentId(d.agent_id || agents[0]?.id || "");
-                              setScheduleModalOpen(true);
+                              setSelectedDeliveryToAssign(d);
+                              setSelectedAgentId(d.agent_id || agents[0]?.id || "");
+                              setAssignModalOpen(true);
                             }}
-                            className="h-8 text-[11px] font-bold rounded-xl bg-red-600 hover:bg-red-700 text-white gap-1 shadow-xs cursor-pointer"
+                            className="h-8 text-[11px] font-bold rounded-full border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs gap-1.5 cursor-pointer"
                           >
-                            <Calendar className="h-3 w-3" /> Review & Assign
+                            <UserCheck className="h-3.5 w-3.5 text-slate-500" />
+                            {d.agent_id ? "Reassign" : "Assign Agent"}
                           </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedDeliveryToAssign(d);
-                            setSelectedAgentId(d.agent_id || agents[0]?.id || "");
-                            setAssignModalOpen(true);
-                          }}
-                          className="h-8 text-[11px] font-bold rounded-xl border-slate-200 hover:bg-slate-50 gap-1.5 cursor-pointer"
-                        >
-                          <UserCheck className="h-3.5 w-3.5 text-slate-500" />
-                          {d.agent_id ? "Reassign" : "Assign Agent"}
-                        </Button>
-                      )}
-                    </TableCell>
+                        )}
+                      </TableCell>
 
-                    <TableCell className="text-right">
-                      <Select
-                        value={d.status}
-                        onValueChange={(val) => handleUpdateStatus(d.id, val)}
-                      >
-                        <SelectTrigger className="h-8 text-[11px] font-bold rounded-xl border-slate-200 w-[140px] ml-auto">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          {isReturn ? (
-                            <>
-                              <SelectItem value="Requested">Requested</SelectItem>
-                              <SelectItem value="Approved">Approved</SelectItem>
-                              <SelectItem value="Pickup Scheduled">Pickup Scheduled</SelectItem>
-                              <SelectItem value="Agent Assigned">Agent Assigned</SelectItem>
-                              <SelectItem value="Out for Pickup">Out for Pickup</SelectItem>
-                              <SelectItem value="Picked Up">Picked Up</SelectItem>
-                              <SelectItem value="Verified">Verified</SelectItem>
-                              <SelectItem value="Completed">Completed</SelectItem>
-                              <SelectItem value="Issue Reported">Issue Reported</SelectItem>
-                              <SelectItem value="Rejected">Rejected</SelectItem>
-                            </>
-                          ) : (
-                            <>
-                              <SelectItem value="Assigned">Assigned</SelectItem>
-                              <SelectItem value="Accepted">Accepted</SelectItem>
-                              <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-                              <SelectItem value="Delivered">Delivered</SelectItem>
-                              <SelectItem value="Delayed">Delayed</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                      <TableCell className="text-right">
+                        <Select
+                          value={d.status}
+                          onValueChange={(val) => handleUpdateStatus(d.id, val)}
+                        >
+                          <SelectTrigger className="h-8 text-[11px] font-bold rounded-xl bg-white border-slate-200/80 w-[140px] ml-auto shadow-2xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80">
+                            {isReturn ? (
+                              <>
+                                <SelectItem value="Requested">Requested</SelectItem>
+                                <SelectItem value="Approved">Approved</SelectItem>
+                                <SelectItem value="Pickup Scheduled">Pickup Scheduled</SelectItem>
+                                <SelectItem value="Agent Assigned">Agent Assigned</SelectItem>
+                                <SelectItem value="Out for Pickup">Out for Pickup</SelectItem>
+                                <SelectItem value="Picked Up">Picked Up</SelectItem>
+                                <SelectItem value="Verified">Verified</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                                <SelectItem value="Issue Reported">Issue Reported</SelectItem>
+                                <SelectItem value="Rejected">Rejected</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="Assigned">Assigned</SelectItem>
+                                <SelectItem value="Accepted">Accepted</SelectItem>
+                                <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                                <SelectItem value="Delivered">Delivered</SelectItem>
+                                <SelectItem value="Delayed">Delayed</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
       {/* ASSIGN DELIVERY AGENT MODAL */}
       <Dialog open={assignModalOpen} onOpenChange={setAssignModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 bg-white border border-slate-200">
+        <DialogContent className="max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 text-slate-900 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-display font-extrabold text-lg text-slate-900">
+            <DialogTitle className="font-display font-black text-xl text-slate-900">
               Assign Delivery Agent
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-600 font-medium pt-1">
+            <DialogDescription className="text-xs text-slate-500 font-medium pt-1">
               Select an active delivery agent for #
               {selectedDeliveryToAssign?.orders?.order_number ||
                 selectedDeliveryToAssign?.id?.slice(0, 8)}
@@ -694,21 +715,21 @@ export function ManagerDeliveriesView() {
             {selectedDeliveryToAssign && (() => {
               const req = getOrderCylinderExchangeRequirement(selectedDeliveryToAssign);
               return (
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1">
+                <div className="p-3.5 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
                       CYLINDER EXCHANGE
                     </span>
-                    <Badge
+                    <span
                       className={cn(
-                        "text-[9px] font-extrabold",
+                        "text-[9px] font-black px-2 py-0.5 rounded-full border shadow-2xs",
                         req.required
                           ? "bg-amber-100 text-amber-900 border-amber-300"
                           : "bg-emerald-100 text-emerald-900 border-emerald-300",
                       )}
                     >
                       Empty Cylinder Required: {req.required ? "Yes" : "No"}
-                    </Badge>
+                    </span>
                   </div>
                   <p className="text-[11px] text-slate-600 font-medium">{req.reason}</p>
                 </div>
@@ -716,11 +737,11 @@ export function ManagerDeliveriesView() {
             })()}
 
             <div>
-              <label className="font-bold text-slate-700 block mb-1">Select Delivery Agent</label>
+              <label className="font-bold text-slate-800 block mb-1">Select Delivery Agent</label>
               <select
                 value={selectedAgentId}
                 onChange={(e) => setSelectedAgentId(e.target.value)}
-                className="w-full rounded-xl bg-white border border-slate-200 p-2.5 text-xs font-bold text-slate-800"
+                className="w-full rounded-xl bg-white border border-slate-200 p-2.5 text-xs font-bold text-slate-800 shadow-2xs"
               >
                 {agents.map((ag) => (
                   <option key={ag.id} value={ag.id}>
@@ -731,17 +752,17 @@ export function ManagerDeliveriesView() {
             </div>
 
             {selectedAgentId && (
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-[11px] space-y-1">
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs text-[11px] space-y-1">
                 {(() => {
                   const ag = agents.find((a) => a.id === selectedAgentId);
                   if (!ag) return null;
                   return (
                     <>
-                      <p className="font-bold text-slate-800">{ag.full_name}</p>
-                      <p className="text-slate-500">
+                      <p className="font-black text-slate-900">{ag.full_name}</p>
+                      <p className="text-slate-500 font-medium">
                         Vehicle: {ag.vehicle_type} ({ag.vehicle_plate})
                       </p>
-                      <p className="text-slate-500">
+                      <p className="text-slate-500 font-medium">
                         Rating: {ag.rating || 5.0}★ · {ag.completed_deliveries || 0} completed
                       </p>
                     </>
@@ -755,14 +776,14 @@ export function ManagerDeliveriesView() {
             <Button
               variant="outline"
               onClick={() => setAssignModalOpen(false)}
-              className="rounded-full text-xs font-bold"
+              className="rounded-full text-xs font-bold border-slate-200 text-slate-700"
             >
               Cancel
             </Button>
             <Button
               disabled={assigning}
               onClick={handleAssignAgent}
-              className="rounded-full text-xs font-extrabold bg-red-600 hover:bg-red-700 text-white gap-1.5 cursor-pointer"
+              className="rounded-full text-xs font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white gap-1.5 shadow-md shadow-red-600/20 cursor-pointer"
             >
               {assigning ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -777,22 +798,22 @@ export function ManagerDeliveriesView() {
 
       {/* SCHEDULE & REVIEW RETURN REQUEST MODAL */}
       <Dialog open={scheduleModalOpen} onOpenChange={setScheduleModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 bg-white border border-slate-200">
+        <DialogContent className="max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 text-slate-900 shadow-xl">
           <DialogHeader>
             <div className="flex items-center gap-2">
-              <Badge className="bg-red-50 text-red-700 border-red-200 font-extrabold text-[10px]">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200/80 font-black text-[10px]">
                 <RotateCcw className="h-3 w-3 mr-1" /> Cylinder Return
-              </Badge>
-              <span className="font-mono text-xs font-bold text-slate-700">
+              </span>
+              <span className="font-mono text-xs font-black text-slate-900">
                 #
                 {selectedReturnToReview?.metadata?.return_code ||
                   selectedReturnToReview?.id?.slice(0, 8)}
               </span>
             </div>
-            <DialogTitle className="font-display font-extrabold text-lg text-slate-900 pt-1">
+            <DialogTitle className="font-display font-black text-xl text-slate-900 pt-1">
               Review & Assign Cylinder Pickup
             </DialogTitle>
-            <DialogDescription className="text-xs text-slate-600 font-medium">
+            <DialogDescription className="text-xs text-slate-500 font-medium">
               Schedule pickup date, time window, and assign an active delivery agent.
             </DialogDescription>
           </DialogHeader>
@@ -800,25 +821,25 @@ export function ManagerDeliveriesView() {
           {selectedReturnToReview && (
             <div className="space-y-4 pt-2 text-xs">
               {/* Return info box */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-slate-700 space-y-1.5">
+              <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs text-slate-700 space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Customer:</span>
-                  <span className="font-bold text-slate-900">
+                  <span className="text-slate-500 font-medium">Customer:</span>
+                  <span className="font-black text-slate-900">
                     {selectedReturnToReview.metadata?.customer_name ||
                       selectedReturnToReview.orders?.customer_name ||
                       "Customer"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Cylinder:</span>
-                  <span className="font-bold text-slate-900">
+                  <span className="text-slate-500 font-medium">Cylinder:</span>
+                  <span className="font-black text-slate-900">
                     {selectedReturnToReview.metadata?.quantity || 1}x{" "}
                     {selectedReturnToReview.metadata?.cylinder_name || "LPG Cylinder"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Reason:</span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="text-slate-500 font-medium">Reason:</span>
+                  <span className="font-bold text-slate-800">
                     {selectedReturnToReview.metadata?.reason || "Empty Cylinder Return"}
                   </span>
                 </div>
@@ -826,22 +847,22 @@ export function ManagerDeliveriesView() {
 
               {/* Schedule Date */}
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Scheduled Pickup Date</label>
+                <label className="font-bold text-slate-800 block">Scheduled Pickup Date</label>
                 <Input
                   type="date"
                   value={scheduleDate}
                   onChange={(e) => setScheduleDate(e.target.value)}
-                  className="rounded-xl bg-white text-xs h-9"
+                  className="rounded-xl bg-white text-xs h-9 border-slate-200/80 shadow-2xs"
                 />
               </div>
 
               {/* Time Slot */}
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Pickup Time Slot</label>
+                <label className="font-bold text-slate-800 block">Pickup Time Slot</label>
                 <select
                   value={scheduleTimeSlot}
                   onChange={(e) => setScheduleTimeSlot(e.target.value)}
-                  className="w-full rounded-xl bg-white border border-slate-200 p-2 text-xs font-bold text-slate-800 h-9"
+                  className="w-full rounded-xl bg-white border border-slate-200 p-2 text-xs font-bold text-slate-800 h-9 shadow-2xs"
                 >
                   <option value="Morning (08:00 - 12:00)">Morning Window (08:00 - 12:00)</option>
                   <option value="Afternoon (12:00 - 16:00)">
@@ -856,13 +877,13 @@ export function ManagerDeliveriesView() {
 
               {/* Assign Agent */}
               <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">
+                <label className="font-bold text-slate-800 block">
                   Assign Active Delivery Agent
                 </label>
                 <select
                   value={scheduleAgentId}
                   onChange={(e) => setScheduleAgentId(e.target.value)}
-                  className="w-full rounded-xl bg-white border border-slate-200 p-2 text-xs font-bold text-slate-800 h-9"
+                  className="w-full rounded-xl bg-white border border-slate-200 p-2 text-xs font-bold text-slate-800 h-9 shadow-2xs"
                 >
                   <option value="">-- Select Delivery Agent --</option>
                   {agents.map((ag) => (
@@ -882,7 +903,7 @@ export function ManagerDeliveriesView() {
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="Reason if rejecting request (e.g. invalid order)..."
-                  className="rounded-xl bg-white border-rose-200 text-xs h-8"
+                  className="rounded-xl bg-white border-rose-200 text-xs h-8 shadow-2xs"
                 />
               </div>
             </div>
@@ -903,7 +924,7 @@ export function ManagerDeliveriesView() {
               <Button
                 variant="outline"
                 onClick={() => setScheduleModalOpen(false)}
-                className="rounded-full text-xs font-bold"
+                className="rounded-full text-xs font-bold border-slate-200 text-slate-700"
               >
                 Cancel
               </Button>
@@ -912,7 +933,7 @@ export function ManagerDeliveriesView() {
             <Button
               disabled={approving || !scheduleAgentId}
               onClick={handleApproveAndSchedule}
-              className="rounded-full text-xs font-extrabold bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-xs cursor-pointer"
+              className="rounded-full text-xs font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white gap-1.5 shadow-md shadow-red-600/20 cursor-pointer"
             >
               {approving ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -285,26 +285,26 @@ export function ManagerOrdersView() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground font-bold">Orders</span>
+            <span className="text-slate-700 font-bold">Orders</span>
             {statusFilter !== "all" && (
               <>
                 <span>/</span>
-                <span className="text-primary font-bold capitalize">{statusFilter}</span>
+                <span className="text-red-600 font-bold capitalize">{statusFilter}</span>
               </>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             Manager Orders Operations ({filteredOrders.length}
             {statusFilter !== "all" ? ` of ${orders.length}` : ""})
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Approve, schedule, and track cylinder orders assigned to your depot.
           </p>
         </div>
@@ -315,7 +315,11 @@ export function ManagerOrdersView() {
             size="sm"
             variant={statusFilter === "all" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("all")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              statusFilter === "all"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             All Orders ({orders.length})
           </Button>
@@ -323,7 +327,11 @@ export function ManagerOrdersView() {
             size="sm"
             variant={statusFilter.toLowerCase() === "pending" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("Pending")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              statusFilter.toLowerCase() === "pending"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             Pending Approval ({pendingCount})
           </Button>
@@ -331,7 +339,11 @@ export function ManagerOrdersView() {
             size="sm"
             variant={statusFilter.toLowerCase() === "processing" ? "default" : "outline"}
             onClick={() => handleStatusFilterChange("Processing")}
-            className="rounded-full text-xs h-8 font-bold"
+            className={`rounded-full text-xs h-8.5 font-bold transition-all ${
+              statusFilter.toLowerCase() === "processing"
+                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black"
+                : "border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
+            }`}
           >
             Processing ({processingCount})
           </Button>
@@ -339,24 +351,24 @@ export function ManagerOrdersView() {
       </div>
 
       {/* Filter Bar */}
-      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col sm:flex-row gap-3 items-center justify-between shadow-xs">
+      <div className="surface-card p-4 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl flex flex-col sm:flex-row gap-3 items-center justify-between shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search assigned orders by ID or customer..."
-            className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs"
+            className="pl-9.5 h-9 rounded-full bg-white/90 border-slate-200/80 text-xs text-slate-900 placeholder:text-slate-400 font-medium shadow-2xs"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-48 rounded-full text-xs font-bold bg-slate-50 border-slate-200">
-              <Filter className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+            <SelectTrigger className="w-48 h-9 rounded-full text-xs font-bold bg-white/90 border-slate-200/80 text-slate-700 shadow-2xs">
+              <Filter className="h-3.5 w-3.5 mr-1 text-slate-400" />
               <SelectValue placeholder="Status Filter" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl font-medium text-xs">
+            <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80 font-medium text-xs">
               <SelectItem value="all">All Orders ({orders.length})</SelectItem>
               <SelectItem value="Pending">Pending Approval ({pendingCount})</SelectItem>
               <SelectItem value="Processing">Processing ({processingCount})</SelectItem>
@@ -373,7 +385,7 @@ export function ManagerOrdersView() {
               variant="ghost"
               size="sm"
               onClick={() => handleStatusFilterChange("all")}
-              className="rounded-full text-xs h-8 px-2.5 text-muted-foreground hover:text-foreground"
+              className="rounded-full text-xs h-9 px-3 text-slate-500 hover:text-slate-900"
             >
               <X className="h-3.5 w-3.5 mr-1" /> Clear
             </Button>
@@ -382,132 +394,132 @@ export function ManagerOrdersView() {
       </div>
 
       {/* Orders Table */}
-      <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground font-bold">
+          <div className="p-12 text-center text-xs text-slate-400 font-bold">
             Loading manager orders...
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <ShoppingBag className="mx-auto h-10 w-10 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">No manager orders found</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            <ShoppingBag className="mx-auto h-10 w-10 text-slate-300" />
+            <h3 className="font-black text-sm text-slate-900">No manager orders found</h3>
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
               Customer orders assigned to this depot will display here.
             </p>
           </div>
         ) : (
-          <Table>
-            <TableHeader className="bg-slate-50/80">
-              <TableRow>
-                <TableHead className="font-bold text-xs">Order ID</TableHead>
-                <TableHead className="font-bold text-xs">Customer</TableHead>
-                <TableHead className="font-bold text-xs">Total</TableHead>
-                <TableHead className="font-bold text-xs">Fulfillment Status</TableHead>
-                <TableHead className="font-bold text-xs text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrders.map((o) => (
-                <TableRow key={o.id} className="hover:bg-slate-50/60">
-                  <TableCell className="font-extrabold text-xs text-foreground">
-                    #{o.order_number || o.id.slice(0, 8)}
-                  </TableCell>
-                  <TableCell className="text-xs font-semibold">{o.customer_name}</TableCell>
-                  <TableCell className="font-extrabold text-xs text-foreground">
-                    {gbp(Number(o.total))}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`font-bold text-[10px] ${
-                        o.status === "Approved"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : o.status === "Pending"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : o.status === "Cancelled"
-                              ? "bg-red-50 text-red-700 border-red-200"
-                              : "bg-blue-50 text-blue-700 border-blue-200"
-                      }`}
-                    >
-                      {o.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Select
-                        value={o.status}
-                        onValueChange={(val) => handleUpdateStatus(o, val as OrderStatus)}
-                      >
-                        <SelectTrigger className="h-8 text-[11px] font-bold rounded-xl border-slate-200 w-[130px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Approved">Approved</SelectItem>
-                          <SelectItem value="Packed">Packed</SelectItem>
-                          <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-                          <SelectItem value="Delivered">Delivered</SelectItem>
-                          <SelectItem value="Cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setSelectedOrder(o)}
-                        className="h-8 w-8 rounded-full hover:bg-slate-100"
-                      >
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50/50 border-slate-100">
+                <TableRow>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Order ID</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Customer</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Total</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Fulfillment Status</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400 text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map((o) => (
+                  <TableRow key={o.id} className="hover:bg-slate-50/60 transition-colors">
+                    <TableCell className="font-mono font-black text-xs text-slate-900">
+                      #{o.order_number || o.id.slice(0, 8)}
+                    </TableCell>
+                    <TableCell className="text-xs font-semibold text-slate-700">{o.customer_name}</TableCell>
+                    <TableCell className="font-bold text-xs text-slate-900">
+                      {gbp(Number(o.total))}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-black text-[10px] border shadow-2xs ${
+                          o.status === "Approved"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                            : o.status === "Pending"
+                              ? "bg-amber-50 text-amber-700 border-amber-200/80"
+                              : o.status === "Cancelled"
+                                ? "bg-rose-50 text-rose-700 border-rose-200/80"
+                                : "bg-blue-50 text-blue-700 border-blue-200/80"
+                        }`}
+                      >
+                        {o.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Select
+                          value={o.status}
+                          onValueChange={(val) => handleUpdateStatus(o, val as OrderStatus)}
+                        >
+                          <SelectTrigger className="h-8 text-[11px] font-bold rounded-xl bg-white border-slate-200/80 w-[130px] shadow-2xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80">
+                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Approved">Approved</SelectItem>
+                            <SelectItem value="Packed">Packed</SelectItem>
+                            <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                            <SelectItem value="Delivered">Delivered</SelectItem>
+                            <SelectItem value="Cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => setSelectedOrder(o)}
+                          className="h-8 w-8 rounded-full hover:bg-red-50/50 hover:text-red-600"
+                        >
+                          <Eye className="h-4 w-4 text-slate-500" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
       {/* Order Details Sheet */}
       <Sheet open={Boolean(selectedOrder)} onOpenChange={() => setSelectedOrder(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white/95 backdrop-blur-2xl border-l border-white/80 overflow-y-auto text-slate-900">
           {selectedOrder && (
             <div className="space-y-6 text-xs">
-              <SheetHeader className="border-b pb-4">
-                <SheetTitle className="font-black text-lg">
+              <SheetHeader className="border-b border-slate-100 pb-4">
+                <SheetTitle className="font-black text-xl text-slate-900">
                   Order #{selectedOrder.order_number || selectedOrder.id.slice(0, 8)}
                 </SheetTitle>
-                <p className="text-muted-foreground text-[11px]">
+                <p className="text-slate-500 font-medium text-[11px] mt-0.5">
                   Placed on {new Date(selectedOrder.created_at).toLocaleString("en-GB")}
                 </p>
               </SheetHeader>
 
               {/* DELIVERY ASSIGNMENT SECTION */}
-              <div className="p-4 rounded-2xl border bg-slate-50/80 space-y-3">
+              <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5">
-                    <Truck className="h-4 w-4 text-primary" /> Delivery Assignment
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-red-600" /> Delivery Assignment
                   </span>
-                  <Badge
-                    variant="outline"
-                    className={`font-bold text-[10px] ${
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-black text-[10px] border shadow-2xs ${
                       selectedOrder.assigned_driver &&
                       selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                        : "bg-amber-50 text-amber-700 border-amber-200/80"
                     }`}
                   >
                     {selectedOrder.assigned_driver &&
                     selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
                       ? "Assigned"
                       : "Unassigned"}
-                  </Badge>
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-1 text-xs">
                   <div>
-                    <p className="text-muted-foreground text-[11px]">Assigned Driver / Agent</p>
-                    <p className="font-extrabold text-foreground text-sm mt-0.5">
+                    <p className="text-slate-500 text-[11px] font-medium">Assigned Driver / Agent</p>
+                    <p className="font-black text-slate-900 text-sm mt-0.5">
                       {selectedOrder.assigned_driver &&
                       selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
                         ? selectedOrder.assigned_driver
@@ -517,7 +529,7 @@ export function ManagerOrdersView() {
                   <Button
                     asChild
                     size="sm"
-                    className="rounded-full text-xs font-bold gap-1 bg-primary hover:bg-primary/90 shadow-2xs"
+                    className="rounded-full text-xs font-black gap-1 shadow-md shadow-red-600/25 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer"
                   >
                     <Link to="/manager/delivery-assignment">
                       {selectedOrder.assigned_driver &&
@@ -530,13 +542,13 @@ export function ManagerOrdersView() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
-                <p className="font-bold text-foreground">Customer</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_name || "Guest Customer"}</p>
+              <div className="p-4 rounded-2xl border border-white/80 bg-white/60 space-y-1">
+                <p className="font-bold text-slate-900">Customer Details</p>
+                <p className="text-slate-700 font-medium">{selectedOrder.customer_name || "Guest Customer"}</p>
                 {selectedOrder.customer_email && (
-                  <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+                  <p className="text-slate-500">{selectedOrder.customer_email}</p>
                 )}
-                <p className="text-muted-foreground mt-1">
+                <p className="text-slate-500 mt-1">
                   {typeof selectedOrder.shipping_address === "string"
                     ? selectedOrder.shipping_address
                     : typeof selectedOrder.delivery_address === "string"
@@ -548,10 +560,10 @@ export function ManagerOrdersView() {
               </div>
 
               {/* Delivery Schedule Management Section */}
-              <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-3">
+              <div className="p-4 rounded-2xl border border-white/80 bg-white/60 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                    <Calendar className="h-4 w-4 text-primary" /> Delivery Schedule
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
+                    <Calendar className="h-4 w-4 text-red-600" /> Delivery Schedule
                   </span>
                   {!editingSchedule && (
                     <Button
@@ -559,9 +571,9 @@ export function ManagerOrdersView() {
                       variant="outline"
                       size="sm"
                       onClick={() => setEditingSchedule(true)}
-                      className="h-7 text-[11px] font-bold rounded-xl border-slate-300 gap-1 bg-white hover:bg-slate-100"
+                      className="h-7 text-[11px] font-bold rounded-full border-slate-200 gap-1 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs"
                     >
-                      <Edit2 className="h-3 w-3" /> Edit Schedule
+                      <Edit2 className="h-3 w-3 text-slate-400" /> Edit Schedule
                     </Button>
                   )}
                 </div>
@@ -576,7 +588,7 @@ export function ManagerOrdersView() {
                         type="date"
                         value={schedDate}
                         onChange={(e) => setSchedDate(e.target.value)}
-                        className="h-8 rounded-xl text-xs bg-white border-slate-300"
+                        className="h-8 rounded-xl text-xs bg-white border-slate-200"
                       />
                     </div>
                     <div>
@@ -584,10 +596,10 @@ export function ManagerOrdersView() {
                         Delivery Slot
                       </label>
                       <Select value={schedSlot} onValueChange={setSchedSlot}>
-                        <SelectTrigger className="h-8 rounded-xl text-xs bg-white border-slate-300 w-full">
+                        <SelectTrigger className="h-8 rounded-xl text-xs bg-white border-slate-200 w-full">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="rounded-xl">
+                        <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80">
                           <SelectItem value="Morning (08:00 - 12:00)">Morning (08:00 - 12:00)</SelectItem>
                           <SelectItem value="Afternoon (12:00 - 16:00)">Afternoon (12:00 - 16:00)</SelectItem>
                           <SelectItem value="Evening (16:00 - 20:00)">Evening (16:00 - 20:00)</SelectItem>
@@ -600,7 +612,7 @@ export function ManagerOrdersView() {
                         size="sm"
                         onClick={handleSaveSchedule}
                         disabled={savingSchedule}
-                        className="h-7 rounded-xl text-[11px] font-bold bg-primary hover:bg-primary/90 text-white"
+                        className="h-7.5 rounded-full text-[11px] font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/20 cursor-pointer"
                       >
                         {savingSchedule ? (
                           <>
@@ -619,19 +631,19 @@ export function ManagerOrdersView() {
                           setSchedDate(selectedOrder.delivery_date || "");
                           setSchedSlot(selectedOrder.delivery_slot || "Morning (08:00 - 12:00)");
                         }}
-                        className="h-7 rounded-xl text-[11px] font-medium"
+                        className="h-7.5 rounded-full text-[11px] font-bold text-slate-600 hover:bg-slate-100"
                       >
                         Cancel
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-xl border border-slate-200">
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3.5 rounded-xl border border-slate-200/70 shadow-2xs">
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block">
                         Date
                       </span>
-                      <span className="font-extrabold text-foreground">
+                      <span className="font-black text-slate-900 mt-0.5 block">
                         {selectedOrder.delivery_date
                           ? new Date(selectedOrder.delivery_date).toLocaleDateString("en-GB", {
                               day: "numeric",
@@ -642,10 +654,10 @@ export function ManagerOrdersView() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block">
                         Time Slot
                       </span>
-                      <span className="font-extrabold text-foreground">
+                      <span className="font-black text-slate-900 mt-0.5 block">
                         {selectedOrder.delivery_slot || "Not scheduled"}
                       </span>
                     </div>
@@ -654,16 +666,16 @@ export function ManagerOrdersView() {
               </div>
 
               <div className="space-y-2">
-                <p className="font-bold text-foreground">Order Items</p>
+                <p className="font-bold text-slate-900">Order Items</p>
                 {selectedOrder.order_items?.map((item: any) => (
                   <div key={item.id} className="flex justify-between py-1 border-b border-slate-100 last:border-0">
-                    <span>
+                    <span className="text-slate-700 font-medium">
                       {item.product_name} x {item.quantity}
                     </span>
-                    <span className="font-bold">{gbp(Number(item.total_price))}</span>
+                    <span className="font-bold text-slate-900">{gbp(Number(item.total_price))}</span>
                   </div>
                 ))}
-                <div className="border-t pt-2 flex justify-between font-black text-foreground">
+                <div className="border-t border-slate-200 pt-3 flex justify-between font-black text-slate-900 text-sm">
                   <span>Total Amount</span>
                   <span>{gbp(Number(selectedOrder.total))}</span>
                 </div>

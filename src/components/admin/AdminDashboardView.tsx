@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -185,72 +185,135 @@ export function AdminDashboardView() {
   ).length;
   const averageOrderValue = totalOrdersCount > 0 ? totalRevenue / totalOrdersCount : 0;
 
-  // Chart data calculations from real orders
-  const chartData =
-    orders.length > 0
-      ? orders
-          .slice(0, 12)
-          .reverse()
-          .map((o) => ({
-            month: new Date(o.created_at).toLocaleDateString("en-GB", {
-              month: "short",
-              day: "numeric",
-            }),
-            revenue: Number(o.total || 0),
-            orders: 1,
-            aov: Number(o.total || 0),
-          }))
-      : [
-          { month: "Jan", revenue: 0, orders: 0, aov: 0 },
-          { month: "Feb", revenue: 0, orders: 0, aov: 0 },
-          { month: "Mar", revenue: 0, orders: 0, aov: 0 },
-          { month: "Apr", revenue: 0, orders: 0, aov: 0 },
-          { month: "May", revenue: 0, orders: 0, aov: 0 },
-          { month: "Jun", revenue: 0, orders: 0, aov: 0 },
-        ];
-
-  // Dynamic trend calculation based on actual Supabase values
-  const metricValues = chartData.map((d) => Number(d[analyticsMetric] || 0));
-  let trend: "positive" | "negative" | "neutral" = "neutral";
-
-  if (metricValues.length >= 2) {
-    const mid = Math.floor(metricValues.length / 2);
-    const firstHalfAvg = metricValues.slice(0, mid).reduce((sum, v) => sum + v, 0) / (mid || 1);
-    const secondHalfAvg =
-      metricValues.slice(mid).reduce((sum, v) => sum + v, 0) / (metricValues.length - mid || 1);
-
-    if (secondHalfAvg > firstHalfAvg * 1.01) {
-      trend = "positive";
-    } else if (secondHalfAvg < firstHalfAvg * 0.99) {
-      trend = "negative";
-    } else {
-      trend = "neutral";
+  // Chart data calculations from real orders grouped chronologically
+  const chartData = useMemo(() => {
+    if (!orders || orders.length === 0) {
+      return [
+        { month: "Jan", revenue: 0, orders: 0, aov: 0 },
+        { month: "Feb", revenue: 0, orders: 0, aov: 0 },
+        { month: "Mar", revenue: 0, orders: 0, aov: 0 },
+        { month: "Apr", revenue: 0, orders: 0, aov: 0 },
+        { month: "May", revenue: 0, orders: 0, aov: 0 },
+        { month: "Jun", revenue: 0, orders: 0, aov: 0 },
+      ];
     }
-  } else if (metricValues.length === 1 && metricValues[0] > 0) {
-    trend = "positive";
-  }
 
-  // Dynamic Theme palette (JSS Red theme accent)
-  const chartTheme = {
-    positive: {
-      stroke: "#dc2626", // JSS Red
-      badgeBg: "bg-red-50 text-red-700 border-red-200",
-      badgeText: "Positive Growth",
-      Icon: TrendingUp,
-    },
-    negative: {
-      stroke: "#ef4444", // Red
-      badgeBg: "bg-red-50 text-red-700 border-red-200",
-      badgeText: "Declining",
-      Icon: TrendingDown,
-    },
-    neutral: {
-      stroke: "#475569", // Slate Neutral
-      badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
-      badgeText: "Stable",
-      Icon: Activity,
-    },
-  }[trend];
+    // Sort valid non-cancelled orders chronologically
+    const sortedOrders = [...orders]
+      .filter((o) => o.status !== "Cancelled")
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+    if (sortedOrders.length === 0) {
+      return [{ month: "Today", revenue: 0, orders: 0, aov: 0 }];
+    }
+
+    // Group real orders by date bucket (up to 14 latest date groups)
+    const dateMap = new Map<string, { revenue: number; orders: number }>();
+    sortedOrders.forEach((o) => {
+      const dateKey = new Date(o.created_at).toLocaleDateString("en-GB", {
+        month: "short",
+        day: "numeric",
+      });
+      const existing = dateMap.get(dateKey) || { revenue: 0, orders: 0 };
+      dateMap.set(dateKey, {
+        revenue: existing.revenue + Number(o.total || 0),
+        orders: existing.orders + 1,
+      });
+    });
+
+    const grouped = Array.from(dateMap.entries()).map(([month, stats]) => ({
+      month,
+      revenue: stats.revenue,
+      orders: stats.orders,
+      aov: stats.orders > 0 ? stats.revenue / stats.orders : 0,
+    }));
+
+    return grouped.slice(-12);
+  }, [orders]);
+
+  // Dynamic performance trend calculation based on actual Supabase data
+  const { trend, trendPercent } = useMemo(() => {
+    const metricValues = chartData.map((d) => Number(d[analyticsMetric] || 0));
+    const validValues = metricValues.filter((v) => !isNaN(v));
+
+    if (validValues.length === 0 || validValues.every((v) => v === 0)) {
+      return { trend: "neutral" as const, trendPercent: 0 };
+    }
+
+    if (validValues.length === 1) {
+      return {
+        trend: validValues[0] > 0 ? ("positive" as const) : ("neutral" as const),
+        trendPercent: 0,
+      };
+    }
+
+    // Divide the series into two halves to measure actual trajectory
+    const mid = Math.floor(validValues.length / 2);
+    const firstHalf = validValues.slice(0, mid);
+    const secondHalf = validValues.slice(mid);
+
+    const firstHalfAvg = firstHalf.reduce((sum, v) => sum + v, 0) / (firstHalf.length || 1);
+    const secondHalfAvg = secondHalf.reduce((sum, v) => sum + v, 0) / (secondHalf.length || 1);
+
+    let pct = 0;
+    if (firstHalfAvg > 0) {
+      pct = Math.round(((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100);
+    } else if (secondHalfAvg > 0) {
+      pct = 100;
+    }
+
+    // Performance state evaluation:
+    // GREEN = strong / healthy / clearly positive revenue performance (pct >= +3% or strong positive volume)
+    // BLUE  = normal / stable / medium performance (-3% to +3% or steady positive baseline)
+    // RED   = low / significantly declining performance (pct <= -3% or zero/downward volume)
+    if (pct >= 3 || (secondHalfAvg > firstHalfAvg && secondHalfAvg > 0)) {
+      return { trend: "positive" as const, trendPercent: pct };
+    } else if (pct <= -3 || (secondHalfAvg === 0 && firstHalfAvg > 0)) {
+      return { trend: "negative" as const, trendPercent: pct };
+    } else {
+      return { trend: "neutral" as const, trendPercent: pct };
+    }
+  }, [chartData, analyticsMetric]);
+
+  // Dynamic Theme palette based on performance trend:
+  // - GREEN = strong / healthy / positive
+  // - BLUE = normal / stable / medium
+  // - RED = low / significantly declining
+  const chartTheme = useMemo(() => {
+    switch (trend) {
+      case "positive":
+        return {
+          stroke: "#10b981", // Emerald Green
+          gradientStop: "#10b981",
+          badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200/80 shadow-2xs",
+          badgeText: trendPercent > 0 ? `+${trendPercent}% Growth` : "Healthy Growth",
+          tooltipBorder: "#a7f3d0",
+          activeTab: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs font-black",
+          Icon: TrendingUp,
+        };
+      case "negative":
+        return {
+          stroke: "#dc2626", // JSS Red
+          gradientStop: "#dc2626",
+          badgeBg: "bg-rose-50 text-rose-700 border-rose-200/80 shadow-2xs",
+          badgeText: trendPercent < 0 ? `${trendPercent}% Declining` : "Declining",
+          tooltipBorder: "#fecaca",
+          activeTab: "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs font-black",
+          Icon: TrendingDown,
+        };
+      case "neutral":
+      default:
+        return {
+          stroke: "#2563eb", // Royal Blue
+          gradientStop: "#2563eb",
+          badgeBg: "bg-blue-50 text-blue-700 border-blue-200/80 shadow-2xs",
+          badgeText: "Stable Performance",
+          tooltipBorder: "#bfdbfe",
+          activeTab: "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xs font-black",
+          Icon: Activity,
+        };
+    }
+  }, [trend, trendPercent]);
 
   const categoryData =
     products.length > 0
@@ -698,7 +761,7 @@ export function AdminDashboardView() {
               <Link
                 key={module.title}
                 to={module.href as never}
-                className="group relative surface-card bg-white/70 backdrop-blur-xl rounded-[28px] border border-white/80 p-8 min-h-[210px] flex flex-col items-center justify-center text-center space-y-4 hover:shadow-[0_14px_45px_rgba(225,29,72,0.12)] hover:border-red-500/40 hover:-translate-y-1.5 hover:bg-white/85 transition-all duration-300 cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.03)]"
+                className="group relative surface-card bg-white/70 backdrop-blur-xl rounded-[28px] border border-white/80 p-8 min-h-[210px] flex flex-col items-center justify-center text-center space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_36px_rgba(220,38,38,0.08)] hover:border-red-300/80 hover:-translate-y-1 hover:bg-white/90 transition-all duration-250 ease-out cursor-pointer"
               >
                 {/* Floating Notification Badge */}
                 {module.badge !== undefined && (
@@ -707,9 +770,9 @@ export function AdminDashboardView() {
                   </span>
                 )}
 
-                {/* Large Centered Circular Icon Container (Glass Treatment) */}
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-red-500/15 via-rose-500/10 to-red-500/5 border border-red-500/20 text-red-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-red-600 group-hover:to-rose-600 group-hover:text-white transition-all duration-300 shadow-sm">
-                  <IconComponent className="h-8 w-8" />
+                {/* Large Centered Circular Icon Container */}
+                <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 flex items-center justify-center group-hover:bg-red-500/15 group-hover:border-red-500/30 group-hover:scale-105 transition-all duration-250 ease-out shadow-2xs">
+                  <IconComponent className="h-8 w-8 text-red-600 group-hover:text-red-700 transition-colors" />
                 </div>
 
                 {/* Module Title & Subtitle */}
@@ -734,8 +797,12 @@ export function AdminDashboardView() {
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-black text-slate-900">Revenue Analytics</h2>
                 <span
-                  className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${chartTheme.badgeBg}`}
+                  className={cn(
+                    "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1",
+                    chartTheme.badgeBg,
+                  )}
                 >
+                  <chartTheme.Icon className="h-3 w-3" />
                   {chartTheme.badgeText}
                 </span>
               </div>
@@ -747,9 +814,10 @@ export function AdminDashboardView() {
                 variant={analyticsMetric === "revenue" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("revenue")}
                 className={cn(
-                  "h-7 text-[11px] font-bold rounded-lg px-3",
-                  analyticsMetric === "revenue" &&
-                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                  "h-7 text-[11px] font-bold rounded-lg px-3 transition-all",
+                  analyticsMetric === "revenue"
+                    ? chartTheme.activeTab
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60",
                 )}
               >
                 Revenue
@@ -759,9 +827,10 @@ export function AdminDashboardView() {
                 variant={analyticsMetric === "orders" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("orders")}
                 className={cn(
-                  "h-7 text-[11px] font-bold rounded-lg px-3",
-                  analyticsMetric === "orders" &&
-                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                  "h-7 text-[11px] font-bold rounded-lg px-3 transition-all",
+                  analyticsMetric === "orders"
+                    ? chartTheme.activeTab
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60",
                 )}
               >
                 Orders
@@ -771,9 +840,10 @@ export function AdminDashboardView() {
                 variant={analyticsMetric === "aov" ? "default" : "ghost"}
                 onClick={() => setAnalyticsMetric("aov")}
                 className={cn(
-                  "h-7 text-[11px] font-bold rounded-lg px-3",
-                  analyticsMetric === "aov" &&
-                    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-xs",
+                  "h-7 text-[11px] font-bold rounded-lg px-3 transition-all",
+                  analyticsMetric === "aov"
+                    ? chartTheme.activeTab
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60",
                 )}
               >
                 AOV
@@ -794,9 +864,9 @@ export function AdminDashboardView() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorMetricRed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#dc2626" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#dc2626" stopOpacity={0.0} />
+                    <linearGradient id="colorMetricDynamic" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={chartTheme.gradientStop} stopOpacity={0.25} />
+                      <stop offset="95%" stopColor={chartTheme.gradientStop} stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -815,7 +885,7 @@ export function AdminDashboardView() {
                     contentStyle={{
                       backgroundColor: "#ffffff",
                       borderRadius: "16px",
-                      border: "1px solid #fee2e2",
+                      border: `1px solid ${chartTheme.tooltipBorder}`,
                       fontSize: "12px",
                       boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
                     }}
@@ -827,10 +897,10 @@ export function AdminDashboardView() {
                   <Area
                     type="monotone"
                     dataKey={analyticsMetric}
-                    stroke="#dc2626"
+                    stroke={chartTheme.stroke}
                     strokeWidth={3}
                     fillOpacity={1}
-                    fill="url(#colorMetricRed)"
+                    fill="url(#colorMetricDynamic)"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -903,194 +973,6 @@ export function AdminDashboardView() {
                   <Bar dataKey={categoryMetric} fill="#dc2626" radius={[0, 8, 8, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 5. ATTENTION REQUIRED QUEUE & QUICK ACTIONS (FROSTED GLASS PANELS) */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Attention Required Queue */}
-        <div className="lg:col-span-2 surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
-          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <h2 className="text-base font-black text-slate-900">Attention Required</h2>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/20 font-extrabold text-xs">
-              {pendingOrdersCount + lowStockCount + outOfStockCount} Actions Needed
-            </span>
-          </div>
-
-          {pendingOrdersCount === 0 && lowStockCount === 0 && outOfStockCount === 0 ? (
-            <div className="p-8 text-center space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
-              <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
-              <p className="text-xs font-bold text-slate-900">No attention items</p>
-              <p className="text-[11px] text-slate-500">
-                All orders and inventory levels are healthy.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {orders
-                .filter((o) => o.status === "Pending")
-                .slice(0, 3)
-                .map((o) => (
-                  <div
-                    key={o.id}
-                    className="p-4 rounded-2xl border border-white/80 bg-white/80 flex items-center justify-between gap-4 shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 font-bold">
-                        <Clock className="h-4 w-4" />
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-extrabold text-slate-900">
-                          Order #{o.order_number || o.id.slice(0, 8)} awaiting fulfillment
-                        </p>
-                        <p className="text-slate-500 font-medium">
-                          {o.customer_name} · Total {gbp(Number(o.total || 0))}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full text-xs font-bold shrink-0 border-white/80 bg-white hover:bg-slate-50 shadow-2xs"
-                    >
-                      <Link to="/admin/orders">Review</Link>
-                    </Button>
-                  </div>
-                ))}
-
-              {inventoryAlerts.slice(0, 3).map((inv) => {
-                const isOutOfStock = Number(inv.stock ?? inv.current_stock ?? 0) === 0;
-                return (
-                  <div
-                    key={inv.id}
-                    className={cn(
-                      "p-4 rounded-2xl flex items-center justify-between gap-4 shadow-2xs",
-                      isOutOfStock
-                        ? "border border-red-300/80 bg-red-50/60"
-                        : "border border-amber-200/70 bg-amber-50/40",
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2.5 rounded-xl",
-                          isOutOfStock ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800",
-                        )}
-                      >
-                        <AlertTriangle className="h-4 w-4" />
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-extrabold text-slate-900">
-                          {isOutOfStock
-                            ? `Out of Stock: ${inv.name || inv.products?.name || "Product"}`
-                            : `Low Stock Alert: ${inv.name || inv.products?.name || "Product"}`}
-                        </p>
-                        <p className="text-slate-500 font-medium">
-                          {isOutOfStock
-                            ? "Current Stock: 0 units (Requires urgent restock)"
-                            : `Current Stock: ${inv.stock ?? inv.current_stock} units (Low Stock)`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className={cn(
-                        "rounded-full text-xs font-bold shrink-0 shadow-2xs",
-                        isOutOfStock
-                          ? "border-red-200 text-red-700 bg-white hover:bg-red-50"
-                          : "border-amber-200 text-amber-800 bg-white hover:bg-amber-50",
-                      )}
-                    >
-                      <Link
-                        to={
-                          isOutOfStock
-                            ? ("/admin/inventory?status=out_of_stock" as never)
-                            : ("/admin/inventory?status=low_stock" as never)
-                        }
-                      >
-                        Reorder
-                      </Link>
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Audit Log Activity Feed */}
-        <div className="surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
-          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
-            <h2 className="text-base font-black text-slate-900">Recent Audit Logs</h2>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs font-bold text-red-600 hover:text-red-700 p-0"
-            >
-              <Link to="/admin/audit">
-                View All <ArrowRight className="ml-1 h-3 w-3" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            {auditLogs.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">
-                No recent audit log activity.
-              </p>
-            ) : (
-              auditLogs.slice(0, 5).map((log) => {
-                const getDetailsSummary = (d: unknown): string => {
-                  if (typeof d === "string" && d.trim()) return d;
-                  if (d && typeof d === "object") {
-                    const obj = d as Record<string, unknown>;
-                    if (typeof obj.message === "string") return obj.message;
-                    if (typeof obj.description === "string") return obj.description;
-                    try {
-                      return JSON.stringify(obj);
-                    } catch {
-                      return "Audit details";
-                    }
-                  }
-                  if (typeof log.target_table === "string" && log.target_table)
-                    return log.target_table;
-                  if (typeof log.entity_type === "string" && log.entity_type)
-                    return log.entity_type;
-                  if (log.actor_email) return `By ${log.actor_email}`;
-                  return "System event";
-                };
-
-                return (
-                  <div
-                    key={log.id}
-                    className="p-3 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md space-y-1 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-slate-900 truncate max-w-[140px]">
-                        {log.action || "System Action"}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {new Date(log.created_at).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium truncate">
-                      {getDetailsSummary(log.details)}
-                    </p>
-                  </div>
-                );
-              })
             )}
           </div>
         </div>

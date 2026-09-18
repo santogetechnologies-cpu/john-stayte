@@ -57,40 +57,40 @@ export function DeliveryHeader({ onOpenMobileMenu }: DeliveryHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 h-16 border-b border-slate-200/90 bg-white/95 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shadow-2xs">
+    <header className="sticky top-0 z-40 h-16 shrink-0 border-b border-white/70 bg-white/65 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between gap-4 shadow-2xs relative">
       {/* Left: Mobile hamburger & Page Title */}
       <div className="flex items-center gap-3 min-w-0">
         <Button
           variant="ghost"
           size="icon"
           onClick={onOpenMobileMenu}
-          className="md:hidden h-9 w-9 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
+          className="md:hidden h-9 w-9 rounded-xl text-slate-600 hover:bg-white/80 shrink-0 cursor-pointer"
         >
           <Menu className="h-5 w-5" />
         </Button>
 
         {/* Brand mark visible on small screens */}
         <Link to="/delivery" className="md:hidden flex items-center gap-2 shrink-0">
-          <img src={logo} alt="JSS" className="h-7 w-auto object-contain" />
+          <img src={logo} alt="JSS" className="h-7 w-auto object-contain rounded-lg" />
         </Link>
 
         <div className="hidden sm:flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-600 flex items-center gap-1">
-              <Radio className="h-3 w-3 text-red-600 animate-pulse" /> Live Dispatch
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-600 border border-red-500/20 text-[10px] font-black uppercase tracking-wider shadow-2xs">
+              <Radio className="h-2.5 w-2.5 text-red-600 animate-pulse" /> Live Dispatch
             </span>
             <span className="text-slate-300 text-xs">·</span>
-            <span className="text-[11px] font-medium text-slate-500">
+            <span className="text-[11px] font-semibold text-slate-500">
               Gloucestershire Delivery Unit
             </span>
           </div>
-          <h1 className="font-display font-extrabold text-sm sm:text-base text-slate-900 truncate leading-tight">
+          <h1 className="font-display font-black text-sm sm:text-base text-slate-900 truncate leading-tight mt-0.5">
             {getPageTitle()}
           </h1>
         </div>
 
         <div className="sm:hidden min-w-0">
-          <h1 className="font-display font-bold text-xs text-slate-900 truncate">
+          <h1 className="font-display font-extrabold text-xs text-slate-900 truncate">
             {getPageTitle()}
           </h1>
         </div>
@@ -99,7 +99,7 @@ export function DeliveryHeader({ onOpenMobileMenu }: DeliveryHeaderProps) {
       {/* Right: Actions, Notifications, User Menu */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Status indicator badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700 shadow-2xs">
+        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-[11px] font-extrabold text-emerald-700 shadow-2xs backdrop-blur-md">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>Active Agent</span>
         </div>
@@ -112,18 +112,18 @@ export function DeliveryHeader({ onOpenMobileMenu }: DeliveryHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="flex items-center gap-2.5 p-1 sm:px-2 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              className="flex items-center gap-2.5 px-2 py-1.5 rounded-full border border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs transition-all cursor-pointer"
             >
-              <Avatar className="h-8 w-8 rounded-lg bg-red-600 text-white font-bold text-xs shadow-2xs">
-                <AvatarFallback className="bg-red-600 text-white font-bold text-xs">
+              <Avatar className="h-7.5 w-7.5 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-extrabold text-xs shadow-2xs">
+                <AvatarFallback className="bg-gradient-to-br from-red-600 to-rose-600 text-white font-extrabold text-xs">
                   {getAgentInitials(user?.name)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col text-left">
-                <span className="font-bold text-xs text-slate-900 leading-tight truncate max-w-[120px]">
+                <span className="font-extrabold text-xs text-slate-900 leading-tight truncate max-w-[120px]">
                   {user?.name || "Delivery Driver"}
                 </span>
-                <span className="text-[10px] text-slate-400 font-semibold leading-none">
+                <span className="text-[10px] text-slate-400 font-bold leading-none">
                   Delivery Agent
                 </span>
               </div>
@@ -132,7 +132,7 @@ export function DeliveryHeader({ onOpenMobileMenu }: DeliveryHeaderProps) {
 
           <DropdownMenuContent
             align="end"
-            className="w-56 rounded-2xl p-1.5 border-slate-200 shadow-xl z-50 bg-white"
+            className="w-56 rounded-2xl p-1.5 border border-white/80 shadow-xl z-50 bg-white/95 backdrop-blur-2xl"
           >
             <DropdownMenuLabel className="px-3 py-2">
               <p className="font-display font-extrabold text-xs text-slate-900">
@@ -147,7 +147,7 @@ export function DeliveryHeader({ onOpenMobileMenu }: DeliveryHeaderProps) {
               <p className="text-[11px] text-slate-400 font-medium truncate">
                 {user?.email || "delivery@jss.com"}
               </p>
-              <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 text-[9px] font-black uppercase tracking-wide text-red-600 border border-red-100">
+              <div className="mt-1.5 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-50 text-[9px] font-black uppercase tracking-wide text-red-600 border border-red-100">
                 <Truck className="h-2.5 w-2.5" /> Delivery Agent
               </div>
             </DropdownMenuLabel>

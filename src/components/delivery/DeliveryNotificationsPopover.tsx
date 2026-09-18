@@ -143,12 +143,12 @@ export function DeliveryNotificationsPopover() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative rounded-xl h-9 w-9 hover:bg-slate-100 transition-colors cursor-pointer"
+          className="relative rounded-full h-9 w-9 bg-white/70 hover:bg-white border border-white/80 shadow-2xs backdrop-blur-md transition-all cursor-pointer"
           aria-label={`Notifications, ${unreadCount} unread`}
         >
-          <Bell className="h-4 w-4 text-slate-600" />
+          <Bell className="h-4 w-4 text-slate-700" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+            <span className="absolute top-1 right-1 flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-600 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
             </span>
@@ -158,15 +158,15 @@ export function DeliveryNotificationsPopover() {
 
       <PopoverContent
         align="end"
-        className="w-80 sm:w-96 p-0 rounded-2xl border border-slate-200/90 bg-white shadow-xl overflow-hidden z-50"
+        className="w-80 sm:w-96 p-0 rounded-3xl border border-white/80 bg-white/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-50"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/80">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5 bg-slate-50/60">
           <div className="flex items-center gap-2">
-            <h4 className="font-display font-extrabold text-xs text-slate-900">
+            <h4 className="font-display font-black text-xs text-slate-900 tracking-tight">
               Delivery Dispatch Alerts
             </h4>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-red-600 text-white">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-red-600 text-white shadow-2xs">
                 {unreadCount}
               </span>
             )}
@@ -216,7 +216,7 @@ export function DeliveryNotificationsPopover() {
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
                   className={cn(
-                    "p-3.5 flex gap-3 hover:bg-slate-50 transition-colors cursor-pointer",
+                    "p-3.5 flex gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer",
                     isUnread ? "bg-red-50/30" : "",
                   )}
                 >
@@ -261,7 +261,7 @@ export function DeliveryNotificationsPopover() {
                         <div className="flex items-center gap-1.5 pt-0.5">
                           <span
                             className={cn(
-                              "font-black text-[9px] px-1.5 py-0.2 rounded-md",
+                              "font-black text-[9px] px-2 py-0.2 rounded-full",
                               emptyCylinderRequired
                                 ? "bg-amber-100 text-amber-900"
                                 : "bg-emerald-100 text-emerald-900",
@@ -286,13 +286,13 @@ export function DeliveryNotificationsPopover() {
           </div>
         )}
 
-        <div className="border-t border-slate-100 p-2 bg-slate-50 text-center">
+        <div className="border-t border-slate-100 p-2.5 bg-slate-50/70 text-center">
           <Button
             asChild
             variant="ghost"
             size="sm"
             onClick={() => setOpen(false)}
-            className="w-full text-xs font-bold text-red-600 hover:text-red-700 h-8 justify-center gap-1.5 cursor-pointer"
+            className="w-full text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 justify-center gap-1.5 cursor-pointer rounded-full"
           >
             <Link to="/delivery/notifications">
               View All Notifications <ArrowRight className="h-3.5 w-3.5" />

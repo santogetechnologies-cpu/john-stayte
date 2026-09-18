@@ -62,6 +62,7 @@ export function ManagerDashboardView() {
     try {
       const [
         { data: dbOrders },
+        { data: dbProducts },
         { data: dbInventory },
         { data: dbDeliveries },
         { data: dbTickets },
@@ -71,14 +72,44 @@ export function ManagerDashboardView() {
           .from("orders")
           .select("*, order_items(*)")
           .order("created_at", { ascending: false }),
-        supabase.from("inventory").select("*, products(*)"),
+        supabase
+          .from("products")
+          .select("*")
+          .order("name", { ascending: true }),
+        supabase.from("inventory").select("*"),
         supabase.from("delivery_assignments").select("*"),
         supabase.from("support_tickets").select("*"),
         getDeliveryAgents(),
       ]);
 
+      const invMap = new Map((dbInventory || []).map((inv: any) => [inv.product_id, inv]));
+      const mergedInventory = (dbProducts || []).map((prod: any) => {
+        const invMeta = invMap.get(prod.id);
+        const stock = Number(prod.stock || 0);
+        const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 10);
+        const depot = invMeta?.depot_location || "Gloucestershire Main Depot (Whitminster)";
+
+        let status: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
+        if (stock === 0) {
+          status = "out_of_stock";
+        } else if (stock <= threshold) {
+          status = "low_stock";
+        }
+
+        return {
+          id: prod.id,
+          product_id: prod.id,
+          name: prod.name,
+          stock,
+          current_stock: stock,
+          reorder_threshold: threshold,
+          depot_location: depot,
+          status,
+        };
+      });
+
       setOrders(dbOrders || []);
-      setInventory(dbInventory || []);
+      setInventory(mergedInventory);
       setDeliveries(dbDeliveries || []);
       setTickets(dbTickets || []);
       setAgents(agentsData || []);
@@ -92,9 +123,15 @@ export function ManagerDashboardView() {
   useEffect(() => {
     loadManagerData();
 
+    const handleModulesUpdated = () => loadManagerData();
+    window.addEventListener("admin_modules_updated", handleModulesUpdated);
+
     const channel = supabase
       .channel("manager_dashboard_realtime_kpis")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadManagerData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
         loadManagerData(),
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () =>
@@ -109,6 +146,7 @@ export function ManagerDashboardView() {
       .subscribe();
 
     return () => {
+      window.removeEventListener("admin_modules_updated", handleModulesUpdated);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -127,7 +165,7 @@ export function ManagerDashboardView() {
     return !d.agent_id || !dName || dName === "unassigned";
   }).length;
   const activeDeliveryAgentsCount = agents.filter((a) => a.status.toLowerCase() === "active").length;
-  const lowStockCount = inventory.filter((i) => i.current_stock < i.reorder_threshold).length;
+  const lowStockCount = inventory.filter((i) => i.status === "low_stock").length;
   const openEnquiriesCount = tickets.filter(
     (t) => t.status === "Open" || t.status === "In Progress",
   ).length;
@@ -171,45 +209,54 @@ export function ManagerDashboardView() {
 
   return (
     <div className="space-y-8">
-      {/* 1. TOP HEADER & BREADCRUMB */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* 1. DASHBOARD GREETING & ACTION HEADER */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground">Dashboard</span>
+            <span className="text-slate-700 font-bold">Dashboard</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-            Good morning, {user?.name || "Manager"}
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+            Good morning, {user?.name || "Depot Operations Manager"}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Operational overview for Gloucestershire depot dispatch routes.
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+            Operational overview for Gloucestershire depot dispatch routes, inventory, and fleet status.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-full p-1 shadow-2xs">
-            <Calendar className="h-4 w-4 text-muted-foreground ml-2" />
-            <Select value={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="h-8 border-0 bg-transparent text-xs font-bold focus:ring-0 w-[110px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent align="end" className="rounded-xl font-medium text-xs">
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="7d">Last 7 Days</SelectItem>
-                <SelectItem value="30d">Last 30 Days</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+          <Select value={dateRange} onValueChange={setDateRange}>
+            <SelectTrigger className="w-[130px] h-9.5 rounded-full border-white/80 text-xs font-bold bg-white/70 backdrop-blur-md text-slate-700 shadow-2xs">
+              <Calendar className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80">
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="7d">Last 7 Days</SelectItem>
+              <SelectItem value="30d">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Button
             onClick={handleExportReport}
             variant="outline"
-            className="h-10 rounded-full text-xs font-bold gap-2 bg-white shadow-2xs border-slate-200 hover:bg-slate-50"
+            size="sm"
+            className="rounded-full text-xs font-bold gap-1.5 border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs cursor-pointer h-9.5"
           >
-            <Download className="h-3.5 w-3.5" /> Export Report
+            <Download className="h-3.5 w-3.5 text-slate-400" /> Export Report
+          </Button>
+
+          <Button
+            asChild
+            size="sm"
+            className="rounded-full text-xs font-black gap-1.5 shadow-md shadow-red-600/25 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer h-9.5"
+          >
+            <Link to="/manager/delivery-assignment">
+              <UserCheck className="h-4 w-4" /> Assign Drivers
+            </Link>
           </Button>
         </div>
       </div>
@@ -225,7 +272,7 @@ export function ManagerDashboardView() {
             icon: UserCheck,
             href: "/manager/delivery-assignment?filter=unassigned",
             iconBg: "bg-amber-500/10 text-amber-600 border-amber-500/20",
-            tagCls: "bg-amber-50 text-amber-700 border-amber-200/60",
+            tagCls: "bg-amber-50 text-amber-700 border-amber-200/80",
           },
           {
             label: "Orders Assigned",
@@ -235,7 +282,7 @@ export function ManagerDashboardView() {
             icon: ShoppingBag,
             href: "/manager/orders",
             iconBg: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-            tagCls: "bg-blue-50 text-blue-700 border-blue-200/60",
+            tagCls: "bg-blue-50 text-blue-700 border-blue-200/80",
           },
           {
             label: "Active Drivers",
@@ -245,7 +292,7 @@ export function ManagerDashboardView() {
             icon: Users,
             href: "/manager/delivery-agents",
             iconBg: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
-            tagCls: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
+            tagCls: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
           },
           {
             label: "Pending Approval",
@@ -255,7 +302,7 @@ export function ManagerDashboardView() {
             icon: Clock,
             href: "/manager/orders?status=Pending",
             iconBg: "bg-purple-500/10 text-purple-600 border-purple-500/20",
-            tagCls: "bg-purple-50 text-purple-700 border-purple-200/60",
+            tagCls: "bg-purple-50 text-purple-700 border-purple-200/80",
           },
           {
             label: "Out for Delivery",
@@ -265,7 +312,7 @@ export function ManagerDashboardView() {
             icon: Truck,
             href: "/manager/deliveries?status=out_for_delivery",
             iconBg: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20",
-            tagCls: "bg-indigo-50 text-indigo-700 border-indigo-200/60",
+            tagCls: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
           },
           {
             label: "Delivered Today",
@@ -275,7 +322,7 @@ export function ManagerDashboardView() {
             icon: CheckCircle2,
             href: "/manager/deliveries?status=delivered",
             iconBg: "bg-teal-500/10 text-teal-600 border-teal-500/20",
-            tagCls: "bg-teal-50 text-teal-700 border-teal-200/60",
+            tagCls: "bg-teal-50 text-teal-700 border-teal-200/80",
           },
           {
             label: "Delayed Deliveries",
@@ -285,7 +332,7 @@ export function ManagerDashboardView() {
             icon: AlertTriangle,
             href: "/manager/deliveries?status=delayed",
             iconBg: "bg-rose-500/10 text-rose-600 border-rose-500/20",
-            tagCls: "bg-rose-50 text-rose-700 border-rose-200/60",
+            tagCls: "bg-rose-50 text-rose-700 border-rose-200/80",
           },
           {
             label: "Processing",
@@ -295,7 +342,7 @@ export function ManagerDashboardView() {
             icon: PackageCheck,
             href: "/manager/orders?status=Processing",
             iconBg: "bg-sky-500/10 text-sky-600 border-sky-500/20",
-            tagCls: "bg-sky-50 text-sky-700 border-sky-200/60",
+            tagCls: "bg-sky-50 text-sky-700 border-sky-200/80",
           },
           {
             label: "Low Stock Items",
@@ -305,7 +352,7 @@ export function ManagerDashboardView() {
             icon: AlertOctagon,
             href: "/manager/inventory?status=low_stock",
             iconBg: "bg-red-500/10 text-red-600 border-red-500/20",
-            tagCls: "bg-red-50 text-red-700 border-red-200/60",
+            tagCls: "bg-red-50 text-red-700 border-red-200/80",
           },
           {
             label: "Open Enquiries",
@@ -315,16 +362,16 @@ export function ManagerDashboardView() {
             icon: MessageSquare,
             href: "/manager/enquiries?status=Open",
             iconBg: "bg-slate-500/10 text-slate-700 border-slate-500/20",
-            tagCls: "bg-slate-100 text-slate-700 border-slate-200",
+            tagCls: "bg-slate-100 text-slate-700 border-slate-200/80",
           },
         ].map((kpi) => (
           <Link
             key={kpi.label}
             to={kpi.href as never}
-            className="surface-card p-5 sm:p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] hover:border-primary/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer group"
+            className="surface-card p-5 sm:p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_40px_rgba(225,29,72,0.12)] hover:border-red-500/40 transition-all duration-300 hover:-translate-y-1 block cursor-pointer group"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 group-hover:text-foreground transition-colors">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 group-hover:text-slate-800 transition-colors">
                 {kpi.label}
               </span>
               <div
@@ -334,7 +381,7 @@ export function ManagerDashboardView() {
               </div>
             </div>
             <div>
-              <div className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+              <div className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
                 {kpi.val}
               </div>
               <div className="flex items-center justify-between mt-1">
@@ -342,7 +389,7 @@ export function ManagerDashboardView() {
                   {kpi.sub}
                 </span>
                 <span
-                  className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${kpi.tagCls}`}
+                  className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border shadow-2xs ${kpi.tagCls}`}
                 >
                   {kpi.tag}
                 </span>
@@ -356,11 +403,11 @@ export function ManagerDashboardView() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* LEFT COLUMN: RECENT DISPATCH QUEUE */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="surface-card p-6 rounded-3xl border bg-white space-y-4">
-            <div className="flex items-center justify-between border-b pb-4">
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+            <div className="flex items-center justify-between border-b border-white/60 pb-4">
               <div>
-                <h2 className="text-base font-black text-foreground">Depot Dispatch Queue</h2>
-                <p className="text-xs text-muted-foreground">
+                <h2 className="text-base font-black text-slate-900">Depot Dispatch Queue</h2>
+                <p className="text-xs text-slate-500 font-medium">
                   Orders requiring verification, packing, and driver assignment.
                 </p>
               </div>
@@ -368,7 +415,7 @@ export function ManagerDashboardView() {
                 asChild
                 variant="outline"
                 size="sm"
-                className="rounded-full text-xs font-bold gap-1"
+                className="rounded-full text-xs font-bold gap-1 border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs"
               >
                 <Link to="/manager/orders">
                   View All <ChevronRight className="h-3.5 w-3.5" />
@@ -377,131 +424,132 @@ export function ManagerDashboardView() {
             </div>
 
             {loading ? (
-              <div className="p-8 text-center text-xs text-muted-foreground font-bold">
+              <div className="p-8 text-center text-xs text-slate-400 font-bold">
                 Loading live queue...
               </div>
             ) : orders.length === 0 ? (
-              <div className="p-8 text-center text-xs text-muted-foreground">
+              <div className="p-8 text-center text-xs text-slate-400">
                 No active orders in depot queue.
               </div>
             ) : (
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow>
-                    <TableHead className="font-bold text-xs">Order</TableHead>
-                    <TableHead className="font-bold text-xs">Customer</TableHead>
-                    <TableHead className="font-bold text-xs">Total</TableHead>
-                    <TableHead className="font-bold text-xs">Status</TableHead>
-                    <TableHead className="font-bold text-xs text-right">Quick Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orders.slice(0, 5).map((o) => (
-                    <TableRow
-                      key={o.id}
-                      className="cursor-pointer hover:bg-slate-50/60"
-                      onClick={() => setSelectedOrder(o)}
-                    >
-                      <TableCell className="font-mono font-bold text-xs">
-                        #{o.order_number || o.id.slice(0, 8)}
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold">{o.customer_name}</TableCell>
-                      <TableCell className="font-bold text-xs">{gbp(Number(o.total))}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`font-bold text-[10px] ${
-                            o.status === "Approved"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : o.status === "Pending"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}
-                        >
-                          {o.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {o.status === "Pending" ? (
-                          <Button
-                            size="sm"
-                            onClick={(e) => handleApprove(o.id, e)}
-                            className="h-7 text-[11px] font-bold rounded-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                          >
-                            Approve
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-[11px] font-bold text-primary"
-                          >
-                            Inspect
-                          </Button>
-                        )}
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50/50 border-slate-100">
+                    <TableRow>
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Order</TableHead>
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Customer</TableHead>
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Total</TableHead>
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Status</TableHead>
+                      <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400 text-right">Quick Action</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.slice(0, 5).map((o) => (
+                      <TableRow
+                        key={o.id}
+                        className="cursor-pointer hover:bg-slate-50/60 transition-colors"
+                        onClick={() => setSelectedOrder(o)}
+                      >
+                        <TableCell className="font-mono font-black text-xs text-slate-900">
+                          #{o.order_number || o.id.slice(0, 8)}
+                        </TableCell>
+                        <TableCell className="text-xs font-semibold text-slate-700">{o.customer_name}</TableCell>
+                        <TableCell className="font-bold text-xs text-slate-900">{gbp(Number(o.total))}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black border shadow-2xs ${
+                              o.status === "Approved"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                                : o.status === "Pending"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200/80"
+                                  : "bg-blue-50 text-blue-700 border-blue-200/80"
+                            }`}
+                          >
+                            {o.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {o.status === "Pending" ? (
+                            <Button
+                              size="sm"
+                              onClick={(e) => handleApprove(o.id, e)}
+                              className="h-7 text-[11px] font-extrabold rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs"
+                            >
+                              Approve
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50/50"
+                            >
+                              Inspect
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </div>
 
         {/* RIGHT COLUMN: QUICK SHORTCUTS & ALERTS */}
         <div className="space-y-6">
-          <div className="surface-card p-6 rounded-3xl border bg-white space-y-4">
-            <h2 className="text-sm font-black text-foreground border-b pb-3">Manager Dispatch Actions</h2>
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+            <h2 className="text-sm font-black text-slate-900 border-b border-white/60 pb-3">Manager Dispatch Actions</h2>
             <div className="grid grid-cols-2 gap-2.5">
               {[
                 {
                   label: "Assign Deliveries",
                   href: "/manager/delivery-assignment",
                   icon: UserCheck,
-                  color: "text-amber-600 bg-amber-50",
+                  color: "text-amber-600 bg-amber-50 border border-amber-100",
                 },
                 {
                   label: "Drivers",
                   href: "/manager/delivery-agents",
                   icon: Users,
-                  color: "text-blue-600 bg-blue-50",
+                  color: "text-blue-600 bg-blue-50 border border-blue-100",
                 },
                 {
                   label: "All Deliveries",
                   href: "/manager/deliveries",
                   icon: Truck,
-                  color: "text-indigo-600 bg-indigo-50",
+                  color: "text-indigo-600 bg-indigo-50 border border-indigo-100",
                 },
                 {
                   label: "Customer List",
                   href: "/manager/customers",
                   icon: Users,
-                  color: "text-emerald-600 bg-emerald-50",
+                  color: "text-emerald-600 bg-emerald-50 border border-emerald-100",
                 },
                 {
                   label: "Support Tickets",
                   href: "/manager/enquiries",
                   icon: MessageSquare,
-                  color: "text-rose-600 bg-rose-50",
+                  color: "text-rose-600 bg-rose-50 border border-rose-100",
                 },
                 {
                   label: "Performance",
                   href: "/manager/performance",
                   icon: Activity,
-                  color: "text-slate-600 bg-slate-100",
+                  color: "text-slate-600 bg-slate-100 border border-slate-200/60",
                 },
               ].map((item) => (
                 <Link
                   key={item.label}
                   to={item.href as never}
-                  className="p-3.5 rounded-2xl border bg-background hover:bg-slate-50 hover:border-primary/40 transition-all flex flex-col items-center justify-center text-center group"
+                  className="p-3.5 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md hover:bg-white hover:border-red-300 hover:shadow-sm hover:-translate-y-0.5 transition-all flex flex-col items-center justify-center text-center group cursor-pointer"
                 >
                   <div
-                    className={`p-2.5 rounded-xl ${item.color} group-hover:scale-110 transition-transform mb-1.5`}
+                    className={`p-2.5 rounded-xl ${item.color} group-hover:scale-110 transition-transform mb-1.5 shadow-2xs`}
                   >
                     <item.icon className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                  <span className="text-xs font-bold text-slate-800 group-hover:text-red-600 transition-colors">
                     {item.label}
                   </span>
                 </Link>
@@ -509,11 +557,11 @@ export function ManagerDashboardView() {
             </div>
           </div>
 
-          <div className="surface-card p-6 rounded-3xl border bg-white space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
+          <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+            <div className="flex items-center justify-between border-b border-white/60 pb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
-                <h2 className="text-sm font-black text-foreground">
+                <h2 className="text-sm font-black text-slate-900">
                   Inventory Alerts ({lowStockCount})
                 </h2>
               </div>
@@ -521,40 +569,37 @@ export function ManagerDashboardView() {
                 asChild
                 variant="ghost"
                 size="sm"
-                className="h-7 text-[11px] font-bold text-primary"
+                className="h-7 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50/50"
               >
                 <Link to="/manager/inventory">Manage</Link>
               </Button>
             </div>
 
             {lowStockCount === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
+              <p className="text-xs text-slate-400 text-center py-4">
                 No low stock alerts in inventory.
               </p>
             ) : (
               <div className="space-y-2">
                 {inventory
-                  .filter((i) => i.current_stock < i.reorder_threshold)
+                  .filter((i) => i.status === "low_stock")
                   .slice(0, 3)
                   .map((inv) => (
                     <div
                       key={inv.id}
-                      className="p-3 rounded-xl border bg-red-50/30 flex items-center justify-between text-xs"
+                      className="p-3 rounded-2xl border border-red-200/80 bg-red-50/40 backdrop-blur-sm flex items-center justify-between text-xs"
                     >
                       <div>
-                        <p className="font-bold text-foreground">
-                          {inv.products?.name || "Product"}
+                        <p className="font-bold text-slate-900">
+                          {inv.name || "Product"}
                         </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          Stock: {inv.current_stock} (Min: {inv.reorder_threshold})
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          Stock: {inv.stock} units (Min: {inv.reorder_threshold})
                         </p>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className="bg-red-100 text-red-700 border-red-200 text-[10px] font-bold"
-                      >
+                      <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200 text-[10px] font-extrabold shadow-2xs">
                         Reorder
-                      </Badge>
+                      </span>
                     </div>
                   ))}
               </div>
@@ -565,44 +610,43 @@ export function ManagerDashboardView() {
 
       {/* ORDER DETAILS SHEET */}
       <Sheet open={Boolean(selectedOrder)} onOpenChange={() => setSelectedOrder(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white/95 backdrop-blur-2xl border-l border-white/80 overflow-y-auto text-slate-900">
           {selectedOrder && (
             <div className="space-y-6 text-xs">
-              <div className="border-b pb-4">
-                <h3 className="font-black text-lg">
+              <div className="border-b border-slate-100 pb-4">
+                <h3 className="font-black text-xl text-slate-900">
                   Order #{selectedOrder.order_number || selectedOrder.id.slice(0, 8)}
                 </h3>
-                <p className="text-muted-foreground">
+                <p className="text-slate-500 font-medium mt-0.5">
                   Placed on {new Date(selectedOrder.created_at).toLocaleString("en-GB")}
                 </p>
               </div>
 
               {/* DELIVERY ASSIGNMENT SECTION */}
-              <div className="p-4 rounded-2xl border bg-slate-50/80 space-y-3">
+              <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-foreground flex items-center gap-1.5">
-                    <Truck className="h-4 w-4 text-primary" /> Delivery Assignment
+                  <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                    <Truck className="h-4 w-4 text-red-600" /> Delivery Assignment
                   </span>
-                  <Badge
-                    variant="outline"
-                    className={`font-bold text-[10px] ${
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full font-black text-[10px] border shadow-2xs ${
                       selectedOrder.assigned_driver &&
                       selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                        : "bg-amber-50 text-amber-700 border-amber-200/80"
                     }`}
                   >
                     {selectedOrder.assigned_driver &&
                     selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
                       ? "Assigned"
                       : "Unassigned"}
-                  </Badge>
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between pt-1 text-xs">
                   <div>
-                    <p className="text-muted-foreground text-[11px]">Assigned Driver / Agent</p>
-                    <p className="font-extrabold text-foreground text-sm mt-0.5">
+                    <p className="text-slate-500 text-[11px] font-medium">Assigned Driver / Agent</p>
+                    <p className="font-black text-slate-900 text-sm mt-0.5">
                       {selectedOrder.assigned_driver &&
                       selectedOrder.assigned_driver.toLowerCase() !== "unassigned"
                         ? selectedOrder.assigned_driver
@@ -612,7 +656,7 @@ export function ManagerDashboardView() {
                   <Button
                     asChild
                     size="sm"
-                    className="rounded-full text-xs font-bold gap-1 bg-primary hover:bg-primary/90 shadow-2xs"
+                    className="rounded-full text-xs font-black gap-1 shadow-md shadow-red-600/25 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer"
                   >
                     <Link to="/manager/delivery-assignment">
                       {selectedOrder.assigned_driver &&
@@ -625,26 +669,26 @@ export function ManagerDashboardView() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-1">
-                <p className="font-bold text-foreground">Customer</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_name}</p>
-                <p className="text-muted-foreground">{selectedOrder.customer_email}</p>
+              <div className="p-4 rounded-2xl border border-white/80 bg-white/60 space-y-1">
+                <p className="font-bold text-slate-900">Customer Details</p>
+                <p className="text-slate-600 font-medium">{selectedOrder.customer_name}</p>
+                <p className="text-slate-500">{selectedOrder.customer_email}</p>
                 {selectedOrder.shipping_address && (
-                  <p className="text-muted-foreground">{selectedOrder.shipping_address}</p>
+                  <p className="text-slate-500">{selectedOrder.shipping_address}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <p className="font-bold text-foreground">Items</p>
+                <p className="font-bold text-slate-900">Items Ordered</p>
                 {selectedOrder.order_items?.map((item: any) => (
-                  <div key={item.id} className="flex justify-between">
-                    <span>
+                  <div key={item.id} className="flex justify-between py-1 border-b border-slate-100 last:border-0">
+                    <span className="text-slate-700 font-medium">
                       {item.product_name} x {item.quantity}
                     </span>
-                    <span className="font-bold">{gbp(Number(item.total_price))}</span>
+                    <span className="font-bold text-slate-900">{gbp(Number(item.total_price))}</span>
                   </div>
                 ))}
-                <div className="border-t pt-2 flex justify-between font-black text-foreground">
+                <div className="border-t border-slate-200 pt-3 flex justify-between font-black text-slate-900 text-sm">
                   <span>Total Amount</span>
                   <span>{gbp(Number(selectedOrder.total))}</span>
                 </div>

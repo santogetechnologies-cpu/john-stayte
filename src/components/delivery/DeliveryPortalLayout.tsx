@@ -91,34 +91,46 @@ export function DeliveryPortalLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-full bg-slate-50/60 overflow-hidden font-sans">
-      {/* 1. Desktop Persistent Sidebar (>= 768px tablet & desktop) */}
-      <div className="hidden md:flex shrink-0 h-full">
-        <DeliverySidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+    <div className="h-screen w-screen overflow-hidden bg-[#fafafd] text-slate-900 font-sans antialiased flex flex-col relative">
+      {/* DECORATIVE AMBIENT GLASS BACKGROUND LAYERS (Matches Admin Portal) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Top-Left Soft Red Ambient Glow */}
+        <div className="absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-red-500/12 via-rose-500/8 to-transparent blur-[120px]" />
+        {/* Bottom-Right Translucent Glow */}
+        <div className="absolute -bottom-40 -right-40 w-[750px] h-[750px] rounded-full bg-gradient-to-tl from-red-600/10 via-rose-400/6 to-transparent blur-[140px]" />
+        {/* Center Ambient Diffuse Shape */}
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-gradient-to-r from-red-500/5 via-rose-400/8 to-red-500/5 blur-[130px]" />
       </div>
 
-      {/* 2. Mobile Drawer (< 768px smartphones only) */}
-      <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent
-          side="left"
-          className="p-0 w-72 max-w-[85vw] border-r border-slate-200 bg-white [&>button]:hidden"
-        >
-          <DeliverySidebar
-            collapsed={false}
-            setCollapsed={() => {}}
-            onNavigate={() => setMobileMenuOpen(false)}
-            onClose={() => setMobileMenuOpen(false)}
-            isMobileDrawer={true}
-          />
-        </SheetContent>
-      </Sheet>
+      {/* TOP FIXED GLASS HEADER */}
+      <DeliveryHeader onOpenMobileMenu={() => setMobileMenuOpen(true)} />
 
-      {/* 3. Main Workspace */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <DeliveryHeader onOpenMobileMenu={() => setMobileMenuOpen(true)} />
+      {/* BODY WITH SIDEBAR AND MAIN WORKSPACE */}
+      <div className="flex-1 flex overflow-hidden relative z-10">
+        {/* 1. Desktop Persistent Sidebar (>= 768px tablet & desktop) */}
+        <div className="hidden md:flex shrink-0 h-full">
+          <DeliverySidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+        </div>
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
-          <div className="w-full space-y-5 sm:space-y-6">{children}</div>
+        {/* 2. Mobile Drawer (< 768px smartphones only) */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent
+            side="left"
+            className="p-0 w-72 max-w-[85vw] border-r border-white/80 bg-white/90 backdrop-blur-2xl [&>button]:hidden shadow-2xl"
+          >
+            <DeliverySidebar
+              collapsed={false}
+              setCollapsed={() => {}}
+              onNavigate={() => setMobileMenuOpen(false)}
+              onClose={() => setMobileMenuOpen(false)}
+              isMobileDrawer={true}
+            />
+          </SheetContent>
+        </Sheet>
+
+        {/* 3. Main Workspace */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-6 custom-scrollbar">
+          <div className="w-full max-w-7xl mx-auto space-y-6 sm:space-y-7">{children}</div>
         </main>
       </div>
     </div>

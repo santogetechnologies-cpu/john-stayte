@@ -227,7 +227,7 @@ export function DeliveryProfileView() {
   return (
     <div className="space-y-6 w-full max-w-7xl mx-auto">
       {/* 1. PREMIUM PROFILE HERO */}
-      <div className="surface-card bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs relative overflow-hidden">
+      <div className="surface-card bg-white/70 backdrop-blur-xl rounded-[26px] border border-white/80 p-6 sm:p-8 shadow-[0_8px_30px_rgba(0,0,0,0.03)] relative overflow-hidden">
         {/* Subtle decorative background glow */}
         <div className="absolute right-0 top-0 w-96 h-96 bg-gradient-to-bl from-red-600/10 via-red-600/3 to-transparent rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
 
@@ -235,14 +235,14 @@ export function DeliveryProfileView() {
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
             {/* Dynamic Initials Avatar with Status Pin */}
             <div className="relative shrink-0">
-              <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-3xl bg-gradient-to-br from-red-600 via-red-600 to-red-700 text-white flex items-center justify-center font-display font-black text-2xl sm:text-3xl shadow-lg border-2 border-red-500/30 tracking-wider">
+              <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-3xl bg-gradient-to-br from-red-600 via-red-600 to-rose-700 text-white flex items-center justify-center font-display font-black text-2xl sm:text-3xl shadow-lg shadow-red-600/20 border-2 border-white/40 tracking-wider">
                 {agentInitials}
               </div>
 
               {/* Status Indicator Dot */}
               <span
                 className={cn(
-                  "absolute bottom-1 right-1 h-5 w-5 rounded-full border-2 border-white flex items-center justify-center shadow-xs",
+                  "absolute bottom-1 right-1 h-5 w-5 rounded-full border-2 border-white flex items-center justify-center shadow-2xs",
                   agent?.status === "Active"
                     ? "bg-emerald-500"
                     : agent?.status === "On Delivery"
@@ -259,19 +259,19 @@ export function DeliveryProfileView() {
                 <h1 className="text-2xl sm:text-3xl font-display font-black text-slate-900 tracking-tight">
                   {agent?.full_name || user?.name || "Delivery Driver"}
                 </h1>
-                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold text-[10px] uppercase tracking-wide px-2.5 py-0.5 rounded-full shadow-none">
-                  <ShieldCheck className="h-3 w-3 mr-1 inline" /> Certified Driver
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 font-extrabold text-[10px] uppercase tracking-wide px-2.5 py-0.5 rounded-full shadow-2xs">
+                  <ShieldCheck className="h-3 w-3 mr-1 inline text-emerald-600" /> Certified Driver
                 </Badge>
                 <Badge
                   variant="outline"
-                  className="font-mono text-xs font-black bg-primary/10 text-primary border-primary/20 px-2.5 py-0.5"
+                  className="font-mono text-xs font-black bg-red-50 text-red-600 border-red-200 rounded-full px-2.5 py-0.5"
                 >
                   {agent?.agent_code || "DA-101"}
                 </Badge>
               </div>
 
               <p className="text-xs text-slate-500 font-medium">
-                Official Logistics Driver · <span className="text-slate-700 font-bold">John Stayte Services Fleet Operations</span>
+                Official Logistics Driver · <span className="text-slate-800 font-bold">John Stayte Services Fleet Operations</span>
               </p>
 
               {/* Contact details */}
@@ -279,7 +279,7 @@ export function DeliveryProfileView() {
                 {agent?.phone && (
                   <a
                     href={`tel:${agent.phone}`}
-                    className="flex items-center gap-1.5 hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 hover:text-red-600 transition-colors"
                   >
                     <Phone className="h-3.5 w-3.5 text-slate-400" /> {agent.phone}
                   </a>
@@ -287,7 +287,7 @@ export function DeliveryProfileView() {
                 {agent?.email && (
                   <a
                     href={`mailto:${agent.email}`}
-                    className="flex items-center gap-1.5 hover:text-primary transition-colors"
+                    className="flex items-center gap-1.5 hover:text-red-600 transition-colors"
                   >
                     <Mail className="h-3.5 w-3.5 text-slate-400" /> {agent.email}
                   </a>
@@ -309,7 +309,7 @@ export function DeliveryProfileView() {
             <Badge
               variant="outline"
               className={cn(
-                "font-bold text-xs px-3 py-1",
+                "font-bold text-xs px-3 py-1 rounded-full shadow-2xs",
                 agent?.status === "Active"
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : agent?.status === "On Delivery"
@@ -339,9 +339,9 @@ export function DeliveryProfileView() {
                 variant="outline"
                 size="sm"
                 onClick={handleOpenEdit}
-                className="rounded-full text-xs font-bold gap-1.5 h-8 bg-white hover:bg-slate-50 border-slate-200"
+                className="rounded-full text-xs font-bold gap-1.5 h-8 bg-white/80 hover:bg-white border-white/80 shadow-2xs text-slate-700 cursor-pointer"
               >
-                <Edit2 className="h-3.5 w-3.5 text-primary" /> Edit Profile
+                <Edit2 className="h-3.5 w-3.5 text-red-600" /> Edit Profile
               </Button>
             </div>
           </div>
@@ -350,12 +350,12 @@ export function DeliveryProfileView() {
 
       {/* 2. PERFORMANCE KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="surface-card p-5 rounded-3xl border bg-white shadow-xs space-y-1">
+        <div className="surface-card p-5 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
               TOTAL DELIVERIES
             </span>
-            <span className="p-1.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+            <span className="p-2 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 shadow-2xs">
               <Package className="h-3.5 w-3.5" />
             </span>
           </div>
@@ -368,12 +368,12 @@ export function DeliveryProfileView() {
           </div>
         </div>
 
-        <div className="surface-card p-5 rounded-3xl border bg-white shadow-xs space-y-1">
+        <div className="surface-card p-5 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
               COMPLETED ROUTES
             </span>
-            <span className="p-1.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-2xs">
               <CheckCircle2 className="h-3.5 w-3.5" />
             </span>
           </div>
@@ -386,12 +386,12 @@ export function DeliveryProfileView() {
           </div>
         </div>
 
-        <div className="surface-card p-5 rounded-3xl border bg-white shadow-xs space-y-1">
+        <div className="surface-card p-5 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
               ACTIVE TRANSIT
             </span>
-            <span className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-2xs">
               <Truck className="h-3.5 w-3.5" />
             </span>
           </div>
@@ -404,12 +404,12 @@ export function DeliveryProfileView() {
           </div>
         </div>
 
-        <div className="surface-card p-5 rounded-3xl border bg-white shadow-xs space-y-1">
+        <div className="surface-card p-5 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
               CUSTOMER RATING
             </span>
-            <span className="p-1.5 rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+            <span className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 shadow-2xs">
               <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
             </span>
           </div>
@@ -427,33 +427,33 @@ export function DeliveryProfileView() {
       {/* 3. TWO-COLUMN: DELIVERY PERFORMANCE & DRIVER INFORMATION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Delivery Performance & Metrics */}
-        <div className="surface-card p-6 rounded-3xl border bg-white shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
-              <PackageCheck className="h-4 w-4 text-primary" /> Delivery Performance
+              <PackageCheck className="h-4 w-4 text-red-600" /> Delivery Performance
             </h2>
-            <Badge variant="outline" className="font-bold text-xs bg-slate-50">
+            <Badge variant="outline" className="font-bold text-xs bg-white/80 border-slate-200 text-slate-600 rounded-full">
               Real-time Metrics
             </Badge>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
+            <div className="p-3 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-0.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Completed</span>
               <p className="text-xl font-black text-emerald-600">{completedDeliveries}</p>
               <p className="text-[10px] text-slate-500">Fulfilled</p>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
+            <div className="p-3 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-0.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase">In Progress</span>
               <p className="text-xl font-black text-indigo-600">{activeDeliveries}</p>
               <p className="text-[10px] text-slate-500">On route</p>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
+            <div className="p-3 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-0.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Delayed</span>
               <p className="text-xl font-black text-amber-600">{delayedDeliveries}</p>
               <p className="text-[10px] text-slate-500">Traffic/Weather</p>
             </div>
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-0.5">
+            <div className="p-3 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-0.5">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Exceptions</span>
               <p className="text-xl font-black text-slate-700">0</p>
               <p className="text-[10px] text-slate-500">Flagged</p>
@@ -466,9 +466,9 @@ export function DeliveryProfileView() {
               <span>Overall Delivery Completion</span>
               <span>{completionRate}%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex">
+            <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex shadow-inner">
               <div
-                className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${completionRate}%` }}
               />
             </div>
@@ -479,12 +479,12 @@ export function DeliveryProfileView() {
         </div>
 
         {/* Right Column: Driver Information */}
-        <div className="surface-card p-6 rounded-3xl border bg-white shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
-              <User className="h-4 w-4 text-primary" /> Driver Information
+              <User className="h-4 w-4 text-red-600" /> Driver Information
             </h2>
-            <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+            <span className="font-mono text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
               {agent?.agent_code || "DA-101"}
             </span>
           </div>
@@ -516,7 +516,7 @@ export function DeliveryProfileView() {
             </div>
             <div className="space-y-0.5">
               <p className="text-slate-400 font-bold uppercase text-[10px]">Account Status</p>
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-bold rounded-full">
                 {agent?.status || "Active"}
               </Badge>
             </div>
@@ -533,12 +533,12 @@ export function DeliveryProfileView() {
       {/* 4. TWO-COLUMN: VEHICLE & FLEET + CURRENT ASSIGNMENT / AVAILABILITY */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Assigned Vehicle & Fleet Details */}
-        <div className="surface-card p-6 rounded-3xl border bg-white shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
-              <Truck className="h-4 w-4 text-primary" /> Vehicle & Fleet Details
+              <Truck className="h-4 w-4 text-red-600" /> Vehicle & Fleet Details
             </h2>
-            <span className="font-mono bg-slate-900 text-white font-bold text-xs px-2.5 py-0.5 rounded-lg">
+            <span className="font-mono bg-slate-900 text-white font-bold text-xs px-2.5 py-0.5 rounded-full shadow-2xs">
               {agent?.vehicle_plate || "JS72 AGY"}
             </span>
           </div>
@@ -574,34 +574,34 @@ export function DeliveryProfileView() {
         </div>
 
         {/* Right Column: Account Status & Current Assignment */}
-        <div className="surface-card p-6 rounded-3xl border bg-white shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" /> Live Assignment & Shift Status
+              <Clock className="h-4 w-4 text-red-600" /> Live Assignment & Shift Status
             </h2>
-            <Badge className="bg-emerald-500 text-white font-bold text-xs">
+            <Badge className="bg-emerald-500 text-white font-bold text-xs rounded-full shadow-2xs">
               ● Online / Active
             </Badge>
           </div>
 
           <div className="space-y-3 text-xs">
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs flex items-center justify-between">
               <div>
                 <p className="text-slate-400 font-bold uppercase text-[10px]">Current Shift Status</p>
                 <p className="font-extrabold text-sm text-slate-900 mt-0.5">
                   {agent?.status === "On Delivery" ? "On Delivery Route" : "Available for Next Dispatch"}
                 </p>
               </div>
-              <Badge variant="outline" className="font-bold text-xs bg-white">
+              <Badge variant="outline" className="font-bold text-xs bg-slate-50 border-slate-200 rounded-full">
                 {activeDeliveries > 0 ? `${activeDeliveries} Active Drops` : "Ready"}
               </Badge>
             </div>
 
             {currentActiveDelivery ? (
-              <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/20 space-y-2">
+              <div className="p-4 rounded-2xl bg-red-50/60 border border-red-100 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900">Active Drop: #{currentActiveDelivery.order_ref || currentActiveDelivery.orders?.order_number || "Order"}</span>
-                  <Badge className="bg-primary text-white text-[10px] font-bold">In Transit</Badge>
+                  <Badge className="bg-red-600 text-white text-[10px] font-bold rounded-full shadow-2xs">In Transit</Badge>
                 </div>
                 <p className="text-[11px] text-slate-600">
                   Recipient: {currentActiveDelivery.orders?.customer_name || "Customer"} · {currentActiveDelivery.orders?.shipping_address || "Gloucestershire"}
@@ -612,13 +612,13 @@ export function DeliveryProfileView() {
                     setSelectedDelivery(currentActiveDelivery);
                     setWorkflowOpen(true);
                   }}
-                  className="w-full rounded-full text-xs font-bold bg-primary hover:bg-primary/90 text-white h-8 mt-1"
+                  className="w-full rounded-full text-xs font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white h-8.5 shadow-md shadow-red-600/20 cursor-pointer"
                 >
                   Continue Active Handover Workflow <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Button>
               </div>
             ) : (
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-center space-y-1">
+              <div className="p-4 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs text-center space-y-1">
                 <p className="font-bold text-slate-800">No active transit handover in progress</p>
                 <p className="text-[11px] text-slate-500">
                   You are available for automated dispatch queue assignment from Whitminster Depot.
@@ -630,8 +630,8 @@ export function DeliveryProfileView() {
       </div>
 
       {/* 5. CYLINDER VERIFICATION PERFORMANCE */}
-      <div className="surface-card p-6 rounded-3xl border bg-white shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
+      <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
               <Flame className="h-4 w-4 text-orange-500" /> LPG Cylinder Verification Performance
@@ -640,35 +640,35 @@ export function DeliveryProfileView() {
               Verified collections for Refill / Exchange orders vs New Cylinder orders.
             </p>
           </div>
-          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs font-bold">
+          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs font-bold rounded-full">
             Hazardous Goods
           </Badge>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+          <div className="p-4 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase">Total Exchange Drops</span>
             <p className="text-2xl font-black text-slate-900">{exchangeDeliveries.length}</p>
             <p className="text-[10px] text-slate-500">Refill orders</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+          <div className="p-4 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase">Empties Verified</span>
             <p className="text-2xl font-black text-emerald-600">{verifiedCylinderCount}</p>
             <p className="text-[10px] text-slate-500">Collected & checked</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+          <div className="p-4 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase">Verification Passed</span>
             <p className="text-2xl font-black text-teal-600">100%</p>
             <p className="text-[10px] text-slate-500">Safety compliant</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
+          <div className="p-4 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase">Verification Exceptions</span>
             <p className="text-2xl font-black text-slate-700">0</p>
             <p className="text-[10px] text-slate-500">Zero issues logged</p>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600 flex items-start gap-2.5 leading-relaxed">
+        <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs text-xs text-slate-600 flex items-start gap-2.5 leading-relaxed">
           <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
           <span>
             <strong>LPG Exchange Protocol:</strong> For <em>First-time / New Cylinder Purchases</em>, empty cylinder return is not required. For <em>Refill / Exchange</em> orders, empty cylinder physical verification is recorded before handover completion.
@@ -677,18 +677,18 @@ export function DeliveryProfileView() {
       </div>
 
       {/* 6. RECENT DELIVERY HISTORY */}
-      <div className="surface-card rounded-3xl border bg-white shadow-xs overflow-hidden space-y-0">
-        <div className="p-6 flex items-center justify-between border-b">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] overflow-hidden space-y-0">
+        <div className="p-6 flex items-center justify-between border-b border-slate-100">
           <div>
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
-              <Package className="h-4 w-4 text-primary" /> Recent Delivery History
+              <Package className="h-4 w-4 text-red-600" /> Recent Delivery History
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Live log of assigned delivery routes, handover timestamps, and cylinder types.
             </p>
           </div>
           <Link to="/delivery/deliveries">
-            <Button variant="ghost" size="sm" className="rounded-full text-xs font-bold gap-1 text-primary">
+            <Button variant="ghost" size="sm" className="rounded-full text-xs font-bold gap-1 text-red-600 hover:text-red-700 hover:bg-red-50">
               View All Assigned <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
@@ -705,15 +705,15 @@ export function DeliveryProfileView() {
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/80">
-                <TableRow>
-                  <TableHead className="font-bold text-xs">Order ID</TableHead>
-                  <TableHead className="font-bold text-xs">Customer</TableHead>
-                  <TableHead className="font-bold text-xs">Date / Time</TableHead>
-                  <TableHead className="font-bold text-xs">Exchange Req</TableHead>
-                  <TableHead className="font-bold text-xs">Status</TableHead>
-                  <TableHead className="font-bold text-xs text-right">Total</TableHead>
-                  <TableHead className="font-bold text-xs text-right">Action</TableHead>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="border-slate-100">
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider">Order ID</TableHead>
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider">Customer</TableHead>
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider">Date / Time</TableHead>
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider">Exchange Req</TableHead>
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider text-right">Total</TableHead>
+                  <TableHead className="font-extrabold text-[11px] text-slate-400 uppercase tracking-wider text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -723,8 +723,8 @@ export function DeliveryProfileView() {
                   const isDelivered = (del.status || "").toLowerCase() === "delivered";
 
                   return (
-                    <TableRow key={del.id} className="hover:bg-slate-50/60 text-xs">
-                      <TableCell className="font-mono font-bold text-primary">
+                    <TableRow key={del.id} className="hover:bg-slate-50/60 text-xs border-slate-100">
+                      <TableCell className="font-mono font-bold text-red-600">
                         #{del.order_ref || del.orders?.order_number || del.order_id?.slice(0, 8) || "JSS-ORD"}
                       </TableCell>
                       <TableCell>
@@ -749,11 +749,11 @@ export function DeliveryProfileView() {
                       </TableCell>
                       <TableCell>
                         {exReq.required ? (
-                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold">
+                          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] font-bold rounded-full">
                             Refill / Exchange
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-bold">
+                          <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-[10px] font-bold rounded-full">
                             New Cylinder
                           </Badge>
                         )}
@@ -762,7 +762,7 @@ export function DeliveryProfileView() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            "font-bold text-[10px]",
+                            "font-bold text-[10px] rounded-full",
                             isDelivered
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : (del.status || "").toLowerCase().includes("out")
@@ -784,7 +784,7 @@ export function DeliveryProfileView() {
                             setSelectedDelivery(del);
                             setWorkflowOpen(true);
                           }}
-                          className="rounded-full text-xs font-bold h-7 px-2.5 text-primary hover:bg-primary/10"
+                          className="rounded-full text-xs font-bold h-7 px-2.5 text-red-600 hover:bg-red-50"
                         >
                           Details
                         </Button>
@@ -799,8 +799,8 @@ export function DeliveryProfileView() {
       </div>
 
       {/* 7. CUSTOMER FEEDBACK & REVIEWS */}
-      <div className="surface-card p-6 rounded-3xl border bg-white shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
+      <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h2 className="text-base font-display font-black text-slate-900 flex items-center gap-2">
               <Star className="h-4 w-4 fill-amber-500 text-amber-500" /> Customer Feedback & Reviews
@@ -809,7 +809,7 @@ export function DeliveryProfileView() {
               Verified customer ratings associated with your completed delivery handovers.
             </p>
           </div>
-          <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-bold text-xs">
+          <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-bold text-xs rounded-full">
             {reviews.length} Verified Reviews
           </Badge>
         </div>
@@ -829,7 +829,7 @@ export function DeliveryProfileView() {
               return (
                 <div
                   key={rev.id}
-                  className="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 space-y-2 text-xs"
+                  className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-2 text-xs"
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-900">
@@ -848,10 +848,10 @@ export function DeliveryProfileView() {
                       <Star className="h-3 w-3 fill-current" /> {rating}.0
                     </div>
                   </div>
-                  <p className="text-slate-600 italic bg-white p-2.5 rounded-xl border border-slate-100 leading-relaxed">
+                  <p className="text-slate-600 italic bg-white/60 p-2.5 rounded-xl border border-slate-100 leading-relaxed">
                     "{rev.comment || "Professional, on-time delivery with safe cylinder connection."}"
                   </p>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-slate-400 font-medium">
                     {rev.created_at
                       ? new Date(rev.created_at).toLocaleDateString("en-GB", {
                           day: "numeric",
@@ -869,10 +869,10 @@ export function DeliveryProfileView() {
 
       {/* EDIT PROFILE MODAL */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 bg-white space-y-4">
+        <DialogContent className="max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 shadow-2xl space-y-4">
           <DialogHeader>
             <DialogTitle className="text-base font-black flex items-center gap-2">
-              <Edit2 className="h-4 w-4 text-primary" /> Edit Driver Profile
+              <Edit2 className="h-4 w-4 text-red-600" /> Edit Driver Profile
             </DialogTitle>
             <DialogDescription className="text-xs">
               Update your contact details, assigned zone, and vehicle information.
@@ -957,14 +957,14 @@ export function DeliveryProfileView() {
                 type="button"
                 variant="outline"
                 onClick={() => setEditModalOpen(false)}
-                className="rounded-full text-xs font-bold"
+                className="rounded-full text-xs font-bold border-slate-200"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={savingEdit}
-                className="rounded-full text-xs font-bold bg-primary text-white"
+                className="rounded-full text-xs font-bold bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20"
               >
                 {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null} Save Changes
               </Button>

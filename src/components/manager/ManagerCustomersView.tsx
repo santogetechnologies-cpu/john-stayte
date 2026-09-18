@@ -156,80 +156,80 @@ export function ManagerCustomersView() {
   return (
     <div className="space-y-6">
       {/* 1. PAGE HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
-            <Link to="/manager" className="hover:text-primary transition-colors">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+            <Link to="/manager" className="hover:text-red-600 transition-colors">
               Manager
             </Link>
             <span>/</span>
-            <span className="text-foreground font-bold">Customers</span>
+            <span className="text-slate-700 font-bold">Customers</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             Customers ({totalCustomers})
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Manage customer relationships, orders and operational activity.
           </p>
         </div>
 
         <Button
           onClick={() => setAddModal(true)}
-          className="rounded-full font-bold text-xs gap-1.5 shadow-md shrink-0 self-start sm:self-center"
+          className="rounded-full font-black text-xs gap-1.5 shadow-md shadow-red-600/25 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer h-9.5 shrink-0 self-start sm:self-center"
         >
           <UserPlus className="h-4 w-4" /> Add Customer
         </Button>
       </div>
 
       {/* 2. SUMMARY KPI CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
             Total Customers
           </p>
-          <p className="text-2xl font-black text-foreground">{totalCustomers}</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{totalCustomers}</p>
         </div>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
             Active Accounts
           </p>
-          <p className="text-2xl font-black text-emerald-600">{activeCustomers}</p>
+          <p className="text-2xl sm:text-3xl font-black text-emerald-600 tracking-tight">{activeCustomers}</p>
         </div>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
             New (Last 30 Days)
           </p>
-          <p className="text-2xl font-black text-blue-600">{newCustomers}</p>
+          <p className="text-2xl sm:text-3xl font-black text-blue-600 tracking-tight">{newCustomers}</p>
         </div>
 
-        <div className="surface-card p-4 rounded-2xl border bg-white space-y-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+        <div className="surface-card p-6 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
+          <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
             Open Orders Queue
           </p>
-          <p className="text-2xl font-black text-purple-600">{customersWithOpenOrdersCount}</p>
+          <p className="text-2xl sm:text-3xl font-black text-purple-600 tracking-tight">{customersWithOpenOrdersCount}</p>
         </div>
       </div>
 
       {/* 3. SEARCH & FILTER TOOLBAR */}
-      <div className="surface-card p-4 rounded-3xl border bg-white flex flex-col md:flex-row gap-3 items-center justify-between shadow-2xs">
+      <div className="surface-card p-4 rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl flex flex-col md:flex-row gap-3 items-center justify-between shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         <div className="relative flex-1 max-w-md w-full">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search customers by name or email..."
-            className="pl-9 rounded-full bg-slate-50 border-slate-200 text-xs font-semibold"
+            className="pl-9.5 h-9 rounded-full bg-white/90 border-slate-200/80 text-xs font-medium text-slate-900 shadow-2xs"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-9 rounded-full border-slate-200 text-xs font-semibold">
+            <SelectTrigger className="w-[130px] h-9 rounded-full bg-white/90 border-slate-200/80 text-xs font-bold text-slate-700 shadow-2xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl text-xs font-medium">
+            <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80 text-xs font-medium">
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
@@ -237,10 +237,10 @@ export function ManagerCustomersView() {
           </Select>
 
           <Select value={sortOrder} onValueChange={setSortOrder}>
-            <SelectTrigger className="w-[130px] h-9 rounded-full border-slate-200 text-xs font-semibold">
+            <SelectTrigger className="w-[130px] h-9 rounded-full bg-white/90 border-slate-200/80 text-xs font-bold text-slate-700 shadow-2xs">
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
-            <SelectContent className="rounded-2xl text-xs font-medium">
+            <SelectContent className="rounded-2xl bg-white/95 backdrop-blur-xl border border-white/80 text-xs font-medium">
               <SelectItem value="newest">Newest First</SelectItem>
               <SelectItem value="name">Name (A-Z)</SelectItem>
             </SelectContent>
@@ -254,7 +254,7 @@ export function ManagerCustomersView() {
               }}
               variant="ghost"
               size="sm"
-              className="rounded-full text-xs font-bold gap-1 text-muted-foreground"
+              className="rounded-full text-xs font-bold gap-1 text-slate-500 hover:text-slate-900"
             >
               <RotateCcw className="h-3 w-3" /> Clear
             </Button>
@@ -263,124 +263,123 @@ export function ManagerCustomersView() {
       </div>
 
       {/* 4. CUSTOMER DATA TABLE */}
-      <div className="surface-card rounded-3xl border border-slate-200/80 bg-white overflow-hidden shadow-xs">
+      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {loading ? (
-          <div className="p-12 text-center text-xs text-muted-foreground font-bold">
+          <div className="p-12 text-center text-xs text-slate-400 font-bold">
             Loading customers...
           </div>
         ) : filteredCustomers.length === 0 ? (
           <div className="p-16 text-center space-y-3">
-            <Users className="mx-auto h-10 w-10 text-muted-foreground/30" />
-            <h3 className="font-bold text-sm text-foreground">No customers yet</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+            <Users className="mx-auto h-10 w-10 text-slate-300" />
+            <h3 className="font-black text-sm text-slate-900">No customers yet</h3>
+            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
               Customer accounts will appear here when they register or are added by admin.
             </p>
             <Button
               onClick={() => setAddModal(true)}
               size="sm"
-              className="rounded-full font-bold text-xs gap-1.5 mt-2"
+              className="rounded-full font-black text-xs gap-1.5 mt-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/20"
             >
               <UserPlus className="h-3.5 w-3.5" /> Add Customer
             </Button>
           </div>
         ) : (
-          <Table>
-            <TableHeader className="bg-slate-50/80">
-              <TableRow>
-                <TableHead className="font-bold text-xs">Customer</TableHead>
-                <TableHead className="font-bold text-xs">Email</TableHead>
-                <TableHead className="font-bold text-xs">Joined Date</TableHead>
-                <TableHead className="font-bold text-xs">Status</TableHead>
-                <TableHead className="font-bold text-xs text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCustomers.map((c) => (
-                <TableRow key={c.id} className="hover:bg-slate-50/60 transition-colors">
-                  <TableCell className="font-bold text-xs">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 border border-slate-200">
-                        <AvatarFallback className="bg-primary/10 text-primary font-black text-xs">
-                          {(c.full_name || "C").charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-extrabold text-foreground">
-                          {c.full_name || "Customer"}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground font-normal">
-                          {c.id.slice(0, 8)}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs font-semibold text-foreground">{c.email}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground font-medium">
-                    {new Date(c.created_at).toLocaleDateString("en-GB")}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className="bg-emerald-50 text-emerald-700 border-emerald-200 font-bold text-[10px]"
-                    >
-                      {c.status || "Active"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setSelectedCustomer(c)}
-                      className="rounded-full text-xs font-bold gap-1 text-primary hover:bg-primary/10"
-                    >
-                      <Eye className="h-3.5 w-3.5" /> Details
-                    </Button>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50/50 border-slate-100">
+                <TableRow>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Customer</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Email</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Joined Date</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Status</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400 text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredCustomers.map((c) => (
+                  <TableRow key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                    <TableCell className="font-bold text-xs">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 border border-white/80 shadow-2xs">
+                          <AvatarFallback className="bg-red-50 text-red-700 font-black text-xs">
+                            {(c.full_name || "C").charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-bold text-slate-900">
+                            {c.full_name || "Customer"}
+                          </p>
+                          <p className="text-[11px] text-slate-400 font-medium">
+                            {c.id.slice(0, 8)}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs font-semibold text-slate-700">{c.email}</TableCell>
+                    <TableCell className="text-xs text-slate-500 font-medium">
+                      {new Date(c.created_at).toLocaleDateString("en-GB")}
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-black text-[10px] shadow-2xs">
+                        {c.status || "Active"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedCustomer(c)}
+                        className="rounded-full text-xs font-bold gap-1 text-red-600 hover:text-red-700 hover:bg-red-50/50"
+                      >
+                        <Eye className="h-3.5 w-3.5" /> Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
       {/* 5. CUSTOMER DETAIL SHEET */}
       <Sheet open={Boolean(selectedCustomer)} onOpenChange={() => setSelectedCustomer(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white/95 backdrop-blur-2xl border-l border-white/80 overflow-y-auto text-slate-900">
           {selectedCustomer && (
             <div className="space-y-6 text-xs">
-              <SheetHeader className="border-b pb-4">
+              <SheetHeader className="border-b border-slate-100 pb-4">
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border">
-                    <AvatarFallback className="bg-primary/10 text-primary font-black text-sm">
+                  <Avatar className="h-12 w-12 border border-white/80 shadow-2xs">
+                    <AvatarFallback className="bg-red-50 text-red-700 font-black text-sm">
                       {(selectedCustomer.full_name || "C").charAt(0)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <SheetTitle className="font-black text-lg">
+                    <SheetTitle className="font-black text-xl text-slate-900">
                       {selectedCustomer.full_name || "Customer Details"}
                     </SheetTitle>
-                    <p className="text-xs text-muted-foreground">{selectedCustomer.email}</p>
+                    <p className="text-xs text-slate-500 font-medium">{selectedCustomer.email}</p>
                   </div>
                 </div>
               </SheetHeader>
 
-              <div className="p-4 rounded-2xl border bg-slate-50/50 space-y-2">
-                <p className="font-bold text-foreground">Contact Information</p>
-                <p className="text-muted-foreground">Email: {selectedCustomer.email}</p>
-                <p className="text-muted-foreground">
+              <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-2">
+                <p className="font-bold text-slate-900">Contact Information</p>
+                <p className="text-slate-600">Email: {selectedCustomer.email}</p>
+                <p className="text-slate-600">
                   Phone: {selectedCustomer.phone || "Not specified"}
                 </p>
-                <p className="text-muted-foreground">
+                <p className="text-slate-500 font-medium">
                   Registered: {new Date(selectedCustomer.created_at).toLocaleDateString("en-GB")}
                 </p>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-foreground">
+                <h4 className="font-bold text-slate-900 text-sm">
                   Order History ({selectedCustomerOrders.length})
                 </h4>
                 {selectedCustomerOrders.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-400 font-medium">
                     No orders placed by this customer yet.
                   </p>
                 ) : (
@@ -388,21 +387,21 @@ export function ManagerCustomersView() {
                     {selectedCustomerOrders.map((o) => (
                       <div
                         key={o.id}
-                        className="p-3 rounded-2xl border bg-white flex justify-between items-center text-xs"
+                        className="p-3.5 rounded-2xl border border-white/80 bg-white shadow-2xs flex justify-between items-center text-xs"
                       >
                         <div>
-                          <p className="font-bold text-foreground">
+                          <p className="font-black text-slate-900">
                             Order #{o.order_number || o.id.slice(0, 8)}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[10px] text-slate-400 font-medium">
                             {new Date(o.created_at).toLocaleDateString("en-GB")}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-black text-foreground">{gbp(Number(o.total))}</p>
-                          <Badge variant="outline" className="text-[10px] font-bold">
+                          <p className="font-black text-slate-900">{gbp(Number(o.total))}</p>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px] mt-0.5">
                             {o.status}
-                          </Badge>
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -416,60 +415,60 @@ export function ManagerCustomersView() {
 
       {/* 6. ADD CUSTOMER MODAL */}
       <Dialog open={addModal} onOpenChange={setAddModal}>
-        <DialogContent className="sm:max-w-md rounded-3xl p-6">
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-2xl border border-white/80 text-slate-900 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="font-black text-lg">Add Customer Account</DialogTitle>
+            <DialogTitle className="font-display font-black text-xl text-slate-900">Add Customer Account</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleAddCustomer} className="space-y-4 pt-2 text-xs">
             <div>
-              <label className="font-bold text-muted-foreground">Full Name</label>
+              <label className="font-bold text-slate-800">Full Name</label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Full Name"
-                className="mt-1 rounded-xl text-xs font-semibold"
+                className="mt-1 rounded-xl text-xs font-semibold bg-white border-slate-200/80 shadow-2xs"
                 required
               />
             </div>
 
             <div>
-              <label className="font-bold text-muted-foreground">Email Address</label>
+              <label className="font-bold text-slate-800">Email Address</label>
               <Input
                 type="email"
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder="customer@example.com"
-                className="mt-1 rounded-xl text-xs font-semibold"
+                className="mt-1 rounded-xl text-xs font-semibold bg-white border-slate-200/80 shadow-2xs"
                 required
               />
             </div>
 
             <div>
-              <label className="font-bold text-muted-foreground">Initial Password</label>
+              <label className="font-bold text-slate-800">Initial Password</label>
               <Input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Minimum 6 characters"
-                className="mt-1 rounded-xl text-xs font-semibold"
+                className="mt-1 rounded-xl text-xs font-semibold bg-white border-slate-200/80 shadow-2xs"
                 required
               />
             </div>
 
-            <div className="pt-2 flex justify-end gap-2">
+            <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setAddModal(false)}
-                className="rounded-full text-xs font-bold"
+                className="rounded-full text-xs font-bold text-slate-600 hover:bg-slate-100"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={creating}
-                className="rounded-full font-bold text-xs gap-1.5 shadow-md"
+                className="rounded-full font-black text-xs gap-1.5 shadow-md shadow-red-600/20 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer"
               >
                 <UserPlus className="h-4 w-4" />
                 {creating ? "Creating..." : "Create Customer"}

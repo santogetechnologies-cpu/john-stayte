@@ -222,8 +222,8 @@ export function DeliverySidebar({
   return (
     <aside
       className={cn(
-        "relative flex flex-col justify-between h-full bg-white border-r border-slate-200/90 transition-all duration-300 select-none",
-        isMobileDrawer ? "w-full" : isCollapsedDesktop ? "w-[72px]" : "w-64",
+        "relative flex flex-col justify-between h-full bg-white/70 backdrop-blur-2xl border-r border-white/80 shadow-2xs transition-all duration-300 select-none",
+        isMobileDrawer ? "w-full" : isCollapsedDesktop ? "w-[76px]" : "w-64",
       )}
     >
       {/* Desktop Chevron Collapse Button (Hidden on Mobile Drawer) */}
@@ -231,7 +231,7 @@ export function DeliverySidebar({
         <button
           type="button"
           onClick={() => setCollapsed(!collapsed)}
-          className="hidden md:flex absolute -right-3 top-5 z-40 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-md items-center justify-center text-slate-500 hover:text-slate-800 hover:scale-105 transition-all cursor-pointer"
+          className="hidden md:flex absolute -right-3 top-5 z-40 h-6 w-6 rounded-full border border-white/80 bg-white shadow-md items-center justify-center text-slate-500 hover:text-slate-800 hover:scale-105 transition-all cursor-pointer"
           title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {collapsed ? (
@@ -246,7 +246,7 @@ export function DeliverySidebar({
       <div>
         <div
           className={cn(
-            "flex items-center justify-between h-16 border-b border-slate-100",
+            "flex items-center justify-between h-16 border-b border-slate-200/50",
             isCollapsedDesktop ? "justify-center px-0" : "px-4",
           )}
         >
@@ -254,20 +254,22 @@ export function DeliverySidebar({
             to="/delivery"
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-2.5 overflow-hidden transition-opacity hover:opacity-90",
+              "flex items-center gap-3 group select-none overflow-hidden",
               isCollapsedDesktop && "justify-center",
             )}
           >
-            <div className="h-9 w-9 rounded-xl bg-red-600/10 border border-red-600/20 flex items-center justify-center shrink-0">
-              <img src={logo} alt="JSS Logo" className="h-6 w-auto object-contain" />
-            </div>
+            <img
+              src={logo}
+              alt="JSS Logo"
+              className="h-9 w-9 rounded-xl shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+            />
             {!isCollapsedDesktop && (
               <div className="flex flex-col min-w-0">
-                <span className="font-display font-black text-xs tracking-tight text-slate-900 leading-tight">
+                <span className="font-black text-xs tracking-tight text-slate-900 leading-tight">
                   JOHN STAYTE
                 </span>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-600">
-                  Driver
+                <span className="inline-block text-[9px] font-black uppercase tracking-wider text-red-600">
+                  DRIVER PORTAL
                 </span>
               </div>
             )}
@@ -288,12 +290,12 @@ export function DeliverySidebar({
         </div>
 
         {/* Navigation Sections */}
-        <div className="py-4 px-3 space-y-6 overflow-y-auto max-h-[calc(100vh-175px)]">
+        <div className="py-4 px-3 space-y-6 overflow-y-auto max-h-[calc(100vh-175px)] custom-scrollbar">
           <TooltipProvider delayDuration={150}>
             {navGroups.map((group) => (
               <div key={group.groupLabel} className="space-y-1">
                 {!isCollapsedDesktop && (
-                  <p className="px-3 text-[10px] font-extrabold tracking-wider text-slate-400 uppercase mb-2">
+                  <p className="px-3.5 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1.5 select-none">
                     {group.groupLabel}
                   </p>
                 )}
@@ -309,18 +311,18 @@ export function DeliverySidebar({
                       to={item.href as never}
                       onClick={onNavigate}
                       className={cn(
-                        "group flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl font-bold text-xs transition-all duration-150 cursor-pointer",
+                        "group flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 select-none cursor-pointer",
                         isActive
-                          ? "bg-red-600 text-white shadow-sm shadow-red-600/20"
-                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
-                        isCollapsedDesktop && "justify-center px-0",
+                          ? "bg-red-600 text-white font-extrabold shadow-md shadow-red-600/20"
+                          : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80",
+                        isCollapsedDesktop && "justify-center px-2 py-2.5",
                       )}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <item.icon
                           className={cn(
-                            "h-4 w-4 shrink-0 transition-transform group-hover:scale-110",
-                            isActive ? "text-white" : "text-slate-400 group-hover:text-red-600",
+                            "h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110",
+                            isActive ? "text-white" : "text-slate-400 group-hover:text-slate-700",
                           )}
                         />
                         {!isCollapsedDesktop && <span className="truncate">{item.title}</span>}
@@ -329,14 +331,14 @@ export function DeliverySidebar({
                       {!isCollapsedDesktop && item.badge !== undefined && (
                         <span
                           className={cn(
-                            "px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0",
+                            "px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0",
                             isActive
-                              ? "bg-white text-red-600"
+                              ? "bg-white/20 text-white"
                               : item.badgeVariant === "rose"
-                                ? "bg-red-50 text-red-600 border border-red-200"
+                                ? "bg-red-100 text-red-700 border border-red-200"
                                 : item.badgeVariant === "amber"
-                                  ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                  : "bg-slate-100 text-slate-700",
+                                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                  : "bg-slate-200 text-slate-700",
                           )}
                         >
                           {item.badge}
@@ -351,7 +353,7 @@ export function DeliverySidebar({
                         <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
                         <TooltipContent
                           side="right"
-                          className="font-bold text-xs bg-slate-900 text-white z-50"
+                          className="font-extrabold text-xs bg-slate-900 text-white z-50"
                         >
                           {item.title}
                           {item.badge !== undefined && ` (${item.badge})`}
@@ -369,24 +371,24 @@ export function DeliverySidebar({
       </div>
 
       {/* Bottom Profile / Status Card */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+      <div className="p-3 border-t border-slate-200/50 bg-white/40 backdrop-blur-md">
         {!isCollapsedDesktop ? (
-          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+          <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-white/80 border border-white/80 shadow-2xs backdrop-blur-md">
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative">
-                <Avatar className="h-8 w-8 rounded-lg bg-red-600 text-white font-bold text-xs">
-                  <AvatarFallback className="bg-red-600 text-white font-bold text-xs">
+                <Avatar className="h-8.5 w-8.5 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 text-white font-extrabold text-xs shadow-2xs">
+                  <AvatarFallback className="bg-gradient-to-br from-red-600 to-rose-600 text-white font-extrabold text-xs">
                     {getAgentInitials(user?.name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-500/20" />
               </div>
               <div className="min-w-0">
-                <p className="font-bold text-xs text-slate-900 truncate leading-tight">
+                <p className="font-extrabold text-xs text-slate-900 truncate leading-tight">
                   {user?.name || "Delivery Driver"}
                 </p>
-                <p className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
-                  <ShieldCheck className="h-3 w-3" /> Online / Active
+                <p className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 mt-0.5">
+                  <ShieldCheck className="h-3 w-3" /> Online Dispatch
                 </p>
               </div>
             </div>
@@ -397,7 +399,7 @@ export function DeliverySidebar({
               disabled={signingOut}
               onClick={handleSignOut}
               title="Sign Out"
-              className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0 disabled:opacity-50"
+              className="h-7 w-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0 disabled:opacity-50 cursor-pointer"
             >
               {signingOut ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-red-600" />
@@ -414,7 +416,7 @@ export function DeliverySidebar({
               disabled={signingOut}
               onClick={handleSignOut}
               title="Sign Out"
-              className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+              className="h-8 w-8 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50 cursor-pointer"
             >
               {signingOut ? (
                 <Loader2 className="h-4 w-4 animate-spin text-red-600" />
