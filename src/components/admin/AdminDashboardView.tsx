@@ -698,7 +698,7 @@ export function AdminDashboardView() {
               <Link
                 key={module.title}
                 to={module.href as never}
-                className="group relative surface-card bg-white/70 backdrop-blur-xl rounded-[28px] border border-white/80 p-8 min-h-[210px] flex flex-col items-center justify-center text-center space-y-4 hover:shadow-[0_14px_45px_rgba(225,29,72,0.12)] hover:border-red-500/40 hover:-translate-y-1.5 hover:bg-white/85 transition-all duration-300 cursor-pointer shadow-[0_8px_30px_rgba(0,0,0,0.03)]"
+                className="group relative surface-card bg-white/70 backdrop-blur-xl rounded-[28px] border border-white/80 p-8 min-h-[210px] flex flex-col items-center justify-center text-center space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_36px_rgba(220,38,38,0.08)] hover:border-red-300/80 hover:-translate-y-1 hover:bg-white/90 transition-all duration-250 ease-out cursor-pointer"
               >
                 {/* Floating Notification Badge */}
                 {module.badge !== undefined && (
@@ -707,9 +707,9 @@ export function AdminDashboardView() {
                   </span>
                 )}
 
-                {/* Large Centered Circular Icon Container (Glass Treatment) */}
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-red-500/15 via-rose-500/10 to-red-500/5 border border-red-500/20 text-red-600 flex items-center justify-center group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-red-600 group-hover:to-rose-600 group-hover:text-white transition-all duration-300 shadow-sm">
-                  <IconComponent className="h-8 w-8" />
+                {/* Large Centered Circular Icon Container */}
+                <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 flex items-center justify-center group-hover:bg-red-500/15 group-hover:border-red-500/30 group-hover:scale-105 transition-all duration-250 ease-out shadow-2xs">
+                  <IconComponent className="h-8 w-8 text-red-600 group-hover:text-red-700 transition-colors" />
                 </div>
 
                 {/* Module Title & Subtitle */}
@@ -903,194 +903,6 @@ export function AdminDashboardView() {
                   <Bar dataKey={categoryMetric} fill="#dc2626" radius={[0, 8, 8, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 5. ATTENTION REQUIRED QUEUE & QUICK ACTIONS (FROSTED GLASS PANELS) */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Attention Required Queue */}
-        <div className="lg:col-span-2 surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
-          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <h2 className="text-base font-black text-slate-900">Attention Required</h2>
-            </div>
-            <span className="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-800 border border-amber-500/20 font-extrabold text-xs">
-              {pendingOrdersCount + lowStockCount + outOfStockCount} Actions Needed
-            </span>
-          </div>
-
-          {pendingOrdersCount === 0 && lowStockCount === 0 && outOfStockCount === 0 ? (
-            <div className="p-8 text-center space-y-2 border-2 border-dashed border-slate-200/80 rounded-2xl bg-white/40">
-              <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-500" />
-              <p className="text-xs font-bold text-slate-900">No attention items</p>
-              <p className="text-[11px] text-slate-500">
-                All orders and inventory levels are healthy.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {orders
-                .filter((o) => o.status === "Pending")
-                .slice(0, 3)
-                .map((o) => (
-                  <div
-                    key={o.id}
-                    className="p-4 rounded-2xl border border-white/80 bg-white/80 flex items-center justify-between gap-4 shadow-2xs"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 font-bold">
-                        <Clock className="h-4 w-4" />
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-extrabold text-slate-900">
-                          Order #{o.order_number || o.id.slice(0, 8)} awaiting fulfillment
-                        </p>
-                        <p className="text-slate-500 font-medium">
-                          {o.customer_name} · Total {gbp(Number(o.total || 0))}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="rounded-full text-xs font-bold shrink-0 border-white/80 bg-white hover:bg-slate-50 shadow-2xs"
-                    >
-                      <Link to="/admin/orders">Review</Link>
-                    </Button>
-                  </div>
-                ))}
-
-              {inventoryAlerts.slice(0, 3).map((inv) => {
-                const isOutOfStock = Number(inv.stock ?? inv.current_stock ?? 0) === 0;
-                return (
-                  <div
-                    key={inv.id}
-                    className={cn(
-                      "p-4 rounded-2xl flex items-center justify-between gap-4 shadow-2xs",
-                      isOutOfStock
-                        ? "border border-red-300/80 bg-red-50/60"
-                        : "border border-amber-200/70 bg-amber-50/40",
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "p-2.5 rounded-xl",
-                          isOutOfStock ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800",
-                        )}
-                      >
-                        <AlertTriangle className="h-4 w-4" />
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-extrabold text-slate-900">
-                          {isOutOfStock
-                            ? `Out of Stock: ${inv.name || inv.products?.name || "Product"}`
-                            : `Low Stock Alert: ${inv.name || inv.products?.name || "Product"}`}
-                        </p>
-                        <p className="text-slate-500 font-medium">
-                          {isOutOfStock
-                            ? "Current Stock: 0 units (Requires urgent restock)"
-                            : `Current Stock: ${inv.stock ?? inv.current_stock} units (Low Stock)`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className={cn(
-                        "rounded-full text-xs font-bold shrink-0 shadow-2xs",
-                        isOutOfStock
-                          ? "border-red-200 text-red-700 bg-white hover:bg-red-50"
-                          : "border-amber-200 text-amber-800 bg-white hover:bg-amber-50",
-                      )}
-                    >
-                      <Link
-                        to={
-                          isOutOfStock
-                            ? ("/admin/inventory?status=out_of_stock" as never)
-                            : ("/admin/inventory?status=low_stock" as never)
-                        }
-                      >
-                        Reorder
-                      </Link>
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Audit Log Activity Feed */}
-        <div className="surface-card p-6 sm:p-8 rounded-[28px] border border-white/80 bg-white/70 backdrop-blur-xl space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
-          <div className="flex items-center justify-between border-b border-slate-200/50 pb-4">
-            <h2 className="text-base font-black text-slate-900">Recent Audit Logs</h2>
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs font-bold text-red-600 hover:text-red-700 p-0"
-            >
-              <Link to="/admin/audit">
-                View All <ArrowRight className="ml-1 h-3 w-3" />
-              </Link>
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            {auditLogs.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">
-                No recent audit log activity.
-              </p>
-            ) : (
-              auditLogs.slice(0, 5).map((log) => {
-                const getDetailsSummary = (d: unknown): string => {
-                  if (typeof d === "string" && d.trim()) return d;
-                  if (d && typeof d === "object") {
-                    const obj = d as Record<string, unknown>;
-                    if (typeof obj.message === "string") return obj.message;
-                    if (typeof obj.description === "string") return obj.description;
-                    try {
-                      return JSON.stringify(obj);
-                    } catch {
-                      return "Audit details";
-                    }
-                  }
-                  if (typeof log.target_table === "string" && log.target_table)
-                    return log.target_table;
-                  if (typeof log.entity_type === "string" && log.entity_type)
-                    return log.entity_type;
-                  if (log.actor_email) return `By ${log.actor_email}`;
-                  return "System event";
-                };
-
-                return (
-                  <div
-                    key={log.id}
-                    className="p-3 rounded-2xl border border-white/80 bg-white/60 backdrop-blur-md space-y-1 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-extrabold text-slate-900 truncate max-w-[140px]">
-                        {log.action || "System Action"}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {new Date(log.created_at).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 font-medium truncate">
-                      {getDetailsSummary(log.details)}
-                    </p>
-                  </div>
-                );
-              })
             )}
           </div>
         </div>
