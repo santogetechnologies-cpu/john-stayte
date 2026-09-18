@@ -62,6 +62,7 @@ export function ManagerDashboardView() {
     try {
       const [
         { data: dbOrders },
+        { data: dbProducts },
         { data: dbInventory },
         { data: dbDeliveries },
         { data: dbTickets },
@@ -71,14 +72,44 @@ export function ManagerDashboardView() {
           .from("orders")
           .select("*, order_items(*)")
           .order("created_at", { ascending: false }),
-        supabase.from("inventory").select("*, products(*)"),
+        supabase
+          .from("products")
+          .select("*")
+          .order("name", { ascending: true }),
+        supabase.from("inventory").select("*"),
         supabase.from("delivery_assignments").select("*"),
         supabase.from("support_tickets").select("*"),
         getDeliveryAgents(),
       ]);
 
+      const invMap = new Map((dbInventory || []).map((inv: any) => [inv.product_id, inv]));
+      const mergedInventory = (dbProducts || []).map((prod: any) => {
+        const invMeta = invMap.get(prod.id);
+        const stock = Number(prod.stock || 0);
+        const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 10);
+        const depot = invMeta?.depot_location || "Gloucestershire Main Depot (Whitminster)";
+
+        let status: "in_stock" | "low_stock" | "out_of_stock" = "in_stock";
+        if (stock === 0) {
+          status = "out_of_stock";
+        } else if (stock <= threshold) {
+          status = "low_stock";
+        }
+
+        return {
+          id: prod.id,
+          product_id: prod.id,
+          name: prod.name,
+          stock,
+          current_stock: stock,
+          reorder_threshold: threshold,
+          depot_location: depot,
+          status,
+        };
+      });
+
       setOrders(dbOrders || []);
-      setInventory(dbInventory || []);
+      setInventory(mergedInventory);
       setDeliveries(dbDeliveries || []);
       setTickets(dbTickets || []);
       setAgents(agentsData || []);
@@ -92,9 +123,15 @@ export function ManagerDashboardView() {
   useEffect(() => {
     loadManagerData();
 
+    const handleModulesUpdated = () => loadManagerData();
+    window.addEventListener("admin_modules_updated", handleModulesUpdated);
+
     const channel = supabase
       .channel("manager_dashboard_realtime_kpis")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
+        loadManagerData(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
         loadManagerData(),
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () =>
@@ -109,6 +146,7 @@ export function ManagerDashboardView() {
       .subscribe();
 
     return () => {
+      window.removeEventListener("admin_modules_updated", handleModulesUpdated);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -127,7 +165,7 @@ export function ManagerDashboardView() {
     return !d.agent_id || !dName || dName === "unassigned";
   }).length;
   const activeDeliveryAgentsCount = agents.filter((a) => a.status.toLowerCase() === "active").length;
-  const lowStockCount = inventory.filter((i) => i.current_stock < i.reorder_threshold).length;
+  const lowStockCount = inventory.filter((i) => i.status === "low_stock").length;
   const openEnquiriesCount = tickets.filter(
     (t) => t.status === "Open" || t.status === "In Progress",
   ).length;
@@ -544,7 +582,7 @@ export function ManagerDashboardView() {
             ) : (
               <div className="space-y-2">
                 {inventory
-                  .filter((i) => i.current_stock < i.reorder_threshold)
+                  .filter((i) => i.status === "low_stock")
                   .slice(0, 3)
                   .map((inv) => (
                     <div
@@ -553,10 +591,10 @@ export function ManagerDashboardView() {
                     >
                       <div>
                         <p className="font-bold text-slate-900">
-                          {inv.products?.name || "Product"}
+                          {inv.name || "Product"}
                         </p>
                         <p className="text-[10px] text-slate-500 font-medium">
-                          Stock: {inv.current_stock} (Min: {inv.reorder_threshold})
+                          Stock: {inv.stock} units (Min: {inv.reorder_threshold})
                         </p>
                       </div>
                       <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200 text-[10px] font-extrabold shadow-2xs">

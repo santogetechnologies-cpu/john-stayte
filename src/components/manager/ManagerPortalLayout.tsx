@@ -212,7 +212,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
           .from("delivery_assignments")
           .select("*", { count: "exact", head: true })
           .eq("status", "Out for Delivery"),
-        supabase.from("products").select("id, stock").lte("stock", 10),
+        supabase.from("products").select("id, stock").gt("stock", 0).lte("stock", 10),
         supabase
           .from("support_tickets")
           .select("*", { count: "exact", head: true })
@@ -246,6 +246,9 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
     if (user && (user.role === "manager" || user.role === "admin")) {
       loadSidebarCounts();
 
+      const handleModulesUpdated = () => loadSidebarCounts();
+      window.addEventListener("admin_modules_updated", handleModulesUpdated);
+
       const channel = supabase
         .channel("manager_sidebar_realtime_sync")
         .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
@@ -257,12 +260,16 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
           loadSidebarCounts(),
         )
+        .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () =>
+          loadSidebarCounts(),
+        )
         .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () =>
           loadSidebarCounts(),
         )
         .subscribe();
 
       return () => {
+        window.removeEventListener("admin_modules_updated", handleModulesUpdated);
         supabase.removeChannel(channel);
       };
     }

@@ -14,12 +14,27 @@ export function ManagerReportsView() {
     async function loadManagerData() {
       setLoading(true);
       try {
-        const [{ data: dbOrders }, { data: dbInv }] = await Promise.all([
+        const [{ data: dbOrders }, { data: dbProds }, { data: dbInv }] = await Promise.all([
           supabase.from("orders").select("*, order_items(*)"),
-          supabase.from("inventory").select("*, products(*)"),
+          supabase.from("products").select("*").order("name", { ascending: true }),
+          supabase.from("inventory").select("*"),
         ]);
+        const invMap = new Map((dbInv || []).map((inv: any) => [inv.product_id, inv]));
+        const mergedInv = (dbProds || []).map((prod: any) => {
+          const invMeta = invMap.get(prod.id);
+          const stock = Number(prod.stock || 0);
+          const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 10);
+          const depot = invMeta?.depot_location || "Gloucestershire Main Depot (Whitminster)";
+          return {
+            name: prod.name,
+            current_stock: stock,
+            reorder_threshold: threshold,
+            depot_location: depot,
+          };
+        });
+
         setOrders(dbOrders || []);
-        setInventory(dbInv || []);
+        setInventory(mergedInv);
       } catch (err) {
         console.error("Manager reports data load error:", err);
       } finally {
@@ -46,8 +61,8 @@ export function ManagerReportsView() {
     } else if (title.includes("Inventory")) {
       csvContent += "Product Name,Current Stock,Reorder Threshold,Depot Location,Status\n";
       inventory.forEach((i) => {
-        const status = i.current_stock < i.reorder_threshold ? "Reorder Needed" : "Stock Healthy";
-        csvContent += `"${i.products?.name || "Product"}",${i.current_stock},${i.reorder_threshold},"${i.depot_location || "Whitminster"}","${status}"\n`;
+        const status = i.current_stock <= i.reorder_threshold ? "Reorder Needed" : "Stock Healthy";
+        csvContent += `"${i.name || "Product"}",${i.current_stock},${i.reorder_threshold},"${i.depot_location}","${status}"\n`;
       });
     } else {
       csvContent += "Metric,Value,Description\n";

@@ -134,7 +134,7 @@ export function ManagerPerformanceView() {
   const slaPercentage =
     totalTicketsCount > 0 ? Math.round((resolvedTicketsCount / totalTicketsCount) * 100) : 100;
 
-  const lowStockCount = products.filter((p) => Number(p.stock || 0) <= 5).length;
+  const lowStockCount = products.filter((p) => Number(p.stock || 0) <= 10).length;
 
   // Overall Performance Score Calculation
   const performanceScore = useMemo(() => {

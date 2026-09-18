@@ -90,8 +90,8 @@ export function ManagerInventoryView() {
       const merged = (dbProducts || []).map((prod: any) => {
         const invMeta = invMap.get(prod.id);
         const stock = Number(prod.stock || 0);
-        const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 5);
-        const depot = invMeta?.depot_location || "Gloucestershire Depot (Whitminster)";
+        const threshold = Number(invMeta?.reorder_threshold ?? prod.specs?.reorder_threshold ?? 10);
+        const depot = invMeta?.depot_location || "Gloucestershire Main Depot (Whitminster)";
         const sku =
           prod.specs?.sku || prod.slug?.toUpperCase() || `SKU-${prod.id.slice(0, 6).toUpperCase()}`;
 
@@ -130,6 +130,9 @@ export function ManagerInventoryView() {
   useEffect(() => {
     loadInventory();
 
+    const handleModulesUpdated = () => loadInventory();
+    window.addEventListener("admin_modules_updated", handleModulesUpdated);
+
     const handleLocationChange = () => {
       const paramStatus = new URLSearchParams(window.location.search).get("status");
       if (paramStatus) setStatusFilter(paramStatus);
@@ -141,9 +144,13 @@ export function ManagerInventoryView() {
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
         loadInventory(),
       )
+      .on("postgres_changes", { event: "*", schema: "public", table: "inventory" }, () =>
+        loadInventory(),
+      )
       .subscribe();
 
     return () => {
+      window.removeEventListener("admin_modules_updated", handleModulesUpdated);
       window.removeEventListener("popstate", handleLocationChange);
       supabase.removeChannel(channel);
     };
