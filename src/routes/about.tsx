@@ -31,6 +31,8 @@ import {
   Lightbulb,
   Settings,
   Flame,
+  Target,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -1020,6 +1022,96 @@ function AboutPage() {
         </div>
       </section>
 
+      {/* =========================================================================
+          5. OUR MISSION & VISION
+          Premium corporate 2-card layout with subtle soft pink/red atmospheric
+          depth, glass-like white surfaces, refined icon halo treatments, and JSS palette.
+      ========================================================================= */}
+      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-[#fdfcfc] via-[#fff8f7]/70 to-[#fdfcfc] border-b border-slate-200/60 relative overflow-hidden">
+        {/* Soft Ambient Radial Background Glows & Faint Atmospheric Geometry */}
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-[550px] h-[450px] bg-red-500/[0.035] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-[550px] h-[450px] bg-primary/[0.025] rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[850px] h-[400px] bg-gradient-to-b from-red-100/30 via-transparent to-transparent rounded-full blur-2xl pointer-events-none" />
+
+        {/* Faint Decorative Abstract Depth Curves */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(#dc2626_1px,transparent_1px)] [background-size:24px_24px]" />
+
+        <div className="container-page relative z-10 space-y-12 sm:space-y-16 max-w-6xl mx-auto">
+          {/* Section Header */}
+          <div className="text-center space-y-3.5 max-w-2xl mx-auto">
+            <Reveal delay={0}>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-red-200/80 bg-white/90 text-primary text-xs font-extrabold uppercase tracking-widest shadow-2xs backdrop-blur-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <span>OUR DIRECTION</span>
+              </div>
+            </Reveal>
+            <Reveal delay={80} variant="heading">
+              <h2 className="text-3xl sm:text-4xl lg:text-[46px] font-black text-slate-900 tracking-tight font-display">
+                Our Mission &amp; <span className="text-primary">Vision</span>
+              </h2>
+            </Reveal>
+          </div>
+
+          {/* 2 Side-by-Side Premium Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-7 sm:gap-9 lg:gap-10 items-stretch">
+            {/* Card 1: Our Mission */}
+            <Reveal delay={100} variant="card" className="h-full">
+              <div className="h-full rounded-[26px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-xl p-8 sm:p-10 lg:p-12 shadow-[0_8px_30px_rgba(0,0,0,0.035)] hover:shadow-[0_20px_45px_rgba(220,38,38,0.08)] hover:border-red-200 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-start relative overflow-hidden group">
+                {/* Soft Interior Ambient Corner Flare */}
+                <div className="absolute -top-16 -right-16 w-44 h-44 bg-gradient-to-br from-red-100/40 to-transparent rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+
+                {/* Refined Icon Treatment with Subtle Red Ambient Halo */}
+                <div className="relative mb-7 shrink-0">
+                  <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-2xl bg-gradient-to-br from-red-50 to-red-100/80 border border-red-200/90 text-primary flex items-center justify-center shadow-[0_4px_16px_rgba(220,38,38,0.12)] group-hover:scale-105 group-hover:shadow-[0_6px_20px_rgba(220,38,38,0.18)] transition-all duration-300">
+                    <Target className="h-8 w-8 sm:h-9 sm:w-9 stroke-[1.85]" />
+                  </div>
+                </div>
+
+                {/* Title & Accent Line */}
+                <div className="space-y-3 mb-4">
+                  <h3 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight font-display">
+                    Our Mission
+                  </h3>
+                  <div className="h-[2.5px] w-8 bg-primary rounded-full group-hover:w-12 transition-all duration-300" />
+                </div>
+
+                {/* Exact Description Text */}
+                <p className="text-base sm:text-[17px] text-slate-600 font-normal leading-relaxed">
+                  To provide reliable, safe and convenient fuel, gas and essential products while delivering trusted local service to every customer and community we serve.
+                </p>
+              </div>
+            </Reveal>
+
+            {/* Card 2: Our Vision */}
+            <Reveal delay={200} variant="card" className="h-full">
+              <div className="h-full rounded-[26px] sm:rounded-[28px] border border-slate-200/80 bg-white/90 backdrop-blur-xl p-8 sm:p-10 lg:p-12 shadow-[0_8px_30px_rgba(0,0,0,0.035)] hover:shadow-[0_20px_45px_rgba(220,38,38,0.08)] hover:border-red-200 hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-start relative overflow-hidden group">
+                {/* Soft Interior Ambient Corner Flare */}
+                <div className="absolute -top-16 -right-16 w-44 h-44 bg-gradient-to-br from-red-100/40 to-transparent rounded-full blur-2xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
+
+                {/* Refined Icon Treatment with Subtle Red Ambient Halo */}
+                <div className="relative mb-7 shrink-0">
+                  <div className="h-16 w-16 sm:h-18 sm:w-18 rounded-2xl bg-gradient-to-br from-red-50 to-red-100/80 border border-red-200/90 text-primary flex items-center justify-center shadow-[0_4px_16px_rgba(220,38,38,0.12)] group-hover:scale-105 group-hover:shadow-[0_6px_20px_rgba(220,38,38,0.18)] transition-all duration-300">
+                    <Eye className="h-8 w-8 sm:h-9 sm:w-9 stroke-[1.85]" />
+                  </div>
+                </div>
+
+                {/* Title & Accent Line */}
+                <div className="space-y-3 mb-4">
+                  <h3 className="text-2xl sm:text-[28px] font-black text-slate-900 tracking-tight font-display">
+                    Our Vision
+                  </h3>
+                  <div className="h-[2.5px] w-8 bg-primary rounded-full group-hover:w-12 transition-all duration-300" />
+                </div>
+
+                {/* Exact Description Text */}
+                <p className="text-base sm:text-[17px] text-slate-600 font-normal leading-relaxed">
+                  To be a trusted independent supplier across Gloucestershire, continuing to grow through excellent service, strong local relationships and a commitment to the communities we support.
+                </p>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
 
       {/* =========================================================================
           6. WHY CHOOSE JOHN STAYTE SERVICES ("Why Choose Us")

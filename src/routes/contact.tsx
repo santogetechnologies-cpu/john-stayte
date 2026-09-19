@@ -217,21 +217,28 @@ function Contact() {
 
   return (
     <SiteLayout>
-      {/* 1. HERO SECTION */}
-      <section className="border-b border-slate-200/60 bg-[#f8fafc]/70 py-8 sm:py-10 lg:py-12">
-        <div className="container-page text-left">
-          <div className="inline-flex items-center gap-2 rounded-full border border-red-200/90 bg-red-50/80 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red-600 shadow-2xs backdrop-blur-xs mb-3">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            <span>{contactInfo.heroEyebrow || "CONTACT"}</span>
+      <div
+        className="relative min-h-[calc(100vh-80px)] bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/contact-page-bg.png')",
+        }}
+      >
+        {/* 1. HERO SECTION */}
+        <section className="border-b border-slate-200/60 bg-transparent py-8 sm:py-10 lg:py-12">
+          <div className="container-page text-left">
+            <div className="inline-flex items-center gap-2 rounded-full border border-red-200/90 bg-red-50/80 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red-600 shadow-2xs backdrop-blur-xs mb-3">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <span>{contactInfo.heroEyebrow || "CONTACT"}</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-[1.12] font-display">
+              <span>{contactInfo.heroHeading || "Talk to the team"}</span>
+              <span className="block text-primary mt-0.5">We&apos;re here to help.</span>
+            </h1>
+            <p className="mt-2.5 max-w-2xl text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
+              {contactInfo.heroSubtitle || "Deliveries, trade accounts, appliance advice — we're happy to help."}
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-[1.08] font-display">
-            {contactInfo.heroHeading || "Talk to the team"}
-          </h1>
-          <p className="mt-2.5 max-w-2xl text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
-            {contactInfo.heroSubtitle || "Deliveries, trade accounts, appliance advice — we're happy to help."}
-          </p>
-        </div>
-      </section>
+        </section>
 
       {/* 2. MAIN CONTACT AREA */}
       <div className="container-page py-10 sm:py-12 lg:py-14">
@@ -413,6 +420,7 @@ function Contact() {
             </AccordionItem>
           ))}
         </Accordion>
+      </div>
       </div>
     </SiteLayout>
   );
