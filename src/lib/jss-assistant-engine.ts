@@ -76,7 +76,7 @@ export const JSS_FILLING_STATIONS_DATA: AssistantStationCard[] = [
     address: "27 Kingshill Road, Dursley, Gloucestershire, GL11 4BJ",
     town: "Dursley",
     postcode: "GL11 4BJ",
-    phone: "01453 545696",
+    phone: "01453 545896",
     hours: "Mon–Sat 7:00–19:00 • Sun 9:00–17:00",
     autogas_available: true,
     maps_link: "https://maps.google.com/?q=Wild+Goose+Garage+27+Kingshill+Road+Dursley+GL11+4BJ",

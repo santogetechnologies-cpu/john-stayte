@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import {
   Home,
@@ -27,6 +27,8 @@ import {
   Star,
   Heart,
   Car,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -223,12 +225,26 @@ function OrderGasPage() {
   const [products, setProducts] = useState<GasProductRecord[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productFetchError, setProductFetchError] = useState<boolean>(false);
+  const [productSearchTerm, setProductSearchTerm] = useState<string>("");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedProductOverride, setSelectedProductOverride] = useState<GasProductRecord | null>(null);
   const [selectedFromCatalogue, setSelectedFromCatalogue] = useState<boolean>(false);
   const [quantity, setQuantity] = useState<number>(1);
   const [detailProduct, setDetailProduct] = useState<GasProductRecord | null>(null);
   const [detailActiveImg, setDetailActiveImg] = useState<string>("");
+
+  // Real-time filtered products for local catalog search
+  const filteredProducts = useMemo(() => {
+    if (!productSearchTerm.trim()) return products;
+    const term = productSearchTerm.toLowerCase().trim();
+    return products.filter((p) => {
+      const nameMatch = p.name?.toLowerCase().includes(term);
+      const subcategoryMatch = p.subcategory?.toLowerCase().includes(term);
+      const skuMatch = (p as any).sku?.toLowerCase().includes(term);
+      const descMatch = p.description?.toLowerCase().includes(term);
+      return nameMatch || subcategoryMatch || skuMatch || descMatch;
+    });
+  }, [products, productSearchTerm]);
 
   // Step 2: Order Type & Empty Return
   const [orderType, setOrderType] = useState<OrderType>("NEW_CYLINDER");
@@ -1071,8 +1087,9 @@ function OrderGasPage() {
                     </Badge>
                     {products.length > 0 && (
                       <span className="text-xs text-slate-400 font-bold">
-                        ({products.length} {products.length === 1 ? "Product" : "Products"}{" "}
-                        Available)
+                        {productSearchTerm
+                          ? `(Displaying ${filteredProducts.length} of ${products.length} ${products.length === 1 ? "Product" : "Products"})`
+                          : `(Displaying 1 to ${products.length} of ${products.length} ${products.length === 1 ? "Product" : "Products"})`}
                       </span>
                     )}
                   </div>
@@ -1083,31 +1100,56 @@ function OrderGasPage() {
                   </h2>
                 </div>
 
-                {/* Quantity */}
-                <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5 self-start">
-                  <span className="text-xs font-extrabold text-slate-600 pl-3">Quantity:</span>
-                  <div className="flex items-center gap-1 bg-white rounded-xl shadow-2xs border border-slate-200/90 p-0.5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 rounded-lg text-slate-700 font-bold"
-                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    >
-                      -
-                    </Button>
-                    <span className="w-8 text-center font-black text-sm text-slate-900">
-                      {quantity}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 rounded-lg text-slate-700 font-bold"
-                      onClick={() => setQuantity((q) => q + 1)}
-                    >
-                      +
-                    </Button>
+                {/* Controls: Compact Search & Quantity */}
+                <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+                  {/* Small Neat Search Box */}
+                  <div className="relative w-full sm:w-52">
+                    <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      type="text"
+                      value={productSearchTerm}
+                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                      placeholder="Search products..."
+                      className="h-9 pl-8 pr-7 text-xs rounded-xl bg-slate-50 border-slate-200/90 focus:bg-white focus:border-primary transition-all shadow-2xs font-medium text-slate-800"
+                    />
+                    {productSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setProductSearchTerm("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                        title="Clear search"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 rounded-2xl p-1 shrink-0">
+                    <span className="text-xs font-extrabold text-slate-600 pl-2.5">Qty:</span>
+                    <div className="flex items-center gap-1 bg-white rounded-xl shadow-2xs border border-slate-200/90 p-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg text-slate-700 font-bold"
+                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      >
+                        -
+                      </Button>
+                      <span className="w-7 text-center font-black text-sm text-slate-900">
+                        {quantity}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg text-slate-700 font-bold"
+                        onClick={() => setQuantity((q) => q + 1)}
+                      >
+                        +
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1146,9 +1188,28 @@ function OrderGasPage() {
                     Please try another gas type or contact us for assistance.
                   </p>
                 </div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="py-16 text-center space-y-3 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                  <Search className="mx-auto h-8 w-8 text-slate-300" />
+                  <p className="text-sm font-bold text-slate-800">
+                    No products matching "{productSearchTerm}"
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Try searching for another cylinder weight, SKU, or clear the search.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setProductSearchTerm("")}
+                    className="rounded-xl text-xs font-bold mt-2 bg-white"
+                  >
+                    Clear Search
+                  </Button>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                  {products.map((p) => {
+                  {filteredProducts.map((p) => {
                     const isSelected = selectedProductId === p.id;
                     const productImage =
                       p.image_url || p.images?.[0] || "/calor-cylinders-studio.jpg";

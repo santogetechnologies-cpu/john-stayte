@@ -22,6 +22,7 @@ import { Route as DeliveryRouteImport } from './routes/delivery'
 import { Route as FillingStationsRouteImport } from './routes/filling-stations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManagerRouteImport } from './routes/manager'
+import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrderGasRouteImport } from './routes/order-gas'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -58,6 +59,7 @@ import { Route as AdminInvoicesRouteImport } from './routes/admin.invoices'
 import { Route as AdminManagersRouteImport } from './routes/admin.managers'
 import { Route as AdminNewsletterRouteImport } from './routes/admin.newsletter'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
+import { Route as AdminOffersRouteImport } from './routes/admin.offers'
 import { Route as AdminOrdersRouteImport } from './routes/admin.orders'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
@@ -164,6 +166,11 @@ const LoginRoute = LoginRouteImport.update({
 const ManagerRoute = ManagerRouteImport.update({
   id: '/manager',
   path: '/manager',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OffersRoute = OffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrderGasRoute = OrderGasRouteImport.update({
@@ -344,6 +351,11 @@ const AdminNewsletterRoute = AdminNewsletterRouteImport.update({
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminOffersRoute = AdminOffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -572,6 +584,7 @@ export interface FileRoutesByFullPath {
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
+  '/offers': typeof OffersRoute
   '/order-gas': typeof OrderGasRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -606,6 +619,7 @@ export interface FileRoutesByFullPath {
   '/admin/managers': typeof AdminManagersRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -660,6 +674,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
+  '/offers': typeof OffersRoute
   '/order-gas': typeof OrderGasRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -693,6 +708,7 @@ export interface FileRoutesByTo {
   '/admin/managers': typeof AdminManagersRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -753,6 +769,7 @@ export interface FileRoutesById {
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
+  '/offers': typeof OffersRoute
   '/order-gas': typeof OrderGasRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -787,6 +804,7 @@ export interface FileRoutesById {
   '/admin/managers': typeof AdminManagersRoute
   '/admin/newsletter': typeof AdminNewsletterRoute
   '/admin/notifications': typeof AdminNotificationsRoute
+  '/admin/offers': typeof AdminOffersRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -848,6 +866,7 @@ export interface FileRouteTypes {
     | '/filling-stations'
     | '/login'
     | '/manager'
+    | '/offers'
     | '/order-gas'
     | '/services'
     | '/sitemap.xml'
@@ -882,6 +901,7 @@ export interface FileRouteTypes {
     | '/admin/managers'
     | '/admin/newsletter'
     | '/admin/notifications'
+    | '/admin/offers'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -936,6 +956,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/filling-stations'
     | '/login'
+    | '/offers'
     | '/order-gas'
     | '/services'
     | '/sitemap.xml'
@@ -969,6 +990,7 @@ export interface FileRouteTypes {
     | '/admin/managers'
     | '/admin/newsletter'
     | '/admin/notifications'
+    | '/admin/offers'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -1028,6 +1050,7 @@ export interface FileRouteTypes {
     | '/filling-stations'
     | '/login'
     | '/manager'
+    | '/offers'
     | '/order-gas'
     | '/services'
     | '/sitemap.xml'
@@ -1062,6 +1085,7 @@ export interface FileRouteTypes {
     | '/admin/managers'
     | '/admin/newsletter'
     | '/admin/notifications'
+    | '/admin/offers'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -1122,6 +1146,7 @@ export interface RootRouteChildren {
   FillingStationsRoute: typeof FillingStationsRoute
   LoginRoute: typeof LoginRoute
   ManagerRoute: typeof ManagerRouteWithChildren
+  OffersRoute: typeof OffersRoute
   OrderGasRoute: typeof OrderGasRoute
   ServicesRoute: typeof ServicesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -1222,6 +1247,13 @@ declare module '@tanstack/react-router' {
       path: '/manager'
       fullPath: '/manager'
       preLoaderRoute: typeof ManagerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offers': {
+      id: '/offers'
+      path: '/offers'
+      fullPath: '/offers'
+      preLoaderRoute: typeof OffersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/order-gas': {
@@ -1474,6 +1506,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/admin/notifications'
       preLoaderRoute: typeof AdminNotificationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/offers': {
+      id: '/admin/offers'
+      path: '/offers'
+      fullPath: '/admin/offers'
+      preLoaderRoute: typeof AdminOffersRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/orders': {
@@ -1842,6 +1881,7 @@ interface AdminRouteChildren {
   AdminManagersRoute: typeof AdminManagersRoute
   AdminNewsletterRoute: typeof AdminNewsletterRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
+  AdminOffersRoute: typeof AdminOffersRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -1875,6 +1915,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminManagersRoute: AdminManagersRoute,
   AdminNewsletterRoute: AdminNewsletterRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
+  AdminOffersRoute: AdminOffersRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminReportsRoute: AdminReportsRoute,
@@ -1983,6 +2024,7 @@ const rootRouteChildren: RootRouteChildren = {
   FillingStationsRoute: FillingStationsRoute,
   LoginRoute: LoginRoute,
   ManagerRoute: ManagerRouteWithChildren,
+  OffersRoute: OffersRoute,
   OrderGasRoute: OrderGasRoute,
   ServicesRoute: ServicesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

@@ -467,11 +467,11 @@ export const DEFAULT_STATIONS_CMS: StationsCmsData = {
       address: "27 Kingshill Road, Dursley, Gloucestershire, GL11 4BJ",
       town: "Dursley",
       postcode: "GL11 4BJ",
-      phone: "01453 545696",
+      phone: "01453 545896",
       hours: "Mon–Sat 7:00–19:00 • Sun 9:00–17:00",
       autogas_available: true,
       maps_link: "https://maps.google.com/?q=Wild+Goose+Garage+27+Kingshill+Road+Dursley+GL11+4BJ",
-      services: ["Fuel", "Autogas", "Shop", "Air", "AdBlue", "Cylinder Exchange", "Costa Express"],
+      services: ["Fuel", "Auto Gas", "Shop", "Air", "AdBlue", "Cylinder Exchange", "Costa Express"],
       images: [
         "/wild-goose-garage-1.jpg",
         "/wild-goose-garage-2.jpg",
@@ -492,7 +492,7 @@ export const DEFAULT_STATIONS_CMS: StationsCmsData = {
         "https://maps.google.com/?q=Fromebridge+Service+Station+Bristol+Road+Whitminster+GL2+7PG",
       services: [
         "Fuel",
-        "Autogas",
+        "Auto Gas",
         "Shop",
         "Air",
         "AdBlue",
@@ -519,7 +519,7 @@ export const DEFAULT_STATIONS_CMS: StationsCmsData = {
         "https://maps.google.com/?q=Bridge+Service+Station+Gloucester+Road+Stonehouse+GL10+2PB",
       services: [
         "Texaco Fuel",
-        "Autogas",
+        "Auto Gas",
         "HGV High-Flow",
         "Car Wash & Jet Wash",
         "Wash.ME 24/7 Laundry",

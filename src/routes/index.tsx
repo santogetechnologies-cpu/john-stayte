@@ -878,7 +878,38 @@ function Home() {
               ? parsedStns
               : (Array.isArray(parsedStns?.stations) ? parsedStns.stations : []);
             if (stationList.length > 0) {
-              setDbStations(stationList);
+              const sanitizedList = stationList.map((st: any) => {
+                const n = (st.name || "").toLowerCase();
+                if (n.includes("wild goose") || n.includes("dursley") || n.includes("cambridge")) {
+                  return {
+                    ...st,
+                    name: "Wild Goose Garage",
+                    address: "27 Kingshill Road, Dursley, Gloucestershire, GL11 4BJ",
+                    phone: "01453 545896",
+                    maps: "https://maps.google.com/?q=Wild+Goose+Garage+27+Kingshill+Road+Dursley+GL11+4BJ",
+                  };
+                }
+                if (n.includes("fromebridge") || n.includes("whitminster")) {
+                  return {
+                    ...st,
+                    name: "Fromebridge Service Station",
+                    address: "Bristol Road, Whitminster, Gloucestershire, GL2 7PG",
+                    phone: "01452 740753",
+                    maps: "https://maps.google.com/?q=Fromebridge+Service+Station+Bristol+Road+Whitminster+GL2+7PG",
+                  };
+                }
+                if (n.includes("bridge") || n.includes("stonehouse") || n.includes("frampton")) {
+                  return {
+                    ...st,
+                    name: "Bridge Service Station",
+                    address: "Gloucester Road, Stonehouse, Gloucestershire, GL10 2PB",
+                    phone: "01453 821005",
+                    maps: "https://maps.google.com/?q=Bridge+Service+Station+Gloucester+Road+Stonehouse+GL10+2PB",
+                  };
+                }
+                return st;
+              });
+              setDbStations(sanitizedList);
             }
           } catch { }
         }

@@ -27,19 +27,19 @@ export const INITIAL_AUTO_GAS_STATIONS: AutoGasStation[] = [
   {
     id: "a1111111-1111-4111-a111-111111111101",
     station_number: "LOCATION 01",
-    name: "John Stayte Services – Cirencester",
-    slug: "cirencester",
-    address: "82 Chesterton Lane",
-    town: "Cirencester",
+    name: "John Stayte Services – Eastington",
+    slug: "eastington",
+    address: "John Stayte Services – Head Office, Eastington",
+    town: "Stonehouse",
     county: "Gloucestershire",
-    postcode: "GL7 1YD",
-    telephone: "01285 654614",
+    postcode: "GL10 3AH",
+    telephone: "01453 822859",
     opening_hours: "Monday–Friday: 08:00–17:30 · Saturday: 08:30–12:30",
     service: "Auto Gas",
     badge: "Auto Gas Available",
-    latitude: 51.7061,
-    longitude: -1.9702,
-    maps_url: "https://www.google.com/maps/search/?api=1&query=John+Stayte+Services+82+Chesterton+Lane+Cirencester+GL7+1YD",
+    latitude: 51.7454,
+    longitude: -2.3364,
+    maps_url: "https://www.google.com/maps/search/?api=1&query=John+Stayte+Services+Eastington+Stonehouse+GL10+3AH",
     display_order: 1,
     is_active: true,
   },
@@ -103,6 +103,49 @@ export const INITIAL_AUTO_GAS_STATIONS: AutoGasStation[] = [
 ];
 
 /**
+ * Sanitizes station lists ensuring Eastington replaces any legacy Cirencester Auto Gas record.
+ */
+export function sanitizeAutoGasStations(stations: AutoGasStation[]): AutoGasStation[] {
+  return stations.map((s) => {
+    const name = (s.name || "").toLowerCase();
+    const town = (s.town || "").toLowerCase();
+    const postcode = (s.postcode || "").toUpperCase().replace(/\s+/g, "");
+    const tel = (s.telephone || "").replace(/[^0-9]/g, "");
+
+    if (
+      s.slug === "cirencester" ||
+      name.includes("cirencester") ||
+      town.includes("cirencester") ||
+      postcode === "GL71YD" ||
+      tel === "01285654614" ||
+      s.id === "a1111111-1111-4111-a111-111111111101"
+    ) {
+      return {
+        ...s,
+        id: "a1111111-1111-4111-a111-111111111101",
+        station_number: "LOCATION 01",
+        name: "John Stayte Services – Eastington",
+        slug: "eastington",
+        address: "John Stayte Services – Head Office, Eastington",
+        town: "Stonehouse",
+        county: "Gloucestershire",
+        postcode: "GL10 3AH",
+        telephone: "01453 822859",
+        opening_hours: s.opening_hours || "Monday–Friday: 08:00–17:30 · Saturday: 08:30–12:30",
+        service: "Auto Gas",
+        badge: "Auto Gas Available",
+        latitude: 51.7454,
+        longitude: -2.3364,
+        maps_url: "https://www.google.com/maps/search/?api=1&query=John+Stayte+Services+Eastington+Stonehouse+GL10+3AH",
+        display_order: 1,
+        is_active: true,
+      };
+    }
+    return s;
+  });
+}
+
+/**
  * Loads all active Auto Gas stations from Supabase.
  * Respects RLS and orders by display_order ascending.
  */
@@ -123,14 +166,14 @@ export async function fetchPublicAutoGasStations(): Promise<AutoGasStation[]> {
       ]);
 
     if (!tableErr && tableStations && tableStations.length > 0) {
-      return tableStations as AutoGasStation[];
+      return sanitizeAutoGasStations(tableStations as AutoGasStation[]);
     }
 
     if (!blockErr && blockData?.content) {
       try {
         const parsed = JSON.parse(blockData.content);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.filter((s: AutoGasStation) => s.is_active !== false);
+          return sanitizeAutoGasStations(parsed.filter((s: AutoGasStation) => s.is_active !== false));
         }
       } catch {}
     }
@@ -161,14 +204,14 @@ export async function fetchAdminAutoGasStations(): Promise<AutoGasStation[]> {
       ]);
 
     if (!tableErr && tableStations && tableStations.length > 0) {
-      return tableStations as AutoGasStation[];
+      return sanitizeAutoGasStations(tableStations as AutoGasStation[]);
     }
 
     if (!blockErr && blockData?.content) {
       try {
         const parsed = JSON.parse(blockData.content);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return sanitizeAutoGasStations(parsed);
         }
       } catch {}
     }

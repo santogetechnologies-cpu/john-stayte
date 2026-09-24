@@ -153,7 +153,6 @@ export function AdminCmsView() {
           sData,
           gData,
           stData,
-          oData,
           cfData,
           fData,
           revData,

@@ -35,6 +35,7 @@ import {
   Flame,
   Car,
   Fuel,
+  Tag,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,7 @@ const adminNavGroups: NavGroup[] = [
   {
     groupLabel: "BUSINESS",
     items: [
+      { title: "Offers & Discounts", href: "/admin/offers", icon: Tag, moduleKey: "offers" },
       { title: "Stations", href: "/admin/stations", icon: Building2, moduleKey: "stations" },
       { title: "Auto Gas", href: "/admin/auto-gas", icon: Fuel, moduleKey: "auto-gas" },
       { title: "Reports", href: "/admin/reports", icon: BarChart3, moduleKey: "reports" },

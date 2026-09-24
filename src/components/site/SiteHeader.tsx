@@ -33,6 +33,7 @@ const navLinks = [
   { to: "/", label: "Home" },
   { to: "/about", label: "About" },
   { to: "/order-gas", label: "Shop & Order Gas" },
+  { to: "/offers", label: "Offers" },
   { to: "/filling-stations", label: "Filling Stations" },
   { to: "/auto-gas", label: "Auto Gas" },
   { to: "/services", label: "Services" },
@@ -114,25 +115,52 @@ export function SiteHeader() {
   useEffect(() => {
     async function loadActiveBanner() {
       try {
-        const { data, error } = await supabase
+        const now = new Date();
+        const nowIso = now.toISOString();
+
+        // 1. Fetch CMS Banners
+        const { data: cmsData } = await supabase
           .from("cms_banners")
           .select("*")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        let foundBanner: any = null;
 
-        if (data && data.length > 0) {
-          const now = new Date();
-          const valid = data.find((b: any) => {
+        if (cmsData && cmsData.length > 0) {
+          foundBanner = cmsData.find((b: any) => {
             const startOk = !b.starts_at || new Date(b.starts_at) <= now;
             const endOk = !b.expires_at || new Date(b.expires_at) >= now;
             return startOk && endOk;
           });
-          setActiveBanner(valid || null);
-        } else {
-          setActiveBanner(null);
         }
+
+        // 2. If no CMS banner is active, check for Promotional Offer Banners
+        if (!foundBanner) {
+          const { data: offerData } = await supabase
+            .from("offers")
+            .select("*")
+            .eq("status", "active")
+            .eq("show_promotional_banner", true)
+            .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+            .or(`ends_at.is.null,ends_at.gte.${nowIso}`)
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          if (offerData && offerData.length > 0) {
+            const promo = offerData[0];
+            foundBanner = {
+              id: promo.id,
+              message: promo.title,
+              subtitle: promo.code ? `Use promo code: ${promo.code}` : promo.description || "Limited time offer",
+              link_url: "/offers",
+              link_text: "View Promotion",
+              is_promo_offer: true,
+            };
+          }
+        }
+
+        setActiveBanner(foundBanner || null);
       } catch {
         setActiveBanner(null);
       }
@@ -144,8 +172,11 @@ export function SiteHeader() {
     window.addEventListener("cms_banners_updated", handleUpdate);
 
     const channel = supabase
-      .channel("site_header_cms_banners")
+      .channel("site_header_announcements")
       .on("postgres_changes", { event: "*", schema: "public", table: "cms_banners" }, () =>
+        loadActiveBanner(),
+      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "offers" }, () =>
         loadActiveBanner(),
       )
       .subscribe();

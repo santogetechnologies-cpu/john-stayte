@@ -36,6 +36,7 @@ import {
   verifyCheckoutEmailOtp,
   checkEmailVerifiedStatus,
 } from "@/lib/checkout-email-service";
+import { validateAndRedeemOfferServer, type Offer } from "@/lib/offer-service";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -74,7 +75,15 @@ function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
 }
 
 function Checkout() {
-  const { lines, subtotal, shipping, vat, total, settings, loading: cartLoading } = useCartTotals();
+  const [appliedOffer] = useState<Offer | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("jss.applied_offer");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const { lines, subtotal, offerDiscount, shipping, vat, total, settings, loading: cartLoading } = useCartTotals(appliedOffer);
   const { clearCart, removeFromCart, user } = useStore();
   const [submitting, setSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -429,7 +438,8 @@ function Checkout() {
           : "NEW_CYLINDER"
         : "STANDARD";
 
-      // 5. Create Order Record in Supabase
+      // 5. Create Initial Order Record in Supabase (with provisional values)
+      const provisionalTotal = Math.max(0, finalSubtotal + shipping + vat);
       const { data: newOrder, error: orderErr } = await (supabase.from("orders") as any)
         .insert([
           {
@@ -449,7 +459,7 @@ function Checkout() {
             },
             subtotal: finalSubtotal,
             shipping_fee: shipping,
-            total: finalTotal,
+            total: provisionalTotal,
             status: "Pending",
             fulfillment_status: "Pending",
             assigned_depot: "Whitminster",
@@ -474,6 +484,70 @@ function Checkout() {
 
       createdOrderId = newOrder.id;
 
+      // 6. Authoritative Atomic Server Offer Validation & Concurrency Lock
+      let verifiedDiscount = 0;
+      let verifiedOfferId: string | null = null;
+      let verifiedOfferCode: string | null = null;
+
+      if (appliedOffer) {
+        try {
+          const valRes = await validateAndRedeemOfferServer({
+            offerId: appliedOffer.id || null,
+            code: appliedOffer.code || null,
+            userId: currentUserId || null,
+            email: currentEmail,
+            cartItems: verifiedItems,
+            subtotal: finalSubtotal,
+            orderId: newOrder.id,
+          });
+
+          if (valRes.isValid && valRes.discountAmount > 0) {
+            verifiedDiscount = valRes.discountAmount;
+            verifiedOfferId = valRes.offerId || appliedOffer.id;
+            verifiedOfferCode = valRes.offerCode || appliedOffer.code || null;
+          } else if (!valRes.isValid) {
+            // Non-blocking fallback: Order continues safely with standard £0.00 discount
+            toast.info(
+              valRes.message ||
+                "This offer is no longer available. Your order will continue without the discount.",
+            );
+            verifiedDiscount = 0;
+            verifiedOfferId = null;
+            verifiedOfferCode = null;
+          }
+        } catch (valErr) {
+          console.warn("Offer validation server notice:", valErr);
+          toast.info("This offer could not be applied. Your order will continue without the discount.");
+          verifiedDiscount = 0;
+          verifiedOfferId = null;
+          verifiedOfferCode = null;
+        }
+      }
+
+      // Recompute authoritative final total
+      const taxableSubtotal = Math.max(0, finalSubtotal - verifiedDiscount);
+      const authoritativeVat = taxableSubtotal * (settings.vatRate / 100);
+      const finalAuthoritativeTotal = Math.max(0, taxableSubtotal + shipping + authoritativeVat);
+
+      // Update order record with authoritative total and offer linkage
+      await (supabase.from("orders") as any)
+        .update({
+          total: finalAuthoritativeTotal,
+          offer_id: verifiedOfferId,
+          offer_code: verifiedOfferCode,
+          notes: [
+            `[Payment: ${finalPaymentMethod}]`,
+            verifiedDiscount > 0 ? `[Offer Applied: -${gbp(verifiedDiscount)}]` : "",
+            hasCylinderInCart
+              ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]`
+              : "",
+            hasCylinderInCart ? `[${orderTypeTag}]` : "",
+          ]
+            .filter(Boolean)
+            .join(" | "),
+        })
+        .eq("id", newOrder.id);
+
       // Also create initial delivery assignment awaiting Admin/Manager assignment
       try {
         await (supabase.from("delivery_assignments") as any).insert([
@@ -496,7 +570,7 @@ function Checkout() {
         console.warn("Delivery assignment creation notice:", delErr);
       }
 
-      // 6. Create Order Items Records (with strict transaction rollback on failure)
+      // 7. Create Order Items Records (with strict transaction rollback on failure)
       const itemInserts = verifiedItems.map((item) => ({
         order_id: newOrder.id,
         product_id: item.product_id,
@@ -508,23 +582,23 @@ function Checkout() {
 
       const { error: itemsErr } = await supabase.from("order_items").insert(itemInserts);
       if (itemsErr) {
-        // Roll back parent order record to avoid orphan orders
+        // Roll back parent order record to avoid orphan orders (and trigger auto usage rollback)
         await supabase.from("orders").delete().eq("id", newOrder.id);
         throw new Error(`Failed to save items for order: ${itemsErr.message}`);
       }
 
-      // 7. Create Order Status History Record
+      // 8. Create Order Status History Record
       await supabase.from("order_status_history").insert([
         {
           order_id: newOrder.id,
           status: "Pending",
           actor_id: currentUserId,
           actor_name: fullName.trim(),
-          notes: `Order placed via online checkout (${finalPaymentMethod} • ${finalPaymentStatus}).`,
+          notes: `Order placed via online checkout (${finalPaymentMethod} • ${finalPaymentStatus}${verifiedDiscount > 0 ? ` • Discount: -${gbp(verifiedDiscount)}` : ""}).`,
         },
       ]);
 
-      // 8. Update Real Database Inventory for Ordered Products
+      // 9. Update Real Database Inventory for Ordered Products
       for (const item of verifiedItems) {
         if (item.product_id) {
           try {
@@ -561,19 +635,27 @@ function Checkout() {
         }
       }
 
-      // 9. Create Invoice Record in Supabase
+      // 10. Create Invoice Record in Supabase (Reusing existing discount field!)
       try {
-        await supabase.from("invoices").insert([
+        await (supabase.from("invoices") as any).insert([
           {
             invoice_number: `INV-${orderNumber.replace("JSS-", "")}`,
             order_id: newOrder.id,
             customer_id: currentUserId,
-            total_amount: finalTotal,
+            discount: verifiedDiscount,
+            total_amount: finalAuthoritativeTotal,
             status: finalPaymentStatus === "Paid" ? "Paid" : "Issued",
           },
         ]);
       } catch (invErr) {
         console.warn("Invoice record notice:", invErr);
+      }
+
+      // 11. Clear Session Applied Offer
+      try {
+        sessionStorage.removeItem("jss.applied_offer");
+      } catch {
+        /* ignore */
       }
 
       // 10. Create Customer Notification in Supabase customer_notifications
@@ -1241,6 +1323,14 @@ function Checkout() {
               <dt>Subtotal</dt>
               <dd className="font-bold text-slate-900">{gbp(subtotal)}</dd>
             </div>
+            {offerDiscount > 0 && (
+              <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50/80 p-1.5 rounded-md border border-emerald-200/60">
+                <dt className="flex items-center gap-1">
+                  <span>Promo Offer Discount</span>
+                </dt>
+                <dd>− {gbp(offerDiscount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between text-slate-600">
               <dt>Delivery</dt>
               <dd className="font-bold text-slate-900">

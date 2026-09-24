@@ -199,7 +199,7 @@ export function AdminAutoGasView() {
             Coverage
           </span>
           <div className="text-lg font-black text-slate-900 font-display">Gloucestershire &amp; Somerset</div>
-          <p className="text-[11px] text-slate-500">Cirencester, Gloucester, Stroud, Weston-Super-Mare</p>
+          <p className="text-[11px] text-slate-500">Eastington, Gloucester, Stroud, Weston-Super-Mare</p>
         </div>
       </div>
 
@@ -465,7 +465,7 @@ export function AdminAutoGasView() {
                   value={editStation.name}
                   onChange={(e) => setEditStation({ ...editStation, name: e.target.value })}
                   className="mt-1 h-9 rounded-xl text-xs"
-                  placeholder="John Stayte Services – Cirencester"
+                  placeholder="John Stayte Services – Eastington"
                 />
               </div>
 
@@ -475,7 +475,7 @@ export function AdminAutoGasView() {
                   value={editStation.address}
                   onChange={(e) => setEditStation({ ...editStation, address: e.target.value })}
                   className="mt-1 h-9 rounded-xl text-xs"
-                  placeholder="82 Chesterton Lane"
+                  placeholder="John Stayte Services – Head Office, Eastington"
                 />
               </div>
 
@@ -486,7 +486,7 @@ export function AdminAutoGasView() {
                     value={editStation.town || ""}
                     onChange={(e) => setEditStation({ ...editStation, town: e.target.value })}
                     className="mt-1 h-9 rounded-xl text-xs"
-                    placeholder="Cirencester"
+                    placeholder="Stonehouse"
                   />
                 </div>
                 <div>
@@ -504,7 +504,7 @@ export function AdminAutoGasView() {
                     value={editStation.postcode}
                     onChange={(e) => setEditStation({ ...editStation, postcode: e.target.value.toUpperCase() })}
                     className="mt-1 h-9 rounded-xl text-xs uppercase"
-                    placeholder="GL7 1YD"
+                    placeholder="GL10 3AH"
                   />
                 </div>
               </div>
@@ -516,7 +516,7 @@ export function AdminAutoGasView() {
                     value={editStation.telephone}
                     onChange={(e) => setEditStation({ ...editStation, telephone: e.target.value })}
                     className="mt-1 h-9 rounded-xl text-xs"
-                    placeholder="01285 654614"
+                    placeholder="01453 822859"
                   />
                 </div>
                 <div>

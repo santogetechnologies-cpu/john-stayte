@@ -498,7 +498,7 @@ export const stations = [
   {
     name: "Wild Goose Garage",
     address: "27 Kingshill Road, Dursley, Gloucestershire, GL11 4BJ",
-    phone: "01453 545696",
+    phone: "01453 545896",
     hours: "Mon–Sat 7:00–19:00 · Sun 9:00–17:00",
     maps: "https://maps.google.com/?q=Wild+Goose+Garage+27+Kingshill+Road+Dursley+GL11+4BJ",
   },

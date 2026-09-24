@@ -11,6 +11,7 @@ import { type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
 import { INITIAL_ACTIVE_AGENTS } from "@/lib/delivery-agent-service";
+import { type Offer, evaluateOfferForCart } from "@/lib/offer-service";
 
 export type Role = "customer" | "manager" | "admin" | "delivery_agent";
 export type User = { id?: string; name: string; email: string; role: Role; avatar?: string };
@@ -685,8 +686,9 @@ export const DEFAULT_CART_SYSTEM_SETTINGS: CartSystemSettings = {
  * Reconciles cart lines against live Supabase public.products database.
  * Dynamically applies system shipping thresholds & VAT rates from admin_system_settings.
  * Automatically removes stale/deleted products from cart.
+ * Optionally applies active Offer discount if provided.
  */
-export function useCartTotals() {
+export function useCartTotals(appliedOffer?: Offer | null) {
   const { cart, removeFromCart } = useStore();
   const [liveLines, setLiveLines] = useState<(CartLine & { product: Product })[]>([]);
   const [loading, setLoading] = useState(true);
@@ -820,6 +822,18 @@ export function useCartTotals() {
     () => liveLines.reduce((s, l) => s + l.product.price * l.qty, 0),
     [liveLines],
   );
+
+  const offerDiscount = useMemo(() => {
+    if (!appliedOffer || subtotal === 0) return 0;
+    const evalResult = evaluateOfferForCart(appliedOffer, liveLines, subtotal);
+    return evalResult.isEligible ? evalResult.discountAmount : 0;
+  }, [appliedOffer, liveLines, subtotal]);
+
+  const taxableSubtotal = useMemo(
+    () => Math.max(0, subtotal - offerDiscount),
+    [subtotal, offerDiscount],
+  );
+
   const shipping = useMemo(
     () =>
       subtotal === 0 || subtotal >= settings.freeDeliveryThreshold
@@ -827,8 +841,8 @@ export function useCartTotals() {
         : settings.defaultShippingFee,
     [subtotal, settings.freeDeliveryThreshold, settings.defaultShippingFee],
   );
-  const vat = useMemo(() => subtotal * (settings.vatRate / 100), [subtotal, settings.vatRate]);
-  const total = useMemo(() => subtotal + shipping + vat, [subtotal, shipping, vat]);
+  const vat = useMemo(() => taxableSubtotal * (settings.vatRate / 100), [taxableSubtotal, settings.vatRate]);
+  const total = useMemo(() => taxableSubtotal + shipping + vat, [taxableSubtotal, shipping, vat]);
 
-  return { lines: liveLines, subtotal, shipping, vat, total, loading, settings };
+  return { lines: liveLines, subtotal, offerDiscount, shipping, vat, total, loading, settings };
 }

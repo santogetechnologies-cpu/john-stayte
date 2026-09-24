@@ -104,13 +104,13 @@ export const Route = createFileRoute("/auto-gas")({
       {
         name: "description",
         content:
-          "Find John Stayte Services Auto Gas filling locations across Gloucestershire and surrounding areas including Cirencester, Gloucester, Stroud, and Weston-Super-Mare.",
+          "Find John Stayte Services Auto Gas filling locations across Gloucestershire and surrounding areas including Eastington, Gloucester, Stroud, and Weston-Super-Mare.",
       },
       { property: "og:title", content: "Auto Gas Locations | John Stayte Services" },
       {
         property: "og:description",
         content:
-          "Find our Auto Gas filling locations across Gloucestershire and surrounding areas. Cirencester, Gloucester, Stroud, and Weston-Super-Mare.",
+          "Find our Auto Gas filling locations across Gloucestershire and surrounding areas. Eastington, Gloucester, Stroud, and Weston-Super-Mare.",
       },
     ],
   }),

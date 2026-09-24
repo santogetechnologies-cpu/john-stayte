@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Minus,
@@ -14,12 +15,18 @@ import {
   Flame,
   Package,
   Sparkles,
+  Tag,
+  TicketPercent,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { gbp, useCartTotals, useStore } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
+import { fetchPublicOffers, evaluateOfferForCart, type Offer } from "@/lib/offer-service";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -41,8 +48,31 @@ export const Route = createFileRoute("/cart")({
 
 function CartPage() {
   const { setQty, removeFromCart, toggleWishlist, wishlist } = useStore();
-  const { lines, subtotal, shipping, vat, total, loading } = useCartTotals();
+  const [appliedOffer, setAppliedOffer] = useState<Offer | null>(() => {
+    try {
+      const saved = sessionStorage.getItem("jss.applied_offer");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [applyingCode, setApplyingCode] = useState(false);
+  const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
+
+  const { lines, subtotal, offerDiscount, shipping, vat, total, loading } = useCartTotals(appliedOffer);
   const navigate = useNavigate();
+
+  // Load public offers
+  useEffect(() => {
+    let isMounted = true;
+    fetchPublicOffers().then((offers) => {
+      if (isMounted) setAvailableOffers(offers);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const totalItemsCount = lines.reduce((acc, l) => acc + l.qty, 0);
   const hasOutOfStockItems = lines.some((l) => Number(l.product.stock || 0) <= 0);
@@ -52,9 +82,66 @@ function CartPage() {
     const comp = l.product.compareAt ? Number(l.product.compareAt) : l.product.price;
     return sum + comp * l.qty;
   }, 0);
-  const totalSavings = Math.max(0, originalTotal - subtotal);
+  const catalogSavings = Math.max(0, originalTotal - subtotal);
+  const totalCombinedSavings = catalogSavings + (offerDiscount || 0);
   const qualifiesForFreeDelivery = subtotal >= 75;
   const amountToFreeDelivery = Math.max(0, 75 - subtotal);
+
+  const handleApplyPromoCode = async () => {
+    const cleanCode = promoCodeInput.trim().toUpperCase();
+    if (!cleanCode) {
+      return toast.error("Please enter a promo code.");
+    }
+    setApplyingCode(true);
+    try {
+      // Find matching offer from public offers or query Supabase directly
+      let matchedOffer = availableOffers.find(
+        (o) => o.code && o.code.toUpperCase() === cleanCode
+      );
+
+      if (!matchedOffer) {
+        const { data, error } = await supabase
+          .from("offers")
+          .select("*")
+          .eq("code", cleanCode)
+          .eq("status", "active")
+          .maybeSingle();
+
+        if (error || !data) {
+          throw new Error("Invalid promo code or offer is not active.");
+        }
+        matchedOffer = data as unknown as Offer;
+      }
+
+      const evalResult = evaluateOfferForCart(matchedOffer, lines, subtotal);
+      if (!evalResult.isEligible) {
+        throw new Error(evalResult.reason || "Your cart is not eligible for this offer.");
+      }
+
+      setAppliedOffer(matchedOffer);
+      try {
+        sessionStorage.setItem("jss.applied_offer", JSON.stringify(matchedOffer));
+      } catch {
+        /* ignore */
+      }
+      toast.success(`Promo code "${cleanCode}" applied! You saved ${gbp(evalResult.discountAmount)}.`);
+      setPromoCodeInput("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to apply promo code.");
+    } finally {
+      setApplyingCode(false);
+    }
+  };
+
+  const handleRemoveOffer = () => {
+    setAppliedOffer(null);
+    try {
+      sessionStorage.removeItem("jss.applied_offer");
+    } catch {
+      /* ignore */
+    }
+    toast.info("Offer removed from cart.");
+  };
 
   const handleSaveForLater = (slug: string, name: string) => {
     if (!wishlist.includes(slug)) {
@@ -374,10 +461,74 @@ function CartPage() {
               <aside className="space-y-3.5 lg:sticky lg:top-20">
                 <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs overflow-hidden">
                   {/* Card Header */}
-                  <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50">
+                  <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                     <h2 className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
                       Price Details
                     </h2>
+                    {appliedOffer && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Tag className="h-3 w-3" /> Offer Applied
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Promo Code Input Box */}
+                  <div className="p-4 border-b border-slate-100 bg-slate-50/30 space-y-2">
+                    {appliedOffer ? (
+                      <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <TicketPercent className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-emerald-900 truncate">
+                              {appliedOffer.code || appliedOffer.title}
+                            </p>
+                            <p className="text-[10px] text-emerald-700 font-medium">
+                              Saved {gbp(offerDiscount || 0)} on qualifying items
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleRemoveOffer}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded-md transition-colors"
+                          aria-label="Remove promo code"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <div className="flex gap-1.5">
+                          <Input
+                            placeholder="Enter Promo Code"
+                            value={promoCodeInput}
+                            onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleApplyPromoCode();
+                              }
+                            }}
+                            className="h-8 text-xs font-mono uppercase bg-white"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleApplyPromoCode}
+                            disabled={applyingCode || !promoCodeInput.trim()}
+                            className="h-8 px-3 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shrink-0"
+                          >
+                            Apply
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-slate-500">
+                          <span>Have an offer code?</span>
+                          <Link to="/offers" className="font-semibold text-primary hover:underline">
+                            View All Offers →
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Price Breakdown */}
@@ -392,11 +543,22 @@ function CartPage() {
                       </span>
                     </div>
 
-                    {/* Discount (if applicable) */}
-                    {totalSavings > 0 && (
+                    {/* Catalog Savings (if compareAt exists) */}
+                    {catalogSavings > 0 && (
                       <div className="flex justify-between items-center text-emerald-700 font-medium">
-                        <span>Discount</span>
-                        <span className="font-bold">− {gbp(totalSavings)}</span>
+                        <span>Catalog Discount</span>
+                        <span className="font-bold">− {gbp(catalogSavings)}</span>
+                      </div>
+                    )}
+
+                    {/* Offer Discount (if applied) */}
+                    {offerDiscount > 0 && (
+                      <div className="flex justify-between items-center text-emerald-700 font-bold bg-emerald-50/60 p-1.5 rounded-md border border-emerald-200/50">
+                        <span className="flex items-center gap-1">
+                          <Tag className="h-3 w-3 text-emerald-600" />
+                          Promo Offer Discount
+                        </span>
+                        <span>− {gbp(offerDiscount)}</span>
                       </div>
                     )}
 
@@ -431,10 +593,10 @@ function CartPage() {
                     </div>
 
                     {/* Savings Callout */}
-                    {totalSavings > 0 ? (
+                    {totalCombinedSavings > 0 ? (
                       <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/80 text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
                         <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                        <span>You will save {gbp(totalSavings)} on this order!</span>
+                        <span>You will save {gbp(totalCombinedSavings)} on this order!</span>
                       </div>
                     ) : qualifiesForFreeDelivery ? (
                       <div className="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/80 text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">

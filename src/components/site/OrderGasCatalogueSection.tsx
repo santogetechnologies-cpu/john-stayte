@@ -31,6 +31,7 @@ import {
   Minus,
   XCircle,
   X,
+  Search,
   SlidersHorizontal,
   Package,
   Heart,
@@ -664,6 +665,7 @@ export function OrderGasCatalogueSection({
   const [activeCategoryId, setActiveCategoryId] = useState<MainCategoryKey | string>("calor-gas");
   const [activeSubId, setActiveSubId] = useState<string>("patio-refill");
   const [sortBy, setSortBy] = useState<string>("default");
+  const [productSearchTerm, setProductSearchTerm] = useState<string>("");
 
   // Sync external category selections (e.g. from the Shop by Category section)
   useEffect(() => {
@@ -3893,15 +3895,42 @@ export function OrderGasCatalogueSection({
     return brandMatch;
   }, [dbProducts, activeCategoryId, activeSubId]);
 
-  // Apply sorting
+  // Apply real-time search filtering & sorting (searches across entire database catalogue when query is active)
   const displayedProducts = useMemo(() => {
-    return [...categoryProducts].sort((a, b) => {
+    let list: CatalogProductItem[];
+
+    if (productSearchTerm.trim()) {
+      const term = productSearchTerm.toLowerCase().trim();
+      const tokens = term.split(/\s+/).filter(Boolean);
+      const allActive = dbProducts.filter((p) => p.is_active !== false);
+
+      list = allActive.filter((p) => {
+        const sku = (((p as any).sku || (p.specs as any)?.sku || (p.specs as any)?.product_code || "") as string).toLowerCase();
+        const name = (p.name || "").toLowerCase();
+        const brand = (p.brand || "").toLowerCase();
+        const slug = (p.slug || "").toLowerCase();
+        const desc = (p.description || "").toLowerCase();
+        const catSlug = (p.category_slug || "").toLowerCase();
+        const catName = (p.category || (p as any).category_name || "").toLowerCase();
+        const sub = (p.subcategory || (p as any).sub_category || "").toLowerCase();
+        const gasType = (p.gas_type || (p.specs as any)?.gas_type || "").toLowerCase();
+        const cylSize = (p.cylinder_size || (p.specs as any)?.cylinder_size || "").toLowerCase();
+
+        const searchableText = `${name} ${brand} ${slug} ${sku} ${catSlug} ${catName} ${sub} ${gasType} ${cylSize} ${desc}`;
+
+        return tokens.every((token) => searchableText.includes(token));
+      });
+    } else {
+      list = [...categoryProducts];
+    }
+
+    return list.sort((a, b) => {
       if (sortBy === "price-low") return a.price - b.price;
       if (sortBy === "price-high") return b.price - a.price;
       if (sortBy === "name-asc") return a.name.localeCompare(b.name);
       return 0; // default order
     });
-  }, [categoryProducts, sortBy]);
+  }, [categoryProducts, dbProducts, productSearchTerm, sortBy]);
 
   // Handle URL query parameters and brand/hash routing
   useEffect(() => {
@@ -5704,12 +5733,36 @@ export function OrderGasCatalogueSection({
               </div>
             </div>
 
+            {/* Catalogue-Wide Product Search Input */}
+            <div className="relative w-full">
+              <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={productSearchTerm}
+                onChange={(e) => setProductSearchTerm(e.target.value)}
+                placeholder="Search products across the catalogue..."
+                className="w-full h-11 sm:h-12 pl-10 pr-9 text-xs sm:text-sm bg-white text-slate-800 rounded-xl border border-primary hover:border-primary focus:border-primary focus:outline-hidden shadow-2xs transition-colors placeholder:text-slate-400 font-medium"
+              />
+              {productSearchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setProductSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-1 rounded-md transition-colors"
+                  title="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
             {/* Product Listing Controls Bar: Count + Sort Selector */}
             <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
               <span className="font-semibold text-slate-600">
-                {displayedProducts.length > 0
-                  ? `Displaying 1 to ${displayedProducts.length} (of ${displayedProducts.length} Products)`
-                  : "Displaying 0 to 0 (of 0 Products)"}
+                {productSearchTerm.trim()
+                  ? `Displaying ${displayedProducts.length} result${displayedProducts.length === 1 ? "" : "s"} across catalogue`
+                  : displayedProducts.length > 0
+                    ? `Displaying 1 to ${displayedProducts.length} (of ${categoryProducts.length} Products)`
+                    : `Displaying 0 to 0 (of ${categoryProducts.length} Products)`}
               </span>
 
               <div className="flex items-center gap-2">
@@ -5730,13 +5783,37 @@ export function OrderGasCatalogueSection({
 
             {/* DYNAMIC PRODUCT CARDS GRID (DATABASE SOURCE OF TRUTH) */}
             {displayedProducts.length === 0 ? (
-              <div className="p-8 sm:p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-2xs space-y-2">
-                <p className="text-slate-800 text-base font-bold">
-                  No products are currently available for this brand.
-                </p>
-                <p className="text-slate-500 text-xs sm:text-sm font-medium">
-                  Please check back later for new products.
-                </p>
+              <div className="p-8 sm:p-12 text-center bg-white rounded-2xl border border-slate-200/80 shadow-2xs space-y-3">
+                {productSearchTerm.trim() ? (
+                  <>
+                    <p className="text-slate-800 text-base font-bold">
+                      No products found matching &ldquo;{productSearchTerm}&rdquo;
+                    </p>
+                    <p className="text-slate-500 text-xs sm:text-sm font-medium">
+                      Try searching with different keywords or clear your search to view all products in this category.
+                    </p>
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setProductSearchTerm("")}
+                        className="rounded-lg text-xs font-semibold border-slate-200 hover:bg-slate-50"
+                      >
+                        Clear Search
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-slate-800 text-base font-bold">
+                      No products are currently available for this brand.
+                    </p>
+                    <p className="text-slate-500 text-xs sm:text-sm font-medium">
+                      Please check back later for new products.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div
