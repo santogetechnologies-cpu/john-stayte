@@ -2,6 +2,10 @@ import { supabase } from "@/lib/supabase";
 import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 import { normalizeReviewRecord } from "@/lib/review-service";
 import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
+import {
+  requestDeliveryOtpServerFn,
+  verifyDeliveryOtpServerFn,
+} from "@/lib/delivery-otp-server-fn";
 
 export interface DeliveryAgentRecord {
   id: string;
@@ -1389,115 +1393,70 @@ export interface DeliveryOtpState {
  * Extracts or initializes secure 6-digit delivery OTP for an order/assignment.
  */
 /**
- * Extracts or initializes secure 6-digit delivery OTP for an order/assignment using dedicated database columns.
+ * Extracts or initializes secure 6-digit delivery OTP for an order/assignment.
+ * Dispatches Twilio SMS to the dynamically resolved customer phone number.
  */
 export async function getOrCreateDeliveryOtp(
   assignmentId: string,
   orderId?: string | null,
+  customerPhone?: string | null,
+  customerName?: string | null,
 ): Promise<{ otpExists: boolean; isVerified: boolean; expiresAt: number; attempts: number }> {
   try {
-    const { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("id, order_id, notes, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+    let { data: assignment } = await (supabase.from("delivery_assignments") as any)
+      .select("id, order_id, otp_code, otp_expires_at, otp_attempts, otp_verified")
       .eq("id", assignmentId)
       .maybeSingle();
 
-    // Check dedicated columns first
-    if (assignment?.otp_code) {
-      const expTime = assignment.otp_expires_at ? new Date(assignment.otp_expires_at).getTime() : Date.now() + 24 * 60 * 60 * 1000;
+    if (!assignment && (orderId || assignmentId)) {
+      const { data: byOrder } = await (supabase.from("delivery_assignments") as any)
+        .select("id, order_id, otp_code, otp_expires_at, otp_attempts, otp_verified")
+        .eq("order_id", orderId || assignmentId)
+        .maybeSingle();
+      if (byOrder) assignment = byOrder;
+    }
+
+    if (assignment?.otp_verified) {
       return {
         otpExists: true,
-        isVerified: Boolean(assignment.otp_verified),
-        expiresAt: expTime,
+        isVerified: true,
+        expiresAt: assignment.otp_expires_at ? new Date(assignment.otp_expires_at).getTime() : Date.now(),
         attempts: Number(assignment.otp_attempts || 0),
       };
     }
 
-    // Check legacy notes format if columns were empty
-    const notes = assignment?.notes || "";
-    const otpMatch = notes.match(/\[OTP:(\{.*?\})\]/);
-    if (otpMatch && otpMatch[1]) {
-      try {
-        const parsed: DeliveryOtpState = JSON.parse(otpMatch[1]);
-        // Backfill dedicated columns
-        await (supabase.from("delivery_assignments") as any)
-          .update({
-            otp_code: parsed.code,
-            otp_expires_at: new Date(parsed.expiresAt).toISOString(),
-            otp_attempts: parsed.attempts || 0,
-            otp_max_attempts: parsed.maxAttempts || 5,
-            otp_verified: Boolean(parsed.verified),
-            otp_verified_at: parsed.verifiedAt || null,
-          })
-          .eq("id", assignmentId);
-
+    // If active unexpired OTP already exists, return current status
+    if (assignment?.otp_code && assignment.otp_expires_at) {
+      const expTime = new Date(assignment.otp_expires_at).getTime();
+      if (Date.now() < expTime) {
         return {
           otpExists: true,
-          isVerified: Boolean(parsed.verified),
-          expiresAt: parsed.expiresAt,
-          attempts: parsed.attempts || 0,
+          isVerified: false,
+          expiresAt: expTime,
+          attempts: Number(assignment.otp_attempts || 0),
         };
-      } catch {}
-    }
-
-    // Generate new secure 6-digit numeric OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-    const expiresAtIso = new Date(expiresAt).toISOString();
-    const newOtp: DeliveryOtpState = {
-      code,
-      expiresAt,
-      verified: false,
-      verifiedAt: null,
-      attempts: 0,
-      maxAttempts: 5,
-    };
-
-    const cleanNotes = notes.replace(/\[OTP:(\{.*?\})\]/g, "").trim();
-    const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(newOtp)}]`.trim();
-
-    await (supabase.from("delivery_assignments") as any)
-      .update({
-        otp_code: code,
-        otp_expires_at: expiresAtIso,
-        otp_attempts: 0,
-        otp_max_attempts: 5,
-        otp_verified: false,
-        otp_verified_at: null,
-        notes: updatedNotes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", assignmentId);
-
-    // Send notification to customer
-    const actualOrderId = orderId || assignment?.order_id;
-    if (actualOrderId) {
-      try {
-        const { data: ord } = await supabase
-          .from("orders")
-          .select("customer_id, order_number")
-          .eq("id", actualOrderId)
-          .maybeSingle();
-
-        if (ord?.customer_id) {
-          await (supabase.from("customer_notifications") as any).insert([
-            {
-              user_id: ord.customer_id,
-              title: `Delivery Verification Code: #${ord.order_number}`,
-              message: `Your 6-digit delivery verification OTP is ${code}. Please share this code with your driver upon arrival.`,
-              category: "delivery_otp",
-              is_read: false,
-            },
-          ]);
-        }
-      } catch (e) {
-        console.warn("Customer OTP notification error:", e);
       }
     }
 
+    const session = (await supabase.auth.getSession())?.data?.session;
+    const authToken = session?.access_token || null;
+
+    // Server generates OTP, salted SHA-256 hash, and dispatches Twilio SMS
+    const res = await requestDeliveryOtpServerFn({
+      data: {
+        assignmentId,
+        orderId: orderId || assignment?.order_id,
+        customerPhone,
+        customerName,
+        forceRegenerate: false,
+        authToken,
+      },
+    });
+
     return {
-      otpExists: true,
-      isVerified: false,
-      expiresAt,
+      otpExists: res.success,
+      isVerified: Boolean(res.isVerified),
+      expiresAt: res.expiresAt || Date.now() + 15 * 60 * 1000,
       attempts: 0,
     };
   } catch (err: any) {
@@ -1505,77 +1464,44 @@ export async function getOrCreateDeliveryOtp(
     return {
       otpExists: false,
       isVerified: false,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+      expiresAt: Date.now() + 15 * 60 * 1000,
       attempts: 0,
     };
   }
 }
 
 /**
- * Reissues a fresh 6-digit OTP for the customer and resets attempt counter in dedicated columns.
+ * Reissues a fresh 6-digit OTP for the customer and sends via Twilio SMS.
  */
 export async function reissueDeliveryOtp(
   assignmentId: string,
   orderId?: string | null,
+  customerPhone?: string | null,
+  customerName?: string | null,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("id, order_id, notes")
-      .eq("id", assignmentId)
-      .maybeSingle();
+    const session = (await supabase.auth.getSession())?.data?.session;
+    const authToken = session?.access_token || null;
 
-    const cleanNotes = (assignment?.notes || "").replace(/\[OTP:(\{.*?\})\]/g, "").trim();
+    const res = await requestDeliveryOtpServerFn({
+      data: {
+        assignmentId,
+        orderId,
+        customerPhone,
+        customerName,
+        forceRegenerate: true,
+        authToken,
+      },
+    });
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
-    const expiresAtIso = new Date(expiresAt).toISOString();
-    const newOtp: DeliveryOtpState = {
-      code,
-      expiresAt,
-      verified: false,
-      verifiedAt: null,
-      attempts: 0,
-      maxAttempts: 5,
-    };
-
-    const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(newOtp)}]`.trim();
-
-    await (supabase.from("delivery_assignments") as any)
-      .update({
-        otp_code: code,
-        otp_expires_at: expiresAtIso,
-        otp_attempts: 0,
-        otp_max_attempts: 5,
-        otp_verified: false,
-        otp_verified_at: null,
-        notes: updatedNotes,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", assignmentId);
-
-    // Notify customer
-    const actualOrderId = orderId || assignment?.order_id;
-    if (actualOrderId) {
-      const { data: ord } = await supabase
-        .from("orders")
-        .select("customer_id, order_number")
-        .eq("id", actualOrderId)
-        .maybeSingle();
-
-      if (ord?.customer_id) {
-        await (supabase.from("customer_notifications") as any).insert([
-          {
-            user_id: ord.customer_id,
-            title: `New Delivery Verification Code: #${ord.order_number}`,
-            message: `Your updated 6-digit delivery verification OTP is ${code}. Please share this code with your driver upon arrival.`,
-            category: "delivery_otp",
-            is_read: false,
-          },
-        ]);
-      }
+    if (!res.success && res.error) {
+      throw new Error(res.error);
     }
 
-    return { success: true, message: "A new OTP has been generated and sent to the customer." };
+    return {
+      success: res.success,
+      message: res.message || "A new OTP has been generated and sent to the customer via SMS.",
+    };
   } catch (err: any) {
     console.error("reissueDeliveryOtp error:", err);
     throw new Error(err.message || "Failed to reissue OTP");
@@ -1583,8 +1509,8 @@ export async function reissueDeliveryOtp(
 }
 
 /**
- * Verifies the 6-digit OTP supplied by the customer to the delivery agent.
- * Checks dedicated columns, expiration, attempt limit (max 5), and single-use verification.
+ * Verifies the 6-digit OTP supplied by the customer to the delivery agent server-side.
+ * Uses constant-time salted hash comparison, prevents reuse, and tracks attempt limits.
  */
 export async function verifyDeliveryOtp(
   assignmentId: string,
@@ -1597,129 +1523,19 @@ export async function verifyDeliveryOtp(
       return { success: false, error: "Please enter a valid 6-digit numeric OTP." };
     }
 
-    const { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
-      .eq("id", assignmentId)
-      .maybeSingle();
+    const session = (await supabase.auth.getSession())?.data?.session;
+    const authToken = session?.access_token || null;
 
-    let targetCode = assignment?.otp_code;
-    let targetExpiresAt = assignment?.otp_expires_at ? new Date(assignment.otp_expires_at).getTime() : 0;
-    let targetAttempts = Number(assignment?.otp_attempts || 0);
-    let targetMaxAttempts = Number(assignment?.otp_max_attempts || 5);
-    let targetVerified = Boolean(assignment?.otp_verified);
-    let targetVerifiedAt = assignment?.otp_verified_at;
+    const res = await verifyDeliveryOtpServerFn({
+      data: {
+        assignmentId,
+        inputOtp: trimmedInput,
+        orderId,
+        authToken,
+      },
+    });
 
-    // Fallback to legacy notes parsing if dedicated column wasn't set
-    const notes = assignment?.notes || "";
-    if (!targetCode) {
-      const otpMatch = notes.match(/\[OTP:(\{.*?\})\]/);
-      if (otpMatch && otpMatch[1]) {
-        try {
-          const parsed: DeliveryOtpState = JSON.parse(otpMatch[1]);
-          targetCode = parsed.code;
-          targetExpiresAt = parsed.expiresAt;
-          targetAttempts = parsed.attempts || 0;
-          targetMaxAttempts = parsed.maxAttempts || 5;
-          targetVerified = Boolean(parsed.verified);
-          targetVerifiedAt = parsed.verifiedAt;
-        } catch {}
-      }
-    }
-
-    if (!targetCode) {
-      await getOrCreateDeliveryOtp(assignmentId, orderId);
-      return {
-        success: false,
-        error: "Verification code generated. Please ask customer to provide the 6-digit code shown in their order notifications.",
-      };
-    }
-
-    if (targetVerified) {
-      return { success: true, verifiedAt: targetVerifiedAt || new Date().toISOString() };
-    }
-
-    if (targetAttempts >= targetMaxAttempts) {
-      return {
-        success: false,
-        error: `Maximum verification attempts (${targetMaxAttempts}) exceeded. Please tap 'Resend OTP' to generate a fresh code for the customer.`,
-      };
-    }
-
-    if (targetExpiresAt > 0 && Date.now() > targetExpiresAt) {
-      return {
-        success: false,
-        error: "This OTP has expired. Please tap 'Resend OTP' to send a new code to the customer.",
-      };
-    }
-
-    if (trimmedInput !== targetCode) {
-      const newAttempts = targetAttempts + 1;
-      const updatedOtpState: DeliveryOtpState = {
-        code: targetCode,
-        expiresAt: targetExpiresAt,
-        verified: false,
-        verifiedAt: null,
-        attempts: newAttempts,
-        maxAttempts: targetMaxAttempts,
-      };
-
-      const cleanNotes = notes.replace(/\[OTP:(\{.*?\})\]/g, "").trim();
-      const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(updatedOtpState)}]`.trim();
-
-      await (supabase.from("delivery_assignments") as any)
-        .update({
-          otp_attempts: newAttempts,
-          notes: updatedNotes,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", assignmentId);
-
-      const attemptsLeft = targetMaxAttempts - newAttempts;
-      return {
-        success: false,
-        error: `Incorrect OTP. ${attemptsLeft > 0 ? `${attemptsLeft} attempt(s) remaining.` : "Please tap Resend OTP."}`,
-      };
-    }
-
-    // Success: Mark verified in dedicated columns and status history
-    const nowIso = new Date().toISOString();
-    const verifiedOtpState: DeliveryOtpState = {
-      code: targetCode,
-      expiresAt: targetExpiresAt,
-      verified: true,
-      verifiedAt: nowIso,
-      attempts: targetAttempts,
-      maxAttempts: targetMaxAttempts,
-    };
-
-    const cleanNotes = notes.replace(/\[OTP:(\{.*?\})\]/g, "").trim();
-    const updatedNotes = `${cleanNotes} [OTP:${JSON.stringify(verifiedOtpState)}]`.trim();
-
-    await (supabase.from("delivery_assignments") as any)
-      .update({
-        otp_verified: true,
-        otp_verified_at: nowIso,
-        notes: updatedNotes,
-        updated_at: nowIso,
-      })
-      .eq("id", assignmentId);
-
-    // Log to order history
-    const actualOrderId = orderId || assignment?.order_id;
-    if (actualOrderId) {
-      try {
-        await (supabase.from("order_status_history") as any).insert([
-          {
-            order_id: actualOrderId,
-            status: "OTP Verified",
-            note: "Customer OTP successfully verified by Delivery Agent.",
-            created_at: nowIso,
-          },
-        ]);
-      } catch {}
-    }
-
-    return { success: true, verifiedAt: nowIso };
+    return res;
   } catch (err: any) {
     console.error("verifyDeliveryOtp error:", err);
     return { success: false, error: err.message || "Failed to verify OTP" };
@@ -1737,26 +1553,41 @@ export async function getCustomerDeliveryOtp(orderId: string): Promise<string | 
       .eq("order_id", orderId)
       .maybeSingle();
 
-    if (!assignment) return null;
+    if (!assignment || assignment.otp_verified) return null;
+    if (assignment.otp_expires_at && Date.now() > new Date(assignment.otp_expires_at).getTime()) {
+      return null;
+    }
 
-    // Check dedicated columns
-    if (assignment.otp_code) {
-      if (assignment.otp_verified) return null;
-      if (assignment.otp_expires_at && Date.now() > new Date(assignment.otp_expires_at).getTime()) {
-        return null;
-      }
+    // If legacy plaintext code exists on older test record
+    if (assignment.otp_code && /^\d{6}$/.test(assignment.otp_code)) {
       return assignment.otp_code;
     }
 
-    // Fallback to legacy notes
-    if (!assignment.notes) return null;
-    const match = assignment.notes.match(/\[OTP:(\{.*?\})\]/);
-    if (!match || !match[1]) return null;
+    // Query customer_notifications for active OTP code if available for customer view
+    const { data: ord } = await supabase
+      .from("orders")
+      .select("customer_id, order_number")
+      .eq("id", orderId)
+      .maybeSingle();
 
-    const parsed: DeliveryOtpState = JSON.parse(match[1]);
-    if (parsed.verified) return null;
-    if (Date.now() > parsed.expiresAt) return null;
-    return parsed.code;
+    if (ord?.customer_id) {
+      const { data: notif } = await (supabase.from("customer_notifications") as any)
+        .select("message, created_at")
+        .eq("user_id", ord.customer_id)
+        .eq("category", "delivery_otp")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (notif?.message) {
+        const match = notif.message.match(/\b(\d{6})\b/);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }

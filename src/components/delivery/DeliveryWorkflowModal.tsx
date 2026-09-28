@@ -114,7 +114,7 @@ export function DeliveryWorkflowModal({
     if (delivery) {
       const s = (delivery.status || "").toLowerCase();
       const notes = (delivery.notes || "");
-      
+
       const isAlreadyOtpVerified = notes.includes('"verified":true') || s === "delivered" || s === "completed";
       setOtpVerified(isAlreadyOtpVerified);
       if (isAlreadyOtpVerified) {
@@ -140,8 +140,22 @@ export function DeliveryWorkflowModal({
         setActiveTab("overview");
       }
 
+      const resolvedCustPhone =
+        delivery.orders?.customer_phone ||
+        delivery.customer_phone ||
+        (typeof delivery.orders?.delivery_address === "object"
+          ? delivery.orders?.delivery_address?.phone
+          : null);
+      const resolvedCustName =
+        delivery.orders?.customer_name || delivery.customer_name;
+
       // Initialize or retrieve delivery OTP in background
-      getOrCreateDeliveryOtp(delivery.id, delivery.order_id || delivery.orders?.id);
+      getOrCreateDeliveryOtp(
+        delivery.id,
+        delivery.order_id || delivery.orders?.id,
+        resolvedCustPhone,
+        resolvedCustName,
+      );
     }
   }, [delivery, exchangeReq.required, exchangeReq.expectedQuantity]);
 
@@ -229,7 +243,7 @@ export function DeliveryWorkflowModal({
     setSubmitting(true);
     try {
       const isReceived = emptyReceived === "received";
-      
+
       // If "No Empty Cylinder" or other issue was selected, log exception
       if (!isReceived) {
         await updateDeliveryWorkflowStep({
@@ -320,10 +334,22 @@ export function DeliveryWorkflowModal({
   const handleResendOtp = async () => {
     setReissuingOtp(true);
     try {
+      const resolvedCustPhone =
+        order.customer_phone ||
+        delivery.customer_phone ||
+        (typeof order.delivery_address === "object"
+          ? order.delivery_address?.phone
+          : null);
+      const resolvedCustName =
+        order.customer_name || delivery.customer_name;
+
       const res = await reissueDeliveryOtp(
         delivery.id,
         delivery.order_id || order.id,
+        resolvedCustPhone,
+        resolvedCustName,
       );
+      console.log(res.message);
       toast.success(res.message || "New OTP sent to customer.");
       setOtpInput("");
       setOtpError(null);
@@ -634,13 +660,13 @@ export function DeliveryWorkflowModal({
                   status === "Customer Verified" ||
                   status === "Cylinder Handed Over" ||
                   status === "Empty Cylinder Verified") && (
-                  <Button
-                    onClick={() => setActiveTab("verify_customer")}
-                    className="w-full sm:flex-1 rounded-full font-extrabold text-xs h-11 bg-red-600 hover:bg-red-700 text-white shadow-md cursor-pointer gap-2"
-                  >
-                    Continue Delivery Verification Workflow <ArrowRight className="h-4 w-4" />
-                  </Button>
-                )}
+                    <Button
+                      onClick={() => setActiveTab("verify_customer")}
+                      className="w-full sm:flex-1 rounded-full font-extrabold text-xs h-11 bg-red-600 hover:bg-red-700 text-white shadow-md cursor-pointer gap-2"
+                    >
+                      Continue Delivery Verification Workflow <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  )}
               </div>
             </div>
           )}

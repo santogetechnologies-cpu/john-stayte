@@ -1,4 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import {
+  sendApplicationEmailVerifyServerFn,
+  verifyApplicationEmailCodeServerFn,
+} from "@/lib/application-email-verify-server-fn";
 
 export type ApplicationStatus = "NOT_COMPLETED" | "SUBMITTED" | "APPROVED" | "REJECTED";
 
@@ -157,22 +161,6 @@ export async function submitGasCustomerApplication(
 
   // Server-side / backend validations
   if (!customerId) throw new Error("Authentication required: customer ID is missing.");
-
-  // Check real Supabase Auth Email Confirmation
-  try {
-    const { data: authData } = await supabase.auth.getUser();
-    const authUser = authData?.user;
-    if (authUser && !authUser.email_confirmed_at && !authUser.confirmed_at) {
-      throw new Error(
-        "Please verify your email address before submitting your Gas Customer Application. Check your inbox for the confirmation link.",
-      );
-    }
-  } catch (authErr: any) {
-    if (authErr.message?.includes("verify your email")) {
-      throw authErr;
-    }
-  }
-
   if (!fullName?.trim()) throw new Error("Full name is required.");
   if (!email?.trim() || !email.includes("@")) throw new Error("A valid email address is required.");
   if (!phone?.trim() || phone.trim().length < 7)
@@ -564,7 +552,7 @@ export async function updateGasApplicationStatus(params: {
 }
 
 /**
- * Sends a real 6-digit OTP code to the requested email address via Supabase Auth transactional email.
+ * Sends a real 6-digit OTP code to the requested email address via Twilio Verify + SendGrid.
  */
 export async function sendApplicationEmailOtp(email: string): Promise<{
   ok: boolean;
@@ -575,31 +563,22 @@ export async function sendApplicationEmailOtp(email: string): Promise<{
     throw new Error("Please provide a valid email address to receive your verification code.");
   }
 
-  // 1. Dispatch real OTP email via Supabase Auth transactional SMTP
-  const { error } = await supabase.auth.signInWithOtp({
-    email: cleanEmail,
-    options: {
-      shouldCreateUser: true,
-    },
+  const res = await sendApplicationEmailVerifyServerFn({
+    data: { email: cleanEmail },
   });
 
-  if (error) {
-    if (error.message?.toLowerCase().includes("rate") || (error as any).status === 429) {
-      throw new Error(
-        "Too many verification attempts. Please wait a moment before requesting another code.",
-      );
-    }
-    throw new Error(error.message || "Failed to send verification email. Please try again.");
+  if (!res.ok) {
+    throw new Error(res.message || res.error || "Failed to send verification email. Please try again.");
   }
 
   return {
     ok: true,
-    message: `A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox.`,
+    message: res.message,
   };
 }
 
 /**
- * Verifies the 6-digit OTP code received in the customer's email.
+ * Verifies the 6-digit OTP code received in the customer's email via Twilio Verify.
  */
 export async function verifyApplicationEmailOtp(
   email: string,
@@ -619,33 +598,42 @@ export async function verifyApplicationEmailOtp(
     throw new Error("Please enter the complete 6-digit numerical code sent to your email.");
   }
 
-  // Verify against Supabase Auth cryptographic server
-  const { data, error } = await supabase.auth.verifyOtp({
-    email: cleanEmail,
-    token: cleanOtp,
-    type: "email",
+  const res = await verifyApplicationEmailCodeServerFn({
+    data: {
+      email: cleanEmail,
+      code: cleanOtp,
+    },
   });
 
-  if (error || !data) {
-    if (error?.message?.toLowerCase().includes("expired")) {
-      throw new Error("This verification code has expired. Please request a new code.");
-    }
-    throw new Error("Invalid or expired verification code. Please check your inbox and try again.");
+  if (!res.ok || !res.verifiedEmail) {
+    throw new Error(res.error || "Invalid or expired verification code. Please check your inbox and try again.");
   }
 
-  // Record verified state in email_verifications table via secure RPC
-  const { error: rpcError } = await (supabase.rpc as any)("record_verified_application_email", {
-    p_email: cleanEmail,
-  });
-
-  if (rpcError) {
-    console.error("Failed to record verified application email:", rpcError);
-    throw new Error(rpcError.message || "Failed to record email verification.");
+  // Record verified state in email_verifications table for audit/tracking if user is authenticated
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+    if (userId) {
+      await (supabase.from("email_verifications") as any).insert([
+        {
+          user_id: userId,
+          email: cleanEmail,
+          verified_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          attempts: 1,
+          max_attempts: 5,
+          metadata: { provider: "twilio_verify_sendgrid", type: "gas_application" },
+        },
+      ]);
+    }
+  } catch (dbErr) {
+    // Non-blocking log
+    console.warn("email_verifications tracking notice:", dbErr);
   }
 
   return {
     ok: true,
-    verifiedEmail: cleanEmail,
+    verifiedEmail: res.verifiedEmail,
   };
 }
 
