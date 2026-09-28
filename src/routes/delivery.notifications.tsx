@@ -197,34 +197,37 @@ function DeliveryNotificationsView() {
   const unreadCount = notifications.filter((n) => !n.is_read && !n.read).length;
 
   return (
-    <div className="space-y-5 sm:space-y-6 w-full max-w-5xl mx-auto">
+    <div className="space-y-4 sm:space-y-5 w-full">
       {/* 1. Header and Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 mb-0.5">
             <Link to="/delivery" className="hover:text-red-600 transition-colors">
               Home
             </Link>
             <span>/</span>
             <span className="text-slate-800 font-bold">Notifications</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 leading-tight flex items-center gap-2.5">
-            <Bell className="h-7 w-7 text-red-600" /> Dispatch Notifications
+          <h1 className="text-xl sm:text-2xl font-display font-black tracking-tight text-slate-900 flex items-center gap-2">
+            <div className="h-8 w-8 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100 shadow-2xs">
+              <Bell className="h-4 w-4" />
+            </div>
+            Dispatch Notifications
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
-            Real-time delivery assignments, route modifications, and depot messages for{" "}
-            <span className="font-bold text-slate-800">{user?.name || "Delivery Driver"}</span>.
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Real-time delivery assignments and operational alerts for{" "}
+            <span className="font-bold text-slate-700">{user?.name || "Delivery Driver"}</span>.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <Button
             variant="outline"
             size="sm"
             onClick={loadNotifications}
-            className="rounded-full text-xs font-bold border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs h-9 px-3.5 cursor-pointer transition-all"
+            className="rounded-xl text-xs font-semibold border-slate-200/80 bg-white/80 hover:bg-white text-slate-700 shadow-2xs h-8 px-3 cursor-pointer transition-all"
           >
-            <RotateCcw className="h-3.5 w-3.5 mr-1 text-slate-500" /> Refresh
+            <RotateCcw className="h-3.5 w-3.5 mr-1.5 text-slate-500" /> Refresh
           </Button>
 
           {unreadCount > 0 && (
@@ -232,7 +235,7 @@ function DeliveryNotificationsView() {
               variant="default"
               size="sm"
               onClick={markAllRead}
-              className="rounded-full text-xs font-black bg-slate-900 hover:bg-slate-800 text-white h-9 px-4 cursor-pointer shadow-2xs"
+              className="rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white h-8 px-3.5 cursor-pointer shadow-2xs"
             >
               <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Mark All Read ({unreadCount})
             </Button>
@@ -241,10 +244,10 @@ function DeliveryNotificationsView() {
       </div>
 
       {/* 2. Filter Pills */}
-      <div className="surface-card bg-white/70 backdrop-blur-xl rounded-[26px] border border-white/80 p-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+      <div className="bg-slate-100/80 p-1 rounded-2xl border border-slate-200/70 inline-flex items-center gap-1 overflow-x-auto max-w-full no-scrollbar shadow-2xs">
         {[
           { id: "all", label: `All Alerts (${notifications.length})` },
-          { id: "unread", label: `Unread (${unreadCount})`, highlight: unreadCount > 0 },
+          { id: "unread", label: `Unread (${unreadCount})` },
           {
             id: "assignments",
             label: `New Assignments (${
@@ -255,33 +258,34 @@ function DeliveryNotificationsView() {
             })`,
           },
         ].map((tab) => (
-          <Button
+          <button
             key={tab.id}
-            size="sm"
-            variant={filterTab === tab.id ? "default" : "outline"}
+            type="button"
             onClick={() => setFilterTab(tab.id as any)}
             className={cn(
-              "rounded-full text-xs font-bold h-8 px-4 shrink-0 transition-all cursor-pointer",
+              "rounded-xl text-xs px-3.5 py-1.5 font-bold transition-all whitespace-nowrap cursor-pointer",
               filterTab === tab.id
-                ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 font-black border-transparent"
-                : "border-transparent bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/80",
+                ? "bg-white text-slate-900 shadow-2xs border border-slate-200/60"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/50 border border-transparent",
             )}
           >
             {tab.label}
-          </Button>
+          </button>
         ))}
       </div>
 
       {/* 3. Notifications List */}
-      <div className="surface-card rounded-[26px] border border-white/80 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden divide-y divide-slate-100">
         {loading ? (
-          <div className="p-16 text-center">
-            <Loader2 className="h-7 w-7 text-red-600 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-slate-500 font-bold">Syncing dispatch notifications...</p>
+          <div className="py-12 text-center">
+            <Loader2 className="h-6 w-6 text-red-600 animate-spin mx-auto mb-2" />
+            <p className="text-xs text-slate-500 font-semibold">Syncing dispatch notifications...</p>
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <div className="p-16 text-center space-y-2.5">
-            <Bell className="h-10 w-10 text-slate-300 mx-auto" />
+          <div className="py-12 px-4 text-center space-y-2">
+            <div className="h-10 w-10 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center mx-auto border border-slate-100">
+              <Bell className="h-5 w-5" />
+            </div>
             <p className="text-sm font-bold text-slate-900">
               {filterTab === "unread" ? "No unread notifications" : "No notifications on record"}
             </p>
@@ -314,54 +318,52 @@ function DeliveryNotificationsView() {
               <div
                 key={n.id}
                 className={cn(
-                  "p-4 sm:p-5 transition-all duration-150 flex flex-col md:flex-row md:items-start justify-between gap-4",
+                  "py-3.5 px-4 sm:px-5 transition-colors duration-150 flex flex-col md:flex-row md:items-center justify-between gap-3",
                   isUnread
-                    ? "bg-red-50/40 border-l-4 border-l-red-600"
-                    : "hover:bg-slate-50/50 border-l-4 border-l-transparent",
+                    ? "bg-slate-50/70 border-l-[3px] border-l-red-600"
+                    : "hover:bg-slate-50/40 border-l-[3px] border-l-transparent",
                 )}
               >
-                <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                {/* Left side: Icon + Content */}
+                <div className="flex items-start gap-3 flex-1 min-w-0">
                   {/* Category / Event Icon */}
                   <div
                     className={cn(
-                      "p-3 rounded-2xl shrink-0 mt-0.5 shadow-2xs",
+                      "h-8 w-8 rounded-xl shrink-0 mt-0.5 flex items-center justify-center border shadow-2xs",
                       isAssignment
-                        ? "bg-red-100 text-red-600"
-                        : isReassignment
-                          ? "bg-amber-100 text-amber-700"
-                          : isException
-                            ? "bg-rose-100 text-rose-600"
-                            : "bg-blue-100 text-blue-600",
+                        ? "bg-red-50 text-red-600 border-red-100"
+                        : isReassignment || isException
+                          ? "bg-amber-50 text-amber-700 border-amber-100"
+                          : "bg-blue-50 text-blue-600 border-blue-100",
                     )}
                   >
                     {isAssignment ? (
-                      <Truck className="h-5 w-5" />
-                    ) : isReassignment ? (
-                      <AlertTriangle className="h-5 w-5" />
-                    ) : isException ? (
-                      <AlertTriangle className="h-5 w-5" />
+                      <Truck className="h-4 w-4" />
+                    ) : isReassignment || isException ? (
+                      <AlertTriangle className="h-4 w-4" />
                     ) : (
-                      <Bell className="h-5 w-5" />
+                      <Bell className="h-4 w-4" />
                     )}
                   </div>
 
                   {/* Notification Content Body */}
-                  <div className="space-y-2 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-display font-black text-sm sm:text-base text-slate-900 leading-snug">
+                  <div className="space-y-1 flex-1 min-w-0">
+                    {/* Header Row: Title, New Badge, Order #, Timestamp */}
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <h3 className={cn("text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate", isUnread && "font-black")}>
                         {n.title}
                       </h3>
 
                       {isUnread && (
-                        <Badge className="bg-red-600 text-white text-[9px] font-black px-2 py-0.2 rounded-full uppercase shadow-2xs">
+                        <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200">
                           New
-                        </Badge>
+                        </span>
                       )}
 
                       {orderRef && (
-                        <Badge variant="outline" className="font-mono text-[10px] font-bold border-slate-200 text-slate-700 rounded-full">
+                        <span className="inline-flex items-center font-mono text-[10px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded border border-slate-200/80">
                           #{orderRef}
-                        </Badge>
+                        </span>
                       )}
 
                       <span className="text-[11px] text-slate-400 font-medium ml-auto shrink-0 flex items-center gap-1">
@@ -375,66 +377,64 @@ function DeliveryNotificationsView() {
                       </span>
                     </div>
 
-                    {/* Rich assignment breakdown card if metadata is present */}
+                    {/* Metadata Detail Row */}
                     {isAssignment && (customerName || deliveryArea || orderRef) ? (
-                      <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 shadow-2xs space-y-2.5">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
-                          <p className="font-extrabold text-xs text-slate-900">
-                            {customerName ? `${customerName} · ${deliveryArea}` : deliveryArea || "Customer Delivery"}
-                          </p>
-                          {timeSlot && (
-                            <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-slate-400" /> {timeSlot}
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600 pt-0.5">
+                        {/* Customer & Location */}
+                        {(customerName || deliveryArea) && (
+                          <div className="flex items-center gap-1 text-slate-700 font-semibold min-w-0">
+                            <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                            <span className="truncate max-w-md sm:max-w-lg lg:max-w-2xl">
+                              {customerName ? `${customerName} · ${deliveryArea}` : deliveryArea}
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        )}
 
-                        {/* Cylinder Requirements Badges */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge
-                            className={cn(
-                              "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-none",
-                              emptyCylinderRequired
-                                ? "bg-amber-50 text-amber-900 border-amber-300"
-                                : "bg-emerald-50 text-emerald-900 border-emerald-300",
-                            )}
-                          >
-                            <Flame className="h-3 w-3 mr-1" />
+                        {/* Timeslot */}
+                        {timeSlot && (
+                          <span className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-slate-400" />
+                            {timeSlot}
+                          </span>
+                        )}
+
+                        {/* Compact Cylinder requirement tag */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex items-center text-[10px] font-semibold text-slate-600 bg-slate-100/90 border border-slate-200/80 px-2 py-0.5 rounded-full">
+                            <Flame className="h-2.5 w-2.5 mr-1 text-slate-500" />
                             {deliveryType}
-                          </Badge>
+                          </span>
 
-                          <Badge
+                          <span
                             className={cn(
-                              "text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border shadow-none",
+                              "inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full border",
                               emptyCylinderRequired
-                                ? "bg-amber-100 text-amber-900 border-amber-300"
-                                : "bg-emerald-100 text-emerald-900 border-emerald-300",
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-200",
                             )}
                           >
-                            {emptyCylinderRequired
-                              ? "Empty cylinder required"
-                              : "No empty cylinder required"}
-                          </Badge>
+                            {emptyCylinderRequired ? "Empty return required" : "No return required"}
+                          </span>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-line">
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed line-clamp-2">
                         {n.message}
                       </p>
                     )}
                   </div>
                 </div>
 
-                {/* Actions Right Side */}
-                <div className="flex items-center gap-2 self-end md:self-center shrink-0 pt-2 md:pt-0">
+                {/* Right side: Actions */}
+                <div className="flex items-center gap-1.5 self-end md:self-center shrink-0 pl-11 md:pl-0">
                   {isAssignment && (
                     <Button
                       size="sm"
                       onClick={() => handleOpenDelivery(n)}
-                      className="rounded-full font-black text-xs bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md shadow-red-600/20 px-4 h-8 gap-1.5 cursor-pointer"
+                      className="rounded-lg font-bold text-xs bg-red-600 hover:bg-red-700 text-white shadow-2xs px-3 h-7.5 gap-1 cursor-pointer transition-colors"
                     >
-                      <span>View Delivery</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
+                      <span>View</span>
+                      <ArrowRight className="h-3 w-3" />
                     </Button>
                   )}
 
@@ -443,10 +443,10 @@ function DeliveryNotificationsView() {
                       variant="ghost"
                       size="sm"
                       onClick={() => markSingleAsRead(n.id)}
-                      className="rounded-full text-xs font-bold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 h-8 px-2.5 cursor-pointer"
+                      className="rounded-lg text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 h-7.5 px-2 cursor-pointer"
                       title="Mark as Read"
                     >
-                      <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-600" />
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1 text-emerald-600" />
                       <span className="hidden sm:inline">Mark Read</span>
                     </Button>
                   )}
@@ -455,7 +455,7 @@ function DeliveryNotificationsView() {
                     variant="ghost"
                     size="icon"
                     onClick={() => deleteNotification(n.id)}
-                    className="rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0 cursor-pointer"
+                    className="rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 h-7.5 w-7.5 p-0 cursor-pointer"
                     title="Dismiss"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
