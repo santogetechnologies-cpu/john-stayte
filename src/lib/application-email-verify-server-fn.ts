@@ -21,6 +21,7 @@ export interface VerifyApplicationEmailCodeResponse {
   error?: string;
 }
 
+
 /**
  * Normalizes email address safely
  */

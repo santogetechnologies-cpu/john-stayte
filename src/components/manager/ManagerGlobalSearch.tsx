@@ -265,7 +265,7 @@ export function ManagerGlobalSearch({
                 matchedEnquiries.length === 0 &&
                 matchedDeliveries.length === 0 && (
                   <div className="p-8 text-center text-xs text-slate-500 font-medium">
-                    No database records found matching. "{query}".
+                    No database records found matching "{query}".
                   </div>
                 )}
             </div>

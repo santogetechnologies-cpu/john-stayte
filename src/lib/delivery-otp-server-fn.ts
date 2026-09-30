@@ -74,9 +74,17 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const apiKeySid = process.env.TWILIO_API_KEY_SID;
   const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_FROM_NUMBER;
 
-  if (!accountSid || !apiKeySid || !apiKeySecret || !fromNumber) {
+  let basicAuth: string | null = null;
+  if (apiKeySid && apiKeySecret) {
+    basicAuth = Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64");
+  } else if (accountSid && authToken) {
+    basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  }
+
+  if (!accountSid || !basicAuth || !fromNumber) {
     console.error("[Twilio Service] Missing server-side Twilio credentials in environment.");
     return {
       success: false,
@@ -96,7 +104,6 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
 
   try {
     const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-    const basicAuth = Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64");
 
     const bodyParams = new URLSearchParams();
     bodyParams.append("From", fromNumber);
