@@ -449,3 +449,31 @@ input::-ms-clear {
   animation: jss-tooltip-float 4s ease-in-out infinite;
   will-change: transform;
 }
+
+/* Suppress Lovable Development & Editor Badge Overlay */
+#lovable-badge,
+#lovable-brand-badge,
+#lovable-editor,
+[data-lovable-badge],
+[class*="lovable-badge"],
+[id*="lovable-badge"],
+[id*="lovable_badge"],
+[id*="lovable-editor"],
+iframe[src*="lovable.dev"],
+iframe[src*="lovable.app"],
+a[href*="lovable.dev"][class*="fixed"],
+div[style*="z-index"]:has(a[href*="lovable.dev"]),
+div[style*="z-index"]:has(a[href*="lovable.app"]) {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  clip: rect(0, 0, 0, 0) !important;
+  height: 0 !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+}

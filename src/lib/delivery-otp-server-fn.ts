@@ -67,6 +67,70 @@ export function maskPhoneNumber(phone: string): string {
 }
 
 /**
+ * Resolves the appropriate Twilio Sender (Alphanumeric Sender ID, Messaging Service, or Phone Number)
+ * based on destination country telecom requirements.
+ */
+function resolveTwilioSender(
+  normalizedTo: string,
+  config: {
+    alphaSenderId?: string;
+    fromNumber?: string;
+    indiaSenderId?: string;
+    messagingServiceSid?: string;
+  }
+): { senderType: "From" | "MessagingServiceSid"; senderValue: string } | null {
+  const { alphaSenderId, fromNumber, indiaSenderId, messagingServiceSid } = config;
+
+  // 1. UK (+44): Always prioritize branded UK Alphanumeric Sender ID (e.g., JOHNSTAYTE)
+  if (normalizedTo.startsWith("+44")) {
+    if (alphaSenderId) {
+      return { senderType: "From", senderValue: alphaSenderId };
+    }
+    if (fromNumber) {
+      return { senderType: "From", senderValue: fromNumber };
+    }
+  }
+
+  // 2. India (+91): TRAI DLT blocks un-registered foreign alphanumeric strings.
+  // Prioritize dedicated India sender/fromNumber; do NOT send un-registered alpha headers.
+  if (normalizedTo.startsWith("+91")) {
+    const effectiveIndiaSender = indiaSenderId || fromNumber;
+    if (effectiveIndiaSender) {
+      return { senderType: "From", senderValue: effectiveIndiaSender };
+    }
+    if (messagingServiceSid) {
+      return { senderType: "MessagingServiceSid", senderValue: messagingServiceSid };
+    }
+    if (alphaSenderId) {
+      return { senderType: "From", senderValue: alphaSenderId };
+    }
+  }
+
+  // 3. USA & Canada (+1): US carriers strictly reject Alphanumeric Sender IDs; require numeric sender.
+  if (normalizedTo.startsWith("+1")) {
+    if (fromNumber) {
+      return { senderType: "From", senderValue: fromNumber };
+    }
+    if (messagingServiceSid) {
+      return { senderType: "MessagingServiceSid", senderValue: messagingServiceSid };
+    }
+  }
+
+  // 4. Other Open Alpha / International destinations (e.g. Australia +61, Ireland +353, Germany +49)
+  if (alphaSenderId) {
+    return { senderType: "From", senderValue: alphaSenderId };
+  }
+  if (fromNumber) {
+    return { senderType: "From", senderValue: fromNumber };
+  }
+  if (messagingServiceSid) {
+    return { senderType: "MessagingServiceSid", senderValue: messagingServiceSid };
+  }
+
+  return null;
+}
+
+/**
  * Dispatches an SMS using Twilio Programmable Messaging REST API.
  * Authenticates using Account SID + API Key SID + API Key Secret.
  */
@@ -76,6 +140,9 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
   const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_FROM_NUMBER;
+  const alphaSenderId = process.env.TWILIO_ALPHA_SENDER_ID;
+  const indiaSenderId = process.env.TWILIO_INDIA_SENDER_ID || process.env.TWILIO_INDIA_FROM_NUMBER;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
   let basicAuth: string | null = null;
   if (apiKeySid && apiKeySecret) {
@@ -84,16 +151,24 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
     basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
   }
 
-  if (!accountSid || !basicAuth || !fromNumber) {
-    console.error("[Twilio Service] Missing server-side Twilio credentials in environment.");
+  const normalizedTo = normalizeToE164(params.to);
+  const maskedTo = maskPhoneNumber(normalizedTo);
+
+  // Determine country-compliant sender configuration
+  const senderConfig = resolveTwilioSender(normalizedTo, {
+    alphaSenderId,
+    fromNumber,
+    indiaSenderId,
+    messagingServiceSid,
+  });
+
+  if (!accountSid || !basicAuth || !senderConfig) {
+    console.error("[Twilio Service] Missing server-side Twilio credentials or valid sender for destination in environment.");
     return {
       success: false,
       error: "Twilio SMS service is not configured on the server. Please verify environment variables.",
     };
   }
-
-  const normalizedTo = normalizeToE164(params.to);
-  const maskedTo = maskPhoneNumber(normalizedTo);
 
   if (!normalizedTo || normalizedTo.length < 8) {
     return {
@@ -106,7 +181,7 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
     const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
 
     const bodyParams = new URLSearchParams();
-    bodyParams.append("From", fromNumber);
+    bodyParams.append(senderConfig.senderType, senderConfig.senderValue);
     bodyParams.append("To", normalizedTo);
     bodyParams.append("Body", params.body);
 

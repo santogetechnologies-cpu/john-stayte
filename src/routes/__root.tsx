@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -134,12 +135,70 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+
+  useEffect(() => {
+    const removeLovableBadge = () => {
+      const selectors = [
+        "#lovable-badge",
+        "#lovable-brand-badge",
+        "#lovable-editor",
+        "[data-lovable-badge]",
+        "[class*='lovable-badge']",
+        "[id*='lovable-badge']",
+        "[id*='lovable_badge']",
+        "iframe[src*='lovable.dev']",
+        "iframe[src*='lovable.app']",
+      ];
+
+      for (const sel of selectors) {
+        document.querySelectorAll(sel).forEach((el) => {
+          (el as HTMLElement).style.setProperty("display", "none", "important");
+          el.remove();
+        });
+      }
+
+      // Check for any floating element referencing Lovable edit button
+      document.querySelectorAll("a, button, div").forEach((el) => {
+        const text = el.textContent || "";
+        if (
+          text.includes("Edit with") &&
+          text.includes("Lovable") &&
+          el instanceof HTMLElement &&
+          (window.getComputedStyle(el).position === "fixed" ||
+            el.parentElement?.style.position === "fixed" ||
+            el.id?.includes("lovable") ||
+            el.className?.includes("lovable"))
+        ) {
+          el.style.setProperty("display", "none", "important");
+          el.remove();
+        }
+      });
+    };
+
+    removeLovableBadge();
+
+    const observer = new MutationObserver(() => {
+      removeLovableBadge();
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       <StoreProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
+        {/* Route-level top-to-bottom vertical reveal transition */}
+        <div key={location.pathname} className="route-vertical-reveal min-h-screen">
+          <Outlet />
+        </div>
         <Toaster position="top-right" richColors />
       </StoreProvider>
     </QueryClientProvider>
