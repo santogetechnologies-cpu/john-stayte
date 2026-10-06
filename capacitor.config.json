@@ -4,7 +4,7 @@
   "webDir": "public",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://stayte-hub-suite.lovable.app",
+    "url": "https://john-stayte.vercel.app/",
     "cleartext": false,
     "androidScheme": "https"
   },
