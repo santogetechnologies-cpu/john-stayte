@@ -165,7 +165,7 @@ export function AdminAuditLogsView() {
       <div className="surface-card rounded-3xl border bg-white overflow-hidden shadow-xs">
         {loading ? (
           <div className="p-12 text-center text-xs text-muted-foreground font-bold flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading audit records...
+            <Loader2 className="h-5 w-5 animate-spin text-primary" /> Loading audit records....
           </div>
         ) : filteredLogs.length === 0 ? (
           <div className="p-16 text-center space-y-3">
