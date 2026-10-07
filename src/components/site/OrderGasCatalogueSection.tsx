@@ -4543,12 +4543,14 @@ export function OrderGasCatalogueSection({
       <div className="space-y-5 text-left">
         {/* Section 1: PRODUCT CATEGORIES Header */}
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-            <Layers className="h-4 w-4 text-red-600 shrink-0" />
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-display">
-              Product Categories
-            </h3>
-          </div>
+          {!isMobileDrawer && (
+            <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+              <Layers className="h-4 w-4 text-red-600 shrink-0" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 font-display">
+                Product Categories
+              </h3>
+            </div>
+          )}
 
           {/* Categories Navigation */}
           <div className="space-y-0.5 pt-1">
@@ -4790,11 +4792,60 @@ export function OrderGasCatalogueSection({
         <main className="col-span-12 md:col-span-8 lg:col-span-9 space-y-4 sm:space-y-5 min-w-0">
           {/* Mobile Category Controller & Quick Filter Bar (Visible ONLY on Mobile < md) */}
           <div className="block md:hidden space-y-2.5 pb-2">
+            <style>{`
+              @keyframes jss-category-hint {
+                0%, 52%, 100% {
+                  transform: scale(1);
+                  background-color: rgba(15, 23, 42, 0.85);
+                  border-color: rgba(239, 68, 68, 0.45);
+                  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+                  color: #f1f5f9;
+                }
+                11% {
+                  transform: scale(1.03);
+                  background-color: rgba(220, 38, 38, 0.38);
+                  border-color: rgba(239, 68, 68, 0.95);
+                  box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.32), 0 3px 14px rgba(220, 38, 38, 0.55);
+                  color: #ffffff;
+                }
+                25% {
+                  transform: scale(1);
+                  background-color: rgba(220, 38, 38, 0.20);
+                  border-color: rgba(239, 68, 68, 0.55);
+                  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+                  color: #f8fafc;
+                }
+                39% {
+                  transform: scale(1.03);
+                  background-color: rgba(220, 38, 38, 0.38);
+                  border-color: rgba(239, 68, 68, 0.95);
+                  box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.32), 0 3px 14px rgba(220, 38, 38, 0.55);
+                  color: #ffffff;
+                }
+              }
+              .jss-mobile-all-categories-pill {
+                background-color: rgba(15, 23, 42, 0.85);
+                border: 1px solid rgba(239, 68, 68, 0.45);
+                animation: jss-category-hint 2.1s ease-in-out infinite;
+                will-change: transform, box-shadow, border-color, background-color;
+              }
+              .jss-mobile-all-categories-pill:active {
+                transform: scale(0.96) !important;
+                background-color: rgba(220, 38, 38, 0.45) !important;
+                transition-duration: 75ms;
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .jss-mobile-all-categories-pill {
+                  animation: none !important;
+                }
+              }
+            `}</style>
+
             {/* Category Drawer Trigger Button */}
             <button
               type="button"
               onClick={() => setMobileCategoryDrawerOpen(true)}
-              className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-950 active:scale-[0.99] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+              className="w-full flex items-center justify-between gap-2.5 px-3.5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-950 active:scale-[0.99] text-white text-xs font-bold shadow-xs transition-all cursor-pointer border border-slate-800/80"
             >
               <div className="flex items-center gap-2 min-w-0 pr-1">
                 <Layers className="h-4 w-4 text-red-500 shrink-0" />
@@ -4804,9 +4855,9 @@ export function OrderGasCatalogueSection({
                   {activeSubCategory?.name ? ` › ${activeSubCategory.name}` : ""}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 bg-white/10 px-2 py-0.5 rounded-md shrink-0">
-                <SlidersHorizontal className="h-3 w-3 text-red-400" />
-                <span>All Categories</span>
+              <div className="jss-mobile-all-categories-pill flex items-center gap-1.5 text-[11px] font-bold text-slate-100 hover:text-white px-2.5 py-1 rounded-full shrink-0 shadow-xs transition-colors">
+                <SlidersHorizontal className="h-3 w-3 text-red-400 shrink-0" />
+                <span className="tracking-tight whitespace-nowrap">All Categories</span>
               </div>
             </button>
 

@@ -228,6 +228,7 @@ export function StationMap({ stations }: StationMapProps) {
         map.fitBounds(validLatLngs, {
           padding: [50, 50],
           maxZoom: 14,
+          animate: false,
         });
       }
     });
@@ -241,7 +242,12 @@ export function StationMap({ stations }: StationMapProps) {
   useEffect(() => {
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.stop?.();
+          mapInstanceRef.current.remove();
+        } catch {
+          // Safe cleanup handling
+        }
         mapInstanceRef.current = null;
         markersLayerRef.current = null;
       }
