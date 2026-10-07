@@ -158,15 +158,15 @@ export function DeliveryNotificationsPopover() {
 
       <PopoverContent
         align="end"
-        className="w-80 sm:w-96 p-0 rounded-3xl border border-white/80 bg-white/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-50"
+        className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:w-96 p-0 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white/95 backdrop-blur-2xl shadow-xl overflow-hidden z-50"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3.5 bg-slate-50/60">
-          <div className="flex items-center gap-2">
-            <h4 className="font-display font-black text-xs text-slate-900 tracking-tight">
+        <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-4 sm:py-3.5 bg-slate-50/70">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h4 className="font-display font-black text-xs sm:text-sm text-slate-900 tracking-tight truncate">
               Delivery Dispatch Alerts
             </h4>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-red-600 text-white shadow-2xs">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-red-600 text-white shadow-2xs leading-none shrink-0">
                 {unreadCount}
               </span>
             )}
@@ -177,7 +177,7 @@ export function DeliveryNotificationsPopover() {
               size="sm"
               onClick={markAllAsRead}
               disabled={loading}
-              className="text-[11px] font-bold text-red-600 hover:text-red-700 h-auto p-0 cursor-pointer"
+              className="text-[11px] font-bold text-red-600 hover:text-red-700 h-auto p-0 cursor-pointer shrink-0"
             >
               {loading ? (
                 <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -190,15 +190,15 @@ export function DeliveryNotificationsPopover() {
         </div>
 
         {notifications.length === 0 ? (
-          <div className="p-8 text-center space-y-1.5">
-            <Bell className="mx-auto h-8 w-8 text-slate-300 mb-1" />
+          <div className="p-6 sm:p-8 text-center space-y-1.5">
+            <Bell className="mx-auto h-7 w-7 text-slate-300 mb-1" />
             <p className="text-xs font-bold text-slate-900">No dispatch alerts</p>
             <p className="text-[11px] text-slate-400">
               New assigned cylinder deliveries will appear here.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[340px] overflow-y-auto">
             {notifications.map((n) => {
               const isUnread = !n.is_read && !n.read;
               const isAssignment =
@@ -216,13 +216,13 @@ export function DeliveryNotificationsPopover() {
                   key={n.id}
                   onClick={() => handleNotificationClick(n)}
                   className={cn(
-                    "p-3.5 flex gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer",
+                    "px-3.5 py-2.5 sm:px-4 sm:py-3.5 flex gap-3 hover:bg-slate-50/80 transition-colors cursor-pointer",
                     isUnread ? "bg-red-50/30" : "",
                   )}
                 >
                   <div
                     className={cn(
-                      "mt-0.5 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
+                      "mt-0.5 h-7 w-7 sm:h-8 sm:w-8 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
                       isAssignment
                         ? "bg-red-100 text-red-600"
                         : n.type === "delivery_exception"
@@ -231,17 +231,17 @@ export function DeliveryNotificationsPopover() {
                     )}
                   >
                     {isAssignment ? (
-                      <Truck className="h-4 w-4" />
+                      <Truck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     ) : n.type === "delivery_exception" ? (
-                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     ) : (
-                      <Bell className="h-4 w-4" />
+                      <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     )}
                   </div>
 
                   <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="font-extrabold text-xs text-slate-900 truncate">{n.title}</p>
+                    <div className="flex items-center justify-between gap-1.5 min-w-0">
+                      <p className="font-extrabold text-xs text-slate-900 truncate min-w-0">{n.title}</p>
                       <span className="text-[10px] text-slate-400 shrink-0">
                         {new Date(n.created_at).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -251,17 +251,17 @@ export function DeliveryNotificationsPopover() {
                     </div>
 
                     {isAssignment && (orderRef || customerName) ? (
-                      <div className="space-y-1 text-[11px]">
-                        <p className="font-bold text-slate-800 truncate">
+                      <div className="space-y-0.5 text-[11px] min-w-0">
+                        <p className="font-bold text-slate-800 truncate min-w-0">
                           {orderRef ? `#${orderRef}` : ""} {customerName ? `· ${customerName}` : ""}
                         </p>
                         {deliveryArea && (
-                          <p className="text-slate-500 truncate">{deliveryArea}</p>
+                          <p className="text-slate-500 truncate min-w-0">{deliveryArea}</p>
                         )}
-                        <div className="flex items-center gap-1.5 pt-0.5">
+                        <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
                           <span
                             className={cn(
-                              "font-black text-[9px] px-2 py-0.2 rounded-full",
+                              "font-black text-[9px] px-1.5 py-0.2 rounded-full",
                               emptyCylinderRequired
                                 ? "bg-amber-100 text-amber-900"
                                 : "bg-emerald-100 text-emerald-900",
@@ -286,13 +286,13 @@ export function DeliveryNotificationsPopover() {
           </div>
         )}
 
-        <div className="border-t border-slate-100 p-2.5 bg-slate-50/70 text-center">
+        <div className="border-t border-slate-100 p-2 sm:p-2.5 bg-slate-50/70 text-center">
           <Button
             asChild
             variant="ghost"
             size="sm"
             onClick={() => setOpen(false)}
-            className="w-full text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 justify-center gap-1.5 cursor-pointer rounded-full"
+            className="w-full text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 h-8 sm:h-8 justify-center gap-1.5 cursor-pointer rounded-xl sm:rounded-full"
           >
             <Link to="/delivery/notifications">
               View All Notifications <ArrowRight className="h-3.5 w-3.5" />

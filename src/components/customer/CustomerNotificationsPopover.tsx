@@ -76,40 +76,40 @@ export function CustomerNotificationsPopover() {
 
       <PopoverContent
         align="end"
-        className="w-80 sm:w-88 p-0 rounded-2xl border border-slate-200/90 bg-white shadow-xl overflow-hidden"
+        className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:w-88 p-0 rounded-2xl border border-slate-200/90 bg-white/95 backdrop-blur-xl shadow-xl overflow-hidden"
       >
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/70">
-          <div className="flex items-center gap-2">
-            <h4 className="font-display font-extrabold text-xs text-slate-900">Notifications</h4>
+        <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50/70">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h4 className="font-display font-extrabold text-xs sm:text-sm text-slate-900 truncate">Notifications</h4>
             {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-primary text-white">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-black bg-primary text-white leading-none">
                 {unreadCount}
               </span>
             )}
           </div>
-          <span className="text-[11px] text-slate-400 font-medium">{unreadCount} unread</span>
+          <span className="text-[11px] text-slate-400 font-medium shrink-0">{unreadCount} unread</span>
         </div>
 
         {notifications.length === 0 ? (
-          <div className="p-7 text-center space-y-1.5">
-            <Bell className="mx-auto h-7 w-7 text-slate-300 mb-1.5" />
+          <div className="p-6 sm:p-7 text-center space-y-1.5">
+            <Bell className="mx-auto h-6 w-6 text-slate-300 mb-1" />
             <p className="text-xs font-bold text-slate-900">You're all caught up</p>
             <p className="text-[11px] text-slate-400">No new notifications at the moment.</p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[320px] overflow-y-auto">
             {notifications.map((n) => (
               <Link
                 key={n.id}
                 to="/account/notifications"
                 onClick={() => setOpen(false)}
-                className={`block px-4 py-3 hover:bg-slate-50 transition-colors ${
+                className={`block px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-slate-50 transition-colors ${
                   !n.is_read ? "bg-rose-50/20" : ""
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start justify-between gap-2 min-w-0">
                   <p
-                    className={`text-xs leading-snug truncate ${!n.is_read ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}
+                    className={`text-xs leading-snug truncate min-w-0 ${!n.is_read ? "font-bold text-slate-900" : "font-medium text-slate-700"}`}
                   >
                     {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
                   </p>
@@ -117,7 +117,7 @@ export function CustomerNotificationsPopover() {
                     <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 mt-1" />
                   )}
                 </div>
-                <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5 font-medium">
+                <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5 font-medium leading-relaxed">
                   {typeof n.message === "string" ? n.message : String(n.message || "")}
                 </p>
               </Link>
@@ -125,15 +125,15 @@ export function CustomerNotificationsPopover() {
           </div>
         )}
 
-        <div className="p-2 border-t border-slate-100 bg-slate-50/50 text-center">
+        <div className="p-2 sm:p-2.5 border-t border-slate-100 bg-slate-50/50 text-center">
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="w-full text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 rounded-xl h-8 gap-1"
+            className="w-full text-xs font-bold text-primary hover:text-primary hover:bg-primary/5 rounded-xl h-8 sm:h-8 gap-1"
           >
             <Link to="/account/notifications" onClick={() => setOpen(false)}>
-              View All Notifications <ArrowRight className="h-3 w-3" />
+              View All Notifications <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
         </div>

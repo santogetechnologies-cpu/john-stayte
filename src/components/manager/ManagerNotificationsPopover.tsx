@@ -97,15 +97,15 @@ export function ManagerNotificationsPopover() {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 sm:w-96 p-0 rounded-3xl border border-white/80 bg-white/95 backdrop-blur-2xl shadow-2xl overflow-hidden text-slate-900"
+        className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:w-96 p-0 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white/95 backdrop-blur-2xl shadow-xl overflow-hidden text-slate-900"
       >
-        <div className="flex items-center justify-between border-b border-slate-100/80 px-4 py-3 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <h4 className="font-black text-sm text-slate-900">Notifications</h4>
+        <div className="flex items-center justify-between border-b border-slate-100 px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50/70">
+          <div className="flex items-center gap-2 min-w-0">
+            <h4 className="font-black text-xs sm:text-sm text-slate-900 truncate">Notifications</h4>
             {unreadCount > 0 && (
               <Badge
                 variant="secondary"
-                className="rounded-full px-2 text-[10px] bg-red-50 text-red-600 border border-red-200/60 font-black shadow-2xs"
+                className="rounded-full px-1.5 py-0 text-[10px] bg-red-50 text-red-600 border border-red-200/60 font-black shadow-2xs leading-tight shrink-0"
               >
                 {unreadCount} new
               </Badge>
@@ -114,17 +114,17 @@ export function ManagerNotificationsPopover() {
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="text-xs text-red-600 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs text-red-600 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer shrink-0"
             >
               <Check className="h-3 w-3" /> Mark all read
             </button>
           )}
         </div>
 
-        <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-100/80">
+        <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-100">
           {notifications.length === 0 ? (
-            <div className="p-8 text-center space-y-1">
-              <Bell className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+            <div className="p-6 sm:p-8 text-center space-y-1">
+              <Bell className="mx-auto h-7 w-7 text-slate-300 mb-1.5" />
               <p className="text-xs font-extrabold text-slate-900">You're all caught up</p>
               <p className="text-[11px] text-slate-500 font-medium">No new orders or notifications.</p>
             </div>
@@ -135,11 +135,11 @@ export function ManagerNotificationsPopover() {
                 <div
                   key={n.id}
                   onClick={() => handleItemClick(n)}
-                  className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer hover:bg-slate-50/80 ${
+                  className={`px-3.5 py-2.5 sm:px-4 sm:py-3 flex items-start gap-3 transition-colors cursor-pointer hover:bg-slate-50/80 ${
                     isUnread ? "bg-rose-50/20" : ""
                   }`}
                 >
-                  <div className="mt-0.5 p-2 rounded-xl bg-white border border-slate-200/80 shrink-0 shadow-2xs">
+                  <div className="mt-0.5 p-1.5 rounded-lg bg-white border border-slate-200/80 shrink-0 shadow-2xs">
                     {n.type === "order" || n.category === "Orders" ? (
                       <ShoppingBag className="h-3.5 w-3.5 text-blue-600" />
                     ) : (
@@ -147,9 +147,9 @@ export function ManagerNotificationsPopover() {
                     )}
                   </div>
                   <div className="space-y-0.5 flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center justify-between gap-1.5 min-w-0">
                       <p
-                        className={`text-xs truncate ${isUnread ? "font-black text-slate-900" : "font-semibold text-slate-600"}`}
+                        className={`text-xs truncate min-w-0 ${isUnread ? "font-black text-slate-900" : "font-semibold text-slate-700"}`}
                       >
                         {typeof n.title === "string" ? n.title : String(n.title || "Notification")}
                       </p>
@@ -167,15 +167,15 @@ export function ManagerNotificationsPopover() {
           )}
         </div>
 
-        <div className="p-2.5 border-t border-slate-100/80 bg-slate-50/30 text-center">
+        <div className="p-2 sm:p-2.5 border-t border-slate-100 bg-slate-50/50 text-center">
           <Button
             asChild
             variant="ghost"
             size="sm"
-            className="w-full text-xs font-black text-red-600 hover:text-red-700 hover:bg-red-50 rounded-full h-8 gap-1 transition-all"
+            className="w-full text-xs font-black text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl h-8 sm:h-8 gap-1 transition-all"
           >
             <Link to="/manager/notifications" onClick={() => setOpen(false)}>
-              View All Notifications <ArrowRight className="h-3 w-3" />
+              View All Notifications <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </Button>
         </div>

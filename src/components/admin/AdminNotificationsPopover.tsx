@@ -49,14 +49,14 @@ export function AdminNotificationsPopover() {
           <span className="sr-only">Notifications</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 sm:w-96 p-0 rounded-2xl border bg-card shadow-xl">
-        <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/20">
-          <div className="flex items-center gap-2">
-            <h4 className="font-semibold text-sm">Notifications</h4>
+      <PopoverContent align="end" className="w-[calc(100vw-1.5rem)] max-w-[360px] sm:w-96 p-0 rounded-2xl border bg-card shadow-xl overflow-hidden">
+        <div className="flex items-center justify-between border-b px-3.5 py-2.5 sm:px-4 sm:py-3 bg-muted/20">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h4 className="font-semibold text-xs sm:text-sm truncate">Notifications</h4>
             {unreadCount > 0 && (
               <Badge
                 variant="secondary"
-                className="rounded-full px-2 text-[10px] bg-primary/10 text-primary font-bold"
+                className="rounded-full px-1.5 py-0 text-[10px] bg-primary/10 text-primary font-bold leading-tight shrink-0"
               >
                 {unreadCount} new
               </Badge>
@@ -65,16 +65,16 @@ export function AdminNotificationsPopover() {
           {unreadCount > 0 && (
             <button
               onClick={markAllRead}
-              className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1"
+              className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <Check className="h-3 w-3" /> Mark all read
             </button>
           )}
         </div>
 
-        <div className="max-h-80 overflow-y-auto divide-y">
+        <div className="max-h-[340px] overflow-y-auto divide-y">
           {notifications.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
+            <div className="p-6 sm:p-8 text-center text-muted-foreground">
               <Sparkles className="mx-auto h-6 w-6 text-muted-foreground/40 mb-1" />
               <p className="text-xs font-medium">All caught up! No unread alerts.</p>
             </div>
@@ -82,11 +82,11 @@ export function AdminNotificationsPopover() {
             notifications.map((item) => (
               <div
                 key={item.id}
-                className={`flex gap-3 p-3.5 hover:bg-muted/40 transition-colors text-left ${!item.is_read ? "bg-primary/5" : ""}`}
+                className={`flex gap-3 px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-muted/40 transition-colors text-left ${!item.is_read ? "bg-primary/5" : ""}`}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <p className="text-xs font-bold text-foreground truncate">{item.title}</p>
+                  <div className="flex items-center justify-between gap-1 min-w-0">
+                    <p className="text-xs font-bold text-foreground truncate min-w-0">{item.title}</p>
                     <span className="text-[10px] text-muted-foreground shrink-0">
                       {new Date(item.created_at).toLocaleTimeString([], {
                         hour: "2-digit",
@@ -94,7 +94,7 @@ export function AdminNotificationsPopover() {
                       })}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
                     {item.message || item.description}
                   </p>
                 </div>
