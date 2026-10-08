@@ -376,8 +376,20 @@ export function SiteHeader() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-80 overflow-y-auto">
-              <nav className="mt-8 grid gap-1">
+            <SheetContent
+              side="right"
+              className="w-full max-w-none sm:max-w-none h-full inset-0 border-0 bg-white p-5 sm:p-6 overflow-y-auto z-50 flex flex-col shadow-none"
+            >
+              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 pr-10">
+                <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2">
+                  <img src={logo} alt="John Stayte Services" className="h-7 w-auto object-contain" />
+                  <span className="font-display font-black text-sm text-slate-900 tracking-tight">
+                    John Stayte Services
+                  </span>
+                </Link>
+              </div>
+
+              <nav className="mt-3 grid gap-1 flex-1">
                 {navLinks.map((l) => {
                   const isActive = isLinkActive(l.to, currentPath);
                   if (l.to === "/blog") {
