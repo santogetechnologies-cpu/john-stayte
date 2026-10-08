@@ -9,6 +9,7 @@ import {
   Truck,
   Phone,
   ChevronDown,
+  ChevronRight,
   LogOut,
   LayoutDashboard,
 } from "lucide-react";
@@ -378,106 +379,133 @@ export function SiteHeader() {
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-full max-w-none sm:max-w-none h-full inset-0 border-0 bg-white p-5 sm:p-6 overflow-y-auto z-50 flex flex-col shadow-none"
+              className="w-full max-w-none sm:max-w-none h-full inset-0 border-0 bg-white p-0 overflow-y-auto z-50 flex flex-col shadow-none select-none"
             >
-              <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 pr-10">
-                <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2">
-                  <img src={logo} alt="John Stayte Services" className="h-7 w-auto object-contain" />
-                  <span className="font-display font-black text-sm text-slate-900 tracking-tight">
-                    John Stayte Services
-                  </span>
+              {/* 1. HEADER */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-white sticky top-0 z-10">
+                <Link to="/" onClick={() => setOpen(false)} className="flex items-center gap-2.5 min-w-0 pr-8">
+                  <img src={logo} alt="John Stayte Services" className="h-8 w-auto object-contain shrink-0" />
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-display font-black text-xs sm:text-sm text-slate-900 tracking-tight leading-tight truncate">
+                      JOHN STAYTE SERVICES
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-primary leading-tight">
+                      Order Gas Online
+                    </span>
+                  </div>
                 </Link>
               </div>
 
-              <nav className="mt-3 grid gap-1 flex-1">
-                {navLinks.map((l) => {
-                  const isActive = isLinkActive(l.to, currentPath);
-                  if (l.to === "/blog") {
-                    return (
-                      <div key={l.to} className="space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => setMobileBlogOpen((prev) => !prev)}
-                          className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${
-                            isActive
-                              ? "bg-primary text-primary-foreground font-extrabold"
-                              : "text-slate-700 hover:bg-surface hover:text-slate-900"
-                          }`}
-                        >
-                          <span>{l.label}</span>
-                          <ChevronDown
+              {/* 2. MAIN NAVIGATION & CATEGORIES CONTAINER */}
+              <div className="p-4 sm:p-5 flex-1 flex flex-col space-y-4">
+                <nav className="space-y-1">
+                  {navLinks.map((l) => {
+                    const isActive = isLinkActive(l.to, currentPath);
+                    if (l.to === "/blog") {
+                      return (
+                        <div key={l.to} className="space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => setMobileBlogOpen((prev) => !prev)}
                             className={cn(
-                              "h-4 w-4 transition-transform",
-                              mobileBlogOpen && "rotate-180",
+                              "w-full flex items-center justify-between rounded-xl px-3.5 py-3 text-[14px] font-semibold transition-all cursor-pointer active:scale-[0.98]",
+                              isActive
+                                ? "bg-red-50/80 text-primary font-bold border-l-[3px] border-primary pl-3"
+                                : "text-slate-800 hover:bg-slate-50 hover:text-slate-950 active:bg-slate-100/80",
                             )}
-                          />
-                        </button>
-                        {mobileBlogOpen && (
-                          <div className="pl-4 space-y-1 border-l-2 border-primary/20 ml-3 my-1">
-                            <Link
-                              to="/blog"
-                              onClick={() => {
-                                setMobileBlogOpen(false);
-                                setOpen(false);
-                              }}
-                              className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface hover:text-primary"
-                            >
-                              Knowledge Centre
-                            </Link>
-                            <Link
-                              to="/blog/$slug"
-                              params={{ slug: "safe-cylinder-storage" }}
-                              onClick={() => {
-                                setMobileBlogOpen(false);
-                                setOpen(false);
-                              }}
-                              className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-surface hover:text-primary"
-                            >
-                              Safety Guide
-                            </Link>
-                          </div>
+                          >
+                            <span className="truncate">{l.label}</span>
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform duration-200 shrink-0",
+                                isActive ? "text-primary" : "text-slate-400",
+                                mobileBlogOpen && "rotate-180",
+                              )}
+                            />
+                          </button>
+                          {mobileBlogOpen && (
+                            <div className="pl-4 space-y-1 border-l-2 border-primary/20 ml-3.5 my-1">
+                              <Link
+                                to="/blog"
+                                onClick={() => {
+                                  setMobileBlogOpen(false);
+                                  setOpen(false);
+                                }}
+                                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-[13.5px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary active:scale-[0.98] transition-all"
+                              >
+                                <span>Knowledge Centre</span>
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                              </Link>
+                              <Link
+                                to="/blog/$slug"
+                                params={{ slug: "safe-cylinder-storage" }}
+                                onClick={() => {
+                                  setMobileBlogOpen(false);
+                                  setOpen(false);
+                                }}
+                                className="flex items-center justify-between rounded-xl px-3 py-2.5 text-[13.5px] font-semibold text-slate-700 hover:bg-slate-50 hover:text-primary active:scale-[0.98] transition-all"
+                              >
+                                <span>Safety Guide</span>
+                                <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                              </Link>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Link
+                        key={l.to}
+                        to={l.to}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl px-3.5 py-3 text-[14px] font-semibold transition-all cursor-pointer active:scale-[0.98]",
+                          isActive
+                            ? "bg-red-50/80 text-primary font-bold border-l-[3px] border-primary pl-3"
+                            : "text-slate-800 hover:bg-slate-50 hover:text-slate-950 active:bg-slate-100/80",
                         )}
-                      </div>
+                      >
+                        <span className="truncate">{l.label}</span>
+                        <ChevronRight
+                          className={cn(
+                            "h-4 w-4 shrink-0 transition-colors",
+                            isActive ? "text-primary" : "text-slate-400 group-hover:text-slate-600",
+                          )}
+                        />
+                      </Link>
                     );
-                  }
-                  return (
-                    <Link
-                      key={l.to}
-                      to={l.to}
-                      onClick={() => setOpen(false)}
-                      className={`rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
-                        isActive
-                          ? "bg-primary text-primary-foreground font-extrabold hover:bg-primary hover:text-primary-foreground"
-                          : "text-slate-700 hover:bg-surface hover:text-slate-900"
-                      }`}
-                    >
-                      {l.label}
-                    </Link>
-                  );
-                })}
-                <div className="mt-4 border-t pt-4">
-                  <p className="px-3 pb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  })}
+                </nav>
+
+                {/* 3. CATEGORIES SECTION */}
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="px-3.5 pb-2 text-[11px] font-black uppercase tracking-wider text-slate-400">
                     Categories
                   </p>
-                  {categories.map((c) => (
-                    <Link
-                      key={c.slug}
-                      to="/products"
-                      search={{ category: c.slug }}
-                      onClick={() => setOpen(false)}
-                      className="block rounded-xl px-3 py-2 text-sm hover:bg-surface font-medium"
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
+                  <div className="grid gap-0.5">
+                    {categories.map((c) => (
+                      <Link
+                        key={c.slug}
+                        to="/products"
+                        search={{ category: c.slug }}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between rounded-xl px-3.5 py-2.5 text-[13.5px] font-medium text-slate-700 hover:bg-slate-50 hover:text-primary active:scale-[0.98] transition-all"
+                      >
+                        <span className="truncate">{c.name}</span>
+                        <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
                 </div>
+
+                {/* 4. USER / AUTH SECTION */}
                 {user ? (
-                  <div className="mt-4 grid gap-2 border-t pt-4">
-                    <div className="px-3 py-2 rounded-xl bg-surface border border-border/60">
-                      <p className="font-extrabold text-xs text-foreground truncate">{user.name}</p>
+                  <div className="mt-auto border-t border-slate-100 pt-4 pb-4 space-y-2.5">
+                    <div className="px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                      <p className="font-extrabold text-xs text-slate-900 truncate">{user.name}</p>
                       <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{roleLabel}</p>
                     </div>
-                    <Button asChild className="rounded-full font-bold text-xs gap-2">
+                    <Button asChild className="w-full rounded-full font-bold text-xs gap-2 h-10 shadow-xs">
                       <Link to={dashPath} onClick={() => setOpen(false)}>
                         <PortalIcon className="h-4 w-4" /> {portalLabel}
                       </Link>
@@ -489,21 +517,21 @@ export function SiteHeader() {
                         logout();
                         navigate({ to: "/" });
                       }}
-                      className="rounded-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 gap-2 cursor-pointer"
+                      className="w-full rounded-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 gap-2 cursor-pointer h-10"
                     >
                       <LogOut className="h-4 w-4" /> Sign out
                     </Button>
                   </div>
                 ) : (
-                  <div className="mt-4 grid gap-2 border-t pt-4">
-                    <Button asChild variant="outline" className="rounded-full font-bold text-xs">
+                  <div className="mt-auto border-t border-slate-100 pt-4 pb-4">
+                    <Button asChild variant="outline" className="w-full rounded-full font-bold text-xs h-10 border-slate-300 hover:border-slate-400">
                       <Link to="/login" onClick={() => setOpen(false)}>
                         Sign in
                       </Link>
                     </Button>
                   </div>
                 )}
-              </nav>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
