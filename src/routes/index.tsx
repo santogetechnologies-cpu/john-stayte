@@ -1810,11 +1810,11 @@ function Home() {
                   className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
                 >
                   {/* Upper Image Frame (~55-60% height) */}
-                  <div className="relative h-56 sm:h-64 bg-[#fbf2ef] overflow-hidden flex items-center justify-center p-6">
+                  <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
                     <img
                       src={dbServices[0]?.image || cylinderImg}
                       alt={dbServices[0]?.title || "Gas cylinder delivery"}
-                      className="max-h-[190px] sm:max-h-[210px] w-auto object-contain group-hover:scale-[1.04] transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                       loading="lazy"
                     />
                   </div>
@@ -1909,14 +1909,14 @@ function Home() {
                   className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
                 >
                   {/* Upper Image Frame (~55-60% height) */}
-                  <div className="relative h-56 sm:h-64 bg-[#f3f4f6] overflow-hidden flex items-center justify-center p-4">
+                  <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
                     <img
                       src={dbServices[2]?.image || heaterImg}
                       alt={safeStr(
                         dbServices[2]?.title,
                         "Gas heaters, appliances and genuine spares",
                       )}
-                      className="max-h-[190px] sm:max-h-[210px] w-auto object-contain group-hover:scale-[1.04] transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                       loading="lazy"
                     />
                   </div>
@@ -2381,16 +2381,16 @@ function Home() {
       {/* =========================================================================
         7. CUSTOMER HELP / INFORMATION (Exact Reference 3x2 Grid + Contact Bar)
     ========================================================================= */}
-      <section className="py-8 sm:py-10 md:py-12 bg-white border-b border-slate-200/60">
-        <div className="container-page">
-          <ScrollRevealSection className="space-y-6 sm:space-y-7">
+      <section className="py-10 sm:py-12 md:py-16 bg-[#fafafa]/80 border-b border-slate-200/60 relative overflow-hidden">
+        <div className="container-page relative z-10">
+          <ScrollRevealSection className="space-y-7 sm:space-y-8">
             {/* Header */}
             <ScrollRevealItem variant="heading" delay={0}>
-              <div className="space-y-1.5 max-w-3xl">
+              <div className="space-y-2 max-w-3xl">
                 <span className="text-xs font-bold uppercase tracking-[0.16em] text-primary block">
                   CUSTOMER SUPPORT
                 </span>
-                <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-slate-900 tracking-tight leading-tight">
                   How Can We <span className="text-primary">Help You?</span>
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 leading-relaxed pt-0.5">
@@ -2401,12 +2401,18 @@ function Home() {
             </ScrollRevealItem>
 
             {/* 3x2 Support Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
               {[
                 {
                   title: "How to Order Gas",
                   desc: "Order cylinders online quickly and easily.",
                   to: "/contact",
+                  bgClass: "bg-gradient-to-br from-[#fff0f2] via-[#fff6f7] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(239,68,68,0.06)]",
+                  iconBoxClass: "bg-[#fee2e2]/90 text-primary border border-red-200/50",
+                  btnClass: "bg-white/95 text-primary border-red-100/80 shadow-[0_2px_8px_-2px_rgba(239,68,68,0.15)] hover:bg-red-50/80",
+                  image: "/support/card-calor-gas.png",
+                  containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
+                  imgClass: "object-contain object-right-bottom lg:scale-118 origin-bottom-right group-hover:scale-125",
                   icon: (props: React.SVGProps<SVGSVGElement>) => (
                     <svg
                       viewBox="0 0 24 24"
@@ -2423,42 +2429,66 @@ function Home() {
                       <path d="M7 13h10" />
                     </svg>
                   ),
-                  borderBottomColor: "border-b-red-600",
                 },
                 {
                   title: "Track Your Order",
                   desc: "Check real-time status of your orders and deliveries.",
                   to: "/contact",
+                  bgClass: "bg-gradient-to-br from-[#eff6ff] via-[#f5f8ff] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(59,130,246,0.06)]",
+                  iconBoxClass: "bg-[#dbeafe]/90 text-blue-600 border border-blue-200/50",
+                  btnClass: "bg-white/95 text-blue-600 border-blue-100/80 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.15)] hover:bg-blue-50/80",
+                  image: "/support/card-track-order.png",
+                  containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
+                  imgClass: "object-contain object-right-bottom lg:scale-118 origin-bottom-right group-hover:scale-125",
                   icon: Package,
-                  borderBottomColor: "border-b-blue-500",
                 },
                 {
                   title: "Delivery Information",
                   desc: "Delivery areas, schedules, and important policies.",
                   to: "/contact",
+                  bgClass: "bg-gradient-to-br from-[#ecfdf5] via-[#f2fbf7] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(20,184,166,0.06)]",
+                  iconBoxClass: "bg-[#ccfbf1]/90 text-teal-600 border border-teal-200/50",
+                  btnClass: "bg-white/95 text-teal-600 border-teal-100/80 shadow-[0_2px_8px_-2px_rgba(20,184,166,0.15)] hover:bg-teal-50/80",
+                  image: "/support/card-delivery.png",
+                  containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
+                  imgClass: "object-cover object-left lg:scale-118 origin-right group-hover:scale-125",
                   icon: Truck,
-                  borderBottomColor: "border-b-teal-400",
                 },
                 {
                   title: "Filling Stations",
                   desc: "Find your nearest filling station and check opening times.",
                   to: "/contact",
+                  bgClass: "bg-gradient-to-br from-[#fffbeb] via-[#fffdf5] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(245,158,11,0.06)]",
+                  iconBoxClass: "bg-[#fef3c7]/90 text-amber-600 border border-amber-200/50",
+                  btnClass: "bg-white/95 text-amber-600 border-amber-100/80 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.15)] hover:bg-amber-50/80",
+                  image: "/support/card-stations.png",
+                  containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
+                  imgClass: "object-cover object-left lg:scale-118 origin-right group-hover:scale-125",
                   icon: MapPin,
-                  borderBottomColor: "border-b-amber-400",
                 },
                 {
                   title: "Account Management",
                   desc: "Manage your account details, invoices and preferences.",
                   to: "/contact",
+                  bgClass: "bg-gradient-to-br from-[#f5f3ff] via-[#faf8ff] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(147,51,234,0.06)]",
+                  iconBoxClass: "bg-[#ede9fe]/90 text-purple-600 border border-purple-200/50",
+                  btnClass: "bg-white/95 text-purple-600 border-purple-100/80 shadow-[0_2px_8px_-2px_rgba(147,51,234,0.15)] hover:bg-purple-50/80",
+                  image: "/support/card-account.png",
+                  containerClass: "w-[48%] sm:w-[52%] lg:w-[56%] max-w-[160px] lg:max-w-[210px]",
+                  imgClass: "object-contain object-right-bottom lg:scale-125 origin-bottom-right group-hover:scale-130",
                   icon: User,
-                  borderBottomColor: "border-b-purple-500",
                 },
                 {
                   title: "Contact Support",
                   desc: "Get in touch with our team via phone or email.",
                   to: "/contact",
+                  bgClass: "bg-gradient-to-br from-[#fff1f2] via-[#fff8f8] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(244,63,94,0.06)]",
+                  iconBoxClass: "bg-[#ffe4e6]/90 text-rose-500 border border-pink-200/50",
+                  btnClass: "bg-white/95 text-rose-600 border-pink-100/80 shadow-[0_2px_8px_-2px_rgba(244,63,94,0.15)] hover:bg-rose-50/80",
+                  image: "/support/card-contact.png",
+                  containerClass: "w-[48%] sm:w-[52%] lg:w-[56%] max-w-[160px] lg:max-w-[210px]",
+                  imgClass: "object-contain object-right-bottom lg:scale-125 origin-bottom-right group-hover:scale-130",
                   icon: Headphones,
-                  borderBottomColor: "border-b-pink-500",
                 },
               ].map((card, idx) => {
                 const Icon = card.icon;
@@ -2472,32 +2502,64 @@ function Home() {
                     <Link
                       to={card.to}
                       className={cn(
-                        "group bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03)] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col justify-between border-b-[3px] h-full",
-                        card.borderBottomColor,
+                        "group relative rounded-3xl border p-5 sm:p-6 flex flex-col justify-between h-full min-h-[200px] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgb(0,0,0,0.07)]",
+                        card.bgClass,
                       )}
                     >
-                      <div className="flex items-start gap-4">
-                        {/* Icon Container */}
-                        <div className="h-14 w-14 rounded-full bg-red-50/90 border border-red-100/80 flex items-center justify-center shrink-0 text-primary group-hover:scale-105 group-hover:bg-red-100/80 transition-all duration-200">
-                          <Icon className="h-7 w-7 stroke-[1.8]" />
+                      {/* Integrated Right-Side Visual Asset */}
+                      <div
+                        className={cn(
+                          "absolute right-0 top-0 bottom-0 pointer-events-none flex items-end justify-end overflow-hidden select-none z-0",
+                          card.containerClass,
+                        )}
+                      >
+                        <img
+                          src={card.image}
+                          alt=""
+                          className={cn(
+                            "w-full h-full transition-transform duration-500",
+                            card.imgClass,
+                          )}
+                          loading="lazy"
+                        />
+                      </div>
+
+                      {/* Top Bar: Icon + Top-Right Circular Arrow */}
+                      <div className="flex items-center justify-between relative z-20">
+                        <div
+                          className={cn(
+                            "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform duration-300",
+                            card.iconBoxClass,
+                          )}
+                        >
+                          <Icon className="h-6 w-6 stroke-[1.8]" />
                         </div>
 
-                        {/* Title & Description */}
-                        <div className="space-y-1 pt-0.5">
-                          <h3 className="text-base sm:text-[17px] font-extrabold text-slate-900 tracking-tight group-hover:text-primary transition-colors">
-                            {card.title}
-                          </h3>
-                          <p className="text-xs sm:text-[13px] text-slate-500 leading-snug">
-                            {card.desc}
-                          </p>
+                        <div className="h-8 w-8 rounded-full bg-white/95 border border-slate-200/70 shadow-2xs flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:border-primary/40 group-hover:scale-105 transition-all duration-300">
+                          <ArrowRight className="h-3.5 w-3.5" />
                         </div>
                       </div>
 
-                      {/* Red CTA Text */}
-                      <div className="mt-5 pt-1">
-                        <span className="text-xs sm:text-sm font-bold text-primary flex items-center gap-1.5 transition-all group-hover:gap-2">
-                          Get help{" "}
-                          <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                      {/* Middle: Title & Description (Left ~54% width to prevent visual overlap) */}
+                      <div className="space-y-1 pt-4 relative z-10 max-w-[54%] sm:max-w-[56%]">
+                        <h3 className="text-base sm:text-[17px] font-extrabold text-slate-900 tracking-tight group-hover:text-primary transition-colors leading-tight">
+                          {card.title}
+                        </h3>
+                        <p className="text-xs sm:text-[13px] text-slate-500 leading-snug">
+                          {card.desc}
+                        </p>
+                      </div>
+
+                      {/* Bottom: Pill CTA Button */}
+                      <div className="mt-4 pt-1 relative z-10">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all duration-200",
+                            card.btnClass,
+                          )}
+                        >
+                          <span>Get help</span>
+                          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                         </span>
                       </div>
                     </Link>
@@ -2508,12 +2570,12 @@ function Home() {
 
             {/* Bottom Horizontal Contact Bar */}
             <ScrollRevealItem variant="card" delay={600}>
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03)] p-4 sm:p-5">
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-5 lg:gap-4 divide-y lg:divide-y-0 lg:divide-x divide-slate-100">
+              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-[0_8px_30px_rgb(0,0,0,0.03)] p-4 sm:p-5 lg:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 items-center gap-5 lg:gap-4 divide-y md:divide-y-0 md:divide-x-0 lg:divide-x divide-slate-100">
                   {/* 1. Need Immediate Assistance? */}
                   <div className="flex items-center gap-3.5 pr-0 lg:pr-4">
-                    <div className="h-11 w-11 rounded-full bg-red-50/90 text-primary border border-red-100/80 flex items-center justify-center shrink-0">
-                      <Headphones className="h-5 w-5 stroke-[1.8]" />
+                    <div className="h-12 w-12 rounded-2xl bg-red-50 text-primary border border-red-100/80 flex items-center justify-center shrink-0">
+                      <Headphones className="h-6 w-6 stroke-[1.8]" />
                     </div>
                     <div>
                       <h4 className="text-sm sm:text-[15px] font-extrabold text-slate-900 tracking-tight">
@@ -2528,10 +2590,10 @@ function Home() {
                   {/* 2. Call Us Now */}
                   <a
                     href="tel:+441453822859"
-                    className="flex items-center gap-3.5 px-0 lg:px-4 pt-3.5 lg:pt-0 group hover:opacity-95 transition-opacity"
+                    className="flex items-center gap-3.5 px-0 lg:px-4 pt-3.5 md:pt-0 group hover:opacity-95 transition-opacity"
                   >
-                    <div className="h-11 w-11 rounded-full bg-red-50/90 text-primary border border-red-100/80 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
-                      <Phone className="h-5 w-5 stroke-[1.8]" />
+                    <div className="h-10 w-10 rounded-xl bg-red-50/80 text-primary border border-red-100/80 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
+                      <Phone className="h-4.5 w-4.5 stroke-[1.8]" />
                     </div>
                     <div>
                       <span className="text-[11px] font-semibold text-slate-400 block">
@@ -2546,26 +2608,26 @@ function Home() {
                   {/* 3. Email Us */}
                   <a
                     href="mailto:info@johnstayteservices.co.uk"
-                    className="flex items-center gap-3.5 px-0 lg:px-4 pt-3.5 lg:pt-0 group hover:opacity-95 transition-opacity"
+                    className="flex items-center gap-3.5 px-0 lg:px-4 pt-3.5 md:pt-0 group hover:opacity-95 transition-opacity"
                   >
-                    <div className="h-11 w-11 rounded-full bg-red-50/90 text-primary border border-red-100/80 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
-                      <Mail className="h-5 w-5 stroke-[1.8]" />
+                    <div className="h-10 w-10 rounded-xl bg-red-50/80 text-primary border border-red-100/80 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
+                      <Mail className="h-4.5 w-4.5 stroke-[1.8]" />
                     </div>
                     <div>
                       <span className="text-[11px] font-semibold text-slate-400 block">
                         Email Us
                       </span>
-                      <span className="text-sm sm:text-base font-extrabold text-primary transition-colors">
+                      <span className="text-xs sm:text-sm font-extrabold text-primary transition-colors truncate block max-w-[200px] xl:max-w-none">
                         info@johnstayteservices.co.uk
                       </span>
                     </div>
                   </a>
 
                   {/* 4. Get in Touch CTA */}
-                  <div className="pt-3.5 lg:pt-0 pl-0 lg:pl-4 flex items-center justify-start lg:justify-end">
+                  <div className="pt-3.5 md:pt-0 pl-0 lg:pl-4 flex items-center justify-start lg:justify-end">
                     <Button
                       asChild
-                      className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold px-6 py-2.5 text-xs sm:text-sm shadow-sm w-full sm:w-auto"
+                      className="rounded-full bg-primary hover:bg-primary/90 text-white font-bold px-7 py-3 text-xs sm:text-sm shadow-sm w-full sm:w-auto"
                     >
                       <Link to="/contact">
                         Get in Touch <ArrowRight className="ml-1.5 h-4 w-4" />

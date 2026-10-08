@@ -552,7 +552,7 @@ export async function updateGasApplicationStatus(params: {
 }
 
 /**
- * Sends a real 6-digit OTP code to the requested email address via Twilio Verify + SendGrid.
+ * Sends a real 6-digit OTP code to the requested email address via Resend.
  */
 export async function sendApplicationEmailOtp(email: string): Promise<{
   ok: boolean;
@@ -578,7 +578,7 @@ export async function sendApplicationEmailOtp(email: string): Promise<{
 }
 
 /**
- * Verifies the 6-digit OTP code received in the customer's email via Twilio Verify.
+ * Verifies the 6-digit OTP code received in the customer's email via Resend.
  */
 export async function verifyApplicationEmailOtp(
   email: string,
@@ -622,7 +622,7 @@ export async function verifyApplicationEmailOtp(
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
           attempts: 1,
           max_attempts: 5,
-          metadata: { provider: "twilio_verify_sendgrid", type: "gas_application" },
+          metadata: { provider: "resend", type: "gas_application" },
         },
       ]);
     }

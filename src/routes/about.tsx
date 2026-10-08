@@ -1259,13 +1259,13 @@ function AboutPage() {
         <div className="absolute inset-0 bg-white/35 pointer-events-none z-0" />
 
         <div className="container-page relative z-10 space-y-12 sm:space-y-16">
-          
+
           {/* TOP HERO ANNOUNCEMENT AREA */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            
+
             {/* LEFT COLUMN: Headings, Subtitle & Feature Pillars */}
             <div className="lg:col-span-7 xl:col-span-7 space-y-3.5 sm:space-y-4">
-              
+
               {/* Pill Badge: COMPANY NEWS */}
               <Reveal delay={0}>
                 <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/90 border border-[#bbf7d0] text-slate-800 text-[11px] font-black uppercase tracking-widest shadow-2xs backdrop-blur-xs">
@@ -1373,10 +1373,10 @@ function AboutPage() {
 
           {/* EDITORIAL ACQUISITION ARTICLE & SIDEBAR */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-            
+
             {/* LEFT COLUMN: Acquisition Press Narrative (7 cols) */}
             <div className="lg:col-span-7 space-y-4">
-              
+
               {/* Date */}
               <Reveal delay={0}>
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
@@ -1445,7 +1445,7 @@ function AboutPage() {
 
             {/* RIGHT COLUMN: Strengthening Niza Group Information Card & Value Pillars (5 cols) */}
             <div className="lg:col-span-5 space-y-4 sm:space-y-5">
-              
+
               {/* Strengthening Niza Group Information Card */}
               <Reveal delay={60} variant="card">
                 <div className="p-5 sm:p-6 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/80 shadow-2xs space-y-4">
@@ -2120,8 +2120,16 @@ function AboutPage() {
           9. FILLING STATIONS FEATURE ("Three Local Forecourts. One Trusted Name.")
           Clean, Premium 3-Card Showcase matching Reference UI
       ========================================================================= */}
-      <section className="py-10 sm:py-14 lg:py-16 bg-[#f8f9fa] border-b border-slate-200/60">
-        <div className="container-page space-y-8 sm:space-y-10">
+      <section
+        className="py-10 sm:py-14 lg:py-16 border-b border-slate-200/60 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('/three-forecourts-bg.png')",
+        }}
+      >
+        {/* Subtle light overlay to preserve crisp legibility of typography and cards */}
+        <div className="absolute inset-0 bg-white/35 sm:bg-white/25 pointer-events-none" />
+
+        <div className="container-page relative z-10 space-y-8 sm:space-y-10">
           <div className="text-center space-y-2.5 max-w-2xl mx-auto">
             <Reveal delay={0}>
               <span className="text-xs font-black uppercase tracking-[0.2em] text-primary block">
