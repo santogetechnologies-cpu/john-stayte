@@ -124,13 +124,14 @@ function Checkout() {
   useEffect(() => {
     const { payment, orderId, sessionId } = search;
     if (payment === "verify" && orderId) {
+      const verifiedOrderId = orderId;
       let isMounted = true;
       async function handleVerification() {
         setIsVerifyingPayment(true);
         try {
           const res = await verifyElavonPaymentServerFn({
             data: {
-              orderId,
+              orderId: verifiedOrderId,
               sessionId,
             },
           });
@@ -145,7 +146,7 @@ function Checkout() {
             toast.success("Payment verified! Your order has been placed successfully.", {
               id: "elavon-payment-success",
             });
-            navigate({ to: `/account/orders/${orderId}` as any });
+            navigate({ to: `/account/orders/${verifiedOrderId}` as any });
           } else {
             toast.error(
               res.message ||
@@ -168,10 +169,11 @@ function Checkout() {
     } else if (payment === "cancelled") {
       let isMounted = true;
       if (orderId) {
+        const cancelledOrderId = orderId;
         // Authoritative reconciliation: Verify whether transaction was captured before cancelling
         verifyElavonPaymentServerFn({
           data: {
-            orderId,
+            orderId: cancelledOrderId,
             sessionId,
           },
         })
@@ -187,7 +189,7 @@ function Checkout() {
               toast.success("Payment verified! Your order has been placed successfully.", {
                 id: "elavon-payment-success",
               });
-              navigate({ to: `/account/orders/${orderId}` as any });
+              navigate({ to: `/account/orders/${cancelledOrderId}` as any });
             } else {
               toast.info(
                 "Card payment session was cancelled. Your basket items are saved so you can try again.",
@@ -497,7 +499,9 @@ function Checkout() {
       const finalTotal = Math.max(0, finalSubtotal + shipping + vat);
       const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
 
-      const finalPaymentStatus = "Pending";
+      type OrderPaymentStatus = "Pending" | "Paid" | "Failed" | "Cancelled";
+      const getInitialPaymentStatus = (): OrderPaymentStatus => "Pending";
+      const finalPaymentStatus: OrderPaymentStatus = getInitialPaymentStatus();
       const finalPaymentMethod =
         paymentMethod === "paypal"
           ? "PayPal"

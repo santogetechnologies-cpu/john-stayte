@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/accordion";
 import { faqs as defaultFaqs } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
+import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -55,6 +56,7 @@ function Contact() {
     address: "Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom",
     hours: "Mon–Fri 8:00–17:00 · Sat 8:30–12:30",
   });
+  const { user } = useStore();
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -82,7 +84,9 @@ function Contact() {
                 setFaqsList(activeOnly.map((f) => ({ q: f.q || f.question, a: f.a || f.answer })));
               }
             }
-          } catch {}
+          } catch {
+            /* ignore JSON parse error */
+          }
         }
 
         if (contactBlock?.content) {
@@ -109,7 +113,9 @@ function Contact() {
                 }
               }
             }
-          } catch {}
+          } catch {
+            /* ignore JSON parse error */
+          }
         }
       } catch (err) {
         console.error("Failed to load FAQs/Contact from Supabase:", err);
@@ -135,81 +141,31 @@ function Contact() {
 
     setSubmitting(true);
     try {
-      // 1. Create enquiry in support_tickets or cms_content_blocks
       const ticketNumber = `ENQ-${Date.now().toString().slice(-6)}`;
-      const enquiryRecord = {
-        id: `enq-${Date.now()}`,
-        ticketNumber,
-        customerName: parsed.data.name,
-        customerEmail: parsed.data.email,
-        customerPhone: "",
-        subject: `Website Contact Enquiry: ${parsed.data.message.slice(0, 40)}...`,
+
+      // Insert customer enquiry into support_tickets table
+      const { error: ticketError } = await supabase.from("support_tickets").insert({
+        ticket_number: ticketNumber,
+        customer_id: user?.id || null,
+        customer_name: parsed.data.name.trim(),
+        customer_email: parsed.data.email.trim(),
+        subject: `Website Contact Enquiry: ${parsed.data.message.slice(0, 40).trim()}...`,
+        description: parsed.data.message.trim(),
         category: "General",
         priority: "Medium",
         status: "Open",
-        created: new Date().toISOString(),
-        lastUpdated: "Just now",
-        messages: [
-          {
-            sender: parsed.data.name,
-            role: "Customer",
-            timestamp: new Date().toISOString(),
-            text: parsed.data.message,
-          },
-        ],
-      };
+      });
 
-      // Try inserting into support_tickets table
-      try {
-        await supabase.from("support_tickets").insert({
-          ticket_number: ticketNumber,
-          customer_name: parsed.data.name,
-          customer_email: parsed.data.email,
-          subject: "Website Contact Form Enquiry",
-          description: parsed.data.message,
-          category: "General",
-          priority: "Medium",
-          status: "Open",
-        });
-      } catch {
-        /* fallback to block */
-      }
-
-      // Persist to enquiries_data CMS block
-      try {
-        const { data: existingBlock } = await supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "enquiries_data")
-          .maybeSingle();
-
-        let currentList = [];
-        if (existingBlock?.content) {
-          try {
-            currentList = JSON.parse(existingBlock.content);
-          } catch {
-            currentList = [];
-          }
-        }
-        const updatedList = [enquiryRecord, ...(Array.isArray(currentList) ? currentList : [])];
-        await supabase.from("cms_content_blocks").upsert(
-          {
-            section_key: "enquiries_data",
-            title: "Customer & Manager Enquiries",
-            content: JSON.stringify(updatedList),
-          },
-          { onConflict: "section_key" },
-        );
-      } catch {
-        /* continue */
+      if (ticketError) {
+        console.error("Support ticket insert error:", ticketError);
+        throw ticketError;
       }
 
       toast.success("Thanks — we'll be in touch shortly.");
       form.reset();
     } catch (err: any) {
       console.error("Enquiry submission error:", err);
-      toast.success("Thanks — we'll be in touch shortly.");
-      form.reset();
+      toast.error("Failed to send message. Please try again or contact us directly by phone.");
     } finally {
       setSubmitting(false);
     }
@@ -235,192 +191,193 @@ function Contact() {
               <span className="block text-primary mt-0.5">We&apos;re here to help.</span>
             </h1>
             <p className="mt-2.5 max-w-2xl text-base sm:text-lg text-slate-600 font-normal leading-relaxed">
-              {contactInfo.heroSubtitle || "Deliveries, trade accounts, appliance advice — we're happy to help."}
+              {contactInfo.heroSubtitle ||
+                "Deliveries, trade accounts, appliance advice — we're happy to help."}
             </p>
           </div>
         </section>
 
-      {/* 2. MAIN CONTACT AREA */}
-      <div className="container-page py-10 sm:py-12 lg:py-14">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_420px] gap-8 items-start">
-          {/* 3. CONTACT FORM CARD */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 lg:p-10">
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
-                Send an enquiry
-              </h2>
-              <div className="h-1 w-10 bg-primary rounded-full mt-2" />
+        {/* 2. MAIN CONTACT AREA */}
+        <div className="container-page py-10 sm:py-12 lg:py-14">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_420px] gap-8 items-start">
+            {/* 3. CONTACT FORM CARD */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 lg:p-10">
+              <div className="mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
+                  Send an enquiry
+                </h2>
+                <div className="h-1 w-10 bg-primary rounded-full mt-2" />
+              </div>
+
+              <form onSubmit={submit} className="space-y-5">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="name"
+                      className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
+                    >
+                      Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      maxLength={100}
+                      required
+                      placeholder="Your full name"
+                      className="h-11 sm:h-12 rounded-xl border-slate-200/90 focus-visible:ring-primary/20 bg-slate-50/50 hover:bg-white text-sm sm:text-base transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="email"
+                      className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
+                    >
+                      Email *
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      maxLength={255}
+                      required
+                      placeholder="name@example.co.uk"
+                      className="h-11 sm:h-12 rounded-xl border-slate-200/90 focus-visible:ring-primary/20 bg-slate-50/50 hover:bg-white text-sm sm:text-base transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="message"
+                    className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
+                  >
+                    Message *
+                  </Label>
+                  <Textarea
+                    id="message"
+                    name="message"
+                    maxLength={1000}
+                    required
+                    rows={5}
+                    placeholder="How can we help you?"
+                    className="rounded-xl border-slate-200/90 focus-visible:ring-primary/20 bg-slate-50/50 hover:bg-white text-sm sm:text-base p-3.5 sm:p-4 transition-colors"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="rounded-xl px-8 sm:px-10 h-11 sm:h-12 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs sm:text-sm shadow-[0_4px_16px_rgba(220,38,38,0.25)] hover:shadow-[0_6px_22px_rgba(220,38,38,0.35)] hover:-translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    Send enquiry
+                  </Button>
+                </div>
+              </form>
             </div>
 
-            <form onSubmit={submit} className="space-y-5">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="name"
-                    className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
-                  >
-                    Name *
-                  </Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    maxLength={100}
-                    required
-                    placeholder="Your full name"
-                    className="h-11 sm:h-12 rounded-xl border-slate-200/90 focus-visible:ring-primary/20 bg-slate-50/50 hover:bg-white text-sm sm:text-base transition-colors"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="email"
-                    className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
-                  >
-                    Email *
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    maxLength={255}
-                    required
-                    placeholder="name@example.co.uk"
-                    className="h-11 sm:h-12 rounded-xl border-slate-200/90 focus-visible:ring-primary/20 bg-slate-50/50 hover:bg-white text-sm sm:text-base transition-colors"
-                  />
-                </div>
-              </div>
+            {/* 5. CONTACT INFORMATION CARD */}
+            <aside className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 space-y-6">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display mb-2">
+                  Contact information
+                </h2>
+                <div className="h-1 w-10 bg-primary rounded-full mb-6" />
 
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="message"
-                  className="text-xs sm:text-sm font-extrabold text-slate-800 uppercase tracking-wider"
-                >
-                  Message *
-                </Label>
-                <Textarea
-                  id="message"
-                  name="message"
-                  maxLength={1000}
-                  required
-                  rows={5}
-                  placeholder="How can we help you?"
-                  className="rounded-xl border-slate-200/90 focus-visible:ring-primary/20 bg-slate-50/50 hover:bg-white text-sm sm:text-base p-3.5 sm:p-4 transition-colors"
-                />
-              </div>
+                <ul className="space-y-4 text-xs sm:text-sm text-slate-600">
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <Phone className="h-4.5 w-4.5 stroke-[2]" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Phone
+                      </span>
+                      <a
+                        href={`tel:${contactInfo.phone.replace(/\s+/g, "")}`}
+                        className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
+                      >
+                        {contactInfo.phone}
+                      </a>
+                    </div>
+                  </li>
 
-              <div className="pt-2">
-                <Button
-                  type="submit"
-                  size="lg"
-                  className="rounded-xl px-8 sm:px-10 h-11 sm:h-12 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs sm:text-sm shadow-[0_4px_16px_rgba(220,38,38,0.25)] hover:shadow-[0_6px_22px_rgba(220,38,38,0.35)] hover:-translate-y-0.5 transition-all cursor-pointer"
-                >
-                  Send enquiry
-                </Button>
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <Mail className="h-4.5 w-4.5 stroke-[2]" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Email
+                      </span>
+                      <a
+                        href={`mailto:${contactInfo.email}`}
+                        className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
+                      >
+                        {contactInfo.email}
+                      </a>
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <MapPin className="h-4.5 w-4.5 stroke-[2]" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Address
+                      </span>
+                      <span className="font-bold text-slate-800 leading-snug">
+                        {contactInfo.address}
+                      </span>
+                    </div>
+                  </li>
+
+                  <li className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <Clock className="h-4.5 w-4.5 stroke-[2]" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Opening Hours
+                      </span>
+                      <span className="font-bold text-slate-800 leading-snug">
+                        {contactInfo.hours}
+                      </span>
+                    </div>
+                  </li>
+                </ul>
               </div>
-            </form>
+            </aside>
+          </div>
+        </div>
+
+        {/* 7. FREQUENTLY ASKED QUESTIONS */}
+        <div className="container-page pb-16 sm:pb-20">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
+              Frequently asked questions
+            </h2>
+            <div className="h-1 w-12 bg-primary rounded-full mt-2" />
           </div>
 
-          {/* 5. CONTACT INFORMATION CARD */}
-          <aside className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-6 sm:p-8 space-y-6">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display mb-2">
-                Contact information
-              </h2>
-              <div className="h-1 w-10 bg-primary rounded-full mb-6" />
-
-              <ul className="space-y-4 text-xs sm:text-sm text-slate-600">
-                <li className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <Phone className="h-4.5 w-4.5 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-                      Phone
-                    </span>
-                    <a
-                      href={`tel:${contactInfo.phone.replace(/\s+/g, "")}`}
-                      className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
-                    >
-                      {contactInfo.phone}
-                    </a>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <Mail className="h-4.5 w-4.5 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-                      Email
-                    </span>
-                    <a
-                      href={`mailto:${contactInfo.email}`}
-                      className="font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors"
-                    >
-                      {contactInfo.email}
-                    </a>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <MapPin className="h-4.5 w-4.5 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-                      Address
-                    </span>
-                    <span className="font-bold text-slate-800 leading-snug">
-                      {contactInfo.address}
-                    </span>
-                  </div>
-                </li>
-
-                <li className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-red-50 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                    <Clock className="h-4.5 w-4.5 stroke-[2]" />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
-                      Opening Hours
-                    </span>
-                    <span className="font-bold text-slate-800 leading-snug">
-                      {contactInfo.hours}
-                    </span>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </aside>
+          <Accordion
+            type="single"
+            collapsible
+            className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] px-6 sm:px-8 divide-y divide-slate-100"
+          >
+            {faqsList.map((f) => (
+              <AccordionItem key={f.q} value={f.q} className="border-b-0 py-1">
+                <AccordionTrigger className="text-left font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors py-4">
+                  {f.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-slate-600 text-xs sm:text-sm leading-relaxed pb-4">
+                  {f.a}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
         </div>
-      </div>
-
-      {/* 7. FREQUENTLY ASKED QUESTIONS */}
-      <div className="container-page pb-16 sm:pb-20">
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
-            Frequently asked questions
-          </h2>
-          <div className="h-1 w-12 bg-primary rounded-full mt-2" />
-        </div>
-
-        <Accordion
-          type="single"
-          collapsible
-          className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] px-6 sm:px-8 divide-y divide-slate-100"
-        >
-          {faqsList.map((f) => (
-            <AccordionItem key={f.q} value={f.q} className="border-b-0 py-1">
-              <AccordionTrigger className="text-left font-extrabold text-slate-900 text-sm sm:text-base hover:text-primary transition-colors py-4">
-                {f.q}
-              </AccordionTrigger>
-              <AccordionContent className="text-slate-600 text-xs sm:text-sm leading-relaxed pb-4">
-                {f.a}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
-      </div>
       </div>
     </SiteLayout>
   );

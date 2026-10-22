@@ -1551,7 +1551,7 @@ export async function reissueDeliveryOtp(
     return {
       success: res.success,
       smsSent: Boolean(res.smsSent),
-      message: res.message || (res.smsSent ? "A new OTP has been generated and sent to the customer via SMS." : "OTP generated in system, but Twilio SMS delivery failed."),
+      message: res.message || (res.smsSent ? "A new OTP has been generated and sent to the customer via SMS." : "OTP generated in system, but SMS delivery failed."),
       maskedPhone: res.maskedPhone,
       expiresAt: res.expiresAt,
       error: res.error,

@@ -1679,39 +1679,7 @@ function BlogKnowledgeCentrePage() {
         /* fallback to block */
       }
 
-      // 2. Persist to newsletter_subscribers in cms_content_blocks
-      try {
-        const { data: block } = await supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "newsletter_subscribers_data")
-          .maybeSingle();
-
-        let list = [];
-        if (block?.content) {
-          try {
-            list = JSON.parse(block.content);
-          } catch {
-            list = [];
-          }
-        }
-        if (!list.some((item: any) => item.email === cleanEmail)) {
-          const updated = [
-            ...list,
-            { email: cleanEmail, source: "blog_index", subscribed_at: new Date().toISOString() },
-          ];
-          await supabase.from("cms_content_blocks").upsert(
-            {
-              section_key: "newsletter_subscribers_data",
-              title: "Newsletter Subscribers List",
-              content: JSON.stringify(updated),
-            },
-            { onConflict: "section_key" },
-          );
-        }
-      } catch {
-        /* continue */
-      }
+      // Subscription recorded in newsletter_subscribers table above
 
       setSubscribed(true);
       toast.success("Thank you for subscribing!", {

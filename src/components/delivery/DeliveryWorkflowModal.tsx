@@ -48,6 +48,22 @@ import {
 import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 import { cn } from "@/lib/utils";
 
+function formatUserFacingSmsError(rawError?: string | null): string {
+  if (!rawError) return "SMS could not be dispatched to recipient.";
+  if (
+    /authorization failed|credentials|endpoint assertions|API key|Trial Notice|Geo-Permissions|status\s*\d+/i.test(
+      rawError,
+    )
+  ) {
+    return "SMS delivery is currently restricted or temporarily unavailable. Customer can view their OTP in-app or you can retry.";
+  }
+  const cleaned = rawError
+    .replace(/Twilio\s*/gi, "")
+    .replace(/\(Error\s*\d+\)/gi, "")
+    .trim();
+  return cleaned || "SMS could not be dispatched to recipient.";
+}
+
 interface DeliveryWorkflowModalProps {
   delivery: any | null;
   open: boolean;
@@ -240,7 +256,7 @@ export function DeliveryWorkflowModal({
               setSmsStatus({
                 sent: Boolean(res.smsSent),
                 maskedPhone: res.maskedPhone,
-                error: res.smsError,
+                error: res.smsError ? formatUserFacingSmsError(res.smsError) : undefined,
                 lastSentAt: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
               });
             }
@@ -451,7 +467,7 @@ export function DeliveryWorkflowModal({
       );
 
       if (res.smsSent) {
-        toast.success(`Verification SMS sent to ${res.maskedPhone || "customer"}.`);
+        toast.success(`Verification code sent to ${res.maskedPhone || "customer"}.`);
         setSmsStatus({
           sent: true,
           maskedPhone: res.maskedPhone,
@@ -465,18 +481,15 @@ export function DeliveryWorkflowModal({
           toast.warning(res.message || `Please wait ${res.cooldownRemainingSec}s before resending.`);
           startCooldown(res.cooldownEndsAt || (Date.now() + res.cooldownRemainingSec * 1000));
         } else {
-          // Twilio SMS dispatch failed; display error and DO NOT start 60s cooldown
-          toast.warning(
-            res.smsError
-              ? `OTP generated, but SMS dispatch failed: ${res.smsError}`
-              : (res.message || "OTP generated in system, but Twilio SMS delivery failed. Customer can view OTP in-app or you can retry.")
-          );
+          // SMS dispatch failed; display error and DO NOT start 60s cooldown
+          const userFriendlyError = formatUserFacingSmsError(res.smsError || res.message);
+          toast.warning(`OTP generated, but SMS delivery failed: ${userFriendlyError}`);
         }
 
         setSmsStatus({
           sent: false,
           maskedPhone: res.maskedPhone,
-          error: res.smsError || res.message || "Twilio SMS dispatch failed.",
+          error: formatUserFacingSmsError(res.smsError || res.message),
         });
       }
 
@@ -1176,7 +1189,7 @@ export function DeliveryWorkflowModal({
                     <div className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-900 font-medium max-w-md mx-auto">
                       <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                       <span>
-                        Twilio SMS delivered to <strong>{smsStatus.maskedPhone || "customer"}</strong> at {smsStatus.lastSentAt || "just now"}.
+                        Verification code sent successfully to <strong>{smsStatus.maskedPhone || "customer"}</strong>.
                       </span>
                     </div>
                   )}
@@ -1186,9 +1199,9 @@ export function DeliveryWorkflowModal({
                       <div className="flex items-start gap-2.5">
                         <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                         <div className="space-y-0.5">
-                          <span className="font-bold block text-amber-900">OTP Active · Twilio SMS Notice</span>
+                          <span className="font-bold block text-amber-900">OTP Active · SMS Notice</span>
                           <span className="text-amber-800 text-[11px] leading-relaxed block">
-                            {smsStatus.error || "Twilio SMS could not be dispatched to recipient."}
+                            {formatUserFacingSmsError(smsStatus.error)}
                           </span>
                         </div>
                       </div>

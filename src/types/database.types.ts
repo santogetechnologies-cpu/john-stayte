@@ -1471,6 +1471,55 @@ export interface Database {
           message: string;
         };
       };
+      get_delivery_slots_availability: {
+        Args: {
+          target_date: string;
+          check_type?: string;
+        };
+        Returns: {
+          id: string;
+          slot_name: string;
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          is_active: boolean;
+          operating_days: number[];
+          slot_type: string;
+          sort_order: number;
+          is_operating_day: boolean;
+          is_closed: boolean;
+          closure_reason: string | null;
+          booked_count: number;
+          remaining_capacity: number;
+          is_available: boolean;
+        }[];
+      };
+      validate_delivery_slot_booking: {
+        Args: {
+          target_slot_name: string;
+          target_date: string;
+          exclude_order_id?: string | null;
+        };
+        Returns: Json;
+      };
+      get_slot_confirmed_bookings: {
+        Args: {
+          target_slot_id: string;
+          target_date: string;
+        };
+        Returns: {
+          order_id: string;
+          order_number: string;
+          customer_name: string;
+          customer_email: string;
+          customer_phone: string;
+          delivery_address: string;
+          order_status: string;
+          payment_status: string;
+          total: number;
+          created_at: string;
+        }[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

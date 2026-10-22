@@ -75,6 +75,9 @@ import { CalorBusinessHighlightSection } from "@/components/site/CalorBusinessHi
 import { TexacoForecourtHighlightSection } from "@/components/site/TexacoForecourtHighlightSection";
 import cylinderImg from "@/assets/image-2.png";
 import heaterImg from "@/assets/image-4.png";
+import serviceGasDeliveryImg from "@/assets/service_gas_delivery.jpg";
+import serviceBulkSupplyImg from "@/assets/service_bulk_supply.jpg";
+import serviceCommercialGasImg from "@/assets/service_commercial_gas.jpg";
 import baitsImg from "@/assets/fishing-baits.jpg";
 import animalFeedImg from "@/assets/animal-feed-cat.jpg";
 import gardenImg from "@/assets/garden-cat.jpg";
@@ -971,6 +974,52 @@ const safeStr = (val: any, fallback = ""): string => {
   return fallback;
 };
 
+export interface HomepageCoreService {
+  id: string;
+  title: string;
+  desc: string;
+  image: string;
+  link: string;
+  search?: Record<string, string>;
+  ctaText: string;
+  watermark: React.ElementType;
+  alt: string;
+}
+
+export const HOMEPAGE_CORE_SERVICES: readonly HomepageCoreService[] = [
+  {
+    id: "gas-delivery",
+    title: "Gas Delivery",
+    desc: "Next-day cylinder delivery across Gloucestershire to homes, farms and commercial premises.",
+    image: serviceGasDeliveryImg,
+    link: "/order-gas",
+    ctaText: "Order cylinders",
+    watermark: CookingPot,
+    alt: "Gas delivery across Gloucestershire",
+  },
+  {
+    id: "bulk-supply",
+    title: "Bulk Supply",
+    desc: "Scheduled bulk LPG for farms and large estates with automated telemetry monitoring.",
+    image: serviceBulkSupplyImg,
+    link: "/filling-stations",
+    ctaText: "Find a forecourt",
+    watermark: MapPin,
+    alt: "Bulk LPG supply for farms and estates",
+  },
+  {
+    id: "commercial-gas",
+    title: "Commercial Gas",
+    desc: "Pub, hospitality and industrial catering gas contracts with scheduled replenishment and 30-day invoicing.",
+    image: serviceCommercialGasImg,
+    link: "/products",
+    search: { category: "gas-appliances" },
+    ctaText: "Browse appliances",
+    watermark: Wrench,
+    alt: "Commercial gas catering contracts",
+  },
+] as const;
+
 function Home() {
   const navigate = useNavigate();
   const [dbProducts, setDbProducts] = useState<any[]>([]);
@@ -991,7 +1040,9 @@ function Home() {
   });
   const [dbStations, setDbStations] = useState<any[]>(stations);
   const [dbTestimonials, setDbTestimonials] = useState<any[]>(testimonials);
-  const [dbServices, setDbServices] = useState<any[]>([]);
+  const [dbServices, setDbServices] = useState<HomepageCoreService[]>(() => [
+    ...HOMEPAGE_CORE_SERVICES,
+  ]);
 
   useEffect(() => {
     async function loadHomeData() {
@@ -1165,7 +1216,30 @@ function Home() {
                 ? parsedServices.services
                 : [];
             if (serviceList.length > 0) {
-              setDbServices(serviceList.filter((s: any) => s.status !== "Inactive"));
+              setDbServices(
+                HOMEPAGE_CORE_SERVICES.map((def) => {
+                  const match = serviceList.find((s: any) => {
+                    if (!s || s.status === "Inactive") return false;
+                    const t = (s.title || "").trim().toLowerCase();
+                    return (
+                      t === def.title.toLowerCase() ||
+                      s.id === def.id ||
+                      (def.id === "gas-delivery" && s.id === "srv-1") ||
+                      (def.id === "bulk-supply" && s.id === "srv-2") ||
+                      (def.id === "commercial-gas" && s.id === "srv-3")
+                    );
+                  });
+                  if (!match) return def;
+                  return {
+                    ...def,
+                    title: match.title?.trim() || def.title,
+                    desc: match.desc?.trim() || match.description?.trim() || def.desc,
+                    image: match.image || def.image,
+                    ctaText: match.ctaText || def.ctaText,
+                    link: match.ctaLink || match.link || def.link,
+                  };
+                }),
+              );
             }
           } catch {
             /* ignore JSON parse error */
@@ -1866,156 +1940,59 @@ function Home() {
 
             {/* 3 Large Service Cards */}
             <div className="grid gap-6 md:gap-7 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 items-stretch">
-              {/* Service 1 */}
-              <ScrollRevealItem variant="card" delay={100} className="h-full">
-                <Link
-                  to={dbServices[0]?.link || "/order-gas"}
-                  className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
-                >
-                  {/* Upper Image Frame (~55-60% height) */}
-                  <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
-                    <img
-                      src={dbServices[0]?.image || cylinderImg}
-                      alt={dbServices[0]?.title || "Gas cylinder delivery"}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  </div>
+              {dbServices.slice(0, 3).map((service, index) => {
+                const WatermarkIcon = service.watermark || CookingPot;
+                const delays = [100, 200, 300];
+                return (
+                  <ScrollRevealItem
+                    key={service.id}
+                    variant="card"
+                    delay={delays[index] ?? 100}
+                    className="h-full"
+                  >
+                    <Link
+                      to={service.link}
+                      search={service.search as any}
+                      className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
+                    >
+                      {/* Upper Image Frame (~55-60% height) */}
+                      <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
+                        <img
+                          src={service.image}
+                          alt={service.alt || service.title}
+                          className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      </div>
 
-                  {/* Bottom White Content Area */}
-                  <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4 relative bg-white">
-                    {/* Faint Decorative Watermark Icon (Lower-Right) */}
-                    <div className="absolute right-5 bottom-4 pointer-events-none opacity-[0.06] text-slate-900">
-                      <CookingPot className="h-20 w-20" />
-                    </div>
+                      {/* Bottom White Content Area */}
+                      <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4 relative bg-white">
+                        {/* Faint Decorative Watermark Icon (Lower-Right) */}
+                        <div className="absolute right-5 bottom-4 pointer-events-none opacity-[0.06] text-slate-900">
+                          <WatermarkIcon className="h-20 w-20" />
+                        </div>
 
-                    <div className="space-y-2 relative z-1">
-                      <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
-                        {safeStr(dbServices[0]?.title, "Gas Cylinder Delivery")}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        {safeStr(
-                          dbServices[0]?.desc,
-                          safeStr(
-                            dbServices[0]?.description,
-                            "Reliable bottled gas delivery for homes and businesses across Gloucestershire.",
-                          ),
-                        )}
-                      </p>
-                    </div>
+                        <div className="space-y-2 relative z-1">
+                          <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
+                            {service.title}
+                          </h3>
+                          <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                            {service.desc}
+                          </p>
+                        </div>
 
-                    {/* Compact Red Button-Style CTA */}
-                    <div className="pt-1 relative z-1">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
-                        <span>{safeStr(dbServices[0]?.ctaText, "Order cylinders")}</span>
-                        <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </ScrollRevealItem>
-
-              {/* Service 2 */}
-              <ScrollRevealItem variant="card" delay={200} className="h-full">
-                <Link
-                  to={dbServices[1]?.link || "/filling-stations"}
-                  className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
-                >
-                  {/* Upper Image Frame (~55-60% height) */}
-                  <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
-                    <img
-                      src={dbServices[1]?.image || stationImg}
-                      alt={safeStr(dbServices[1]?.title, "Service stations and forecourts")}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  </div>
-
-                  {/* Bottom White Content Area */}
-                  <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4 relative bg-white">
-                    {/* Faint Decorative Watermark Icon (Lower-Right) */}
-                    <div className="absolute right-5 bottom-4 pointer-events-none opacity-[0.06] text-slate-900">
-                      <MapPin className="h-20 w-20" />
-                    </div>
-
-                    <div className="space-y-2 relative z-1">
-                      <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
-                        {safeStr(dbServices[1]?.title, "Forecourts & Filling Stations")}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        {safeStr(
-                          dbServices[1]?.desc,
-                          safeStr(
-                            dbServices[1]?.description,
-                            "Fuel, autogas and cylinder exchange at our local service stations.",
-                          ),
-                        )}
-                      </p>
-                    </div>
-
-                    {/* Compact Red Button-Style CTA */}
-                    <div className="pt-1 relative z-1">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
-                        <span>{safeStr(dbServices[1]?.ctaText, "Find a forecourt")}</span>
-                        <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </ScrollRevealItem>
-
-              {/* Service 3 */}
-              <ScrollRevealItem variant="card" delay={300} className="h-full">
-                <Link
-                  to={dbServices[2]?.link || "/products"}
-                  search={dbServices[2]?.link ? undefined : ({ category: "gas-appliances" } as any)}
-                  className="group rounded-[26px] border border-slate-200/90 bg-white overflow-hidden flex flex-col justify-between shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 relative h-full"
-                >
-                  {/* Upper Image Frame (~55-60% height) */}
-                  <div className="relative h-56 sm:h-64 bg-slate-100 overflow-hidden">
-                    <img
-                      src={dbServices[2]?.image || heaterImg}
-                      alt={safeStr(
-                        dbServices[2]?.title,
-                        "Gas heaters, appliances and genuine spares",
-                      )}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  </div>
-
-                  {/* Bottom White Content Area */}
-                  <div className="p-6 sm:p-7 flex-1 flex flex-col justify-between space-y-4 relative bg-white">
-                    {/* Faint Decorative Watermark Icon (Lower-Right) */}
-                    <div className="absolute right-5 bottom-4 pointer-events-none opacity-[0.06] text-slate-900">
-                      <Wrench className="h-20 w-20" />
-                    </div>
-
-                    <div className="space-y-2 relative z-1">
-                      <h3 className="text-xl font-extrabold text-slate-900 tracking-tight leading-snug group-hover:text-primary transition-colors">
-                        {safeStr(dbServices[2]?.title, "Gas Appliances & Spares")}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                        {safeStr(
-                          dbServices[2]?.desc,
-                          safeStr(
-                            dbServices[2]?.description,
-                            "Quality appliances, regulators, hoses and genuine replacement parts.",
-                          ),
-                        )}
-                      </p>
-                    </div>
-
-                    {/* Compact Red Button-Style CTA */}
-                    <div className="pt-1 relative z-1">
-                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
-                        <span>{safeStr(dbServices[2]?.ctaText, "Browse appliances")}</span>
-                        <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </ScrollRevealItem>
+                        {/* Compact Red Button-Style CTA */}
+                        <div className="pt-1 relative z-1">
+                          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-white text-xs font-extrabold shadow-xs group-hover:bg-primary/90 transition-colors">
+                            <span>{service.ctaText}</span>
+                            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  </ScrollRevealItem>
+                );
+              })}
             </div>
           </ScrollRevealSection>
         </div>

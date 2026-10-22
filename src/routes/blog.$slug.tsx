@@ -459,38 +459,9 @@ function BlogPostPage() {
           source: "safety_guide",
           status: "subscribed",
         });
-      } catch {}
-
-      try {
-        const { data: block } = await supabase
-          .from("cms_content_blocks")
-          .select("content")
-          .eq("section_key", "newsletter_subscribers_data")
-          .maybeSingle();
-
-        let list = [];
-        if (block?.content) {
-          try {
-            list = JSON.parse(block.content);
-          } catch {
-            list = [];
-          }
-        }
-        if (!list.some((item: any) => item.email === cleanEmail)) {
-          const updated = [
-            ...list,
-            { email: cleanEmail, source: "safety_guide", subscribed_at: new Date().toISOString() },
-          ];
-          await supabase.from("cms_content_blocks").upsert(
-            {
-              section_key: "newsletter_subscribers_data",
-              title: "Newsletter Subscribers List",
-              content: JSON.stringify(updated),
-            },
-            { onConflict: "section_key" },
-          );
-        }
-      } catch {}
+      } catch {
+        /* duplicate subscriber handled gracefully */
+      }
 
       setSubscribed(true);
       toast.success("Thank you for subscribing!", {

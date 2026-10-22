@@ -38,13 +38,16 @@ export const Route = createFileRoute("/products/$slug")({
       { name: "description", content: "John Stayte Services product catalog item." },
     ],
   }),
-  errorComponent: ({ error }) => (
-    <SiteLayout>
-      <div className="container-page py-24 text-center" role="alert">
-        {error.message}
-      </div>
-    </SiteLayout>
-  ),
+  errorComponent: ({ error }) => {
+    const errorMessage = error instanceof Error ? error.message : "Failed to load product details.";
+    return (
+      <SiteLayout>
+        <div className="container-page py-24 text-center" role="alert">
+          {errorMessage}
+        </div>
+      </SiteLayout>
+    );
+  },
   notFoundComponent: () => (
     <SiteLayout>
       <div className="container-page py-24 text-center">

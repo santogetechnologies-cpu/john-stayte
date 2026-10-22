@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Mail,
   Lock,
@@ -26,6 +26,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { speakLoginError, speakLoginSuccess } from "@/lib/auth-voice";
+import { cn } from "@/lib/utils";
+import { sendPasswordResetEmailServerFn } from "@/lib/password-reset-server-fn";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -44,8 +46,6 @@ export const Route = createFileRoute("/login")({
   }),
   component: LoginPage,
 });
-
-
 
 function LoginPage() {
   const { login, register, resendConfirmationEmail, user, authLoading } = useStore();
@@ -84,6 +84,14 @@ function LoginPage() {
   const [resetEmail, setResetEmail] = useState("");
   const [resetting, setResetting] = useState(false);
 
+  // Set New Password (Recovery) Modal State
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [passwordUpdateError, setPasswordUpdateError] = useState<string | null>(null);
+
   // Subtle Mouse Parallax State
   const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
 
@@ -100,18 +108,21 @@ function LoginPage() {
   };
 
   // Role routing
-  const redirectByRole = (role: string) => {
-    navigate({
-      to:
-        role === "admin"
-          ? "/admin"
-          : role === "manager"
-            ? "/manager"
-            : role === "delivery_agent"
-              ? "/delivery"
-              : "/account",
-    });
-  };
+  const redirectByRole = useCallback(
+    (role: string) => {
+      navigate({
+        to:
+          role === "admin"
+            ? "/admin"
+            : role === "manager"
+              ? "/manager"
+              : role === "delivery_agent"
+                ? "/delivery"
+                : "/account",
+      });
+    },
+    [navigate],
+  );
 
   // Check for email confirmation redirect or error params in URL on mount
   useEffect(() => {
@@ -119,14 +130,24 @@ function LoginPage() {
 
     try {
       const searchParams = new URLSearchParams(window.location.search);
-      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+      const hash = window.location.hash.startsWith("#")
+        ? window.location.hash.slice(1)
+        : window.location.hash;
       const hashParams = new URLSearchParams(hash);
 
-      const isConfirmed = searchParams.get("confirmed") === "true" || hashParams.get("type") === "signup";
+      const isConfirmed =
+        searchParams.get("confirmed") === "true" || hashParams.get("type") === "signup";
+      const isRecovery =
+        hashParams.get("type") === "recovery" || searchParams.get("type") === "recovery";
+
+      if (isRecovery) {
+        setIsRecoveryMode(true);
+      }
+
       const errorDesc =
         searchParams.get("error_description") ||
         hashParams.get("error_description") ||
-        (searchParams.get("error") ? "Email verification link is invalid or has expired." : null);
+        (searchParams.get("error") ? "Email link is invalid or has expired." : null);
 
       if (errorDesc) {
         const decoded = decodeURIComponent(errorDesc.replace(/\+/g, " "));
@@ -146,6 +167,16 @@ function LoginPage() {
     }
   }, []);
 
+  // Listen for Supabase password recovery event
+  useEffect(() => {
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecoveryMode(true);
+      }
+    });
+    return () => authSub?.subscription?.unsubscribe();
+  }, []);
+
   // Cooldown timer for resending confirmation email
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -157,10 +188,13 @@ function LoginPage() {
 
   // Auto-redirect if customer is already authenticated (or becomes authenticated via session detection)
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user && !authLoading && !isRecoveryMode) {
+      if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) {
+        return;
+      }
       redirectByRole(user.role);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isRecoveryMode, redirectByRole]);
 
   // Handle Resend Confirmation Email
   const handleResendConfirmation = async (targetEmail: string) => {
@@ -295,19 +329,76 @@ function LoginPage() {
     setResetting(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
-        redirectTo: `${window.location.origin}/login`,
+      const res = await sendPasswordResetEmailServerFn({
+        data: {
+          email: resetEmail.trim(),
+          redirectTo: `${window.location.origin}/login`,
+        },
       });
 
-      if (error) throw error;
+      if (!res.ok) {
+        if (res.error === "Rate limit reached") {
+          toast.warning(res.message);
+        } else {
+          toast.error(res.message || "Failed to send reset email.");
+        }
+        return;
+      }
 
-      toast.success("Password reset instructions sent to your email!");
+      toast.success(
+        res.message ||
+          "If an account exists with this email address, you will receive password reset instructions shortly.",
+      );
       setForgotModal(false);
       setResetEmail("");
     } catch (err: any) {
-      toast.error("Failed to send reset link: " + err.message);
+      toast.error(err?.message || "Failed to send reset link. Please try again later.");
     } finally {
       setResetting(false);
+    }
+  };
+
+  // Handle Password Update after Recovery
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordUpdateError(null);
+
+    if (newPassword.length < 8) {
+      setPasswordUpdateError("Password must be at least 8 characters long.");
+      return;
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      setPasswordUpdateError("Password must include at least one uppercase letter.");
+      return;
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      setPasswordUpdateError("Password must include at least one number.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordUpdateError("Passwords do not match. Please re-enter.");
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      toast.success("Password updated successfully! Welcome back.");
+      setIsRecoveryMode(false);
+      setNewPassword("");
+      setConfirmNewPassword("");
+      if (typeof window !== "undefined") {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      navigate({ to: "/account" });
+    } catch (err: any) {
+      const msg = err?.message || "Failed to update password. Please request a new reset link.";
+      setPasswordUpdateError(msg);
+      toast.error(msg);
+    } finally {
+      setUpdatingPassword(false);
     }
   };
 
@@ -353,14 +444,18 @@ function LoginPage() {
             backgroundSize: "cover",
             backgroundPosition: "center center",
             transform: `scale(1.02) translate(${mouseOffset.x * 6}px, ${mouseOffset.y * 5}px) ${
-              authStatus === "success" ? "translateY(-6px)" : authStatus === "error" ? "translateY(3px)" : ""
+              authStatus === "success"
+                ? "translateY(-6px)"
+                : authStatus === "error"
+                  ? "translateY(3px)"
+                  : ""
             }`,
           }}
         />
 
         {/* SOFT ATMOSPHERIC AMBIENT GLOW & RED LIGHTING ACCENTS */}
         <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-transparent to-white/35 pointer-events-none z-[1]" />
-        
+
         <div
           className={`absolute top-1/2 left-1/2 -translate-x-1/4 -translate-y-1/2 w-[550px] h-[550px] rounded-full blur-[130px] pointer-events-none transition-all duration-1000 ease-out z-[1] ${
             authStatus === "success"
@@ -377,7 +472,6 @@ function LoginPage() {
         {/* MAIN BALANCED THREE-COLUMN COMPOSITION CONTAINER */}
         <div className="relative z-10 w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 xl:gap-12 items-center">
-            
             {/* ======================================================== */}
             {/* 1. LEFT COLUMN: RICH WELCOME SECTION (5 cols)             */}
             {/* ======================================================== */}
@@ -427,10 +521,7 @@ function LoginPage() {
 
                 <div className="space-y-3">
                   {activeBenefits.map((benefit, idx) => (
-                    <div
-                      key={`${tab}-benefit-${idx}`}
-                      className="flex items-center gap-3.5"
-                    >
+                    <div key={`${tab}-benefit-${idx}`} className="flex items-center gap-3.5">
                       <div className="h-5.5 w-5.5 rounded-full bg-red-50 border border-red-200/80 flex items-center justify-center shrink-0 shadow-xs">
                         <CheckCircle2 className="h-4 w-4 text-[#e31b23]" />
                       </div>
@@ -501,7 +592,6 @@ function LoginPage() {
 
                 {/* Frosted Glass Sign In / Register Card (More Vertical Height & Spaciousness) */}
                 <div className="p-7 sm:p-9 lg:p-9.5 rounded-[30px] bg-white/95 sm:bg-white/90 backdrop-blur-2xl border border-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
-                  
                   {pendingEmailConfirmation ? (
                     <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-200">
                       <div className="mx-auto w-16 h-16 rounded-full bg-red-50 border border-red-200/80 flex items-center justify-center text-[#e31b23] shadow-md shadow-red-500/10">
@@ -520,14 +610,16 @@ function LoginPage() {
                           <strong className="text-slate-900 font-bold break-all">
                             {pendingEmailConfirmation}
                           </strong>
-                          . Click the link in your email to activate your account and start ordering gas.
+                          . Click the link in your email to activate your account and start ordering
+                          gas.
                         </p>
                       </div>
 
                       <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/60 text-left flex items-start gap-3 text-xs text-amber-900">
                         <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                         <p className="font-medium text-[11.5px] leading-relaxed">
-                          Can't find the email? Check your <strong>Spam</strong> or <strong>Junk</strong> folder.
+                          Can't find the email? Check your <strong>Spam</strong> or{" "}
+                          <strong>Junk</strong> folder.
                         </p>
                       </div>
 
@@ -633,7 +725,8 @@ function LoginPage() {
                         <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/90 flex items-start gap-3 text-xs text-emerald-800 animate-in fade-in duration-200">
                           <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
                           <p className="font-bold leading-relaxed">
-                            Your email has been confirmed! Please sign in with your password to continue.
+                            Your email has been confirmed! Please sign in with your password to
+                            continue.
                           </p>
                         </div>
                       )}
@@ -644,7 +737,8 @@ function LoginPage() {
                           <div className="flex items-start gap-2.5">
                             <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                             <p className="font-semibold leading-relaxed">
-                              This account's email has not been confirmed yet. Please verify your email to log in.
+                              This account's email has not been confirmed yet. Please verify your
+                              email to log in.
                             </p>
                           </div>
                           <Button
@@ -676,7 +770,10 @@ function LoginPage() {
                       {tab === "signin" && (
                         <form onSubmit={handleSignIn} className="space-y-4.5 text-xs font-medium">
                           <div className="space-y-1.5">
-                            <Label htmlFor="signin-email" className="font-bold text-slate-800 text-xs">
+                            <Label
+                              htmlFor="signin-email"
+                              className="font-bold text-slate-800 text-xs"
+                            >
                               Email Address
                             </Label>
                             <div className="relative">
@@ -695,7 +792,10 @@ function LoginPage() {
 
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <Label htmlFor="signin-password" className="font-bold text-slate-800 text-xs">
+                              <Label
+                                htmlFor="signin-password"
+                                className="font-bold text-slate-800 text-xs"
+                              >
                                 Password
                               </Label>
                               <button
@@ -773,7 +873,10 @@ function LoginPage() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                              <Label htmlFor="reg-email" className="font-bold text-slate-800 text-xs">
+                              <Label
+                                htmlFor="reg-email"
+                                className="font-bold text-slate-800 text-xs"
+                              >
                                 Email Address
                               </Label>
                               <div className="relative">
@@ -791,7 +894,10 @@ function LoginPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                              <Label htmlFor="reg-phone" className="font-bold text-slate-800 text-xs">
+                              <Label
+                                htmlFor="reg-phone"
+                                className="font-bold text-slate-800 text-xs"
+                              >
                                 Phone Number
                               </Label>
                               <div className="relative">
@@ -810,7 +916,10 @@ function LoginPage() {
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                              <Label htmlFor="reg-password" className="font-bold text-slate-800 text-xs">
+                              <Label
+                                htmlFor="reg-password"
+                                className="font-bold text-slate-800 text-xs"
+                              >
                                 Password
                               </Label>
                               <div className="relative">
@@ -840,7 +949,10 @@ function LoginPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                              <Label htmlFor="reg-confirm" className="font-bold text-slate-800 text-xs">
+                              <Label
+                                htmlFor="reg-confirm"
+                                className="font-bold text-slate-800 text-xs"
+                              >
                                 Confirm Password
                               </Label>
                               <div className="relative">
@@ -923,7 +1035,6 @@ function LoginPage() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -968,7 +1079,137 @@ function LoginPage() {
                 disabled={resetting}
                 className="rounded-full font-bold text-xs gap-1.5 shadow-md shadow-red-500/20 bg-[#e31b23] hover:bg-[#c9151c] text-white"
               >
+                {resetting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 {resetting ? "Sending..." : "Send Reset Link"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* SET NEW PASSWORD (RECOVERY) DIALOG */}
+      <Dialog
+        open={isRecoveryMode}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsRecoveryMode(false);
+            if (typeof window !== "undefined") {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-3xl p-6 bg-white/95 backdrop-blur-xl border border-slate-100 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display font-extrabold text-lg text-slate-900 flex items-center gap-2">
+              <Lock className="h-5 w-5 text-[#e31b23]" />
+              Set New Password
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdatePassword} className="space-y-4 pt-2 text-xs">
+            <p className="text-slate-600 font-medium">
+              Enter and confirm a new secure password for your John Stayte Services account.
+            </p>
+
+            {passwordUpdateError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+                <span>{passwordUpdateError}</span>
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="new-password" className="font-bold text-slate-700">
+                New Password
+              </Label>
+              <div className="relative mt-1">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  className="rounded-xl text-xs font-semibold h-11 pr-10 border-slate-200/90 focus-visible:ring-[#e31b23]"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="confirm-new-password" className="font-bold text-slate-700">
+                Confirm New Password
+              </Label>
+              <Input
+                id="confirm-new-password"
+                type={showNewPassword ? "text" : "password"}
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Re-enter your new password"
+                className="mt-1 rounded-xl text-xs font-semibold h-11 border-slate-200/90 focus-visible:ring-[#e31b23]"
+                required
+              />
+            </div>
+
+            {/* PASSWORD REQUIREMENTS CHECKLIST */}
+            <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px]">
+              <p className="font-bold text-slate-700">Password requirements:</p>
+              <div className="grid grid-cols-1 gap-1 text-slate-500">
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5",
+                    newPassword.length >= 8 && "text-emerald-600 font-semibold",
+                  )}
+                >
+                  <CheckCircle2 className="h-3 w-3" /> At least 8 characters
+                </span>
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5",
+                    /[A-Z]/.test(newPassword) && "text-emerald-600 font-semibold",
+                  )}
+                >
+                  <CheckCircle2 className="h-3 w-3" /> At least 1 uppercase letter
+                </span>
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5",
+                    /[0-9]/.test(newPassword) && "text-emerald-600 font-semibold",
+                  )}
+                >
+                  <CheckCircle2 className="h-3 w-3" /> At least 1 number
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setIsRecoveryMode(false);
+                  if (typeof window !== "undefined") {
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                  }
+                }}
+                className="rounded-full text-xs font-bold"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={updatingPassword}
+                className="rounded-full font-bold text-xs gap-1.5 shadow-md shadow-red-500/20 bg-[#e31b23] hover:bg-[#c9151c] text-white"
+              >
+                {updatingPassword && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {updatingPassword ? "Updating..." : "Update Password"}
               </Button>
             </div>
           </form>
@@ -977,4 +1218,3 @@ function LoginPage() {
     </SiteLayout>
   );
 }
-

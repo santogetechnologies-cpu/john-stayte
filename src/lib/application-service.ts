@@ -289,21 +289,7 @@ export async function submitGasCustomerApplication(
     console.error("Failed to update profile with application:", err);
   }
 
-  // 3. Persist in cms_content_blocks container if accessible
-  try {
-    const sectionKey = `gas_app_${customerId}`;
-    await supabase.from("cms_content_blocks").upsert(
-      {
-        section_key: sectionKey,
-        title: `Gas Application: ${fullName} (${usageType})`,
-        content: JSON.stringify(finalRecord),
-        updated_at: now,
-      },
-      { onConflict: "section_key" },
-    );
-  } catch (e) {
-    // Non-critical
-  }
+  // Application persisted to public.gas_customer_applications table above
 
   // 4. Update customer_addresses with primary address
   try {
@@ -326,7 +312,7 @@ export async function submitGasCustomerApplication(
   // 5. Create Staff & Admin Notification (Broadcast to Admin/Operations Portal)
   try {
     const notifLink = `/admin/applications?appId=${finalRecord.id}`;
-    
+
     // Idempotency: Avoid duplicate admin notifications on re-submission or retry
     const { data: existingStaffNotifs } = await supabase
       .from("notifications")
@@ -604,7 +590,9 @@ export async function sendApplicationEmailOtp(email: string): Promise<{
   });
 
   if (!res.ok) {
-    throw new Error(res.message || res.error || "Failed to send verification email. Please try again.");
+    throw new Error(
+      res.message || res.error || "Failed to send verification email. Please try again.",
+    );
   }
 
   return {
@@ -642,7 +630,9 @@ export async function verifyApplicationEmailOtp(
   });
 
   if (!res.ok || !res.verifiedEmail) {
-    throw new Error(res.error || "Invalid or expired verification code. Please check your inbox and try again.");
+    throw new Error(
+      res.error || "Invalid or expired verification code. Please check your inbox and try again.",
+    );
   }
 
   // Record verified state in email_verifications table for audit/tracking if user is authenticated
@@ -672,4 +662,3 @@ export async function verifyApplicationEmailOtp(
     verifiedEmail: res.verifiedEmail,
   };
 }
-
