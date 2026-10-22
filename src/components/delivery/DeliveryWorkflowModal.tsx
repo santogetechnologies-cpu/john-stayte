@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Truck,
   CheckCircle2,
@@ -102,6 +102,70 @@ export function DeliveryWorkflowModal({
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [reissuingOtp, setReissuingOtp] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+  const [smsStatus, setSmsStatus] = useState<{
+    sent: boolean;
+    maskedPhone?: string;
+    error?: string;
+    lastSentAt?: string;
+  } | null>(null);
+
+  // 60-Second Resend OTP Cooldown Timer state
+  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(() => {
+    if (!delivery?.id || typeof window === "undefined") return null;
+    try {
+      const stored = sessionStorage.getItem(`jss_delivery_otp_cooldown_${delivery.id}`);
+      if (stored) {
+        const val = Number(stored);
+        if (val > Date.now()) return val;
+      }
+    } catch {}
+    return null;
+  });
+
+  const [countdown, setCountdown] = useState<number>(() => {
+    if (!cooldownEndsAt) return 0;
+    const remaining = Math.ceil((cooldownEndsAt - Date.now()) / 1000);
+    return remaining > 0 ? remaining : 0;
+  });
+
+  // Helper to start cooldown and persist timestamp in sessionStorage for the active delivery
+  const startCooldown = useCallback((endsAtMs: number) => {
+    setCooldownEndsAt(endsAtMs);
+    const sec = Math.ceil((endsAtMs - Date.now()) / 1000);
+    setCountdown(Math.max(0, sec));
+    if (delivery?.id && typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(`jss_delivery_otp_cooldown_${delivery.id}`, String(endsAtMs));
+      } catch {}
+    }
+  }, [delivery?.id]);
+
+  // Cooldown ticking effect
+  useEffect(() => {
+    if (!cooldownEndsAt) {
+      setCountdown(0);
+      return;
+    }
+
+    const checkTime = () => {
+      const remaining = Math.ceil((cooldownEndsAt - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setCountdown(0);
+        setCooldownEndsAt(null);
+        if (delivery?.id && typeof window !== "undefined") {
+          try {
+            sessionStorage.removeItem(`jss_delivery_otp_cooldown_${delivery.id}`);
+          } catch {}
+        }
+      } else {
+        setCountdown(remaining);
+      }
+    };
+
+    checkTime();
+    const interval = setInterval(checkTime, 500);
+    return () => clearInterval(interval);
+  }, [cooldownEndsAt, delivery?.id]);
 
   // Exception reporting state
   const [exceptionType, setExceptionType] = useState("No Empty Cylinder");
@@ -112,6 +176,20 @@ export function DeliveryWorkflowModal({
 
   useEffect(() => {
     if (delivery) {
+      // Check stored cooldown for this delivery on load / switch
+      if (typeof window !== "undefined") {
+        try {
+          const stored = sessionStorage.getItem(`jss_delivery_otp_cooldown_${delivery.id}`);
+          if (stored) {
+            const val = Number(stored);
+            if (val > Date.now()) {
+              setCooldownEndsAt(val);
+              setCountdown(Math.ceil((val - Date.now()) / 1000));
+            }
+          }
+        } catch {}
+      }
+
       const s = (delivery.status || "").toLowerCase();
       const notes = (delivery.notes || "");
 
@@ -155,9 +233,27 @@ export function DeliveryWorkflowModal({
         delivery.order_id || delivery.orders?.id,
         resolvedCustPhone,
         resolvedCustName,
-      );
+      )
+        .then((res) => {
+          if (res) {
+            if (res.smsSent !== undefined) {
+              setSmsStatus({
+                sent: Boolean(res.smsSent),
+                maskedPhone: res.maskedPhone,
+                error: res.smsError,
+                lastSentAt: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+              });
+            }
+            if (res.cooldownEndsAt && res.cooldownEndsAt > Date.now()) {
+              startCooldown(res.cooldownEndsAt);
+            }
+          }
+        })
+        .catch((e) => {
+          console.warn("[DeliveryModal] OTP background init error:", e);
+        });
     }
-  }, [delivery, exchangeReq.required, exchangeReq.expectedQuantity]);
+  }, [delivery, exchangeReq.required, exchangeReq.expectedQuantity, startCooldown]);
 
   if (!delivery) return null;
 
@@ -332,7 +428,11 @@ export function DeliveryWorkflowModal({
 
   // Handle Reissuing / Resending OTP to Customer
   const handleResendOtp = async () => {
+    // Prevent duplicate concurrent requests and enforce frontend cooldown
+    if (reissuingOtp || countdown > 0) return;
+
     setReissuingOtp(true);
+    setOtpError(null);
     try {
       const resolvedCustPhone =
         order.customer_phone ||
@@ -349,12 +449,44 @@ export function DeliveryWorkflowModal({
         resolvedCustPhone,
         resolvedCustName,
       );
-      console.log(res.message);
-      toast.success(res.message || "New OTP sent to customer.");
+
+      if (res.smsSent) {
+        toast.success(`Verification SMS sent to ${res.maskedPhone || "customer"}.`);
+        setSmsStatus({
+          sent: true,
+          maskedPhone: res.maskedPhone,
+          lastSentAt: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+        });
+        // Start 60s cooldown ONLY after the server confirms SMS was accepted successfully
+        startCooldown(res.cooldownEndsAt || (Date.now() + 60 * 1000));
+      } else {
+        // If server rejected due to rate limit, sync frontend cooldown to server remaining time
+        if (res.cooldownRemainingSec && res.cooldownRemainingSec > 0) {
+          toast.warning(res.message || `Please wait ${res.cooldownRemainingSec}s before resending.`);
+          startCooldown(res.cooldownEndsAt || (Date.now() + res.cooldownRemainingSec * 1000));
+        } else {
+          // Twilio SMS dispatch failed; display error and DO NOT start 60s cooldown
+          toast.warning(
+            res.smsError
+              ? `OTP generated, but SMS dispatch failed: ${res.smsError}`
+              : (res.message || "OTP generated in system, but Twilio SMS delivery failed. Customer can view OTP in-app or you can retry.")
+          );
+        }
+
+        setSmsStatus({
+          sent: false,
+          maskedPhone: res.maskedPhone,
+          error: res.smsError || res.message || "Twilio SMS dispatch failed.",
+        });
+      }
+
       setOtpInput("");
-      setOtpError(null);
     } catch (err: any) {
       toast.error(err.message || "Failed to resend OTP");
+      setSmsStatus({
+        sent: false,
+        error: err.message || "Failed to reissue OTP",
+      });
     } finally {
       setReissuingOtp(false);
     }
@@ -1039,6 +1171,47 @@ export function DeliveryWorkflowModal({
                     </p>
                   </div>
 
+                  {/* SMS Delivery Status Banner */}
+                  {smsStatus && smsStatus.sent && (
+                    <div className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-900 font-medium max-w-md mx-auto">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                      <span>
+                        Twilio SMS delivered to <strong>{smsStatus.maskedPhone || "customer"}</strong> at {smsStatus.lastSentAt || "just now"}.
+                      </span>
+                    </div>
+                  )}
+
+                  {smsStatus && !smsStatus.sent && (
+                    <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 space-y-2 max-w-md mx-auto text-left">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-0.5">
+                          <span className="font-bold block text-amber-900">OTP Active · Twilio SMS Notice</span>
+                          <span className="text-amber-800 text-[11px] leading-relaxed block">
+                            {smsStatus.error || "Twilio SMS could not be dispatched to recipient."}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-1.5 border-t border-amber-200/60 text-[11px]">
+                        <span className="text-amber-700">Customer can view OTP in account notifications</span>
+                        <button
+                          type="button"
+                          disabled={reissuingOtp || countdown > 0}
+                          onClick={handleResendOtp}
+                          className={cn(
+                            "font-bold text-amber-900 underline flex items-center gap-1",
+                            reissuingOtp || countdown > 0
+                              ? "opacity-50 cursor-not-allowed text-amber-700 no-underline pointer-events-none"
+                              : "hover:text-amber-950 cursor-pointer"
+                          )}
+                        >
+                          <RefreshCw className={cn("h-3 w-3", reissuingOtp && "animate-spin")} />
+                          {countdown > 0 ? `Retry SMS (${countdown}s)` : "Retry SMS"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* 6-Digit InputOTP Control */}
                   <div className="flex justify-center py-2">
                     <InputOTP
@@ -1083,16 +1256,31 @@ export function DeliveryWorkflowModal({
 
                     <Button
                       variant="outline"
-                      disabled={reissuingOtp}
+                      disabled={reissuingOtp || countdown > 0}
                       onClick={handleResendOtp}
-                      className="w-full sm:w-auto rounded-full font-bold text-xs h-11 px-5 border-slate-200 text-slate-700 hover:bg-slate-50 gap-1.5"
+                      className={cn(
+                        "w-full sm:w-auto rounded-full font-bold text-xs h-11 px-5 border-slate-200 gap-1.5 transition-all select-none",
+                        countdown > 0
+                          ? "bg-slate-100/90 text-slate-400 border-slate-200 cursor-not-allowed hover:bg-slate-100/90 hover:text-slate-400"
+                          : "text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      )}
                     >
                       {reissuingOtp ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+                          <span>Sending OTP...</span>
+                        </>
+                      ) : countdown > 0 ? (
+                        <>
+                          <Clock className="h-3.5 w-3.5 text-slate-400" />
+                          <span>Resend OTP ({countdown}s)</span>
+                        </>
                       ) : (
-                        <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
+                          <span>Resend OTP to Customer</span>
+                        </>
                       )}
-                      Resend OTP to Customer
                     </Button>
                   </div>
                 </div>

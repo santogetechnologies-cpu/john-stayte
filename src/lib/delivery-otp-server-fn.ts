@@ -11,6 +11,8 @@ export interface SendSmsResult {
   success: boolean;
   messageSid?: string;
   error?: string;
+  errorCode?: number;
+  httpStatus?: number;
   maskedRecipient?: string;
 }
 
@@ -21,7 +23,7 @@ export interface SendSmsResult {
 export function normalizeToE164(rawPhone: string, defaultCountryPrefix = "+44"): string {
   if (!rawPhone) return "";
   
-  let cleaned = rawPhone.trim().replace(/[\s\(\)\-\.]/g, "");
+  let cleaned = String(rawPhone).trim().replace(/[\s\(\)\-\.]/g, "");
 
   if (cleaned.startsWith("00")) {
     cleaned = "+" + cleaned.slice(2);
@@ -31,21 +33,33 @@ export function normalizeToE164(rawPhone: string, defaultCountryPrefix = "+44"):
     return cleaned;
   }
 
+  // Handle domestic trunk 0
   if (cleaned.startsWith("0")) {
+    // If it's 11 digits starting with 0 followed by 6, 8, or 9 (e.g. 06382307627 or 09629957598)
+    // UK has no 06 or 09 mobile numbers. These are Indian 10-digit mobiles dialed with domestic 0.
+    if (cleaned.length === 11 && /^[69]/.test(cleaned.slice(1))) {
+      return "+91" + cleaned.slice(1);
+    }
+    // Standard UK local numbers (07xxx mobile, 01/02 landline, etc.)
     return defaultCountryPrefix + cleaned.slice(1);
   }
 
+  // UK mobile without 0: e.g. "7517825555" (10 digits starting with 7)
   if (cleaned.length === 10 && cleaned.startsWith("7")) {
     return defaultCountryPrefix + cleaned;
   }
 
+  // 10 digits starting with 6, 7, 8, 9 (e.g., Indian mobile without +91)
+  if (cleaned.length === 10 && /^[6-9]/.test(cleaned)) {
+    return "+91" + cleaned;
+  }
+
+  // 10 digits US/Canada
   if (cleaned.length === 10) {
-    if (/^[6-9]/.test(cleaned)) {
-      return "+91" + cleaned;
-    }
     return "+1" + cleaned;
   }
 
+  // Numbers that already include country code without '+' (e.g. 447517825555 or 916382307627)
   if (cleaned.length >= 11 && !cleaned.startsWith("+")) {
     return "+" + cleaned;
   }
@@ -88,6 +102,9 @@ function resolveTwilioSender(
     }
     if (fromNumber) {
       return { senderType: "From", senderValue: fromNumber };
+    }
+    if (messagingServiceSid) {
+      return { senderType: "MessagingServiceSid", senderValue: messagingServiceSid };
     }
   }
 
@@ -132,23 +149,32 @@ function resolveTwilioSender(
 
 /**
  * Dispatches an SMS using Twilio Programmable Messaging REST API.
- * Authenticates using Account SID + API Key SID + API Key Secret.
+ * Prioritizes Account SID + Auth Token (Master Credentials) to eliminate unasserted API key errors (code 8001),
+ * with resilient fallback if secondary credentials are supplied.
  */
 async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
   const apiKeySid = process.env.TWILIO_API_KEY_SID;
   const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_FROM_NUMBER;
   const alphaSenderId = process.env.TWILIO_ALPHA_SENDER_ID;
   const indiaSenderId = process.env.TWILIO_INDIA_SENDER_ID || process.env.TWILIO_INDIA_FROM_NUMBER;
   const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
-  let basicAuth: string | null = null;
-  if (apiKeySid && apiKeySecret) {
-    basicAuth = Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64");
-  } else if (accountSid && authToken) {
-    basicAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  // Master credentials (Account SID + Auth Token) have full root permissions across the Twilio REST API.
+  // We prioritize Account SID + Auth Token to avoid unasserted sub-key errors (e.g. code 8001: "actor doesn't have any assertions").
+  let primaryAuth: string | null = null;
+  let fallbackAuth: string | null = null;
+
+  if (accountSid && authToken) {
+    primaryAuth = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
+  } else if (apiKeySid && apiKeySecret) {
+    primaryAuth = Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64");
+  }
+
+  if (apiKeySid && apiKeySecret && primaryAuth && primaryAuth !== Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64")) {
+    fallbackAuth = Buffer.from(`${apiKeySid}:${apiKeySecret}`).toString("base64");
   }
 
   const normalizedTo = normalizeToE164(params.to);
@@ -162,11 +188,12 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
     messagingServiceSid,
   });
 
-  if (!accountSid || !basicAuth || !senderConfig) {
-    console.error("[Twilio Service] Missing server-side Twilio credentials or valid sender for destination in environment.");
+  if (!accountSid || !primaryAuth || !senderConfig) {
+    console.error("[Twilio Service] Missing server-side Twilio credentials or valid sender configuration in environment.");
     return {
       success: false,
       error: "Twilio SMS service is not configured on the server. Please verify environment variables.",
+      maskedRecipient: maskedTo,
     };
   }
 
@@ -174,66 +201,83 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
     return {
       success: false,
       error: "Invalid recipient phone number format.",
+      maskedRecipient: maskedTo,
     };
   }
 
-  try {
-    const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
 
-    const bodyParams = new URLSearchParams();
-    bodyParams.append(senderConfig.senderType, senderConfig.senderValue);
-    bodyParams.append("To", normalizedTo);
-    bodyParams.append("Body", params.body);
+  const bodyParams = new URLSearchParams();
+  bodyParams.append(senderConfig.senderType, senderConfig.senderValue);
+  bodyParams.append("To", normalizedTo);
+  bodyParams.append("Body", params.body);
 
+  const executePost = async (authBase64: string) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    let response: Response;
     try {
-      response = await fetch(endpoint, {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
-          "Authorization": `Basic ${basicAuth}`,
+          "Authorization": `Basic ${authBase64}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: bodyParams.toString(),
         signal: controller.signal,
       });
+      const data = (await response.json()) as {
+        sid?: string;
+        status?: string;
+        code?: number;
+        message?: string;
+        more_info?: string;
+      };
+      return { response, data };
     } finally {
       clearTimeout(timeoutId);
     }
+  };
 
-    const data = (await response.json()) as {
-      sid?: string;
-      status?: string;
-      code?: number;
-      message?: string;
-      more_info?: string;
-    };
+  try {
+    let { response, data } = await executePost(primaryAuth);
+
+    // If primary auth failed with authentication/assertion issues and fallback exists, retry with fallback
+    if (
+      !response.ok &&
+      (response.status === 401 || response.status === 403 || data.code === 8001 || data.code === 70004) &&
+      fallbackAuth
+    ) {
+      console.warn(`[Twilio Service] Primary auth failed with status ${response.status} (code ${data.code}). Retrying with fallback credentials...`);
+      const retryResult = await executePost(fallbackAuth);
+      response = retryResult.response;
+      data = retryResult.data;
+    }
 
     if (!response.ok) {
-      if (data.code === 21608 || data.code === 572002) {
-        console.warn(`[Twilio Service] Trial account restriction: Recipient ${maskedTo} is not a verified caller ID.`);
-        return {
-          success: false,
-          maskedRecipient: maskedTo,
-          error: `Twilio Trial Notice: Recipient ${maskedTo} is unverified. To receive SMS in Twilio Trial mode, please add this number in your Twilio Console (Verified Caller IDs).`,
-        };
-      }
-
-      if (data.code === 21211) {
-        return {
-          success: false,
-          maskedRecipient: maskedTo,
-          error: `Invalid recipient phone number (${maskedTo}). Please check the customer's phone number.`,
-        };
-      }
-
       console.error(`[Twilio Service] API Error (Status ${response.status}, Code ${data.code}): ${data.message}`);
+
+      let userFriendlyError = data.message || `Twilio SMS delivery failed with status ${response.status}.`;
+
+      if (data.code === 21408) {
+        userFriendlyError = `SMS to ${maskedTo} is not permitted under your Twilio Geo-Permissions (Error 21408). Please enable this destination country in Twilio Console > Messaging > Settings > Geo-Permissions.`;
+      } else if (data.code === 21608 || data.code === 572002) {
+        userFriendlyError = `Twilio Trial Notice: Recipient ${maskedTo} is unverified (Error 21608). In Twilio Trial mode, please verify this number in Twilio Console (Verified Caller IDs).`;
+      } else if (data.code === 21211) {
+        userFriendlyError = `Invalid recipient phone number (${maskedTo}). Please check the customer's phone number format (Error 21211).`;
+      } else if (data.code === 21614) {
+        userFriendlyError = `Recipient phone number (${maskedTo}) is not capable of receiving SMS (Error 21614).`;
+      } else if (data.code === 8001) {
+        userFriendlyError = `Twilio authorization failed: Credentials lack endpoint assertions (Error 8001). Using master Account SID + Auth Token is recommended.`;
+      } else if (data.code === 70004) {
+        userFriendlyError = `Twilio API key lacks permissions to access this endpoint (Error 70004).`;
+      }
+
       return {
         success: false,
         maskedRecipient: maskedTo,
-        error: data.message || `Twilio SMS delivery failed with status ${response.status}.`,
+        error: userFriendlyError,
+        errorCode: data.code,
+        httpStatus: response.status,
       };
     }
 
@@ -241,6 +285,7 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
       success: true,
       messageSid: data.sid,
       maskedRecipient: maskedTo,
+      httpStatus: response.status,
     };
   } catch (err: any) {
     const errorDetail =
@@ -286,7 +331,7 @@ function getServerSupabase(authToken?: string | null) {
 }
 
 const OTP_EXPIRY_MS = 15 * 60 * 1000; // 15 Minutes
-const OTP_RESEND_COOLDOWN_MS = 30 * 1000; // 30 Seconds rate limit
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000; // 60 Seconds rate limit
 const MAX_OTP_ATTEMPTS = 5;
 
 /**
@@ -499,11 +544,17 @@ export interface RequestDeliveryOtpInput {
 
 export interface RequestDeliveryOtpResponse {
   success: boolean;
+  smsSent?: boolean;
   message: string;
   maskedPhone?: string;
   isVerified?: boolean;
   expiresAt?: number;
   error?: string;
+  smsError?: string;
+  smsErrorCode?: number;
+  messageSid?: string;
+  cooldownEndsAt?: number;
+  cooldownRemainingSec?: number;
 }
 
 /**
@@ -575,14 +626,17 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     // 3. Check rate limiting (cooldown) from notes / timestamp
     const notes = assignment.notes || "";
     const rateMatch = notes.match(/\[LAST_SENT:(\d+)\]/);
-    if (rateMatch && rateMatch[1] && !forceRegenerate) {
+    if (rateMatch && rateMatch[1]) {
       const lastSent = Number(rateMatch[1]);
       if (now - lastSent < OTP_RESEND_COOLDOWN_MS) {
         const remainingSec = Math.ceil((OTP_RESEND_COOLDOWN_MS - (now - lastSent)) / 1000);
         return {
           success: false,
-          error: `Please wait ${remainingSec} second(s) before requesting another SMS OTP.`,
-          message: `Please wait ${remainingSec} second(s) before requesting another SMS OTP.`,
+          smsSent: false,
+          error: `Please wait ${remainingSec}s before requesting another SMS OTP.`,
+          message: `Please wait ${remainingSec}s before requesting another SMS OTP.`,
+          cooldownRemainingSec: remainingSec,
+          cooldownEndsAt: lastSent + OTP_RESEND_COOLDOWN_MS,
         };
       }
     }
@@ -623,12 +677,11 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     const expiresAt = now + OTP_EXPIRY_MS;
     const expiresAtIso = new Date(expiresAt).toISOString();
 
-    // Update assignment in database with hashed OTP
+    // Invalidate previous OTP and store freshly hashed OTP
     const cleanNotes = notes
       .replace(/\[OTP:(\{.*?\})\]/g, "")
       .replace(/\[LAST_SENT:\d+\]/g, "")
       .trim();
-    const updatedNotes = `${cleanNotes} [LAST_SENT:${now}]`.trim();
 
     await (supabase.from("delivery_assignments") as any)
       .update({
@@ -638,7 +691,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         otp_max_attempts: MAX_OTP_ATTEMPTS,
         otp_verified: false,
         otp_verified_at: null,
-        notes: updatedNotes,
+        notes: cleanNotes,
         updated_at: new Date().toISOString(),
       })
       .eq("id", assignment.id);
@@ -670,16 +723,37 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     if (!smsResult.success) {
       return {
         success: true,
+        smsSent: false,
         maskedPhone: maskedTo,
         expiresAt,
-        message: `OTP generated. Twilio SMS status: ${smsResult.error || "SMS dispatch issue"}.`,
+        error: smsResult.error,
+        smsError: smsResult.error,
+        smsErrorCode: smsResult.errorCode,
+        message: `OTP generated in system, but Twilio SMS delivery failed: ${smsResult.error || "SMS dispatch issue"}.`,
       };
+    }
+
+    // 8. Record LAST_SENT timestamp in notes ONLY when Twilio SMS succeeded
+    const cooldownEndsAt = now + OTP_RESEND_COOLDOWN_MS;
+    try {
+      await (supabase.from("delivery_assignments") as any)
+        .update({
+          notes: `${cleanNotes} [LAST_SENT:${now}]`.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", assignment.id);
+    } catch (noteErr) {
+      console.warn("[Delivery OTP Server] Failed to update LAST_SENT note:", noteErr);
     }
 
     return {
       success: true,
+      smsSent: true,
+      messageSid: smsResult.messageSid,
       maskedPhone: maskedTo,
       expiresAt,
+      cooldownEndsAt,
+      cooldownRemainingSec: 60,
       message: `Delivery verification code sent to customer via SMS (${maskedTo}).`,
     };
   });

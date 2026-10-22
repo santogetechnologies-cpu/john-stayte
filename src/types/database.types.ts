@@ -9,6 +9,72 @@ export type TicketStatus = "Open" | "In Progress" | "Waiting" | "Resolved";
 export interface Database {
   public: {
     Tables: {
+      delivery_slots: {
+        Row: {
+          id: string;
+          slot_name: string;
+          start_time: string;
+          end_time: string;
+          capacity: number;
+          is_active: boolean;
+          operating_days: number[];
+          slot_type: "delivery" | "pickup" | "both";
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          slot_name: string;
+          start_time: string;
+          end_time: string;
+          capacity?: number;
+          is_active?: boolean;
+          operating_days?: number[];
+          slot_type?: "delivery" | "pickup" | "both";
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          slot_name?: string;
+          start_time?: string;
+          end_time?: string;
+          capacity?: number;
+          is_active?: boolean;
+          operating_days?: number[];
+          slot_type?: "delivery" | "pickup" | "both";
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      delivery_slot_closures: {
+        Row: {
+          id: string;
+          slot_id: string | null;
+          closure_date: string;
+          reason: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          slot_id?: string | null;
+          closure_date: string;
+          reason?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          slot_id?: string | null;
+          closure_date?: string;
+          reason?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -180,7 +246,17 @@ export interface Database {
           target_scope: "all_products" | "category" | "specific_products";
           target_category_slugs: string[];
           target_product_ids: string[];
-          target_customer_rule: "all_customers" | "new_customer" | "first_order" | "min_cart_spend" | "lifetime_spend" | "period_spend" | "order_count_milestone" | "consecutive_loyalty" | "referral" | "custom_rule_builder";
+          target_customer_rule:
+            | "all_customers"
+            | "new_customer"
+            | "first_order"
+            | "min_cart_spend"
+            | "lifetime_spend"
+            | "period_spend"
+            | "order_count_milestone"
+            | "consecutive_loyalty"
+            | "referral"
+            | "custom_rule_builder";
           spend_threshold_amount: number;
           spend_period_days: number;
           order_count_target: number;
@@ -225,7 +301,17 @@ export interface Database {
           target_scope?: "all_products" | "category" | "specific_products";
           target_category_slugs?: string[];
           target_product_ids?: string[];
-          target_customer_rule?: "all_customers" | "new_customer" | "first_order" | "min_cart_spend" | "lifetime_spend" | "period_spend" | "order_count_milestone" | "consecutive_loyalty" | "referral" | "custom_rule_builder";
+          target_customer_rule?:
+            | "all_customers"
+            | "new_customer"
+            | "first_order"
+            | "min_cart_spend"
+            | "lifetime_spend"
+            | "period_spend"
+            | "order_count_milestone"
+            | "consecutive_loyalty"
+            | "referral"
+            | "custom_rule_builder";
           spend_threshold_amount?: number;
           spend_period_days?: number;
           order_count_target?: number;
@@ -270,7 +356,17 @@ export interface Database {
           target_scope?: "all_products" | "category" | "specific_products";
           target_category_slugs?: string[];
           target_product_ids?: string[];
-          target_customer_rule?: "all_customers" | "new_customer" | "first_order" | "min_cart_spend" | "lifetime_spend" | "period_spend" | "order_count_milestone" | "consecutive_loyalty" | "referral" | "custom_rule_builder";
+          target_customer_rule?:
+            | "all_customers"
+            | "new_customer"
+            | "first_order"
+            | "min_cart_spend"
+            | "lifetime_spend"
+            | "period_spend"
+            | "order_count_milestone"
+            | "consecutive_loyalty"
+            | "referral"
+            | "custom_rule_builder";
           spend_threshold_amount?: number;
           spend_period_days?: number;
           order_count_target?: number;

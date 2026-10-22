@@ -15,6 +15,7 @@ import {
   AlertCircle,
   ArrowRight,
   Loader2,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
@@ -47,7 +48,7 @@ export const Route = createFileRoute("/login")({
 
 
 function LoginPage() {
-  const { login, register } = useStore();
+  const { login, register, resendConfirmationEmail, user, authLoading } = useStore();
   const navigate = useNavigate();
 
   // Active Tab
@@ -65,6 +66,13 @@ function LoginPage() {
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Email Confirmation State
+  const [pendingEmailConfirmation, setPendingEmailConfirmation] = useState<string | null>(null);
+  const [unconfirmedLoginEmail, setUnconfirmedLoginEmail] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const [confirmedSuccessBanner, setConfirmedSuccessBanner] = useState(false);
 
   // General State
   const [loading, setLoading] = useState(false);
@@ -105,11 +113,80 @@ function LoginPage() {
     });
   };
 
+  // Check for email confirmation redirect or error params in URL on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+      const hashParams = new URLSearchParams(hash);
+
+      const isConfirmed = searchParams.get("confirmed") === "true" || hashParams.get("type") === "signup";
+      const errorDesc =
+        searchParams.get("error_description") ||
+        hashParams.get("error_description") ||
+        (searchParams.get("error") ? "Email verification link is invalid or has expired." : null);
+
+      if (errorDesc) {
+        const decoded = decodeURIComponent(errorDesc.replace(/\+/g, " "));
+        setFormError(decoded);
+        toast.error(decoded);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      if (isConfirmed) {
+        setConfirmedSuccessBanner(true);
+        toast.success("Email verified successfully! You can now sign in to your account.");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {
+      // Non-blocking URL parse
+    }
+  }, []);
+
+  // Cooldown timer for resending confirmation email
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Auto-redirect if customer is already authenticated (or becomes authenticated via session detection)
+  useEffect(() => {
+    if (user && !authLoading) {
+      redirectByRole(user.role);
+    }
+  }, [user, authLoading]);
+
+  // Handle Resend Confirmation Email
+  const handleResendConfirmation = async (targetEmail: string) => {
+    if (!targetEmail || resending || resendCooldown > 0) return;
+    setResending(true);
+    try {
+      const res = await resendConfirmationEmail(targetEmail);
+      if (res.ok) {
+        toast.success(res.message || "Confirmation email sent! Please check your inbox.");
+        setResendCooldown(60);
+      } else {
+        toast.error(res.error || "Failed to resend confirmation email.");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to resend confirmation email.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   // Handle Real Supabase Sign In
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setAuthStatus("idle");
+    setUnconfirmedLoginEmail(null);
 
     if (!signInEmail || !signInPassword) {
       setAuthStatus("error");
@@ -130,6 +207,9 @@ function LoginPage() {
       if (!res.ok || !res.user) {
         setAuthStatus("error");
         setFormError(res.error || "Invalid email or password.");
+        if (res.emailNotConfirmed) {
+          setUnconfirmedLoginEmail(res.unconfirmedEmail || signInEmail.trim());
+        }
         speakLoginError(res.error, signInEmail);
         setTimeout(() => setAuthStatus("idle"), 1500);
         return;
@@ -183,6 +263,16 @@ function LoginPage() {
         return;
       }
 
+      // If Supabase Auth requires email confirmation (session is null)
+      if (res.requiresEmailConfirmation) {
+        setPendingEmailConfirmation(res.email || regEmail.trim());
+        setResendCooldown(60);
+        setAuthStatus("idle");
+        toast.success("Account registered! Please check your email to activate your account.");
+        return;
+      }
+
+      // Immediate session (e.g. auto-confirm enabled)
       setAuthStatus("success");
       toast.success("Account created successfully!");
       setTimeout(() => {
@@ -412,300 +502,415 @@ function LoginPage() {
                 {/* Frosted Glass Sign In / Register Card (More Vertical Height & Spaciousness) */}
                 <div className="p-7 sm:p-9 lg:p-9.5 rounded-[30px] bg-white/95 sm:bg-white/90 backdrop-blur-2xl border border-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
                   
-                  {/* CARD HEADER */}
-                  <div className="space-y-4">
-                    <div>
-                      <h2 className="text-2xl font-display font-black tracking-tight text-slate-900">
-                        {tab === "signin" ? "Sign In" : "Create an Account"}
-                      </h2>
-                      <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                        {tab === "signin"
-                          ? "Access your John Stayte Services account."
-                          : "Fill in your details to create a secure account."}
-                      </p>
+                  {pendingEmailConfirmation ? (
+                    <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-200">
+                      <div className="mx-auto w-16 h-16 rounded-full bg-red-50 border border-red-200/80 flex items-center justify-center text-[#e31b23] shadow-md shadow-red-500/10">
+                        <Mail className="h-8 w-8" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-[#e31b23] bg-red-50 border border-red-200/60">
+                          CONFIRMATION LINK SENT
+                        </span>
+                        <h2 className="text-2xl font-display font-black tracking-tight text-slate-900">
+                          Check your email
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-sm mx-auto">
+                          We've sent an activation link to{" "}
+                          <strong className="text-slate-900 font-bold break-all">
+                            {pendingEmailConfirmation}
+                          </strong>
+                          . Click the link in your email to activate your account and start ordering gas.
+                        </p>
+                      </div>
+
+                      <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200/60 text-left flex items-start gap-3 text-xs text-amber-900">
+                        <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                        <p className="font-medium text-[11.5px] leading-relaxed">
+                          Can't find the email? Check your <strong>Spam</strong> or <strong>Junk</strong> folder.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2.5 pt-1">
+                        <Button
+                          type="button"
+                          disabled={resending || resendCooldown > 0}
+                          onClick={() => handleResendConfirmation(pendingEmailConfirmation)}
+                          className="w-full rounded-full font-black text-xs sm:text-sm shadow-md bg-[#e31b23] hover:bg-[#c9151c] text-white h-11 transition-all cursor-pointer disabled:opacity-60"
+                        >
+                          {resending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> Resending...
+                            </>
+                          ) : resendCooldown > 0 ? (
+                            `Resend link in ${resendCooldown}s`
+                          ) : (
+                            "Resend Confirmation Email"
+                          )}
+                        </Button>
+
+                        <div className="flex items-center justify-center gap-4 text-xs font-bold text-slate-600 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingEmailConfirmation(null);
+                              setTab("signin");
+                              setFormError(null);
+                              setUnconfirmedLoginEmail(null);
+                            }}
+                            className="text-[#e31b23] hover:underline cursor-pointer"
+                          >
+                            Return to Sign In
+                          </button>
+                          <span className="text-slate-300">•</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingEmailConfirmation(null);
+                            }}
+                            className="text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+                          >
+                            Edit Registration
+                          </button>
+                        </div>
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      {/* CARD HEADER */}
+                      <div className="space-y-4">
+                        <div>
+                          <h2 className="text-2xl font-display font-black tracking-tight text-slate-900">
+                            {tab === "signin" ? "Sign In" : "Create an Account"}
+                          </h2>
+                          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                            {tab === "signin"
+                              ? "Access your John Stayte Services account."
+                              : "Fill in your details to create a secure account."}
+                          </p>
+                        </div>
 
-                    {/* Segmented Switch */}
-                    <div className="p-1 rounded-2xl bg-slate-100/90 border border-slate-200/60 grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTab("signin");
-                          setFormError(null);
-                          setAuthStatus("idle");
-                        }}
-                        className={`py-2.5 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${
-                          tab === "signin"
-                            ? "bg-[#e31b23] text-white shadow-md shadow-red-500/25 scale-[1.01]"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Sign In
-                      </button>
+                        {/* Segmented Switch */}
+                        <div className="p-1 rounded-2xl bg-slate-100/90 border border-slate-200/60 grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTab("signin");
+                              setFormError(null);
+                              setAuthStatus("idle");
+                              setUnconfirmedLoginEmail(null);
+                            }}
+                            className={`py-2.5 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                              tab === "signin"
+                                ? "bg-[#e31b23] text-white shadow-md shadow-red-500/25 scale-[1.01]"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            Sign In
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTab("register");
-                          setFormError(null);
-                          setAuthStatus("idle");
-                        }}
-                        className={`py-2.5 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${
-                          tab === "register"
-                            ? "bg-[#e31b23] text-white shadow-md shadow-red-500/25 scale-[1.01]"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        Register
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* INLINE FORM ERROR BANNER */}
-                  {formError && (
-                    <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200/80 flex items-start gap-3 text-xs text-red-700 animate-in fade-in duration-200">
-                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-[#e31b23]" />
-                      <p className="font-bold leading-relaxed">{formError}</p>
-                    </div>
-                  )}
-
-                  {/* TAB 1: SIGN IN FORM */}
-                  {tab === "signin" && (
-                    <form onSubmit={handleSignIn} className="space-y-4.5 text-xs font-medium">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="signin-email" className="font-bold text-slate-800 text-xs">
-                          Email Address
-                        </Label>
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input
-                            id="signin-email"
-                            type="email"
-                            value={signInEmail}
-                            onChange={(e) => setSignInEmail(e.target.value)}
-                            placeholder="name@example.com"
-                            className="pl-11 rounded-xl text-xs sm:text-sm font-semibold h-12 bg-slate-50/70 border-slate-200/80 hover:border-slate-300 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                            required
-                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTab("register");
+                              setFormError(null);
+                              setAuthStatus("idle");
+                              setUnconfirmedLoginEmail(null);
+                            }}
+                            className={`py-2.5 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                              tab === "register"
+                                ? "bg-[#e31b23] text-white shadow-md shadow-red-500/25 scale-[1.01]"
+                                : "text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            Register
+                          </button>
                         </div>
                       </div>
 
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="signin-password" className="font-bold text-slate-800 text-xs">
-                            Password
-                          </Label>
-                          <button
-                            type="button"
-                            onClick={() => setForgotModal(true)}
-                            className="text-[11px] font-bold text-[#e31b23] hover:text-[#b3141b] hover:underline transition-colors cursor-pointer"
-                          >
-                            Forgot password?
-                          </button>
+                      {/* CONFIRMED SUCCESS BANNER */}
+                      {confirmedSuccessBanner && (
+                        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200/90 flex items-start gap-3 text-xs text-emerald-800 animate-in fade-in duration-200">
+                          <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
+                          <p className="font-bold leading-relaxed">
+                            Your email has been confirmed! Please sign in with your password to continue.
+                          </p>
                         </div>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input
-                            id="signin-password"
-                            type={showSignInPassword ? "text" : "password"}
-                            value={signInPassword}
-                            onChange={(e) => setSignInPassword(e.target.value)}
-                            placeholder="••••••••"
-                            className="pl-11 pr-11 rounded-xl text-xs sm:text-sm font-semibold h-12 bg-slate-50/70 border-slate-200/80 hover:border-slate-300 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                            required
-                          />
-                          <button
+                      )}
+
+                      {/* UNCONFIRMED EMAIL SIGN IN NOTICE */}
+                      {unconfirmedLoginEmail && tab === "signin" && (
+                        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/90 flex flex-col gap-2.5 text-xs text-amber-900 animate-in fade-in duration-200">
+                          <div className="flex items-start gap-2.5">
+                            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                            <p className="font-semibold leading-relaxed">
+                              This account's email has not been confirmed yet. Please verify your email to log in.
+                            </p>
+                          </div>
+                          <Button
                             type="button"
-                            onClick={() => setShowSignInPassword(!showSignInPassword)}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                            size="sm"
+                            disabled={resending || resendCooldown > 0}
+                            onClick={() => handleResendConfirmation(unconfirmedLoginEmail)}
+                            className="self-start rounded-full text-xs font-bold h-8 px-4 bg-amber-700 hover:bg-amber-800 text-white cursor-pointer shadow-xs"
                           >
-                            {showSignInPassword ? (
-                              <EyeOff className="h-4 w-4" />
+                            {resending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                            ) : null}
+                            {resendCooldown > 0
+                              ? `Resend link in ${resendCooldown}s`
+                              : "Resend confirmation email"}
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* INLINE FORM ERROR BANNER */}
+                      {formError && !unconfirmedLoginEmail && (
+                        <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200/80 flex items-start gap-3 text-xs text-red-700 animate-in fade-in duration-200">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-[#e31b23]" />
+                          <p className="font-bold leading-relaxed">{formError}</p>
+                        </div>
+                      )}
+
+                      {/* TAB 1: SIGN IN FORM */}
+                      {tab === "signin" && (
+                        <form onSubmit={handleSignIn} className="space-y-4.5 text-xs font-medium">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="signin-email" className="font-bold text-slate-800 text-xs">
+                              Email Address
+                            </Label>
+                            <div className="relative">
+                              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Input
+                                id="signin-email"
+                                type="email"
+                                value={signInEmail}
+                                onChange={(e) => setSignInEmail(e.target.value)}
+                                placeholder="name@example.com"
+                                className="pl-11 rounded-xl text-xs sm:text-sm font-semibold h-12 bg-slate-50/70 border-slate-200/80 hover:border-slate-300 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor="signin-password" className="font-bold text-slate-800 text-xs">
+                                Password
+                              </Label>
+                              <button
+                                type="button"
+                                onClick={() => setForgotModal(true)}
+                                className="text-[11px] font-bold text-[#e31b23] hover:text-[#b3141b] hover:underline transition-colors cursor-pointer"
+                              >
+                                Forgot password?
+                              </button>
+                            </div>
+                            <div className="relative">
+                              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Input
+                                id="signin-password"
+                                type={showSignInPassword ? "text" : "password"}
+                                value={signInPassword}
+                                onChange={(e) => setSignInPassword(e.target.value)}
+                                placeholder="••••••••"
+                                className="pl-11 pr-11 rounded-xl text-xs sm:text-sm font-semibold h-12 bg-slate-50/70 border-slate-200/80 hover:border-slate-300 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                required
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowSignInPassword(!showSignInPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                              >
+                                {showSignInPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <Button
+                            type="submit"
+                            disabled={loading}
+                            size="lg"
+                            className="w-full rounded-full font-black text-xs sm:text-sm shadow-lg shadow-red-500/25 bg-[#e31b23] hover:bg-[#c9151c] text-white h-12 mt-3 gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                          >
+                            {loading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" /> Signing in...
+                              </>
                             ) : (
-                              <Eye className="h-4 w-4" />
+                              <>
+                                Sign In <ArrowRight className="h-4 w-4" />
+                              </>
                             )}
-                          </button>
-                        </div>
-                      </div>
+                          </Button>
+                        </form>
+                      )}
 
-                      <Button
-                        type="submit"
-                        disabled={loading}
-                        size="lg"
-                        className="w-full rounded-full font-black text-xs sm:text-sm shadow-lg shadow-red-500/25 bg-[#e31b23] hover:bg-[#c9151c] text-white h-12 mt-3 gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                      >
-                        {loading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" /> Signing in...
-                          </>
-                        ) : (
-                          <>
-                            Sign In <ArrowRight className="h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    </form>
-                  )}
-
-                  {/* TAB 2: REGISTER FORM (Completely empty default fields) */}
-                  {tab === "register" && (
-                    <form onSubmit={handleRegister} className="space-y-4 text-xs font-medium">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="reg-name" className="font-bold text-slate-800 text-xs">
-                          Full Name
-                        </Label>
-                        <div className="relative">
-                          <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input
-                            id="reg-name"
-                            type="text"
-                            value={regName}
-                            onChange={(e) => setRegName(e.target.value)}
-                            placeholder="Full name"
-                            className="pl-11 rounded-xl text-xs sm:text-sm font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="reg-email" className="font-bold text-slate-800 text-xs">
-                            Email Address
-                          </Label>
-                          <div className="relative">
-                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                              id="reg-email"
-                              type="email"
-                              value={regEmail}
-                              onChange={(e) => setRegEmail(e.target.value)}
-                              placeholder="name@example.com"
-                              className="pl-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                              required
-                            />
+                      {/* TAB 2: REGISTER FORM (Completely empty default fields) */}
+                      {tab === "register" && (
+                        <form onSubmit={handleRegister} className="space-y-4 text-xs font-medium">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="reg-name" className="font-bold text-slate-800 text-xs">
+                              Full Name
+                            </Label>
+                            <div className="relative">
+                              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Input
+                                id="reg-name"
+                                type="text"
+                                value={regName}
+                                onChange={(e) => setRegName(e.target.value)}
+                                placeholder="Full name"
+                                className="pl-11 rounded-xl text-xs sm:text-sm font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                required
+                              />
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="space-y-1.5">
-                          <Label htmlFor="reg-phone" className="font-bold text-slate-800 text-xs">
-                            Phone Number
-                          </Label>
-                          <div className="relative">
-                            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                              id="reg-phone"
-                              type="tel"
-                              value={regPhone}
-                              onChange={(e) => setRegPhone(e.target.value)}
-                              placeholder="Phone number"
-                              className="pl-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                            />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="reg-email" className="font-bold text-slate-800 text-xs">
+                                Email Address
+                              </Label>
+                              <div className="relative">
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                  id="reg-email"
+                                  type="email"
+                                  value={regEmail}
+                                  onChange={(e) => setRegEmail(e.target.value)}
+                                  placeholder="name@example.com"
+                                  className="pl-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label htmlFor="reg-phone" className="font-bold text-slate-800 text-xs">
+                                Phone Number
+                              </Label>
+                              <div className="relative">
+                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                  id="reg-phone"
+                                  type="tel"
+                                  value={regPhone}
+                                  onChange={(e) => setRegPhone(e.target.value)}
+                                  placeholder="Phone number"
+                                  className="pl-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="reg-password" className="font-bold text-slate-800 text-xs">
-                            Password
-                          </Label>
-                          <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                              id="reg-password"
-                              type={showRegPassword ? "text" : "password"}
-                              value={regPassword}
-                              onChange={(e) => setRegPassword(e.target.value)}
-                              placeholder="••••••••"
-                              className="pl-11 pr-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                              required
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowRegPassword(!showRegPassword)}
-                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                              aria-label={showRegPassword ? "Hide password" : "Show password"}
-                            >
-                              {showRegPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="reg-password" className="font-bold text-slate-800 text-xs">
+                                Password
+                              </Label>
+                              <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                  id="reg-password"
+                                  type={showRegPassword ? "text" : "password"}
+                                  value={regPassword}
+                                  onChange={(e) => setRegPassword(e.target.value)}
+                                  placeholder="••••••••"
+                                  className="pl-11 pr-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                  required
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowRegPassword(!showRegPassword)}
+                                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                                  aria-label={showRegPassword ? "Hide password" : "Show password"}
+                                >
+                                  {showRegPassword ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label htmlFor="reg-confirm" className="font-bold text-slate-800 text-xs">
+                                Confirm Password
+                              </Label>
+                              <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Input
+                                  id="reg-confirm"
+                                  type={showRegPassword ? "text" : "password"}
+                                  value={regConfirmPassword}
+                                  onChange={(e) => setRegConfirmPassword(e.target.value)}
+                                  placeholder="••••••••"
+                                  className="pl-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
+                                  required
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="space-y-1.5">
-                          <Label htmlFor="reg-confirm" className="font-bold text-slate-800 text-xs">
-                            Confirm Password
-                          </Label>
-                          <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                            <Input
-                              id="reg-confirm"
-                              type={showRegPassword ? "text" : "password"}
-                              value={regConfirmPassword}
-                              onChange={(e) => setRegConfirmPassword(e.target.value)}
-                              placeholder="••••••••"
-                              className="pl-11 rounded-xl text-xs font-semibold h-11 bg-slate-50/70 border-slate-200/80 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:border-[#e31b23]"
-                              required
-                            />
+                          {/* PASSWORD REQUIREMENTS CHECKLIST */}
+                          <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-100 space-y-1.5 text-[11px]">
+                            <p className="font-bold text-slate-700">Password requirements:</p>
+                            <div className="grid grid-cols-3 gap-1 text-slate-500 font-medium">
+                              <span
+                                className={
+                                  hasMinLen
+                                    ? "text-emerald-600 font-bold flex items-center gap-1"
+                                    : "flex items-center gap-1"
+                                }
+                              >
+                                <CheckCircle2 className="h-3 w-3 shrink-0" /> 8+ chars
+                              </span>
+                              <span
+                                className={
+                                  hasUppercase
+                                    ? "text-emerald-600 font-bold flex items-center gap-1"
+                                    : "flex items-center gap-1"
+                                }
+                              >
+                                <CheckCircle2 className="h-3 w-3 shrink-0" /> 1 Uppercase
+                              </span>
+                              <span
+                                className={
+                                  hasNumber
+                                    ? "text-emerald-600 font-bold flex items-center gap-1"
+                                    : "flex items-center gap-1"
+                                }
+                              >
+                                <CheckCircle2 className="h-3 w-3 shrink-0" /> 1 Number
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </div>
 
-                      {/* PASSWORD REQUIREMENTS CHECKLIST */}
-                      <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-100 space-y-1.5 text-[11px]">
-                        <p className="font-bold text-slate-700">Password requirements:</p>
-                        <div className="grid grid-cols-3 gap-1 text-slate-500 font-medium">
-                          <span
-                            className={
-                              hasMinLen
-                                ? "text-emerald-600 font-bold flex items-center gap-1"
-                                : "flex items-center gap-1"
-                            }
+                          <Button
+                            type="submit"
+                            disabled={loading}
+                            size="lg"
+                            className="w-full rounded-full font-black text-xs sm:text-sm shadow-lg shadow-red-500/25 bg-[#e31b23] hover:bg-[#c9151c] text-white h-12 mt-2 gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                           >
-                            <CheckCircle2 className="h-3 w-3 shrink-0" /> 8+ chars
-                          </span>
-                          <span
-                            className={
-                              hasUppercase
-                                ? "text-emerald-600 font-bold flex items-center gap-1"
-                                : "flex items-center gap-1"
-                            }
-                          >
-                            <CheckCircle2 className="h-3 w-3 shrink-0" /> 1 Uppercase
-                          </span>
-                          <span
-                            className={
-                              hasNumber
-                                ? "text-emerald-600 font-bold flex items-center gap-1"
-                                : "flex items-center gap-1"
-                            }
-                          >
-                            <CheckCircle2 className="h-3 w-3 shrink-0" /> 1 Number
-                          </span>
-                        </div>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        disabled={loading}
-                        size="lg"
-                        className="w-full rounded-full font-black text-xs sm:text-sm shadow-lg shadow-red-500/25 bg-[#e31b23] hover:bg-[#c9151c] text-white h-12 mt-2 gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                      >
-                        {loading ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" /> Creating Account...
-                          </>
-                        ) : (
-                          <>
-                            Create Account <ArrowRight className="h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    </form>
+                            {loading ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" /> Creating Account...
+                              </>
+                            ) : (
+                              <>
+                                Create Account <ArrowRight className="h-4 w-4" />
+                              </>
+                            )}
+                          </Button>
+                        </form>
+                      )}
+                    </>
                   )}
 
                   {/* TRUST / SECURITY FOOTER */}

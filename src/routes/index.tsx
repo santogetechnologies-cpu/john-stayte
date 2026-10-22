@@ -433,6 +433,225 @@ function BlogCarousel({ posts }: { posts: any[] }) {
   );
 }
 
+function AvailableProductsCarousel({
+  products,
+  wishlist,
+  toggleWishlist,
+  addToCart,
+}: {
+  products: any[];
+  wishlist: string[];
+  toggleWishlist: (slug: string) => void;
+  addToCart: (slug: string) => void;
+}) {
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: "start",
+    slidesToScroll: 1,
+    containScroll: "trimSnaps",
+    duration: 25,
+  });
+  const [canScrollPrev, setCanScrollPrev] = useState(false);
+  const [canScrollNext, setCanScrollNext] = useState(false);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCanScrollPrev(emblaApi.canScrollPrev());
+    setCanScrollNext(emblaApi.canScrollNext());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    emblaApi.on("select", onSelect);
+    emblaApi.on("reInit", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", onSelect);
+    };
+  }, [emblaApi, onSelect]);
+
+  // Reset to first slide whenever filtered products change
+  useEffect(() => {
+    if (emblaApi) {
+      emblaApi.scrollTo(0);
+      onSelect();
+    }
+  }, [products, emblaApi, onSelect]);
+
+  if (!products || products.length === 0) {
+    return (
+      <div className="surface-card p-12 text-center rounded-2xl border border-slate-200/80 bg-white text-xs text-muted-foreground font-bold">
+        No products available in this category.
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full max-w-[1140px] mx-auto flex items-center justify-center gap-2 sm:gap-3.5 md:gap-5">
+      {/* Left Navigation Arrow */}
+      <button
+        type="button"
+        onClick={() => emblaApi?.scrollPrev()}
+        disabled={!canScrollPrev}
+        aria-label="Previous products"
+        className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center justify-center text-slate-700 cursor-pointer shrink-0 z-10"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+
+      {/* Embla Carousel Viewport */}
+      <div ref={emblaRef} className="overflow-hidden w-full max-w-[1040px] py-1.5 flex-1">
+        <div className="flex -ml-4 sm:-ml-5 items-stretch">
+          {products.map((p, idx) => {
+            const wished = wishlist.includes(p.slug);
+            const isOutOfStock = Number(p.stock || 0) <= 0;
+
+            return (
+              <div
+                key={p.id || p.slug}
+                className="min-w-0 shrink-0 grow-0 pl-4 sm:pl-5 basis-full sm:basis-1/2"
+              >
+                <div className="group h-[380px] sm:h-[235px] md:h-[245px] rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-300 flex flex-col sm:flex-row items-stretch">
+                  {/* Left (Image Area): Balanced width, contained image, consistent height */}
+                  <div className="w-full sm:w-[40%] md:w-[38%] relative shrink-0 overflow-hidden bg-slate-50/70 border-b sm:border-b-0 sm:border-r border-slate-100 flex items-center justify-center p-3.5 sm:p-4 h-44 sm:h-full">
+                    {/* Badge */}
+                    <div className="absolute top-2.5 left-2.5 z-10">
+                      {idx % 2 === 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-extrabold shadow-2xs">
+                          <Award className="h-3 w-3" />
+                          <span>Best Seller</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[10px] font-extrabold shadow-2xs">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          <span>In Stock</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Product Image */}
+                    <Link
+                      to="/products/$slug"
+                      params={{ slug: p.slug }}
+                      className="w-full h-full flex items-center justify-center"
+                    >
+                      <img
+                        src={cleanImageUrl(p.image, p.slug)}
+                        alt={p.name}
+                        className="w-full h-full max-h-[140px] sm:max-h-[165px] object-contain group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = cylinderImg;
+                        }}
+                      />
+                    </Link>
+                  </div>
+
+                  {/* Right (Details Area) */}
+                  <div className="w-full sm:w-[60%] md:w-[62%] p-3.5 sm:p-4 md:p-5 flex flex-col justify-between flex-1 min-w-0">
+                    <div>
+                      {/* Top Row: Brand & Wishlist */}
+                      <div className="flex items-center justify-between gap-1.5">
+                        <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 truncate">
+                          {p.brand || "CALOR"}
+                        </span>
+                        <button
+                          type="button"
+                          aria-label="Add to wishlist"
+                          onClick={() => toggleWishlist(p.slug)}
+                          className="h-7 w-7 rounded-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors cursor-pointer shrink-0"
+                        >
+                          <Heart
+                            className={cn(
+                              "h-4 w-4 transition-colors",
+                              wished
+                                ? "fill-primary text-primary"
+                                : "text-slate-400 hover:text-primary",
+                            )}
+                          />
+                        </button>
+                      </div>
+
+                      {/* Product Title (Consistent 2-line height ensures identical card alignment) */}
+                      <h3 className="mt-1 text-sm sm:text-base font-extrabold text-slate-900 tracking-tight leading-snug line-clamp-2 min-h-[2.5rem]">
+                        <Link
+                          to="/products/$slug"
+                          params={{ slug: p.slug }}
+                          className="hover:text-primary transition-colors"
+                        >
+                          {typeof p.name === "string" ? p.name : String(p.name || "")}
+                        </Link>
+                      </h3>
+
+                      {/* Rating Row */}
+                      <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                        <span className="font-bold text-slate-700">
+                          {p.rating ? p.rating.toFixed(1) : "5.0"}
+                        </span>
+                        <span className="text-slate-400">({p.reviews || 0})</span>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="my-2 border-t border-slate-100" />
+
+                      {/* Price & Stock status */}
+                      <div className="flex items-baseline justify-between gap-2">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+                            {gbp(p.price)}
+                          </span>
+                          {p.compareAt && (
+                            <span className="text-xs text-slate-400 line-through font-medium">
+                              {gbp(p.compareAt)}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 text-[11px] font-extrabold text-emerald-600">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <span className="truncate">In Stock</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Add to Cart Button */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          addToCart(p.slug);
+                          toast.success(`Added ${p.name} to your cart`);
+                        }}
+                        disabled={isOutOfStock}
+                        className="w-full h-9 sm:h-10 px-4 rounded-full bg-primary hover:bg-primary/90 active:scale-[0.99] text-white text-xs font-extrabold shadow-xs flex items-center justify-center gap-2 group/btn cursor-pointer transition-all duration-200"
+                      >
+                        <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">Add to cart</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Right Navigation Arrow */}
+      <button
+        type="button"
+        onClick={() => emblaApi?.scrollNext()}
+        disabled={!canScrollNext}
+        aria-label="Next products"
+        className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center justify-center text-slate-700 cursor-pointer shrink-0 z-10"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 import { ALL_BRANDS } from "@/data/brands";
 
 function TrustedBrandsSection() {
@@ -499,7 +718,8 @@ function TrustedBrandsSection() {
             All Brands <span className="text-primary">– Shop by Brand</span>
           </h2>
           <p className="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
-            Trusted Names, Quality Products – browse products across all 31 certified partner brands.
+            Trusted Names, Quality Products – browse products across all 31 certified partner
+            brands.
           </p>
         </div>
 
@@ -868,7 +1088,9 @@ function Home() {
                 return updated;
               });
             }
-          } catch { }
+          } catch {
+            /* ignore JSON parse error */
+          }
         }
 
         if (stnBlock?.content) {
@@ -876,7 +1098,9 @@ function Home() {
             const parsedStns = JSON.parse(stnBlock.content);
             const stationList = Array.isArray(parsedStns)
               ? parsedStns
-              : (Array.isArray(parsedStns?.stations) ? parsedStns.stations : []);
+              : Array.isArray(parsedStns?.stations)
+                ? parsedStns.stations
+                : [];
             if (stationList.length > 0) {
               const sanitizedList = stationList.map((st: any) => {
                 const n = (st.name || "").toLowerCase();
@@ -911,7 +1135,9 @@ function Home() {
               });
               setDbStations(sanitizedList);
             }
-          } catch { }
+          } catch {
+            /* ignore JSON parse error */
+          }
         }
 
         if (testBlock?.content) {
@@ -919,11 +1145,15 @@ function Home() {
             const parsedTests = JSON.parse(testBlock.content);
             const testList = Array.isArray(parsedTests)
               ? parsedTests
-              : (Array.isArray(parsedTests?.reviews) ? parsedTests.reviews : []);
+              : Array.isArray(parsedTests?.reviews)
+                ? parsedTests.reviews
+                : [];
             if (testList.length > 0) {
               setDbTestimonials(testList);
             }
-          } catch { }
+          } catch {
+            /* ignore JSON parse error */
+          }
         }
 
         if (srvBlock?.content) {
@@ -931,11 +1161,15 @@ function Home() {
             const parsedServices = JSON.parse(srvBlock.content);
             const serviceList = Array.isArray(parsedServices)
               ? parsedServices
-              : (Array.isArray(parsedServices?.services) ? parsedServices.services : []);
+              : Array.isArray(parsedServices?.services)
+                ? parsedServices.services
+                : [];
             if (serviceList.length > 0) {
               setDbServices(serviceList.filter((s: any) => s.status !== "Inactive"));
             }
-          } catch { }
+          } catch {
+            /* ignore JSON parse error */
+          }
         }
       } catch (err) {
         console.error("Home load data error:", err);
@@ -961,7 +1195,6 @@ function Home() {
   const { addToCart, wishlist, toggleWishlist } = useStore();
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
   const [selectedSort, setSelectedSort] = useState<string>("popular");
-  const [catalogPage, setCatalogPage] = useState<number>(0);
 
   const featured = dbProducts.slice(0, 8);
 
@@ -979,11 +1212,6 @@ function Home() {
     }
     return prods;
   }, [dbProducts, selectedCategoryFilter, selectedSort]);
-
-  const displayedCatalogProducts = useMemo(() => {
-    const startIndex = catalogPage * 2;
-    return filteredCatalogProducts.slice(startIndex, startIndex + 2);
-  }, [filteredCatalogProducts, catalogPage]);
 
   // Extract unique brands dynamically from real database products
   const brands = useMemo(() => {
@@ -1148,7 +1376,9 @@ function Home() {
                         ? targetHeroHeading.slice(gasIdx, Math.min(typedHeadingCount, gasEnd))
                         : "";
                     const p3 =
-                      typedHeadingCount > gasEnd ? targetHeroHeading.slice(gasEnd, typedHeadingCount) : "";
+                      typedHeadingCount > gasEnd
+                        ? targetHeroHeading.slice(gasEnd, typedHeadingCount)
+                        : "";
                     return (
                       <>
                         {p1}
@@ -1275,7 +1505,7 @@ function Home() {
                     </span>
                   </div>
                   <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                    How Can We Help <span className="text-primary">Today?</span>
+                    Explore Our <span className="text-primary">Services</span>
                   </h2>
                   <p className="text-sm sm:text-base text-slate-600 leading-relaxed pt-0.5">
                     Select an action to order fuels, browse our local catalogue, find forecourts or
@@ -1408,8 +1638,9 @@ function Home() {
                 ].map((item, idx) => (
                   <ScrollRevealItem key={item.title} variant="card" delay={500 + idx * 80}>
                     <div
-                      className={`flex items-start gap-3.5 ${idx !== 3 ? "lg:border-r lg:border-slate-200/80 lg:pr-6" : ""
-                        }`}
+                      className={`flex items-start gap-3.5 ${
+                        idx !== 3 ? "lg:border-r lg:border-slate-200/80 lg:pr-6" : ""
+                      }`}
                     >
                       <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 border border-primary/15">
                         <item.icon className="h-5 w-5" />
@@ -1473,10 +1704,7 @@ function Home() {
                   <div className="relative">
                     <select
                       value={selectedCategoryFilter}
-                      onChange={(e) => {
-                        setSelectedCategoryFilter(e.target.value);
-                        setCatalogPage(0);
-                      }}
+                      onChange={(e) => setSelectedCategoryFilter(e.target.value)}
                       className="appearance-none bg-white border border-slate-200 rounded-full h-9 pl-4 pr-8 text-xs font-bold text-slate-700 shadow-2xs hover:border-slate-300 focus:outline-none cursor-pointer transition-colors"
                       aria-label="Filter products by category"
                     >
@@ -1530,180 +1758,15 @@ function Home() {
               </div>
             </ScrollRevealItem>
 
-            {/* Large Horizontal Product Cards Showcase with Left & Right Arrow Navigation */}
-            {displayedCatalogProducts.length === 0 ? (
-              <div className="surface-card p-12 text-center rounded-3xl border bg-white text-xs text-muted-foreground font-bold">
-                Loading products...
-              </div>
-            ) : (
-              <div className="relative w-full max-w-[1140px] mx-auto flex items-center justify-center gap-2 sm:gap-3.5 md:gap-5">
-                {/* Left Navigation Arrow */}
-                <button
-                  type="button"
-                  onClick={() => setCatalogPage((prev) => Math.max(0, prev - 1))}
-                  disabled={catalogPage === 0}
-                  aria-label="Previous products"
-                  className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-700 transition-all flex items-center justify-center text-slate-700 cursor-pointer shrink-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-
-                {/* Product Cards Grid */}
-                <div className="w-full max-w-[1040px] grid grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 items-stretch flex-1">
-                  {displayedCatalogProducts.map((p, idx) => {
-                    const wished = wishlist.includes(p.slug);
-                    const isOutOfStock = Number(p.stock || 0) <= 0;
-
-                    return (
-                      <ScrollRevealItem
-                        key={p.id || p.slug}
-                        variant="card"
-                        delay={120 + idx * 100}
-                        className="h-full"
-                      >
-                        <div className="group rounded-[6px] border border-slate-200/90 bg-white overflow-hidden shadow-2xs hover:shadow-xs hover:border-slate-300 transition-all duration-300 flex flex-col md:flex-row items-stretch h-full">
-                          {/* Left / Top - Product Image Area */}
-                          <div className="w-full md:w-[48%] relative shrink-0 overflow-hidden aspect-square md:aspect-auto min-h-0 md:min-h-full bg-slate-100 flex items-center justify-center md:items-stretch">
-                            {/* Top-Left Status Badge */}
-                            <div className="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 md:top-3.5 md:left-3.5 z-10">
-                              {idx === 0 ? (
-                                <span className="inline-flex items-center gap-1 md:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 rounded-full bg-primary text-white text-[9px] sm:text-[10px] md:text-[11px] font-extrabold shadow-sm">
-                                  <Award className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5" />{" "}
-                                  <span className="hidden sm:inline">Best Seller</span>
-                                  <span className="sm:hidden">Best</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 md:gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-[9px] sm:text-[10px] md:text-[11px] font-extrabold shadow-sm backdrop-blur-xs">
-                                  <CheckCircle2 className="h-2.5 w-2.5 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5 text-emerald-600" />{" "}
-                                  <span className="hidden sm:inline">In Stock</span>
-                                  <span className="sm:hidden">Stock</span>
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Product Photo */}
-                            <Link
-                              to="/products/$slug"
-                              params={{ slug: p.slug }}
-                              className="block w-full h-full flex items-center justify-center"
-                            >
-                              <img
-                                src={cleanImageUrl(p.image, p.slug)}
-                                alt={p.name}
-                                className="w-full h-full object-contain p-2.5 sm:p-3.5 md:p-0 md:object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                                loading="lazy"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = cylinderImg;
-                                }}
-                              />
-                            </Link>
-                          </div>
-
-                          {/* Right / Bottom - Product Content Area */}
-                          <div className="w-full md:w-[52%] p-3 sm:p-4 md:p-7 flex flex-col justify-between flex-1 space-y-2.5 sm:space-y-3 md:space-y-4">
-                            <div>
-                              {/* Top Header Row with Brand & Wishlist Heart */}
-                              <div className="flex items-center justify-between gap-1.5">
-                                <span className="text-[10px] sm:text-[11px] md:text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
-                                  {p.brand || "CALOR"}
-                                </span>
-                                <button
-                                  type="button"
-                                  aria-label="Add to wishlist"
-                                  onClick={() => toggleWishlist(p.slug)}
-                                  className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors cursor-pointer shrink-0"
-                                >
-                                  <Heart
-                                    className={cn(
-                                      "h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-4.5 md:w-4.5 transition-colors",
-                                      wished
-                                        ? "fill-primary text-primary"
-                                        : "text-slate-400 hover:text-primary",
-                                    )}
-                                  />
-                                </button>
-                              </div>
-
-                              {/* Product Title */}
-                              <h3 className="mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-2xl font-extrabold text-slate-900 tracking-tight leading-tight sm:leading-snug line-clamp-2">
-                                <Link
-                                  to="/products/$slug"
-                                  params={{ slug: p.slug }}
-                                  className="hover:text-primary transition-colors"
-                                >
-                                  {typeof p.name === "string" ? p.name : String(p.name || "")}
-                                </Link>
-                              </h3>
-
-                              {/* Rating Row */}
-                              <div className="mt-1 sm:mt-1.5 md:mt-2.5 flex items-center gap-1 text-[10px] sm:text-[11px] md:text-xs font-medium text-slate-500">
-                                <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                                <span className="font-bold text-slate-700">
-                                  {p.rating ? p.rating.toFixed(1) : "5.0"}
-                                </span>
-                                <span className="text-slate-400">({p.reviews || 0})</span>
-                              </div>
-
-                              {/* Divider (desktop only or subtle) */}
-                              <div className="my-1.5 sm:my-2 md:my-4 border-t border-slate-100" />
-
-                              {/* Price & Stock status */}
-                              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-0.5 sm:gap-2">
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-sm sm:text-base md:text-3xl font-black text-slate-900 tracking-tight">
-                                    {gbp(p.price)}
-                                  </span>
-                                  {p.compareAt && (
-                                    <span className="text-[10px] sm:text-xs md:text-sm text-slate-400 line-through font-medium">
-                                      {gbp(p.compareAt)}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1 text-[10px] sm:text-xs font-extrabold text-emerald-600">
-                                  <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-500 shrink-0" />
-                                  <span className="truncate">In Stock</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Primary CTA: Add to Cart Button */}
-                            <div className="pt-1 sm:pt-1.5 md:pt-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  addToCart(p.slug);
-                                  toast.success(`Added ${p.name} to your cart`);
-                                }}
-                                disabled={isOutOfStock}
-                                className="w-full h-8 sm:h-9 md:h-11 px-2.5 sm:px-3 md:px-5 rounded-full bg-primary hover:bg-primary/90 active:scale-[0.99] text-white text-[10px] sm:text-xs font-extrabold shadow-xs flex items-center justify-center gap-1.5 sm:gap-2 group/btn cursor-pointer transition-all duration-200"
-                              >
-                                <ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4 shrink-0" />
-                                <span className="truncate">Add to cart</span>
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </ScrollRevealItem>
-                    );
-                  })}
-                </div>
-
-                {/* Right Navigation Arrow */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const maxPages = Math.ceil(filteredCatalogProducts.length / 2) - 1;
-                    setCatalogPage((prev) => Math.min(maxPages > 0 ? maxPages : 0, prev + 1));
-                  }}
-                  disabled={catalogPage >= Math.ceil(filteredCatalogProducts.length / 2) - 1}
-                  aria-label="Next products"
-                  className="h-9 w-9 rounded-full bg-white border border-slate-200 shadow-2xs hover:border-primary hover:text-primary disabled:opacity-40 disabled:hover:border-slate-200 disabled:hover:text-slate-700 transition-all flex items-center justify-center text-slate-700 cursor-pointer shrink-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            {/* Embla Product Carousel Showcase */}
+            <ScrollRevealItem variant="card" delay={100}>
+              <AvailableProductsCarousel
+                products={filteredCatalogProducts}
+                wishlist={wishlist}
+                toggleWishlist={toggleWishlist}
+                addToCart={addToCart}
+              />
+            </ScrollRevealItem>
           </ScrollRevealSection>
         </div>
       </section>
@@ -2239,8 +2302,18 @@ function Home() {
                     const getStationSortOrder = (name: string) => {
                       const n = (name || "").toLowerCase();
                       if (n.includes("fromebridge") || n.includes("whitminster")) return 1;
-                      if (n.includes("wild goose") || n.includes("dursley") || n.includes("cambridge")) return 2;
-                      if (n.includes("bridge") || n.includes("stonehouse") || n.includes("frampton")) return 3;
+                      if (
+                        n.includes("wild goose") ||
+                        n.includes("dursley") ||
+                        n.includes("cambridge")
+                      )
+                        return 2;
+                      if (
+                        n.includes("bridge") ||
+                        n.includes("stonehouse") ||
+                        n.includes("frampton")
+                      )
+                        return 3;
                       return 99;
                     };
 
@@ -2249,13 +2322,26 @@ function Home() {
                       if (name.includes("fromebridge") || name.includes("whitminster")) {
                         return "/fromebridge-service-station-1.jpg";
                       }
-                      if (name.includes("wild goose") || name.includes("dursley") || name.includes("cambridge")) {
+                      if (
+                        name.includes("wild goose") ||
+                        name.includes("dursley") ||
+                        name.includes("cambridge")
+                      ) {
                         return "/wild-goose-garage-1.jpg";
                       }
-                      if (name.includes("bridge") || name.includes("stonehouse") || name.includes("frampton")) {
+                      if (
+                        name.includes("bridge") ||
+                        name.includes("stonehouse") ||
+                        name.includes("frampton")
+                      ) {
                         return "/bridge-station-forecourt.jpg";
                       }
-                      if (Array.isArray(s?.images) && s.images.length > 0 && typeof s.images[0] === "string" && s.images[0].trim()) {
+                      if (
+                        Array.isArray(s?.images) &&
+                        s.images.length > 0 &&
+                        typeof s.images[0] === "string" &&
+                        s.images[0].trim()
+                      ) {
                         return s.images[0].trim();
                       }
                       if (s?.image_url && typeof s.image_url === "string" && s.image_url.trim()) {
@@ -2265,7 +2351,7 @@ function Home() {
                     };
 
                     const sortedStations = [...dbStations].sort(
-                      (a, b) => getStationSortOrder(a.name) - getStationSortOrder(b.name)
+                      (a, b) => getStationSortOrder(a.name) - getStationSortOrder(b.name),
                     );
 
                     return sortedStations.map((s, idx) => {
@@ -2327,7 +2413,9 @@ function Home() {
                                       href={`tel:${(typeof s.phone === "string" ? s.phone : String(s.phone || "")).replace(/\s/g, "")}`}
                                       className="hover:text-primary font-bold text-slate-800 transition-colors"
                                     >
-                                      {typeof s.phone === "string" ? s.phone : String(s.phone || "")}
+                                      {typeof s.phone === "string"
+                                        ? s.phone
+                                        : String(s.phone || "")}
                                     </a>
                                   </li>
                                   <li className="flex items-start gap-2.5">
@@ -2407,12 +2495,15 @@ function Home() {
                   title: "How to Order Gas",
                   desc: "Order cylinders online quickly and easily.",
                   to: "/contact",
-                  bgClass: "bg-gradient-to-br from-[#fff0f2] via-[#fff6f7] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(239,68,68,0.06)]",
+                  bgClass:
+                    "bg-gradient-to-br from-[#fff0f2] via-[#fff6f7] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(239,68,68,0.06)]",
                   iconBoxClass: "bg-[#fee2e2]/90 text-primary border border-red-200/50",
-                  btnClass: "bg-white/95 text-primary border-red-100/80 shadow-[0_2px_8px_-2px_rgba(239,68,68,0.15)] hover:bg-red-50/80",
+                  btnClass:
+                    "bg-white/95 text-primary border-red-100/80 shadow-[0_2px_8px_-2px_rgba(239,68,68,0.15)] hover:bg-red-50/80",
                   image: "/support/card-calor-gas.png",
                   containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
-                  imgClass: "object-contain object-right-bottom lg:scale-118 origin-bottom-right group-hover:scale-125",
+                  imgClass:
+                    "object-contain object-right-bottom lg:scale-118 origin-bottom-right group-hover:scale-125",
                   icon: (props: React.SVGProps<SVGSVGElement>) => (
                     <svg
                       viewBox="0 0 24 24"
@@ -2434,60 +2525,75 @@ function Home() {
                   title: "Track Your Order",
                   desc: "Check real-time status of your orders and deliveries.",
                   to: "/contact",
-                  bgClass: "bg-gradient-to-br from-[#eff6ff] via-[#f5f8ff] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(59,130,246,0.06)]",
+                  bgClass:
+                    "bg-gradient-to-br from-[#eff6ff] via-[#f5f8ff] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(59,130,246,0.06)]",
                   iconBoxClass: "bg-[#dbeafe]/90 text-blue-600 border border-blue-200/50",
-                  btnClass: "bg-white/95 text-blue-600 border-blue-100/80 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.15)] hover:bg-blue-50/80",
+                  btnClass:
+                    "bg-white/95 text-blue-600 border-blue-100/80 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.15)] hover:bg-blue-50/80",
                   image: "/support/card-track-order.png",
                   containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
-                  imgClass: "object-contain object-right-bottom lg:scale-118 origin-bottom-right group-hover:scale-125",
+                  imgClass:
+                    "object-contain object-right-bottom lg:scale-118 origin-bottom-right group-hover:scale-125",
                   icon: Package,
                 },
                 {
                   title: "Delivery Information",
                   desc: "Delivery areas, schedules, and important policies.",
                   to: "/contact",
-                  bgClass: "bg-gradient-to-br from-[#ecfdf5] via-[#f2fbf7] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(20,184,166,0.06)]",
+                  bgClass:
+                    "bg-gradient-to-br from-[#ecfdf5] via-[#f2fbf7] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(20,184,166,0.06)]",
                   iconBoxClass: "bg-[#ccfbf1]/90 text-teal-600 border border-teal-200/50",
-                  btnClass: "bg-white/95 text-teal-600 border-teal-100/80 shadow-[0_2px_8px_-2px_rgba(20,184,166,0.15)] hover:bg-teal-50/80",
+                  btnClass:
+                    "bg-white/95 text-teal-600 border-teal-100/80 shadow-[0_2px_8px_-2px_rgba(20,184,166,0.15)] hover:bg-teal-50/80",
                   image: "/support/card-delivery.png",
                   containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
-                  imgClass: "object-cover object-left lg:scale-118 origin-right group-hover:scale-125",
+                  imgClass:
+                    "object-cover object-left lg:scale-118 origin-right group-hover:scale-125",
                   icon: Truck,
                 },
                 {
                   title: "Filling Stations",
                   desc: "Find your nearest filling station and check opening times.",
                   to: "/contact",
-                  bgClass: "bg-gradient-to-br from-[#fffbeb] via-[#fffdf5] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(245,158,11,0.06)]",
+                  bgClass:
+                    "bg-gradient-to-br from-[#fffbeb] via-[#fffdf5] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(245,158,11,0.06)]",
                   iconBoxClass: "bg-[#fef3c7]/90 text-amber-600 border border-amber-200/50",
-                  btnClass: "bg-white/95 text-amber-600 border-amber-100/80 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.15)] hover:bg-amber-50/80",
+                  btnClass:
+                    "bg-white/95 text-amber-600 border-amber-100/80 shadow-[0_2px_8px_-2px_rgba(245,158,11,0.15)] hover:bg-amber-50/80",
                   image: "/support/card-stations.png",
                   containerClass: "w-[46%] sm:w-[50%] lg:w-[54%] max-w-[160px] lg:max-w-[195px]",
-                  imgClass: "object-cover object-left lg:scale-118 origin-right group-hover:scale-125",
+                  imgClass:
+                    "object-cover object-left lg:scale-118 origin-right group-hover:scale-125",
                   icon: MapPin,
                 },
                 {
                   title: "Account Management",
                   desc: "Manage your account details, invoices and preferences.",
                   to: "/contact",
-                  bgClass: "bg-gradient-to-br from-[#f5f3ff] via-[#faf8ff] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(147,51,234,0.06)]",
+                  bgClass:
+                    "bg-gradient-to-br from-[#f5f3ff] via-[#faf8ff] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(147,51,234,0.06)]",
                   iconBoxClass: "bg-[#ede9fe]/90 text-purple-600 border border-purple-200/50",
-                  btnClass: "bg-white/95 text-purple-600 border-purple-100/80 shadow-[0_2px_8px_-2px_rgba(147,51,234,0.15)] hover:bg-purple-50/80",
+                  btnClass:
+                    "bg-white/95 text-purple-600 border-purple-100/80 shadow-[0_2px_8px_-2px_rgba(147,51,234,0.15)] hover:bg-purple-50/80",
                   image: "/support/card-account.png",
                   containerClass: "w-[48%] sm:w-[52%] lg:w-[56%] max-w-[160px] lg:max-w-[210px]",
-                  imgClass: "object-contain object-right-bottom lg:scale-125 origin-bottom-right group-hover:scale-130",
+                  imgClass:
+                    "object-contain object-right-bottom lg:scale-125 origin-bottom-right group-hover:scale-130",
                   icon: User,
                 },
                 {
                   title: "Contact Support",
                   desc: "Get in touch with our team via phone or email.",
                   to: "/contact",
-                  bgClass: "bg-gradient-to-br from-[#fff1f2] via-[#fff8f8] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(244,63,94,0.06)]",
+                  bgClass:
+                    "bg-gradient-to-br from-[#fff1f2] via-[#fff8f8] to-white border-white/80 shadow-[0_4px_25px_-4px_rgba(244,63,94,0.06)]",
                   iconBoxClass: "bg-[#ffe4e6]/90 text-rose-500 border border-pink-200/50",
-                  btnClass: "bg-white/95 text-rose-600 border-pink-100/80 shadow-[0_2px_8px_-2px_rgba(244,63,94,0.15)] hover:bg-rose-50/80",
+                  btnClass:
+                    "bg-white/95 text-rose-600 border-pink-100/80 shadow-[0_2px_8px_-2px_rgba(244,63,94,0.15)] hover:bg-rose-50/80",
                   image: "/support/card-contact.png",
                   containerClass: "w-[48%] sm:w-[52%] lg:w-[56%] max-w-[160px] lg:max-w-[210px]",
-                  imgClass: "object-contain object-right-bottom lg:scale-125 origin-bottom-right group-hover:scale-130",
+                  imgClass:
+                    "object-contain object-right-bottom lg:scale-125 origin-bottom-right group-hover:scale-130",
                   icon: Headphones,
                 },
               ].map((card, idx) => {

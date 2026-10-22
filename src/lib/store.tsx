@@ -21,13 +21,31 @@ export type CartLine = { slug: string; qty: number };
 type Store = {
   user: User | null;
   authLoading: boolean;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string; user?: User }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{
+    ok: boolean;
+    error?: string;
+    user?: User;
+    emailNotConfirmed?: boolean;
+    unconfirmedEmail?: string;
+  }>;
   register: (
     name: string,
     email: string,
     password: string,
     role?: Role,
-  ) => Promise<{ ok: boolean; error?: string; user?: User }>;
+  ) => Promise<{
+    ok: boolean;
+    error?: string;
+    user?: User;
+    requiresEmailConfirmation?: boolean;
+    email?: string;
+  }>;
+  resendConfirmationEmail: (
+    email: string,
+  ) => Promise<{ ok: boolean; message?: string; error?: string }>;
   logout: () => Promise<void>;
   cart: CartLine[];
   addToCart: (slug: string, qty?: number) => void;
@@ -380,11 +398,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           password,
         });
 
-        // If Supabase authentication failed (wrong password, account not found, etc.)
+        // If Supabase authentication failed (wrong password, account not found, unconfirmed email, etc.)
         if (authRes.error || !authRes.data?.user?.id) {
+          const errMsg = authRes.error?.message || "Invalid email or password.";
+          const isEmailNotConfirmed =
+            errMsg.toLowerCase().includes("email not confirmed") ||
+            (authRes.error as any)?.code === "email_not_confirmed";
+
           return {
             ok: false,
-            error: authRes.error?.message || "Invalid email or password.",
+            error: isEmailNotConfirmed
+              ? "Your email address has not been confirmed yet. Please check your inbox or click below to resend the confirmation link."
+              : errMsg,
+            emailNotConfirmed: isEmailNotConfirmed,
+            unconfirmedEmail: isEmailNotConfirmed ? cleanEmail : undefined,
           };
         }
 
@@ -451,10 +478,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const register: Store["register"] = useCallback(
     async (name, email, password, role = "customer") => {
       try {
+        const cleanEmail = email.trim();
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "https://johnstayte.co.uk";
+        const emailRedirectTo = `${origin}/login?confirmed=true`;
+
         const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
+          email: cleanEmail,
           password,
           options: {
+            emailRedirectTo,
             data: {
               full_name: name,
               role: role,
@@ -466,25 +499,79 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: error.message };
         }
 
-        if (data.user?.id) {
+        // Case 1: Supabase email confirmation is enabled (or required)
+        // User is created, but no active session is granted until email is confirmed.
+        if (data.user && !data.session) {
+          return {
+            ok: true,
+            requiresEmailConfirmation: true,
+            email: cleanEmail,
+          };
+        }
+
+        // Case 2: Auto-confirm is active and an authenticated session was immediately issued
+        if (data.user?.id && data.session) {
           const uid = data.user.id;
           const u: User = {
             id: uid,
             name,
-            email,
+            email: cleanEmail,
             role,
           };
           setUser(u);
           syncWishlistWithDb(uid);
-          return { ok: true, user: u };
+          return { ok: true, user: u, requiresEmailConfirmation: false };
         }
 
-        return { ok: false, error: "Registration failed" };
+        return { ok: false, error: "Registration failed. Please try again." };
       } catch (err: any) {
         return { ok: false, error: err?.message || "Registration error" };
       }
     },
     [syncWishlistWithDb],
+  );
+
+  const resendConfirmationEmail: Store["resendConfirmationEmail"] = useCallback(
+    async (email: string) => {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes("@")) {
+        return { ok: false, error: "Please provide a valid email address." };
+      }
+
+      try {
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "https://johnstayte.co.uk";
+        const emailRedirectTo = `${origin}/login?confirmed=true`;
+
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email: cleanEmail,
+          options: {
+            emailRedirectTo,
+          },
+        });
+
+        if (error) {
+          const msg = error.message?.toLowerCase() || "";
+          if (error.status === 429 || msg.includes("security") || msg.includes("rate")) {
+            return {
+              ok: false,
+              error:
+                "Too many verification requests. Please wait a moment before requesting another confirmation email.",
+            };
+          }
+          return { ok: false, error: error.message || "Failed to resend confirmation email." };
+        }
+
+        return {
+          ok: true,
+          message: `Confirmation email sent to ${cleanEmail}. Please check your inbox and spam folder.`,
+        };
+      } catch (err: any) {
+        return { ok: false, error: err?.message || "Failed to resend confirmation email." };
+      }
+    },
+    [],
   );
 
   const logout = useCallback(async () => {
@@ -611,6 +698,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       authLoading,
       login,
       register,
+      resendConfirmationEmail,
       logout,
       cart,
       addToCart: (slug, qty = 1) =>
@@ -626,7 +714,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       wishlist,
       toggleWishlist,
     }),
-    [user, authLoading, cart, wishlist, login, register, logout, setCart, toggleWishlist],
+    [user, authLoading, cart, wishlist, login, register, resendConfirmationEmail, logout, setCart, toggleWishlist],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

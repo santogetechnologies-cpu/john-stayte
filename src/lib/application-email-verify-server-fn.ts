@@ -90,7 +90,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 /**
  * Resolves the verified sender address for Resend.
- * Defaults to "John Stayte Services <onboarding@resend.dev>" if RESEND_FROM_EMAIL is unconfigured.
+ * Defaults to "John Stayte Services <noreply@johnstayteservices.co.uk>" if RESEND_FROM_EMAIL is unconfigured.
  */
 function getSenderAddress(): string {
   const configured = process.env.RESEND_FROM_EMAIL?.trim();
@@ -100,7 +100,7 @@ function getSenderAddress(): string {
     }
     return `John Stayte Services <${configured}>`;
   }
-  return "John Stayte Services <onboarding@resend.dev>";
+  return "John Stayte Services <noreply@johnstayteservices.co.uk>";
 }
 
 /**
@@ -116,9 +116,19 @@ function cleanupExpiredRecords(): void {
 }
 
 /**
+ * Resolves the public absolute HTTPS URL for the official JSS brand logo.
+ * Defaults to the verified production deployment asset at https://john-stayte.vercel.app/image-5.png.
+ */
+function getLogoUrl(): string {
+  return process.env.APP_PUBLIC_LOGO_URL?.trim() || "https://john-stayte.vercel.app/image-5.png";
+}
+
+/**
  * Generates the responsive HTML email template for John Stayte Services.
  */
 function buildVerificationEmailHtml(otpCode: string): string {
+  const logoUrl = getLogoUrl();
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -131,15 +141,30 @@ function buildVerificationEmailHtml(otpCode: string): string {
     <tr>
       <td align="center">
         <table role="presentation" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
-          <!-- Header -->
+          <!-- Header with Official JSS Logo -->
           <tr>
-            <td style="background-color: #0f172a; padding: 28px 32px; text-align: left; border-bottom: 3px solid #e2231a;">
-              <h1 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff;">
-                JOHN STAYTE <span style="color: #e2231a;">SERVICES</span>
-              </h1>
-              <p style="margin: 4px 0 0; font-size: 12px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">
-                Gas Customer Application Verification
-              </p>
+            <td style="background-color: #0f172a; padding: 24px 32px; text-align: left; border-bottom: 3px solid #e2231a;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">
+                <tr>
+                  <td valign="middle" style="width: 52px; padding-right: 16px; vertical-align: middle;">
+                    <img
+                      src="${logoUrl}"
+                      alt="John Stayte Services Logo"
+                      width="48"
+                      height="48"
+                      style="display: block; width: 48px; height: 48px; border-radius: 10px; border: 0; outline: none; text-decoration: none;"
+                    />
+                  </td>
+                  <td valign="middle" style="vertical-align: middle;">
+                    <h1 style="margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; color: #ffffff; line-height: 1.2;">
+                      JOHN STAYTE <span style="color: #e2231a;">SERVICES</span>
+                    </h1>
+                    <p style="margin: 4px 0 0; font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                      Gas Customer Application Verification
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
@@ -178,14 +203,21 @@ function buildVerificationEmailHtml(otpCode: string): string {
             </td>
           </tr>
 
-          <!-- Footer -->
+          <!-- Footer with Canonical Business Contact Details -->
           <tr>
-            <td style="background-color: #f8fafc; padding: 20px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="margin: 0 0 4px; font-size: 12px; color: #64748b;">
-                John Stayte Services Ltd • Gloucestershire &amp; Cotswolds LPG Distribution
+            <td style="background-color: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0; text-align: center;">
+              <p style="margin: 0 0 6px; font-size: 13px; font-weight: 700; color: #0f172a;">
+                John Stayte Services Ltd
               </p>
-              <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-                Tel: 01453 822100 • info@johnstayte.co.uk
+              <p style="margin: 0 0 10px; font-size: 12px; color: #64748b; line-height: 1.5;">
+                Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom
+              </p>
+              <p style="margin: 0 0 8px; font-size: 12px; color: #64748b; line-height: 1.6;">
+                <strong>Phone:</strong> <a href="tel:+441453822859" style="color: #e2231a; text-decoration: none; font-weight: 600;">+44 (0)1453 822859</a> &nbsp;•&nbsp; 
+                <strong>Email:</strong> <a href="mailto:info@johnstayteservices.co.uk" style="color: #e2231a; text-decoration: none; font-weight: 600;">info@johnstayteservices.co.uk</a>
+              </p>
+              <p style="margin: 0; font-size: 11px; color: #94a3b8;">
+                <a href="https://www.johnstayteservices.co.uk" target="_blank" rel="noopener noreferrer" style="color: #64748b; text-decoration: underline;">www.johnstayteservices.co.uk</a> • Gloucestershire &amp; Cotswolds LPG Distribution
               </p>
             </td>
           </tr>
@@ -214,7 +246,10 @@ IMPORTANT: This code will expire in 10 minutes. For your security, never share t
 If you did not request this verification code, you can safely ignore this email.
 
 John Stayte Services Ltd
-Tel: 01453 822100 | info@johnstayte.co.uk`;
+Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom
+Phone: +44 (0)1453 822859
+Email: info@johnstayteservices.co.uk
+Website: https://www.johnstayteservices.co.uk`;
 }
 
 /**
@@ -310,7 +345,7 @@ export const sendApplicationEmailVerifyServerFn = createServerFn({ method: "POST
         };
 
         console.error(
-          `[Resend Email Verify] Dispatch failed with HTTP ${response.status}:`,
+          `[Resend Email Verify] Dispatch failed with HTTP ${response.status} (${errData.name || "Error"}):`,
           errData.message || "Unknown error",
         );
 
@@ -319,6 +354,27 @@ export const sendApplicationEmailVerifyServerFn = createServerFn({ method: "POST
             ok: false,
             message: "Too many verification attempts. Please wait a few minutes before requesting another code.",
             error: "Rate limit reached",
+          };
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          return {
+            ok: false,
+            message: "Email verification service is temporarily unavailable due to a service authorization issue. Please contact support.",
+            error: "Authentication error",
+          };
+        }
+
+        if (response.status === 422) {
+          const isDomainErr =
+            errData.message?.toLowerCase().includes("domain") ||
+            errData.message?.toLowerCase().includes("verify");
+          return {
+            ok: false,
+            message: isDomainErr
+              ? "The sender domain is currently being verified. Please try again shortly or contact support."
+              : (errData.message || "Failed to dispatch verification email. Please check your email address."),
+            error: "Validation error",
           };
         }
 

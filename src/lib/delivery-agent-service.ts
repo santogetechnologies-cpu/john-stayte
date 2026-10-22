@@ -1392,6 +1392,20 @@ export interface DeliveryOtpState {
 /**
  * Extracts or initializes secure 6-digit delivery OTP for an order/assignment.
  */
+export interface DeliveryOtpStatus {
+  otpExists: boolean;
+  smsSent?: boolean;
+  isVerified: boolean;
+  expiresAt: number;
+  attempts: number;
+  maskedPhone?: string;
+  smsError?: string;
+  message?: string;
+  error?: string;
+  cooldownEndsAt?: number;
+  cooldownRemainingSec?: number;
+}
+
 /**
  * Extracts or initializes secure 6-digit delivery OTP for an order/assignment.
  * Dispatches Twilio SMS to the dynamically resolved customer phone number.
@@ -1401,16 +1415,16 @@ export async function getOrCreateDeliveryOtp(
   orderId?: string | null,
   customerPhone?: string | null,
   customerName?: string | null,
-): Promise<{ otpExists: boolean; isVerified: boolean; expiresAt: number; attempts: number }> {
+): Promise<DeliveryOtpStatus> {
   try {
     let { data: assignment } = await (supabase.from("delivery_assignments") as any)
-      .select("id, order_id, otp_code, otp_expires_at, otp_attempts, otp_verified")
+      .select("id, order_id, notes, otp_code, otp_expires_at, otp_attempts, otp_verified")
       .eq("id", assignmentId)
       .maybeSingle();
 
     if (!assignment && (orderId || assignmentId)) {
       const { data: byOrder } = await (supabase.from("delivery_assignments") as any)
-        .select("id, order_id, otp_code, otp_expires_at, otp_attempts, otp_verified")
+        .select("id, order_id, notes, otp_code, otp_expires_at, otp_attempts, otp_verified")
         .eq("order_id", orderId || assignmentId)
         .maybeSingle();
       if (byOrder) assignment = byOrder;
@@ -1429,11 +1443,26 @@ export async function getOrCreateDeliveryOtp(
     if (assignment?.otp_code && assignment.otp_expires_at) {
       const expTime = new Date(assignment.otp_expires_at).getTime();
       if (Date.now() < expTime) {
+        // Inspect if there is an active 60s cooldown from notes
+        let cooldownEndsAt: number | undefined;
+        let cooldownRemainingSec: number | undefined;
+        const notes = assignment.notes || "";
+        const rateMatch = notes.match(/\[LAST_SENT:(\d+)\]/);
+        if (rateMatch && rateMatch[1]) {
+          const lastSent = Number(rateMatch[1]);
+          if (Date.now() - lastSent < 60 * 1000) {
+            cooldownEndsAt = lastSent + 60 * 1000;
+            cooldownRemainingSec = Math.ceil((cooldownEndsAt - Date.now()) / 1000);
+          }
+        }
+
         return {
           otpExists: true,
           isVerified: false,
           expiresAt: expTime,
           attempts: Number(assignment.otp_attempts || 0),
+          cooldownEndsAt,
+          cooldownRemainingSec,
         };
       }
     }
@@ -1455,19 +1484,40 @@ export async function getOrCreateDeliveryOtp(
 
     return {
       otpExists: res.success,
+      smsSent: res.smsSent,
       isVerified: Boolean(res.isVerified),
       expiresAt: res.expiresAt || Date.now() + 15 * 60 * 1000,
       attempts: 0,
+      maskedPhone: res.maskedPhone,
+      smsError: res.smsError,
+      message: res.message,
+      cooldownEndsAt: res.cooldownEndsAt,
+      cooldownRemainingSec: res.cooldownRemainingSec,
     };
   } catch (err: any) {
     console.error("getOrCreateDeliveryOtp failed:", err);
     return {
       otpExists: false,
+      smsSent: false,
       isVerified: false,
       expiresAt: Date.now() + 15 * 60 * 1000,
       attempts: 0,
+      error: err.message,
     };
   }
+}
+
+export interface ReissueDeliveryOtpResult {
+  success: boolean;
+  smsSent: boolean;
+  message: string;
+  maskedPhone?: string;
+  expiresAt?: number;
+  error?: string;
+  smsError?: string;
+  smsErrorCode?: number;
+  cooldownEndsAt?: number;
+  cooldownRemainingSec?: number;
 }
 
 /**
@@ -1478,7 +1528,7 @@ export async function reissueDeliveryOtp(
   orderId?: string | null,
   customerPhone?: string | null,
   customerName?: string | null,
-): Promise<{ success: boolean; message: string }> {
+): Promise<ReissueDeliveryOtpResult> {
   try {
     const session = (await supabase.auth.getSession())?.data?.session;
     const authToken = session?.access_token || null;
@@ -1500,7 +1550,15 @@ export async function reissueDeliveryOtp(
 
     return {
       success: res.success,
-      message: res.message || "A new OTP has been generated and sent to the customer via SMS.",
+      smsSent: Boolean(res.smsSent),
+      message: res.message || (res.smsSent ? "A new OTP has been generated and sent to the customer via SMS." : "OTP generated in system, but Twilio SMS delivery failed."),
+      maskedPhone: res.maskedPhone,
+      expiresAt: res.expiresAt,
+      error: res.error,
+      smsError: res.smsError,
+      smsErrorCode: res.smsErrorCode,
+      cooldownEndsAt: res.cooldownEndsAt,
+      cooldownRemainingSec: res.cooldownRemainingSec,
     };
   } catch (err: any) {
     console.error("reissueDeliveryOtp error:", err);

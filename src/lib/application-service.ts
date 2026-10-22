@@ -216,42 +216,52 @@ export async function submitGasCustomerApplication(
   };
 
   // 1. Primary write to dedicated gas_customer_applications table
-  const { error: appDbError } = await (supabase.from("gas_customer_applications") as any).upsert(
-    {
-      customer_id: customerId,
-      full_name: fullName.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      date_of_birth: dateOfBirth?.trim() || null,
-      street_address: streetAddress.trim(),
-      city: city.trim() || "Gloucester",
-      postcode: postcode.trim().toUpperCase(),
-      delivery_address: deliveryAddress.trim() || `${streetAddress}, ${city} ${postcode}`,
-      billing_address: billingAddress?.trim() || null,
-      preferred_contact_method: preferredContactMethod?.trim() || "Phone",
-      usage_type: usageType,
-      business_name: businessName?.trim() || null,
-      business_type: businessType?.trim() || null,
-      business_address: businessAddress?.trim() || null,
-      business_contact: businessContact?.trim() || null,
-      existing_cylinder_status:
-        existingCylinderStatus?.trim() || "New Customer (No Existing Cylinders)",
-      cylinder_type: cylinderType?.trim() || null,
-      cylinder_size: cylinderSize?.trim() || null,
-      order_requirement: orderRequirement?.trim() || null,
-      declaration_accepted: true,
-      signature_data: signatureData,
-      signed_at: now,
-      status: "SUBMITTED",
-      updated_at: now,
-    },
-    { onConflict: "customer_id" },
-  );
+  const { data: savedDbRecord, error: appDbError } = await (
+    supabase.from("gas_customer_applications") as any
+  )
+    .upsert(
+      {
+        customer_id: customerId,
+        full_name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone.trim(),
+        date_of_birth: dateOfBirth?.trim() || null,
+        street_address: streetAddress.trim(),
+        city: city.trim() || "Gloucester",
+        postcode: postcode.trim().toUpperCase(),
+        delivery_address: deliveryAddress.trim() || `${streetAddress}, ${city} ${postcode}`,
+        billing_address: billingAddress?.trim() || null,
+        preferred_contact_method: preferredContactMethod?.trim() || "Phone",
+        usage_type: usageType,
+        business_name: businessName?.trim() || null,
+        business_type: businessType?.trim() || null,
+        business_address: businessAddress?.trim() || null,
+        business_contact: businessContact?.trim() || null,
+        existing_cylinder_status:
+          existingCylinderStatus?.trim() || "New Customer (No Existing Cylinders)",
+        cylinder_type: cylinderType?.trim() || null,
+        cylinder_size: cylinderSize?.trim() || null,
+        order_requirement: orderRequirement?.trim() || null,
+        declaration_accepted: true,
+        signature_data: signatureData,
+        signed_at: now,
+        status: "SUBMITTED",
+        updated_at: now,
+      },
+      { onConflict: "customer_id" },
+    )
+    .select()
+    .single();
 
   if (appDbError) {
     console.error("Failed to insert into gas_customer_applications:", appDbError);
     throw new Error(appDbError.message || "Failed to submit gas customer application.");
   }
+
+  // Use the verified database record with the canonical primary key UUID
+  const finalRecord: GasCustomerApplication = savedDbRecord
+    ? (savedDbRecord as GasCustomerApplication)
+    : applicationRecord;
 
   // 2. Synchronize to customer's profile record in Supabase
   try {
@@ -270,7 +280,7 @@ export async function submitGasCustomerApplication(
         phone: phone.trim(),
         notification_prefs: {
           ...existingPrefs,
-          gas_application: applicationRecord,
+          gas_application: finalRecord,
         } as unknown as Record<string, string>,
         updated_at: now,
       })
@@ -286,7 +296,7 @@ export async function submitGasCustomerApplication(
       {
         section_key: sectionKey,
         title: `Gas Application: ${fullName} (${usageType})`,
-        content: JSON.stringify(applicationRecord),
+        content: JSON.stringify(finalRecord),
         updated_at: now,
       },
       { onConflict: "section_key" },
@@ -313,21 +323,47 @@ export async function submitGasCustomerApplication(
     // Non-critical
   }
 
-  // 4. Create staff & customer notifications
+  // 5. Create Staff & Admin Notification (Broadcast to Admin/Operations Portal)
   try {
-    await supabase.from("notifications").insert([
-      {
-        user_id: customerId,
-        title: `New Gas Customer Application: ${fullName}`,
-        message: `${fullName} submitted a ${usageType} LPG customer application with digital signature.`,
-        category: "Account",
-        is_read: false,
-      },
-    ]);
-  } catch (e) {
-    // Non-critical
+    const notifLink = `/admin/applications?appId=${finalRecord.id}`;
+    
+    // Idempotency: Avoid duplicate admin notifications on re-submission or retry
+    const { data: existingStaffNotifs } = await supabase
+      .from("notifications")
+      .select("id")
+      .or(`link.eq.${notifLink},message.ilike.%Ref: ${finalRecord.id}%`)
+      .limit(1);
+
+    if (!existingStaffNotifs || existingStaffNotifs.length === 0) {
+      const submissionTime = new Date(finalRecord.signed_at || now).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const { error: staffNotifErr } = await (supabase.from("notifications") as any).insert([
+        {
+          user_id: null, // Broadcast to all authorized staff & admins
+          title: "New Gas Customer Application",
+          message: `A new gas customer application has been submitted and is awaiting review. Customer: ${fullName.trim()} • Ref: ${finalRecord.id} • Status: Pending Review • Submitted: ${submissionTime}`,
+          category: "Applications",
+          link: notifLink,
+          read: false,
+          is_read: false,
+        },
+      ]);
+
+      if (staffNotifErr) {
+        console.error("Failed to insert admin application notification:", staffNotifErr);
+      }
+    }
+  } catch (staffNotifErr) {
+    console.error("Admin notification dispatch notice:", staffNotifErr);
   }
 
+  // 6. Create Customer Confirmation Notification
   try {
     await supabase.from("customer_notifications").insert([
       {
@@ -343,7 +379,7 @@ export async function submitGasCustomerApplication(
     // Non-critical
   }
 
-  return applicationRecord;
+  return finalRecord;
 }
 
 /**

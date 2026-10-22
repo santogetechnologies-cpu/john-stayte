@@ -26,6 +26,10 @@ import {
   Check,
   Truck,
   Wrench,
+  Upload,
+  Trash2,
+  RefreshCw,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -153,6 +157,16 @@ export function GasCustomerApplicationForm({
   const [hasSigned, setHasSigned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const emailSectionRef = useRef<HTMLDivElement | null>(null);
+
+  // Digital Signature Mode: "draw" | "upload"
+  const [signatureMode, setSignatureMode] = useState<"draw" | "upload">("draw");
+  const [uploadedSignatureData, setUploadedSignatureData] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [uploadedFileSize, setUploadedFileSize] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const drawnSignatureRef = useRef<string | null>(null);
 
   // Sync user defaults once on initial load
   const hasInitializedUserRef = useRef(false);
@@ -377,6 +391,9 @@ export function GasCustomerApplicationForm({
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    if (canvasRef.current) {
+      drawnSignatureRef.current = canvasRef.current.toDataURL("image/png");
+    }
   };
 
   const clearSignature = () => {
@@ -387,6 +404,157 @@ export function GasCustomerApplicationForm({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     setHasSigned(false);
+    drawnSignatureRef.current = null;
+  };
+
+  // =========================================================================
+  // UPLOAD SIGNATURE UTILITIES & HANDLERS
+  // =========================================================================
+  const MAX_SIGNATURE_FILE_SIZE = 2 * 1024 * 1024; // 2 MB
+  const ALLOWED_SIGNATURE_TYPES = ["image/png", "image/jpeg", "image/jpg"];
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const processUploadedFile = (file: File) => {
+    setUploadError(null);
+
+    // 1. Validate file extension and MIME type
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const isAllowedExt = ext === "png" || ext === "jpg" || ext === "jpeg";
+    const isAllowedMime = ALLOWED_SIGNATURE_TYPES.includes(file.type.toLowerCase());
+
+    if (!isAllowedExt && !isAllowedMime) {
+      const err = "Unsupported file format. Please upload a PNG, JPG, or JPEG signature image.";
+      setUploadError(err);
+      toast.error(err);
+      return;
+    }
+
+    // 2. Validate file size (max 2 MB)
+    if (file.size > MAX_SIGNATURE_FILE_SIZE) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const err = `File size (${sizeMb} MB) exceeds the 2 MB limit. Please choose a smaller image.`;
+      setUploadError(err);
+      toast.error(err);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawDataUrl = e.target?.result as string;
+      if (!rawDataUrl) {
+        setUploadError("Could not read image file. Please try again.");
+        toast.error("Could not read image file.");
+        return;
+      }
+
+      // 3. Decode & normalize signature image
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const offCanvas = document.createElement("canvas");
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
+          const maxDim = 1200;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          offCanvas.width = width;
+          offCanvas.height = height;
+          const ctx = offCanvas.getContext("2d");
+          if (!ctx) {
+            setUploadedSignatureData(rawDataUrl);
+            setUploadedFileName(file.name);
+            setUploadedFileSize(file.size);
+            setUploadError(null);
+            toast.success("✓ Signature image uploaded successfully!");
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+          const normalized = offCanvas.toDataURL(mime, 0.92);
+
+          setUploadedSignatureData(normalized);
+          setUploadedFileName(file.name);
+          setUploadedFileSize(file.size);
+          setUploadError(null);
+          toast.success("✓ Signature image uploaded successfully!");
+        } catch {
+          setUploadedSignatureData(rawDataUrl);
+          setUploadedFileName(file.name);
+          setUploadedFileSize(file.size);
+          setUploadError(null);
+          toast.success("✓ Signature image uploaded successfully!");
+        }
+      };
+
+      img.onerror = () => {
+        setUploadError("Invalid or corrupted image file. Please upload a valid PNG or JPG.");
+        toast.error("Invalid image file.");
+      };
+
+      img.src = rawDataUrl;
+    };
+
+    reader.onerror = () => {
+      setUploadError("Error reading the image file.");
+      toast.error("Error reading file.");
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processUploadedFile(file);
+    }
+  };
+
+  const handleRemoveUploadedSignature = () => {
+    setUploadedSignatureData(null);
+    setUploadedFileName(null);
+    setUploadedFileSize(null);
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    toast.info("Uploaded signature removed.");
   };
 
   // Form submission with complete validation
@@ -430,8 +598,28 @@ export function GasCustomerApplicationForm({
       );
     }
 
-    if (!hasSigned || !canvasRef.current) {
-      return toast.error("Please provide your digital signature in Section 7 before submitting.");
+    // Determine final signature based on active mode
+    let finalSignatureData = "";
+    if (signatureMode === "draw") {
+      if (!hasSigned || !canvasRef.current) {
+        if (uploadedSignatureData) {
+          return toast.error("You have an uploaded signature. Switch to the 'Upload Signature' tab or draw your signature here.");
+        }
+        return toast.error("Please provide your digital signature in Section 7 before submitting.");
+      }
+      finalSignatureData = canvasRef.current.toDataURL("image/png");
+    } else {
+      if (!uploadedSignatureData) {
+        if (hasSigned) {
+          return toast.error("You have a drawn signature. Switch to the 'Draw Signature' tab or upload an image here.");
+        }
+        return toast.error("Please upload your signature image in Section 7 before submitting.");
+      }
+      finalSignatureData = uploadedSignatureData;
+    }
+
+    if (!finalSignatureData || finalSignatureData.length < 50) {
+      return toast.error("A valid digital signature is mandatory to submit your Gas Customer Application.");
     }
 
     // Primary usage category for DB compatibility
@@ -472,8 +660,8 @@ export function GasCustomerApplicationForm({
       .filter(Boolean)
       .join(" | ");
 
-    // Get signature data URL
-    const signatureData = canvasRef.current.toDataURL("image/png");
+    // Signature data payload
+    const signatureData = finalSignatureData;
 
     setSubmitting(true);
     try {
@@ -1532,7 +1720,7 @@ export function GasCustomerApplicationForm({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 7: DIGITAL SIGNATURE PAD */}
+      {/* SECTION 7: CUSTOMER DIGITAL SIGNATURE (DRAW OR UPLOAD) */}
       {/* ========================================================================= */}
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -1542,52 +1730,195 @@ export function GasCustomerApplicationForm({
             </span>
             <PenTool className="h-4 w-4 text-primary" /> Customer Digital Signature *
           </h3>
-          {hasSigned && (
+          {(signatureMode === "draw" ? hasSigned : Boolean(uploadedSignatureData)) && (
             <Badge className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
               ✓ Signature Captured
             </Badge>
           )}
         </div>
 
-        <div className="space-y-1">
-          <p className="text-xs text-slate-600">
-            Please sign below using your finger, stylus, mouse, or trackpad. This digital signature serves as legal confirmation for your official Calor Gas customer account.
-          </p>
-          <p className="text-[11px] text-slate-400 font-medium">
-            Signatory: <span className="font-bold text-slate-700">{fullName || "Applicant"}</span> • Date: <span className="font-mono text-slate-700">{new Date().toLocaleDateString("en-GB")}</span>
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-xs text-slate-600">
+              {signatureMode === "draw"
+                ? "Please sign below using your finger, stylus, mouse, or trackpad. This digital signature serves as legal confirmation for your official Calor Gas customer account."
+                : "Upload an image of your signature (PNG, JPG, or JPEG up to 2 MB). This digital signature serves as legal confirmation for your official Calor Gas customer account."}
+            </p>
+            <p className="text-[11px] text-slate-400 font-medium">
+              Signatory: <span className="font-bold text-slate-700">{fullName || "Applicant"}</span> • Date: <span className="font-mono text-slate-700">{new Date().toLocaleDateString("en-GB")}</span>
+            </p>
+          </div>
+
+          {/* Segmented Mode Selector: Draw vs Upload */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80 w-fit shrink-0 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setSignatureMode("draw")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                signatureMode === "draw"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <PenTool className="h-3.5 w-3.5 text-primary" />
+              <span>Draw Signature</span>
+              {hasSigned && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Drawn signature saved" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSignatureMode("upload")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                signatureMode === "upload"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
+                  : "text-slate-600 hover:text-slate-900"
+              )}
+            >
+              <Upload className="h-3.5 w-3.5 text-primary" />
+              <span>Upload Signature</span>
+              {uploadedSignatureData && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Uploaded signature saved" />
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="relative rounded-2xl border-2 border-dashed border-slate-300 bg-white overflow-hidden shadow-2xs">
-          <canvas
-            ref={canvasRef}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            className="w-full h-40 sm:h-48 touch-none cursor-crosshair bg-slate-50/40"
-          />
+        {/* Hidden File Input for Signature Upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".png,.jpg,.jpeg,image/png,image/jpeg"
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
 
-          {!hasSigned && (
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-xs text-slate-400 font-bold">
-              Sign inside this box ✍️
+        {/* OPTION 1: DRAW SIGNATURE CANVAS (Kept mounted in DOM to preserve drawing across tab switches) */}
+        <div className={cn("space-y-2", signatureMode === "draw" ? "block" : "hidden")}>
+          <div className="relative rounded-2xl border-2 border-dashed border-slate-300 bg-white overflow-hidden shadow-2xs">
+            <canvas
+              ref={canvasRef}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              className="w-full h-40 sm:h-48 touch-none cursor-crosshair bg-slate-50/40"
+            />
+
+            {!hasSigned && (
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-xs text-slate-400 font-bold">
+                Sign inside this box ✍️
+              </div>
+            )}
+
+            <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={clearSignature}
+                className="rounded-full h-7 px-2.5 text-[10px] font-bold gap-1 bg-white/90 shadow-2xs border-slate-300 hover:bg-slate-100"
+              >
+                <Eraser className="h-3 w-3" /> Clear Signature
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* OPTION 2: UPLOAD SIGNATURE (Kept mounted in DOM to preserve upload across tab switches) */}
+        <div className={cn("space-y-2", signatureMode === "upload" ? "block" : "hidden")}>
+          {!uploadedSignatureData ? (
+            /* Upload Drop Area */
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "relative rounded-2xl border-2 border-dashed p-6 sm:p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200 min-h-[160px] sm:min-h-[192px]",
+                isDragging
+                  ? "border-primary bg-red-50/30 scale-[1.005]"
+                  : "border-slate-300 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400 shadow-2xs"
+              )}
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex items-center justify-center text-primary mb-3">
+                <Upload className="h-5 w-5" />
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-slate-800">
+                Click to browse or drag & drop signature image
+              </p>
+              <p className="text-[11px] text-slate-500 font-medium mt-1">
+                Supported formats: <strong className="text-slate-700">PNG, JPG, or JPEG</strong> (max 2 MB)
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-3 rounded-full text-xs font-bold h-8 px-4 border-slate-300 hover:bg-white pointer-events-none"
+              >
+                Choose Image File
+              </Button>
+            </div>
+          ) : (
+            /* Upload Preview Box */
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-2xs space-y-3">
+              <div className="relative rounded-xl border border-slate-200/90 bg-slate-50/50 p-4 min-h-[130px] flex items-center justify-center overflow-hidden">
+                <img
+                  src={uploadedSignatureData}
+                  alt="Uploaded Signature Preview"
+                  className="max-h-32 sm:max-h-36 max-w-full object-contain mx-auto drop-shadow-2xs"
+                />
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pt-1">
+                <div className="flex items-center gap-2 text-xs text-slate-600 min-w-0">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold text-slate-800 truncate max-w-[220px] sm:max-w-xs">
+                    {uploadedFileName || "Uploaded Signature"}
+                  </span>
+                  {uploadedFileSize && (
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      ({formatFileSize(uploadedFileSize)})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-full h-8 px-3 text-xs font-bold gap-1.5 border-slate-300 hover:bg-slate-50 text-slate-700 cursor-pointer"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Replace Image
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveUploadedSignature}
+                    className="rounded-full h-8 px-3 text-xs font-bold gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                  >
+                    <Trash2 className="h-3 w-3" /> Remove
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="absolute bottom-2 right-2 flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={clearSignature}
-              className="rounded-full h-7 px-2.5 text-[10px] font-bold gap-1 bg-white/90 shadow-2xs border-slate-300 hover:bg-slate-100"
-            >
-              <Eraser className="h-3 w-3" /> Clear Signature
-            </Button>
-          </div>
+          {/* Upload Error Banner */}
+          {uploadError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200/80 flex items-start gap-2.5 text-xs text-red-700 animate-in fade-in duration-150">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-600" />
+              <p className="font-semibold leading-relaxed">{uploadError}</p>
+            </div>
+          )}
         </div>
       </div>
 

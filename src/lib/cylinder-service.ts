@@ -1,6 +1,10 @@
 import { supabase } from "@/lib/supabase";
 import { getCustomerGasApplication } from "@/lib/application-service";
 import { getActiveDepositForProduct } from "@/lib/cylinder-deposit-service";
+import {
+  getDeliverySlotsAvailability,
+  validateDeliverySlotBooking,
+} from "@/lib/delivery-slot-service";
 
 export type UsageType = "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
 export type OrderType = "NEW_CYLINDER" | "REFILL_EXCHANGE";
@@ -149,7 +153,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Butane Cylinders",
     description:
       "7kg Butane gas cylinder refill for small portable heaters, camping stoves and indoor appliances. Requires an empty cylinder exchange on delivery.",
-    price: 37.00,
+    price: 37.0,
     stock: 28,
     image_url: "/calor-butane-7kg.png",
     images: ["/calor-butane-7kg.png"],
@@ -157,7 +161,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Butane",
     cylinder_size: "7kg",
     deposit_price: 34.99,
-    refill_price: 37.00,
+    refill_price: 37.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -165,11 +169,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Compact size for easy movement and smaller cabinet heaters",
       "Clean burning indoor butane flame",
     ],
-    suitable_for: [
-      "Small Mobile Heaters",
-      "Camping Stoves & Caravans",
-      "Indoor Heating",
-    ],
+    suitable_for: ["Small Mobile Heaters", "Camping Stoves & Caravans", "Indoor Heating"],
   },
   {
     name: "Calor Patio Gas - 13kg Refill",
@@ -238,7 +238,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Propane Cylinders",
     description:
       "6kg Propane gas cylinder refill with standard POL screw connection for caravans, campervans and outdoor catering. Requires an empty cylinder exchange on delivery.",
-    price: 32.90,
+    price: 32.9,
     stock: 25,
     image_url: "/calor-propane-6kg.png",
     images: ["/calor-propane-6kg.png"],
@@ -246,7 +246,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "6kg",
     deposit_price: 34.99,
-    refill_price: 32.90,
+    refill_price: 32.9,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -284,11 +284,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Ultra-compact footprint for small camping setups and barbecues",
       "Safety self-sealing valve when disconnected",
     ],
-    suitable_for: [
-      "Camping Stoves",
-      "Small Barbecues",
-      "Portable Outdoor Cooking",
-    ],
+    suitable_for: ["Camping Stoves", "Small Barbecues", "Portable Outdoor Cooking"],
   },
   {
     name: "907 Refill",
@@ -351,11 +347,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Runs on Campingaz 904 and 907 refillable cylinders",
       "Detachable legs and lockable lid for easy transport",
     ],
-    suitable_for: [
-      "Camping & Caravanning",
-      "Garden Picnics",
-      "Outdoor Barbecues",
-    ],
+    suitable_for: ["Camping & Caravanning", "Garden Picnics", "Outdoor Barbecues"],
   },
   {
     name: "CP250 4 Pack",
@@ -383,11 +375,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Self-sealing safety valve for easy connection and disconnection",
       "Compatible with Campingaz Bistro, Festivio and Bistro 300 stoves",
     ],
-    suitable_for: [
-      "Tabletop Stoves",
-      "Camping Bistro Cookers",
-      "Picnics & Day Trips",
-    ],
+    suitable_for: ["Tabletop Stoves", "Camping Bistro Cookers", "Picnics & Day Trips"],
   },
 
   // Commercial Products
@@ -399,7 +387,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Propane Cylinders",
     description:
       "47kg Propane gas cylinder refill with standard POL screw connection for central heating packs, drying kilns and large commercial installations. Requires an empty cylinder exchange on delivery.",
-    price: 113.50,
+    price: 113.5,
     stock: 15,
     image_url: "/calor-propane-47kg.png",
     images: ["/calor-propane-47kg.png"],
@@ -407,7 +395,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "47kg",
     deposit_price: 69.99,
-    refill_price: 113.50,
+    refill_price: 113.5,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -431,7 +419,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Propane Cylinders",
     description:
       "19kg Propane gas cylinder refill with standard POL screw connection for commercial kitchens, catering trailers and space heaters. Requires an empty cylinder exchange on delivery.",
-    price: 62.00,
+    price: 62.0,
     stock: 20,
     image_url: "/calor-propane-19kg.png",
     images: ["/calor-propane-19kg.png"],
@@ -439,7 +427,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Propane",
     cylinder_size: "19kg",
     deposit_price: 49.99,
-    refill_price: 62.00,
+    refill_price: 62.0,
     delivery_charge: 0,
     is_active: true,
     features: [
@@ -491,7 +479,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "CO2 / Carbon Dioxide",
     description:
       "6.35kg food-grade Carbon Dioxide (CO2) cylinder for draught beer, cider and soft drinks dispense. Restricted to pub and licensed hospitality customers.",
-    price: 28.80,
+    price: 28.8,
     stock: 25,
     image_url: "/pub-gas-co2-0-35kg.png",
     images: ["/pub-gas-co2-0-35kg.png"],
@@ -499,7 +487,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "6.35kg",
     deposit_price: 25.0,
-    refill_price: 28.80,
+    refill_price: 28.8,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -521,7 +509,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Mixed Gas",
     description:
       "10L 30% CO2 / 70% Nitrogen dispense gas mixture for creamy stouts, smooth ales and draught bitters. Restricted to pub and licensed hospitality customers.",
-    price: 25.20,
+    price: 25.2,
     stock: 30,
     image_url: "/pub-gas-mixed-10l-30-70.png",
     images: ["/pub-gas-mixed-10l-30-70.png"],
@@ -529,7 +517,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "10L",
     deposit_price: 35.0,
-    refill_price: 25.20,
+    refill_price: 25.2,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -551,7 +539,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Mixed Gas",
     description:
       "10L 50% CO2 / 50% Nitrogen dispense gas mixture for craft beers, ales and designated draught lines. Restricted to pub and licensed hospitality customers.",
-    price: 27.00,
+    price: 27.0,
     stock: 20,
     image_url: "/pub-gas-mixed-10l-50-50.png",
     images: ["/pub-gas-mixed-10l-50-50.png"],
@@ -559,7 +547,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "10L",
     deposit_price: 35.0,
-    refill_price: 27.00,
+    refill_price: 27.0,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -581,7 +569,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Mixed Gas",
     description:
       "10L 60% CO2 / 40% Nitrogen dispense gas mixture for lagers, ciders and highly carbonated draught drinks. Restricted to pub and licensed hospitality customers.",
-    price: 28.80,
+    price: 28.8,
     stock: 35,
     image_url: "/pub-gas-mixed-10l-60-40.png",
     images: ["/pub-gas-mixed-10l-60-40.png"],
@@ -589,7 +577,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "10L",
     deposit_price: 35.0,
-    refill_price: 28.80,
+    refill_price: 28.8,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -611,7 +599,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Mixed Gas",
     description:
       "High-capacity 47L 30% CO2 / 70% Nitrogen dispense cylinder for busy pub cellars and high-turnover draught venues. Restricted to pub and licensed hospitality customers.",
-    price: 68.40,
+    price: 68.4,
     stock: 15,
     image_url: "/pub-gas-mixed-47l-30-70.png",
     images: ["/pub-gas-mixed-47l-30-70.png"],
@@ -619,7 +607,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "47L",
     deposit_price: 55.0,
-    refill_price: 68.40,
+    refill_price: 68.4,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -669,7 +657,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Mixed Gas O-ring",
     description:
       "Replacement sealing O-rings for Mixed Gas bottle valves and secondary regulators. Prevents cellar gas leaks and maintains optimal line pressure.",
-    price: 1.50,
+    price: 1.5,
     stock: 100,
     image_url: "/pub-gas-mixed-oring.png",
     images: ["/pub-gas-mixed-oring.png"],
@@ -677,7 +665,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Hardware & Adapter",
     cylinder_size: "Mixed Gas Seal",
     deposit_price: 0,
-    refill_price: 1.50,
+    refill_price: 1.5,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: false,
@@ -697,7 +685,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "CO2 O-ring",
     description:
       "High-durability sealing O-rings specifically sized for CO2 Carbon Dioxide cylinder valves and cellar regulators.",
-    price: 1.50,
+    price: 1.5,
     stock: 100,
     image_url: "/pub-gas-co2-oring.png",
     images: ["/pub-gas-co2-oring.png"],
@@ -705,7 +693,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Hardware & Adapter",
     cylinder_size: "CO2 Seal",
     deposit_price: 0,
-    refill_price: 1.50,
+    refill_price: 1.5,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: false,
@@ -725,7 +713,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "CO2 / Carbon Dioxide",
     description:
       "22.6kg food-grade Carbon Dioxide (CO2) cellar cylinder for high-volume soft drinks and draught beer dispense. Restricted to pub and licensed hospitality customers.",
-    price: 69.00,
+    price: 69.0,
     stock: 20,
     image_url: "/pub-gas-co2-22-6kg.png",
     images: ["/pub-gas-co2-22-6kg.png"],
@@ -733,7 +721,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "22.6kg",
     deposit_price: 55.0,
-    refill_price: 69.00,
+    refill_price: 69.0,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -755,7 +743,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "CO2 / Carbon Dioxide",
     description:
       "Large 34kg industrial/commercial food-grade Carbon Dioxide cylinder for multi-line pub cellars, clubs and brewery taprooms. Restricted to pub and licensed hospitality customers.",
-    price: 97.20,
+    price: 97.2,
     stock: 15,
     image_url: "/pub-gas-co2-34kg.png",
     images: ["/pub-gas-co2-34kg.png"],
@@ -763,7 +751,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     gas_type: "Pub Gas",
     cylinder_size: "34kg",
     deposit_price: 65.0,
-    refill_price: 97.20,
+    refill_price: 97.2,
     delivery_charge: 0,
     is_active: true,
     empty_cylinder_required: true,
@@ -775,7 +763,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Restricted to licensed hospitality & pub accounts",
       "Empty cylinder exchange required on delivery",
     ],
-    suitable_for: ["Large Nightclubs & Venues", "Breweries & Taprooms", "High-Volume Draught Systems"],
+    suitable_for: [
+      "Large Nightclubs & Venues",
+      "Breweries & Taprooms",
+      "High-Volume Draught Systems",
+    ],
   },
   // 20 Coal & Other Fuels Products (Smokeless Fuel, Firewood, Kindling, BBQ & Paraffin)
   {
@@ -784,8 +776,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Brazier",
     category_slug: "coal-fuels",
     subcategory: "Smokeless Fuel",
-    description: "Brazier smokeless fuel (10kg) – value for money smokeless fuel for open fires and multi-fuel stoves.",
-    price: 6.50,
+    description:
+      "Brazier smokeless fuel (10kg) – value for money smokeless fuel for open fires and multi-fuel stoves.",
+    price: 6.5,
     stock: 50,
     image_url: "/fuel-brazier-10kg.png",
     images: ["/fuel-brazier-10kg.png"],
@@ -795,7 +788,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Value for money smokeless fuel", "Ideal for open fires and stoves", "Clean burning & consistent heat"],
+    features: [
+      "Value for money smokeless fuel",
+      "Ideal for open fires and stoves",
+      "Clean burning & consistent heat",
+    ],
     suitable_for: ["Open Fires", "Multi-Fuel Stoves", "Room Heaters"],
   },
   {
@@ -804,7 +801,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Brazier",
     category_slug: "coal-fuels",
     subcategory: "Smokeless Fuel",
-    description: "Brazier smokeless fuel (20kg) – 24% hotter and produces up to 80% less smoke. Suitable for open fires and multi-fuel stoves.",
+    description:
+      "Brazier smokeless fuel (20kg) – 24% hotter and produces up to 80% less smoke. Suitable for open fires and multi-fuel stoves.",
     price: 12.75,
     stock: 45,
     image_url: "/fuel-brazier-20kg.png",
@@ -824,7 +822,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Homefire",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "Homefire Coffee Bricks (7kg) – eco-friendly briquettes made from recycled coffee grounds for open fires, chimineas and stoves.",
+    description:
+      "Homefire Coffee Bricks (7kg) – eco-friendly briquettes made from recycled coffee grounds for open fires, chimineas and stoves.",
     price: 7.75,
     stock: 35,
     image_url: "/fuel-coffee-bricks-7kg.png",
@@ -835,7 +834,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Made from recycled coffee grounds", "High heat output with pleasant aroma", "Eco-friendly sustainable alternative"],
+    features: [
+      "Made from recycled coffee grounds",
+      "High heat output with pleasant aroma",
+      "Eco-friendly sustainable alternative",
+    ],
     suitable_for: ["Open Fires", "Chimineas", "Multi-Fuel Stoves"],
   },
   {
@@ -844,8 +847,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Homefire",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "Homefire Twizlers wood wool firelighters – 100% natural, odorless and quick to light for open fires and multi-fuel stoves.",
-    price: 2.30,
+    description:
+      "Homefire Twizlers wood wool firelighters – 100% natural, odorless and quick to light for open fires and multi-fuel stoves.",
+    price: 2.3,
     stock: 100,
     image_url: "/fuel-homefire-twizlers.png",
     images: ["/fuel-homefire-twizlers.png"],
@@ -854,7 +858,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["100% natural wood wool & wax", "Odourless & easy to light", "Reliable ignition for all solid fuels"],
+    features: [
+      "100% natural wood wool & wax",
+      "Odourless & easy to light",
+      "Reliable ignition for all solid fuels",
+    ],
     suitable_for: ["Fireplaces", "Log Burners", "BBQs & Firepits"],
   },
   {
@@ -863,8 +871,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Stayte Fuels",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "Premium kiln dried kindling wood – ideal starter fuel for open fires, log burners and chimineas.",
-    price: 4.00,
+    description:
+      "Premium kiln dried kindling wood – ideal starter fuel for open fires, log burners and chimineas.",
+    price: 4.0,
     stock: 80,
     image_url: "/fuel-kiln-dried-kindling.png",
     images: ["/fuel-kiln-dried-kindling.png"],
@@ -873,7 +882,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Moisture content below 12%", "Fast ignition & clean burn", "Standard bag for convenient storage"],
+    features: [
+      "Moisture content below 12%",
+      "Fast ignition & clean burn",
+      "Standard bag for convenient storage",
+    ],
     suitable_for: ["Open Fires", "Log Burners", "Chimineas & Pizza Ovens"],
   },
   {
@@ -882,7 +895,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "National Coal",
     category_slug: "coal-fuels",
     subcategory: "Smokeless Fuel",
-    description: "Stoveflame Original 25kg smokeless fuel ovoids for multi-fuel stoves, roomheaters and boilers.",
+    description:
+      "Stoveflame Original 25kg smokeless fuel ovoids for multi-fuel stoves, roomheaters and boilers.",
     price: 18.25,
     stock: 40,
     image_url: "/fuel-stoveflame-25kg.png",
@@ -902,7 +916,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Taybrite",
     category_slug: "coal-fuels",
     subcategory: "Smokeless Fuel",
-    description: "Taybrite 25kg multi-purpose economy smokeless fuel for room heaters, boilers and multi-fuel stoves.",
+    description:
+      "Taybrite 25kg multi-purpose economy smokeless fuel for room heaters, boilers and multi-fuel stoves.",
     price: 18.75,
     stock: 40,
     image_url: "/fuel-taybrite-25kg.png",
@@ -913,7 +928,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Multi-purpose economy briquette", "Long slumbering burn time", "Low residual ash content"],
+    features: [
+      "Multi-purpose economy briquette",
+      "Long slumbering burn time",
+      "Low residual ash content",
+    ],
     suitable_for: ["Multi-Fuel Stoves", "Room Heaters", "Gravity Feed Boilers"],
   },
   {
@@ -922,7 +941,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Homefire",
     category_slug: "coal-fuels",
     subcategory: "Smokeless Fuel",
-    description: "Homefire 25kg premier smokeless coal for open fires and multi-fuel stoves. Up to 33% more heat and burns for up to 9 hours.",
+    description:
+      "Homefire 25kg premier smokeless coal for open fires and multi-fuel stoves. Up to 33% more heat and burns for up to 9 hours.",
     price: 21.15,
     stock: 50,
     image_url: "/fuel-homefire-25kg.png",
@@ -933,7 +953,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Up to 33% more heat than ordinary coal", "Lasts up to 9 hours", "Attractive flame picture on open fires"],
+    features: [
+      "Up to 33% more heat than ordinary coal",
+      "Lasts up to 9 hours",
+      "Attractive flame picture on open fires",
+    ],
     suitable_for: ["Open Fires", "Multi-Fuel Stoves", "Rayburns & Cookers"],
   },
   {
@@ -942,7 +966,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Stayte Fuels",
     category_slug: "coal-fuels",
     subcategory: "Kiln Dried Logs",
-    description: "Net bag of seasoned hardwood logs (approx 10kg) for open fireplaces and wood-burning stoves.",
+    description:
+      "Net bag of seasoned hardwood logs (approx 10kg) for open fireplaces and wood-burning stoves.",
     price: 5.25,
     stock: 60,
     image_url: "/fuel-net-of-logs-10kg.png",
@@ -953,7 +978,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Seasoned premium hardwood", "Convenient net bag packaging", "Ready to burn certified"],
+    features: [
+      "Seasoned premium hardwood",
+      "Convenient net bag packaging",
+      "Ready to burn certified",
+    ],
     suitable_for: ["Open Fireplaces", "Wood-burning Stoves", "Fire Pits"],
   },
   {
@@ -962,8 +991,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Homefire",
     category_slug: "coal-fuels",
     subcategory: "Kiln Dried Logs",
-    description: "Homefire premium kiln dried hardwood logs (approx 8kg) – Ready to Burn certified with moisture content under 20%.",
-    price: 8.00,
+    description:
+      "Homefire premium kiln dried hardwood logs (approx 8kg) – Ready to Burn certified with moisture content under 20%.",
+    price: 8.0,
     stock: 45,
     image_url: "/fuel-homefire-kiln-dried-logs-8kg.png",
     images: ["/fuel-homefire-kiln-dried-logs-8kg.png"],
@@ -973,7 +1003,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["100% FSC certified kiln dried hardwood", "Moisture below 20%", "Maximum heat output with minimal smoke"],
+    features: [
+      "100% FSC certified kiln dried hardwood",
+      "Moisture below 20%",
+      "Maximum heat output with minimal smoke",
+    ],
     suitable_for: ["Modern Woodstoves", "Open Grates", "Pizza Ovens"],
   },
   {
@@ -982,8 +1016,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Barrettine",
     category_slug: "coal-fuels",
     subcategory: "Liquid Fuel",
-    description: "Barrettine premium pre-packed paraffin (4 Litres) for greenhouse heaters, domestic paraffin heaters and lamps.",
-    price: 10.00,
+    description:
+      "Barrettine premium pre-packed paraffin (4 Litres) for greenhouse heaters, domestic paraffin heaters and lamps.",
+    price: 10.0,
     stock: 30,
     image_url: "/fuel-pre-packed-paraffin-4l.png",
     images: ["/fuel-pre-packed-paraffin-4l.png"],
@@ -993,7 +1028,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["High grade clean-burning paraffin", "Child-safe sealed container", "Ideal for horticulture and mobile heating"],
+    features: [
+      "High grade clean-burning paraffin",
+      "Child-safe sealed container",
+      "Ideal for horticulture and mobile heating",
+    ],
     suitable_for: ["Greenhouse Heaters", "Paraffin Stoves", "Pressure Lamps"],
   },
   {
@@ -1002,8 +1041,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Big K",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "Big K instant lighting firelog (single) – just light the wrapper for up to 2 hours of warm ambient fire.",
-    price: 2.00,
+    description:
+      "Big K instant lighting firelog (single) – just light the wrapper for up to 2 hours of warm ambient fire.",
+    price: 2.0,
     stock: 75,
     image_url: "/fuel-instant-lighting-firelog.png",
     images: ["/fuel-instant-lighting-firelog.png"],
@@ -1012,7 +1052,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Single wrapper lighting", "Burns for up to 2 hours", "No mess & no kindling needed"],
+    features: [
+      "Single wrapper lighting",
+      "Burns for up to 2 hours",
+      "No mess & no kindling needed",
+    ],
     suitable_for: ["Open Hearth Fires", "Chimineas", "Outdoor Fire Pits"],
   },
   {
@@ -1021,7 +1065,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Big K",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "Hollow heat logs (wrapped pack of 12) – high-density compressed sawdust logs. Maximum 10 packs per order.",
+    description:
+      "Hollow heat logs (wrapped pack of 12) – high-density compressed sawdust logs. Maximum 10 packs per order.",
     price: 7.35,
     stock: 50,
     image_url: "/fuel-heat-logs-hollow-12.png",
@@ -1032,7 +1077,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["100% recycled high-density sawdust", "Hollow core for optimal airflow", "Max order limit: 10 packs"],
+    features: [
+      "100% recycled high-density sawdust",
+      "Hollow core for optimal airflow",
+      "Max order limit: 10 packs",
+    ],
     suitable_for: ["Stoves", "Log Burners", "Open Grates"],
   },
   {
@@ -1041,7 +1090,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Stayte Fuels",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "Net bag of dry kindling sticks (approx 5kg) for lighting log fires and stoves effortlessly.",
+    description:
+      "Net bag of dry kindling sticks (approx 5kg) for lighting log fires and stoves effortlessly.",
     price: 4.45,
     stock: 60,
     image_url: "/fuel-net-of-kindling-5kg.png",
@@ -1052,7 +1102,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Large approx 5kg economical net", "Kiln dried for rapid ignition", "Clean uniform sticks"],
+    features: [
+      "Large approx 5kg economical net",
+      "Kiln dried for rapid ignition",
+      "Clean uniform sticks",
+    ],
     suitable_for: ["Fireplaces", "Woodstoves", "Campfires"],
   },
   {
@@ -1061,8 +1115,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Big K",
     category_slug: "coal-fuels",
     subcategory: "Charcoal & BBQ",
-    description: "Big K instant lighting charcoal (2kg pack) – ready to cook in 20 minutes with no firelighters required.",
-    price: 4.50,
+    description:
+      "Big K instant lighting charcoal (2kg pack) – ready to cook in 20 minutes with no firelighters required.",
+    price: 4.5,
     stock: 45,
     image_url: "/fuel-instant-lighting-charcoal-2kg.png",
     images: ["/fuel-instant-lighting-charcoal-2kg.png"],
@@ -1081,7 +1136,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "CPL",
     category_slug: "coal-fuels",
     subcategory: "Kindling & Heat Logs",
-    description: "CPL high energy ultra dry heat log blocks (pack of 8) for open fires, chimineas and multi-fuel stoves.",
+    description:
+      "CPL high energy ultra dry heat log blocks (pack of 8) for open fires, chimineas and multi-fuel stoves.",
     price: 3.85,
     stock: 40,
     image_url: "/fuel-heat-log-blocks-8.png",
@@ -1092,7 +1148,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["High energy compressed wood briquettes", "Ultra low moisture content", "Minimal ash output"],
+    features: [
+      "High energy compressed wood briquettes",
+      "Ultra low moisture content",
+      "Minimal ash output",
+    ],
     suitable_for: ["Open Fires", "Multi-Fuel Stoves", "Chimineas"],
   },
   {
@@ -1101,8 +1161,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Homefire",
     category_slug: "coal-fuels",
     subcategory: "Charcoal & BBQ",
-    description: "Homefire 100% natural lumpwood charcoal (4kg) – fast lighting, high heat for authentic barbecue flavor.",
-    price: 5.60,
+    description:
+      "Homefire 100% natural lumpwood charcoal (4kg) – fast lighting, high heat for authentic barbecue flavor.",
+    price: 5.6,
     stock: 50,
     image_url: "/fuel-lumpwood-charcoal-4kg.png",
     images: ["/fuel-lumpwood-charcoal-4kg.png"],
@@ -1112,7 +1173,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["100% natural lumpwood charcoal", "High cooking temperatures", "Imparts rich smoky BBQ flavor"],
+    features: [
+      "100% natural lumpwood charcoal",
+      "High cooking temperatures",
+      "Imparts rich smoky BBQ flavor",
+    ],
     suitable_for: ["Barbecues", "Smokers", "Ceramic Grills"],
   },
   {
@@ -1121,8 +1186,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Kingfisher",
     category_slug: "coal-fuels",
     subcategory: "Charcoal & BBQ",
-    description: "Kingfisher instant disposable barbecue – all in one pack, easy to light, ready in 20 minutes, burns for up to 1.5 hours.",
-    price: 3.00,
+    description:
+      "Kingfisher instant disposable barbecue – all in one pack, easy to light, ready in 20 minutes, burns for up to 1.5 hours.",
+    price: 3.0,
     stock: 40,
     image_url: "/fuel-small-instant-bbq.png",
     images: ["/fuel-small-instant-bbq.png"],
@@ -1131,7 +1197,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["All-in-one single use barbecue tray", "Stand included", "Cooks for up to 1.5 hours"],
+    features: [
+      "All-in-one single use barbecue tray",
+      "Stand included",
+      "Cooks for up to 1.5 hours",
+    ],
     suitable_for: ["Camping", "Picnics", "Day Trips & Festivals"],
   },
   {
@@ -1140,7 +1210,8 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Big K",
     category_slug: "coal-fuels",
     subcategory: "Charcoal & BBQ",
-    description: "Big K party size disposable instant BBQ – extra-large cooking surface for family gatherings and outdoor parties.",
+    description:
+      "Big K party size disposable instant BBQ – extra-large cooking surface for family gatherings and outdoor parties.",
     price: 7.15,
     stock: 35,
     image_url: "/fuel-large-party-bbq.png",
@@ -1150,7 +1221,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Extra-large grill surface", "Quick lighting formula", "Burns hotter and longer for party crowds"],
+    features: [
+      "Extra-large grill surface",
+      "Quick lighting formula",
+      "Burns hotter and longer for party crowds",
+    ],
     suitable_for: ["Garden Parties", "Family Gatherings", "Outdoor Events"],
   },
   {
@@ -1159,8 +1234,9 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "Big K",
     category_slug: "coal-fuels",
     subcategory: "Charcoal & BBQ",
-    description: "Big K premium barbecue lighting fluid (1 Litre bottle) with safety cap for charcoal barbecues.",
-    price: 4.00,
+    description:
+      "Big K premium barbecue lighting fluid (1 Litre bottle) with safety cap for charcoal barbecues.",
+    price: 4.0,
     stock: 60,
     image_url: "/fuel-bbq-lighter-fluid-1l.png",
     images: ["/fuel-bbq-lighter-fluid-1l.png"],
@@ -1170,7 +1246,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     is_active: true,
     empty_cylinder_required: false,
     product_mode: "Outright Purchase",
-    features: ["Clean lighting formula", "Child-resistant safety cap", "Directional nozzle for precise application"],
+    features: [
+      "Clean lighting formula",
+      "Child-resistant safety cap",
+      "Directional nozzle for precise application",
+    ],
     suitable_for: ["Charcoal Grills", "BBQ Chimneys", "Outdoor Firepits"],
   },
 
@@ -1183,7 +1263,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Groundbait",
     description:
       "High energy marine halibut groundbait (1kg) – specially formulated with marine halibut attractants for coarse and match angling.",
-    price: 5.00,
+    price: 5.0,
     stock: 50,
     image_url: "/bait-marine-halibut-groundbait-1kg.png",
     images: ["/bait-marine-halibut-groundbait-1kg.png"],
@@ -1208,7 +1288,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Groundbait",
     description:
       "High energy marine halibut method mix (2kg) – big carp range with proven attraction and binding properties for method feeders.",
-    price: 7.30,
+    price: 7.3,
     stock: 50,
     image_url: "/bait-marine-halibut-method-mix-2kg.png",
     images: ["/bait-marine-halibut-method-mix-2kg.png"],
@@ -1285,7 +1365,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Wild Bird Food",
     description:
       "Countrywide Summer Season Wild Bird Food (20kg) – specially formulated high-energy blend for garden birds during warm breeding months.",
-    price: 13.70,
+    price: 13.7,
     stock: 50,
     image_url: "/feed-summer-wild-bird-20kg.png",
     images: ["/feed-summer-wild-bird-20kg.png"],
@@ -1310,7 +1390,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Dog Food",
     description:
       "Autarky Mature Lite Complete Dog Food with Delicious Chicken (12kg) – 100% natural goodness with added herbs for senior and weight-conscious dogs.",
-    price: 25.20,
+    price: 25.2,
     stock: 50,
     image_url: "/feed-autarky-mature-lite-chicken-12kg.png",
     images: ["/feed-autarky-mature-lite-chicken-12kg.png"],
@@ -1335,7 +1415,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Dog Food",
     description:
       "Autarky Puppy/Junior Complete Dog Food with Delicious Chicken (12kg) – hypoallergenic recipe with prebiotics and minerals for healthy puppy development.",
-    price: 29.30,
+    price: 29.3,
     stock: 50,
     image_url: "/feed-autarky-puppy-junior-chicken-12kg.png",
     images: ["/feed-autarky-puppy-junior-chicken-12kg.png"],
@@ -1360,7 +1440,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     subcategory: "Dog Food",
     description:
       "Autarky Adult Complete Dog Food with Succulent Salmon (12kg) – rich in Omega 3 fatty acids, wheat-gluten free for active adult working dogs.",
-    price: 26.00,
+    price: 26.0,
     stock: 50,
     image_url: "/feed-autarky-adult-salmon-12kg.png",
     images: ["/feed-autarky-adult-salmon-12kg.png"],
@@ -1534,11 +1614,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Protective storage pouch included",
       "Tested to 30 bar pressure rating",
     ],
-    suitable_for: [
-      "European Touring Vehicles",
-      "Motorhomes & Campervans",
-      "Imported LPG Vehicles",
-    ],
+    suitable_for: ["European Touring Vehicles", "Motorhomes & Campervans", "Imported LPG Vehicles"],
   },
   {
     name: "Compact Double Burner Stove",
@@ -1546,10 +1622,11 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
     brand: "SunnGas",
     category_slug: "gas-appliances",
     subcategory: "Camping",
-    description: "Compact Double Burner Stove, compact size and high performance. Quality construction that works from butane or propane.",
-    price: 20.00,
+    description:
+      "Compact Double Burner Stove, compact size and high performance. Quality construction that works from butane or propane.",
+    price: 20.0,
     deposit_price: 0,
-    refill_price: 20.00,
+    refill_price: 20.0,
     delivery_charge: 0,
     stock: 1,
     image_url: "/camping-compact-double-burner.png",
@@ -1563,11 +1640,7 @@ export const INITIAL_GAS_PRODUCTS: Omit<GasProductRecord, "id">[] = [
       "Model: CCKE210",
       "Manufactured by SunnGas",
     ],
-    suitable_for: [
-      "Camping & Caravanning",
-      "Outdoor Cooking",
-      "Picnics & Festivals",
-    ],
+    suitable_for: ["Camping & Caravanning", "Outdoor Cooking", "Picnics & Festivals"],
   },
 ];
 
@@ -1695,7 +1768,9 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
       // 3. Must match the exact requested usageType
       const productUsage: UsageType =
         specs.usage_type ||
-        (catSlug === "vehicle-lpg-autogas" || catSlug === "autogas" || p.name.toLowerCase().includes("autogas")
+        (catSlug === "vehicle-lpg-autogas" ||
+        catSlug === "autogas" ||
+        p.name.toLowerCase().includes("autogas")
           ? "AUTOGAS"
           : catSlug === "bulk-gas"
             ? "BULK"
@@ -1714,7 +1789,9 @@ export async function getGasProductsByUsage(usageType: UsageType): Promise<GasPr
       const catSlug = (p.category_slug || "").toLowerCase();
       const productUsage: UsageType =
         specs.usage_type ||
-        (catSlug === "vehicle-lpg-autogas" || catSlug === "autogas" || p.name.toLowerCase().includes("autogas")
+        (catSlug === "vehicle-lpg-autogas" ||
+        catSlug === "autogas" ||
+        p.name.toLowerCase().includes("autogas")
           ? "AUTOGAS"
           : catSlug === "bulk-gas"
             ? "BULK"
@@ -1799,7 +1876,30 @@ export async function getAvailableSlots(params: {
 > {
   const { type, date } = params;
 
-  // 1. Fetch slots config from cms_content_blocks or fallback to defaults
+  // 1. Authoritative: Fetch real-time slot availability from Supabase RPC
+  try {
+    const dbAvailability = await getDeliverySlotsAvailability(date, type);
+    if (dbAvailability && dbAvailability.length > 0) {
+      return dbAvailability.map((res) => ({
+        slot: {
+          id: res.id,
+          slot_name: res.slot_name,
+          start_time: res.start_time,
+          end_time: res.end_time,
+          capacity: res.capacity,
+          is_active: res.is_active,
+          type: res.slot_type as any,
+        },
+        bookedCount: res.booked_count,
+        available: res.is_available,
+        remainingCapacity: res.remaining_capacity,
+      }));
+    }
+  } catch (err) {
+    console.warn("[CylinderService] Falling back to standard slots query:", err);
+  }
+
+  // Fallback: If DB RPC unavailable, load slot configs or fallback to defaults
   let slotConfigs: SlotConfig[] = DEFAULT_SLOTS;
   try {
     const { data: configBlock } = await supabase
@@ -1818,19 +1918,16 @@ export async function getAvailableSlots(params: {
     // fallback to defaults
   }
 
-  // Filter slots for requested type
   const activeSlots = slotConfigs.filter(
     (s) => s.is_active && (s.type === "both" || s.type === type),
   );
 
-  // 2. Count existing bookings for this date and time slots from orders & delivery_assignments
   const { data: assignments } = await supabase
     .from("delivery_assignments")
     .select("time_slot, created_at, status")
     .not("status", "eq", "Cancelled");
 
   return activeSlots.map((slot) => {
-    // Approximate matching on slot name or time string
     const booked = (assignments || []).filter(
       (a) =>
         a.time_slot && (a.time_slot === slot.slot_name || a.time_slot.includes(slot.start_time)),
@@ -1959,7 +2056,18 @@ export async function createGasOrder(params: {
     );
   }
 
-  // 2. Recalculate price on the backend
+  // 2. Atomic Delivery Slot Revalidation on Server
+  if (deliveryDate && deliveryTimeSlot) {
+    const slotVal = await validateDeliverySlotBooking(deliveryTimeSlot, deliveryDate);
+    if (!slotVal.valid) {
+      throw new Error(
+        slotVal.message ||
+          `The selected delivery time slot (${deliveryTimeSlot}) is unavailable or fully booked for ${deliveryDate}. Please choose another slot.`,
+      );
+    }
+  }
+
+  // 3. Recalculate price on the backend
   const calculated = await validateAndCalculateOrderTotal({
     productId,
     quantity,

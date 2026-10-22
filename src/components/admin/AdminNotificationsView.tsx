@@ -13,6 +13,8 @@ import {
   Truck,
   ShieldCheck,
   AlertTriangle,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,16 +55,34 @@ export function AdminNotificationsView() {
 
   useEffect(() => {
     loadNotifications();
+
+    const channel = supabase
+      .channel("admin_notifications_view_realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        () => loadNotifications(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read && !n.is_read).length;
 
   const markAsRead = async (id: string) => {
     try {
-      const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read: true, is_read: true })
+        .eq("id", id);
 
       if (error) throw error;
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true, is_read: true } : n)),
+      );
       toast.success("Notification marked as read");
       window.dispatchEvent(new Event("admin_modules_updated"));
     } catch (err: any) {
@@ -71,17 +91,17 @@ export function AdminNotificationsView() {
   };
 
   const markAllAsRead = async () => {
-    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    const unreadIds = notifications.filter((n) => !n.read && !n.is_read).map((n) => n.id);
     if (unreadIds.length === 0) return toast.info("All notifications are already read.");
 
     try {
       const { error } = await supabase
         .from("notifications")
-        .update({ read: true })
+        .update({ read: true, is_read: true })
         .in("id", unreadIds);
 
       if (error) throw error;
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
       toast.success("All notifications marked as read");
       window.dispatchEvent(new Event("admin_modules_updated"));
     } catch (err: any) {
@@ -102,7 +122,7 @@ export function AdminNotificationsView() {
   };
 
   const filteredNotifications = notifications.filter((n) => {
-    const isUnread = !n.read;
+    const isUnread = !n.read && !n.is_read;
     if (filterUnreadOnly && !isUnread) return false;
 
     if (filterCategory !== "all") {
@@ -122,6 +142,7 @@ export function AdminNotificationsView() {
 
   const getCategoryIcon = (category: string | null) => {
     const cat = (category || "").toLowerCase();
+    if (cat.includes("application")) return <FileText className="h-4 w-4 text-emerald-600" />;
     if (cat.includes("order")) return <ShoppingBag className="h-4 w-4 text-blue-600" />;
     if (cat.includes("stock") || cat.includes("inventory"))
       return <Package className="h-4 w-4 text-amber-600" />;
@@ -185,6 +206,7 @@ export function AdminNotificationsView() {
             </SelectTrigger>
             <SelectContent className="rounded-2xl">
               <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="applications">Applications</SelectItem>
               <SelectItem value="order">Orders</SelectItem>
               <SelectItem value="stock">Inventory</SelectItem>
               <SelectItem value="delivery">Deliveries</SelectItem>
@@ -269,6 +291,23 @@ export function AdminNotificationsView() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                  {n.link && (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl text-xs font-bold gap-1 h-8 border-slate-200 hover:bg-slate-50"
+                    >
+                      <Link
+                        to={n.link}
+                        onClick={() => {
+                          if (isUnread) markAsRead(n.id);
+                        }}
+                      >
+                        Review <ExternalLink className="h-3 w-3 ml-0.5" />
+                      </Link>
+                    </Button>
+                  )}
                   {isUnread && (
                     <Button
                       onClick={() => markAsRead(n.id)}

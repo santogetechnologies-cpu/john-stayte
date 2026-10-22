@@ -52,6 +52,7 @@ import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
 import { Route as AdminCylinderDepositsRouteImport } from './routes/admin.cylinder-deposits'
 import { Route as AdminDeliveriesRouteImport } from './routes/admin.deliveries'
 import { Route as AdminDeliveryAgentsRouteImport } from './routes/admin.delivery-agents'
+import { Route as AdminDeliverySlotsRouteImport } from './routes/admin.delivery-slots'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin.enquiries'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
@@ -316,6 +317,11 @@ const AdminDeliveriesRoute = AdminDeliveriesRouteImport.update({
 const AdminDeliveryAgentsRoute = AdminDeliveryAgentsRouteImport.update({
   id: '/delivery-agents',
   path: '/delivery-agents',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDeliverySlotsRoute = AdminDeliverySlotsRouteImport.update({
+  id: '/delivery-slots',
+  path: '/delivery-slots',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
@@ -612,6 +618,7 @@ export interface FileRoutesByFullPath {
   '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
+  '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -701,6 +708,7 @@ export interface FileRoutesByTo {
   '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
+  '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -797,6 +805,7 @@ export interface FileRoutesById {
   '/admin/cylinder-deposits': typeof AdminCylinderDepositsRoute
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
+  '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/inventory': typeof AdminInventoryRoute
@@ -894,6 +903,7 @@ export interface FileRouteTypes {
     | '/admin/cylinder-deposits'
     | '/admin/deliveries'
     | '/admin/delivery-agents'
+    | '/admin/delivery-slots'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -983,6 +993,7 @@ export interface FileRouteTypes {
     | '/admin/cylinder-deposits'
     | '/admin/deliveries'
     | '/admin/delivery-agents'
+    | '/admin/delivery-slots'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -1078,6 +1089,7 @@ export interface FileRouteTypes {
     | '/admin/cylinder-deposits'
     | '/admin/deliveries'
     | '/admin/delivery-agents'
+    | '/admin/delivery-slots'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/inventory'
@@ -1457,6 +1469,13 @@ declare module '@tanstack/react-router' {
       path: '/delivery-agents'
       fullPath: '/admin/delivery-agents'
       preLoaderRoute: typeof AdminDeliveryAgentsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/delivery-slots': {
+      id: '/admin/delivery-slots'
+      path: '/delivery-slots'
+      fullPath: '/admin/delivery-slots'
+      preLoaderRoute: typeof AdminDeliverySlotsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/enquiries': {
@@ -1874,6 +1893,7 @@ interface AdminRouteChildren {
   AdminCylinderDepositsRoute: typeof AdminCylinderDepositsRoute
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
   AdminDeliveryAgentsRoute: typeof AdminDeliveryAgentsRoute
+  AdminDeliverySlotsRoute: typeof AdminDeliverySlotsRoute
   AdminEnquiriesRoute: typeof AdminEnquiriesRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
@@ -1908,6 +1928,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCylinderDepositsRoute: AdminCylinderDepositsRoute,
   AdminDeliveriesRoute: AdminDeliveriesRoute,
   AdminDeliveryAgentsRoute: AdminDeliveryAgentsRoute,
+  AdminDeliverySlotsRoute: AdminDeliverySlotsRoute,
   AdminEnquiriesRoute: AdminEnquiriesRoute,
   AdminFaqsRoute: AdminFaqsRoute,
   AdminInventoryRoute: AdminInventoryRoute,

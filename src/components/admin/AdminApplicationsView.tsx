@@ -109,6 +109,28 @@ export function AdminApplicationsView() {
     };
   }, []);
 
+  // Auto-open application review dialog if specified in URL query (e.g. from notification click)
+  useEffect(() => {
+    if (applications.length === 0) return;
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const targetAppId = searchParams.get("appId") || searchParams.get("id");
+      if (targetAppId) {
+        const found = applications.find(
+          (a) => a.id === targetAppId || a.customer_id === targetAppId,
+        );
+        if (found) {
+          setSelectedApp(found);
+          setAdminNotes(found.admin_notes || "");
+          setRejectionReason(found.admin_notes || "");
+          setModalOpen(true);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [applications]);
+
   const filteredApplications = useMemo(() => {
     return applications.filter((app) => {
       const matchesSearch =

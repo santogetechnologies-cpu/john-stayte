@@ -37,8 +37,25 @@ import {
   checkEmailVerifiedStatus,
 } from "@/lib/checkout-email-service";
 import { validateAndRedeemOfferServer, type Offer } from "@/lib/offer-service";
+import {
+  createElavonPaymentSessionServerFn,
+  verifyElavonPaymentServerFn,
+} from "@/lib/elavon-payment-server-fn";
+
+interface CheckoutSearch {
+  payment?: "verify" | "cancelled" | "declined";
+  orderId?: string;
+  sessionId?: string;
+  transactionId?: string;
+}
 
 export const Route = createFileRoute("/checkout")({
+  validateSearch: (search: Record<string, unknown>): CheckoutSearch => ({
+    payment: typeof search.payment === "string" ? (search.payment as any) : undefined,
+    orderId: typeof search.orderId === "string" ? search.orderId : undefined,
+    sessionId: typeof search.sessionId === "string" ? search.sessionId : undefined,
+    transactionId: typeof search.transactionId === "string" ? search.transactionId : undefined,
+  }),
   head: () => ({
     meta: [
       { property: "og:image", content: "https://stayte-hub-suite.lovable.app/og-image.jpg" },
@@ -75,6 +92,7 @@ function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
 }
 
 function Checkout() {
+  const search = Route.useSearch();
   const [appliedOffer] = useState<Offer | null>(() => {
     try {
       const saved = sessionStorage.getItem("jss.applied_offer");
@@ -83,14 +101,118 @@ function Checkout() {
       return null;
     }
   });
-  const { lines, subtotal, offerDiscount, shipping, vat, total, settings, loading: cartLoading } = useCartTotals(appliedOffer);
+  const {
+    lines,
+    subtotal,
+    offerDiscount,
+    shipping,
+    vat,
+    total,
+    settings,
+    loading: cartLoading,
+  } = useCartTotals(appliedOffer);
   const { clearCart, removeFromCart, user } = useStore();
   const [submitting, setSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
   const [emailVerifyModalOpen, setEmailVerifyModalOpen] = useState(false);
   const [resendingEmail, setResendingEmail] = useState(false);
   const [refreshingAuth, setRefreshingAuth] = useState(false);
   const navigate = useNavigate();
+
+  // Handle return redirect from Elavon Hosted Payment Gateway
+  useEffect(() => {
+    const { payment, orderId, sessionId } = search;
+    if (payment === "verify" && orderId) {
+      let isMounted = true;
+      async function handleVerification() {
+        setIsVerifyingPayment(true);
+        try {
+          const res = await verifyElavonPaymentServerFn({
+            data: {
+              orderId,
+              sessionId,
+            },
+          });
+
+          if (res.ok && res.paymentStatus === "Paid") {
+            clearCart();
+            try {
+              sessionStorage.removeItem("jss.applied_offer");
+            } catch {
+              /* ignore */
+            }
+            toast.success("Payment verified! Your order has been placed successfully.", {
+              id: "elavon-payment-success",
+            });
+            navigate({ to: `/account/orders/${orderId}` as any });
+          } else {
+            toast.error(
+              res.message ||
+                "Card payment verification could not be completed. Please contact support or retry.",
+              { id: "elavon-payment-error" },
+            );
+            navigate({ to: "/checkout", search: {} });
+          }
+        } catch (err: any) {
+          toast.error("Payment verification failed: " + (err.message || "Network error"));
+          navigate({ to: "/checkout", search: {} });
+        } finally {
+          if (isMounted) setIsVerifyingPayment(false);
+        }
+      }
+      handleVerification();
+      return () => {
+        isMounted = false;
+      };
+    } else if (payment === "cancelled") {
+      let isMounted = true;
+      if (orderId) {
+        // Authoritative reconciliation: Verify whether transaction was captured before cancelling
+        verifyElavonPaymentServerFn({
+          data: {
+            orderId,
+            sessionId,
+          },
+        })
+          .then((res) => {
+            if (!isMounted) return;
+            if (res.ok && res.paymentStatus === "Paid") {
+              clearCart();
+              try {
+                sessionStorage.removeItem("jss.applied_offer");
+              } catch {
+                /* ignore */
+              }
+              toast.success("Payment verified! Your order has been placed successfully.", {
+                id: "elavon-payment-success",
+              });
+              navigate({ to: `/account/orders/${orderId}` as any });
+            } else {
+              toast.info(
+                "Card payment session was cancelled. Your basket items are saved so you can try again.",
+              );
+              navigate({ to: "/checkout", search: {} });
+            }
+          })
+          .catch(() => {
+            if (!isMounted) return;
+            toast.info(
+              "Card payment session was cancelled. Your basket items are saved so you can try again.",
+            );
+            navigate({ to: "/checkout", search: {} });
+          });
+      } else {
+        toast.info(
+          "Card payment session was cancelled. Your basket items are saved so you can try again.",
+        );
+        navigate({ to: "/checkout", search: {} });
+      }
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [search.payment, search.orderId, search.sessionId, clearCart, navigate]);
 
   // Redirect unauthenticated visitors to login with return path to /checkout
   useEffect(() => {
@@ -107,7 +229,9 @@ function Checkout() {
   const [fullName, setFullName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
-  const [verificationStep, setVerificationStep] = useState<"IDLE" | "OTP_SENT" | "VERIFIED">("IDLE");
+  const [verificationStep, setVerificationStep] = useState<"IDLE" | "OTP_SENT" | "VERIFIED">(
+    "IDLE",
+  );
   const [otpCode, setOtpCode] = useState("");
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
@@ -237,33 +361,9 @@ function Checkout() {
     return lines.some((l) => isRefillableLpgCylinderProduct(l.product));
   }, [lines]);
 
-  // Payment Form Fields (strictly in-memory, never stored in DB or localStorage)
+  // Payment Form Fields (Elavon Hosted Payments handles card data securely)
   const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | "cod">("card");
   const [cardholderName, setCardholderName] = useState(user?.name || "");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvc, setCardCvc] = useState("");
-
-  // Card formatting helpers
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
-    const formatted = raw.replace(/(\d{4})(?=\d)/g, "$1 ");
-    setCardNumber(formatted);
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    if (raw.length >= 3) {
-      setCardExpiry(`${raw.slice(0, 2)}/${raw.slice(2)}`);
-    } else {
-      setCardExpiry(raw);
-    }
-  };
-
-  const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    setCardCvc(raw);
-  };
 
   // Automatically load and prefill customer's saved default address from Supabase
   useEffect(() => {
@@ -344,35 +444,10 @@ function Checkout() {
       return toast.error("Please fill in all required delivery details.");
     }
 
-    // 2. Validate Payment Details if Card Selected
-    if (paymentMethod === "card") {
-      if (!cardholderName.trim()) {
-        return toast.error("Please enter the cardholder name.");
-      }
-      const rawCard = cardNumber.replace(/\s+/g, "");
-      if (rawCard.length < 15) {
-        return toast.error("Please enter a valid 16-digit card number.");
-      }
-      const [expMonth, expYear] = cardExpiry.split("/");
-      if (!expMonth || !expYear || Number(expMonth) < 1 || Number(expMonth) > 12) {
-        return toast.error("Please enter a valid card expiry date (MM/YY).");
-      }
-      if (cardCvc.length < 3) {
-        return toast.error("Please enter a valid 3 or 4 digit security code (CVC).");
-      }
-    }
-
     setSubmitting(true);
     let createdOrderId: string | null = null;
 
     try {
-      // 3. Short payment authorization if card or paypal
-      if (paymentMethod === "card" || paymentMethod === "paypal") {
-        setIsProcessingPayment(true);
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        setIsProcessingPayment(false);
-      }
-
       const currentUserId = activeAuthUser.id;
       const currentEmail = activeAuthUser.email || email.trim();
 
@@ -422,13 +497,12 @@ function Checkout() {
       const finalTotal = Math.max(0, finalSubtotal + shipping + vat);
       const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
 
-      const finalPaymentStatus =
-        paymentMethod === "card" || paymentMethod === "paypal" ? "Paid" : "Pending";
+      const finalPaymentStatus = "Pending";
       const finalPaymentMethod =
         paymentMethod === "paypal"
           ? "PayPal"
           : paymentMethod === "card"
-            ? "Credit / Debit Card"
+            ? "Credit / Debit Card (Elavon)"
             : "Pay on Delivery";
 
       const isEmptyRequired = hasCylinderInCart ? cylinderExchangeType === "refill" : false;
@@ -498,7 +572,10 @@ function Checkout() {
             email: currentEmail,
             cartItems: verifiedItems,
             subtotal: finalSubtotal,
-            orderId: newOrder.id,
+            // Only execute database redemption lock for offline/COD orders.
+            // For card payments, pass null so offer rules/discounts are validated
+            // without consuming the customer's redemption until payment is captured.
+            orderId: paymentMethod === "card" ? null : newOrder.id,
           });
 
           if (valRes.isValid && valRes.discountAmount > 0) {
@@ -517,7 +594,9 @@ function Checkout() {
           }
         } catch (valErr) {
           console.warn("Offer validation server notice:", valErr);
-          toast.info("This offer could not be applied. Your order will continue without the discount.");
+          toast.info(
+            "This offer could not be applied. Your order will continue without the discount.",
+          );
           verifiedDiscount = 0;
           verifiedOfferId = null;
           verifiedOfferCode = null;
@@ -538,9 +617,7 @@ function Checkout() {
           notes: [
             `[Payment: ${finalPaymentMethod}]`,
             verifiedDiscount > 0 ? `[Offer Applied: -${gbp(verifiedDiscount)}]` : "",
-            hasCylinderInCart
-              ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]`
-              : "",
+            hasCylinderInCart ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]` : "",
             hasCylinderInCart ? `[${orderTypeTag}]` : "",
           ]
             .filter(Boolean)
@@ -598,39 +675,44 @@ function Checkout() {
         },
       ]);
 
-      // 9. Update Real Database Inventory for Ordered Products
-      for (const item of verifiedItems) {
-        if (item.product_id) {
-          try {
-            const { data: currentInv } = await supabase
-              .from("inventory")
-              .select("current_stock")
-              .eq("product_id", item.product_id)
-              .single();
-
-            if (currentInv) {
-              const newStock = Math.max(0, currentInv.current_stock - item.quantity);
-              await supabase
+      // 9. Update Database Inventory for Ordered Products
+      // IMPORTANT: For Card payments, inventory is decremented strictly upon authoritative
+      // payment capture in verifyElavonPaymentServerFn. This prevents abandoned/cancelled
+      // checkouts from consuming stock. For COD, decrement stock immediately.
+      if (paymentMethod !== "card") {
+        for (const item of verifiedItems) {
+          if (item.product_id) {
+            try {
+              const { data: currentInv } = await supabase
                 .from("inventory")
-                .update({ current_stock: newStock, updated_at: new Date().toISOString() })
-                .eq("product_id", item.product_id);
-            }
+                .select("current_stock")
+                .eq("product_id", item.product_id)
+                .single();
 
-            const { data: currentProd } = await supabase
-              .from("products")
-              .select("stock")
-              .eq("id", item.product_id)
-              .single();
+              if (currentInv) {
+                const newStock = Math.max(0, currentInv.current_stock - item.quantity);
+                await supabase
+                  .from("inventory")
+                  .update({ current_stock: newStock, updated_at: new Date().toISOString() })
+                  .eq("product_id", item.product_id);
+              }
 
-            if (currentProd) {
-              const newStock = Math.max(0, currentProd.stock - item.quantity);
-              await supabase
+              const { data: currentProd } = await supabase
                 .from("products")
-                .update({ stock: newStock, updated_at: new Date().toISOString() })
-                .eq("id", item.product_id);
+                .select("stock")
+                .eq("id", item.product_id)
+                .single();
+
+              if (currentProd) {
+                const newStock = Math.max(0, currentProd.stock - item.quantity);
+                await supabase
+                  .from("products")
+                  .update({ stock: newStock, updated_at: new Date().toISOString() })
+                  .eq("id", item.product_id);
+              }
+            } catch (invErr) {
+              console.warn("Inventory update notice:", invErr);
             }
-          } catch (invErr) {
-            console.warn("Inventory update notice:", invErr);
           }
         }
       }
@@ -651,11 +733,13 @@ function Checkout() {
         console.warn("Invoice record notice:", invErr);
       }
 
-      // 11. Clear Session Applied Offer
-      try {
-        sessionStorage.removeItem("jss.applied_offer");
-      } catch {
-        /* ignore */
+      // 11. Clear Session Applied Offer (for COD; card payments clear after payment verification)
+      if (paymentMethod !== "card") {
+        try {
+          sessionStorage.removeItem("jss.applied_offer");
+        } catch {
+          /* ignore */
+        }
       }
 
       // 10. Create Customer Notification in Supabase customer_notifications
@@ -701,7 +785,34 @@ function Checkout() {
         console.error("Manager notification creation notice:", staffErr);
       }
 
-      // 12. Clear Cart ONLY AFTER database success
+      // 12. If Card payment: Initiate secure Elavon payment session and redirect customer
+      if (paymentMethod === "card") {
+        setIsProcessingPayment(true);
+        const sessionRes = await createElavonPaymentSessionServerFn({
+          data: {
+            orderId: newOrder.id,
+            orderNumber,
+            amount: finalAuthoritativeTotal,
+            currency: "GBP",
+            customerEmail: currentEmail,
+            customerName: fullName.trim(),
+            returnUrl: `${window.location.origin}/checkout`,
+            cancelUrl: `${window.location.origin}/checkout`,
+          },
+        });
+
+        if (!sessionRes.ok || !sessionRes.paymentUrl) {
+          throw new Error(
+            sessionRes.error || "Failed to initialize secure card payment session with Elavon.",
+          );
+        }
+
+        // Customer completes 3DS2 / SCA on Elavon hosted payment page
+        window.location.href = sessionRes.paymentUrl;
+        return;
+      }
+
+      // 13. Pay on Delivery / Offline path: Clear Cart & Complete
       clearCart();
       toast.success(`Order #${orderNumber} placed successfully!`);
       navigate({ to: `/account/orders/${newOrder.id}` as any });
@@ -819,7 +930,8 @@ function Checkout() {
                     onChange={(e) => handleEmailChange(e.target.value)}
                     className={cn(
                       "rounded-full text-xs font-medium flex-1",
-                      isEmailVerified && "bg-emerald-50/50 border-emerald-300 font-semibold text-emerald-900"
+                      isEmailVerified &&
+                        "bg-emerald-50/50 border-emerald-300 font-semibold text-emerald-900",
                     )}
                     placeholder="customer@example.com"
                   />
@@ -861,7 +973,8 @@ function Checkout() {
                   <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 space-y-2.5 mt-2 animate-in fade-in">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-extrabold text-amber-900 flex items-center gap-1.5">
-                        <KeyRound className="h-3.5 w-3.5 text-amber-600" /> Enter 6-digit code sent to inbox:
+                        <KeyRound className="h-3.5 w-3.5 text-amber-600" /> Enter 6-digit code sent
+                        to inbox:
                       </span>
                       <span className="text-[11px] font-mono font-bold text-amber-700">
                         {cooldown > 0 ? `Resend in ${cooldown}s` : ""}
@@ -908,7 +1021,8 @@ function Checkout() {
                       )}
                     </div>
                     <p className="text-[11px] text-amber-800 leading-tight">
-                      Please check your spam/junk folder if the code doesn't arrive in your main inbox.
+                      Please check your spam/junk folder if the code doesn't arrive in your main
+                      inbox.
                     </p>
                   </div>
                 )}
@@ -969,7 +1083,8 @@ function Checkout() {
                 </h3>
               </div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Please specify whether you are ordering a refill exchange with an existing empty cylinder or purchasing a new gas bottle for the first time.
+                Please specify whether you are ordering a refill exchange with an existing empty
+                cylinder or purchasing a new gas bottle for the first time.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -1155,89 +1270,60 @@ function Checkout() {
               </button>
             </div>
 
-            {/* Card Inputs if Card Selected */}
+            {/* Card Details if Card Selected */}
             {paymentMethod === "card" && (
               <div className="p-5 sm:p-6 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-4 shadow-inner/5">
                 <div className="flex items-center justify-between border-b border-slate-200/70 pb-3">
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-primary" />
                     <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                      Card Payment Details
+                      Card Payment (Elavon Converge Gateway)
                     </span>
                   </div>
-                  <span className="text-xs font-black text-primary">
-                    {gbp(total)}
-                  </span>
+                  <span className="text-xs font-black text-primary">{gbp(total)}</span>
                 </div>
 
-                <div>
-                  <Label htmlFor="chn" className="text-xs font-bold text-slate-700">
-                    Cardholder Name
-                  </Label>
-                  <Input
-                    id="chn"
-                    required
-                    maxLength={100}
-                    value={cardholderName}
-                    onChange={(e) => setCardholderName(e.target.value)}
-                    placeholder="Name as printed on card"
-                    className="mt-1.5 rounded-xl bg-white text-xs font-medium h-10 border-slate-200"
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="cn" className="text-xs font-bold text-slate-700">
-                      Card Number
-                    </Label>
-                    <div className="relative mt-1.5">
-                      <Input
-                        id="cn"
-                        required
-                        placeholder="4242 4242 4242 4242"
-                        maxLength={19}
-                        value={cardNumber}
-                        onChange={handleCardNumberChange}
-                        className="rounded-xl bg-white pl-10 text-xs font-mono font-medium tracking-wider h-10 border-slate-200"
-                      />
-                      <CreditCard className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <div className="rounded-xl bg-white border border-slate-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-900">
+                      Bank-Grade Hosted Checkout
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-black text-slate-700">
+                        VISA
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-black text-slate-700">
+                        MC
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-black text-slate-700">
+                        AMEX
+                      </span>
                     </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="ex" className="text-xs font-bold text-slate-700">
-                      Expiry Date
-                    </Label>
-                    <Input
-                      id="ex"
-                      required
-                      placeholder="MM/YY"
-                      maxLength={5}
-                      value={cardExpiry}
-                      onChange={handleExpiryChange}
-                      className="mt-1.5 rounded-xl bg-white text-xs font-mono font-medium text-center h-10 border-slate-200"
-                    />
-                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Card details are securely captured through Elavon’s PCI-DSS Level 1 hosted
+                    payment interface with Strong Customer Authentication (3D Secure 2). No
+                    sensitive card numbers ever touch or are stored on our servers.
+                  </p>
 
-                  <div>
-                    <Label htmlFor="cv" className="text-xs font-bold text-slate-700">
-                      CVC / Security Code
-                    </Label>
-                    <Input
-                      id="cv"
-                      required
-                      placeholder="123"
-                      maxLength={4}
-                      value={cardCvc}
-                      onChange={handleCvcChange}
-                      className="mt-1.5 rounded-xl bg-white text-xs font-mono font-medium text-center h-10 border-slate-200"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-600 font-medium">
+                    <div className="flex items-center gap-1.5 text-emerald-700">
+                      <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+                      <span>EMV 3-D Secure 2 (SCA) Verified</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-emerald-700">
+                      <Lock className="h-3.5 w-3.5 shrink-0" />
+                      <span>256-Bit TLS End-to-End Encryption</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium border-t border-slate-200/50">
-                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                  <span>Card details are verified with 256-bit SSL encryption.</span>
+                <div className="rounded-xl bg-emerald-50/60 border border-emerald-200/80 p-3 flex items-center justify-between text-xs">
+                  <span className="text-emerald-900 font-medium">Total Payable Amount:</span>
+                  <span className="text-sm font-black text-emerald-950 font-display">
+                    {gbp(total)}
+                  </span>
                 </div>
               </div>
             )}
@@ -1253,27 +1339,24 @@ function Checkout() {
                       <span className="text-[#0079C1]">Pal</span>
                     </span>
                   </div>
-                  <span className="text-xs font-black text-[#003087]">
-                    {gbp(total)}
-                  </span>
+                  <span className="text-xs font-black text-[#003087]">{gbp(total)}</span>
                 </div>
 
                 <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
                   <p>
-                    You will be directed to PayPal to complete your payment securely using your
-                    PayPal balance, linked bank account, or saved cards.
+                    Online PayPal gateway integration is currently in onboarding. To complete your
+                    order immediately, please select <strong>Credit / Debit Card</strong> (processed
+                    securely via Elavon) or <strong>Pay on Delivery</strong>.
                   </p>
                   <div className="flex items-center gap-2 pt-1 text-[11px] text-sky-800 font-medium">
                     <ShieldCheck className="h-4 w-4 text-[#0079C1] shrink-0" />
-                    <span>Protected by PayPal Buyer Protection and 256-bit encryption.</span>
+                    <span>Protected by 256-bit encryption.</span>
                   </div>
                 </div>
 
                 <div className="rounded-xl bg-white/80 border border-sky-100 p-3 flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-medium">Total Payable Amount:</span>
-                  <span className="text-sm font-black text-slate-900">
-                    {gbp(total)}
-                  </span>
+                  <span className="text-sm font-black text-slate-900">{gbp(total)}</span>
                 </div>
               </div>
             )}
@@ -1285,9 +1368,7 @@ function Checkout() {
                   <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
                     <Banknote className="h-4 w-4 text-amber-700" /> Pay upon Delivery / Collection
                   </p>
-                  <span className="font-black text-amber-950">
-                    {gbp(total)}
-                  </span>
+                  <span className="font-black text-amber-950">{gbp(total)}</span>
                 </div>
                 <p className="text-amber-800 text-[11px] leading-relaxed">
                   You will pay directly to our driver or at the Gloucestershire depot when your
@@ -1350,7 +1431,14 @@ function Checkout() {
           <Button
             type="submit"
             size="lg"
-            disabled={submitting || isProcessingPayment || cartLoading || lines.length === 0 || !isEmailVerified}
+            disabled={
+              submitting ||
+              isProcessingPayment ||
+              isVerifyingPayment ||
+              cartLoading ||
+              lines.length === 0 ||
+              !isEmailVerified
+            }
             className={cn(
               "mt-4 w-full rounded-full gap-2 h-12 font-black text-sm transition-all cursor-pointer shadow-md",
               !isEmailVerified
@@ -1360,13 +1448,16 @@ function Checkout() {
                   : "bg-primary hover:bg-primary/90 text-white",
             )}
           >
-            {isProcessingPayment ? (
+            {isVerifyingPayment ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Verifying payment with Elavon...</span>
+              </>
+            ) : isProcessingPayment ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>
-                  {paymentMethod === "paypal"
-                    ? "Connecting to PayPal..."
-                    : "Authorizing payment..."}
+                  {paymentMethod === "card" ? "Connecting to Elavon Gateway..." : "Processing..."}
                 </span>
               </>
             ) : submitting ? (
@@ -1379,13 +1470,10 @@ function Checkout() {
                 <Mail className="h-4 w-4 mr-1 text-slate-400" />
                 <span>Verify Email to Confirm Order</span>
               </>
-            ) : paymentMethod === "paypal" ? (
-              <>
-                <PayPalIcon className="h-4 w-4 fill-white" />
-                <span>Pay {gbp(total)} with PayPal</span>
-              </>
             ) : paymentMethod === "card" ? (
-              `Pay ${gbp(total)}`
+              `Pay ${gbp(total)} with Card`
+            ) : paymentMethod === "paypal" ? (
+              `Pay ${gbp(total)} with PayPal`
             ) : (
               `Confirm & Place Order (${gbp(total)})`
             )}
@@ -1409,18 +1497,17 @@ function Checkout() {
               Email Verification Required
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-600 font-medium leading-relaxed pt-1">
-              For security and order confirmation, please enter the 6-digit verification code sent to your email.
+              For security and order confirmation, please enter the 6-digit verification code sent
+              to your email.
             </DialogDescription>
           </DialogHeader>
 
           <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs space-y-3">
-            <p className="font-bold text-slate-900">
-              Verification Code sent to:
-            </p>
+            <p className="font-bold text-slate-900">Verification Code sent to:</p>
             <p className="font-mono text-primary font-bold text-sm bg-white p-2.5 rounded-xl border border-slate-200 break-all">
               {email}
             </p>
-            
+
             <div className="space-y-1.5 pt-1">
               <Label className="text-xs font-bold text-slate-700">Enter 6-Digit Code:</Label>
               <div className="flex gap-2">
@@ -1473,6 +1560,22 @@ function Checkout() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Verification In-Progress Modal */}
+      <Dialog open={isVerifyingPayment}>
+        <DialogContent className="sm:max-w-md bg-white rounded-3xl p-6 sm:p-8 space-y-4 text-center [&>button]:hidden">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto">
+            <Loader2 className="w-7 h-7 animate-spin" />
+          </div>
+          <DialogTitle className="text-xl font-black text-slate-900 font-display">
+            Authorizing Payment
+          </DialogTitle>
+          <DialogDescription className="text-xs text-slate-600 font-medium leading-relaxed">
+            Please wait while we authoritatively verify your transaction with the Elavon Converge
+            Payment Gateway. Please do not close or refresh this page.
+          </DialogDescription>
         </DialogContent>
       </Dialog>
     </SiteLayout>

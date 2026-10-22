@@ -33,6 +33,7 @@ import {
   BarChart3,
   PackageCheck,
   ArrowRight,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -288,7 +289,8 @@ export function AdminDashboardView() {
           badgeBg: "bg-emerald-50 text-emerald-700 border-emerald-200/80 shadow-2xs",
           badgeText: trendPercent > 0 ? `+${trendPercent}% Growth` : "Healthy Growth",
           tooltipBorder: "#a7f3d0",
-          activeTab: "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs font-black",
+          activeTab:
+            "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-xs font-black",
           Icon: TrendingUp,
         };
       case "negative":
@@ -354,13 +356,14 @@ export function AdminDashboardView() {
   const greetingTime =
     currentHour < 12 ? "Good morning" : currentHour < 18 ? "Good afternoon" : "Good evening";
 
-  // Enterprise Modules for the NIZA-style 4-column module grid
+  // Enterprise Modules for the 4-column 3D module grid
   const MODULE_CARDS = [
     {
       title: "Orders",
       subtitle: "Fulfillment & Dispatch",
       href: "/admin/orders",
       icon: ShoppingBag,
+      image3d: "/admin-3d/orders.png",
       badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
     },
     {
@@ -368,6 +371,7 @@ export function AdminDashboardView() {
       subtitle: "Stock Matrix & Alerts",
       href: "/admin/inventory",
       icon: PackageCheck,
+      image3d: "/admin-3d/inventory.png",
       badge: lowStockCount > 0 ? lowStockCount : undefined,
     },
     {
@@ -375,18 +379,21 @@ export function AdminDashboardView() {
       subtitle: "Catalog & Pricing",
       href: "/admin/products",
       icon: Package,
+      image3d: "/admin-3d/products.png",
     },
     {
       title: "Customers",
       subtitle: "Directory & Accounts",
       href: "/admin/customers",
       icon: Users,
+      image3d: "/admin-3d/customers.png",
     },
     {
       title: "Deliveries",
       subtitle: "Fleet & Drivers",
       href: "/admin/deliveries",
       icon: Truck,
+      image3d: "/admin-3d/deliveries.png",
       badge: activeDeliveriesCount > 0 ? activeDeliveriesCount : undefined,
     },
     {
@@ -394,18 +401,21 @@ export function AdminDashboardView() {
       subtitle: "Financial Exports & Sales",
       href: "/admin/reports",
       icon: BarChart3,
+      image3d: "/admin-3d/reports.png",
     },
     {
       title: "Analytics",
       subtitle: "Live Trends & KPI",
       href: "/admin/analytics",
       icon: TrendingUp,
+      image3d: "/admin-3d/analytics.png",
     },
     {
       title: "Stations",
       subtitle: "Filling Stations Network",
       href: "/admin/stations",
       icon: Building2,
+      image3d: "/admin-3d/stations.png",
     },
   ];
 
@@ -742,7 +752,7 @@ export function AdminDashboardView() {
         </div>
       </div>
 
-      {/* 3. MODULE / QUICK ACCESS GRID (NIZA CLOUD REFERENCE MATCH - LARGE GLASS CARDS) */}
+      {/* 3. ENTERPRISE MODULES GRID (3D REFERENCE DESIGN MATCH) */}
       <section className="space-y-4 pt-2">
         <div className="flex items-center justify-between">
           <div>
@@ -754,37 +764,47 @@ export function AdminDashboardView() {
           </span>
         </div>
 
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          {MODULE_CARDS.map((module) => {
-            const IconComponent = module.icon;
-            return (
-              <Link
-                key={module.title}
-                to={module.href as never}
-                className="group relative surface-card bg-white/70 backdrop-blur-xl rounded-[28px] border border-white/80 p-8 min-h-[210px] flex flex-col items-center justify-center text-center space-y-4 shadow-[0_8px_30px_rgba(0,0,0,0.03)] hover:shadow-[0_12px_36px_rgba(220,38,38,0.08)] hover:border-red-300/80 hover:-translate-y-1 hover:bg-white/90 transition-all duration-250 ease-out cursor-pointer"
-              >
-                {/* Floating Notification Badge */}
-                {module.badge !== undefined && (
-                  <span className="absolute top-4.5 right-4.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-black text-xs px-2.5 py-0.5 rounded-full shadow-md shadow-red-600/30 border border-white/60">
-                    {module.badge}
-                  </span>
-                )}
+        <div className="grid gap-5 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {MODULE_CARDS.map((module) => (
+            <Link
+              key={module.title}
+              to={module.href as never}
+              className="group relative bg-white/95 backdrop-blur-sm rounded-[32px] border border-rose-100/70 p-6 pb-5 sm:p-6 sm:pb-6 min-h-[255px] sm:min-h-[268px] flex flex-col justify-between shadow-[0_10px_30px_rgba(244,63,94,0.04),0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_22px_45px_-8px_rgba(225,29,72,0.13)] hover:border-rose-200/90 hover:-translate-y-1.5 transition-all duration-300 ease-out cursor-pointer overflow-hidden motion-reduce:transform-none"
+            >
+              {/* Floating Notification Badge */}
+              {module.badge !== undefined && (
+                <span className="absolute top-4.5 right-4.5 z-10 bg-[#E11D48] text-white font-extrabold text-xs h-6 min-w-6 px-1.5 rounded-full flex items-center justify-center shadow-md shadow-rose-500/25 border-2 border-white pointer-events-none">
+                  {module.badge}
+                </span>
+              )}
 
-                {/* Large Centered Circular Icon Container */}
-                <div className="h-16 w-16 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-600 flex items-center justify-center group-hover:bg-red-500/15 group-hover:border-red-500/30 group-hover:scale-105 transition-all duration-250 ease-out shadow-2xs">
-                  <IconComponent className="h-8 w-8 text-red-600 group-hover:text-red-700 transition-colors" />
-                </div>
+              {/* 3D Illustration - Prominent Centered Display (~50% of card height) */}
+              <div className="w-full flex-1 flex items-center justify-center py-1 sm:py-2">
+                <img
+                  src={module.image3d}
+                  alt={module.title}
+                  className="h-[135px] sm:h-[148px] xl:h-[158px] w-auto max-w-full object-contain pointer-events-none select-none transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 motion-reduce:transform-none"
+                  loading="lazy"
+                />
+              </div>
 
-                {/* Module Title & Subtitle */}
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-lg group-hover:text-red-600 transition-colors">
+              {/* Card Footer: Title, Subtitle, and Circular Arrow Button */}
+              <div className="flex items-end justify-between gap-3 pt-2">
+                <div className="min-w-0 pr-1">
+                  <h3 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight group-hover:text-[#E11D48] transition-colors leading-tight truncate sm:whitespace-normal">
                     {module.title}
                   </h3>
-                  <p className="text-xs text-slate-500 font-semibold mt-1">{module.subtitle}</p>
+                  <p className="text-xs text-slate-500 font-medium mt-1 leading-snug line-clamp-1 sm:line-clamp-none">
+                    {module.subtitle}
+                  </p>
                 </div>
-              </Link>
-            );
-          })}
+
+                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-rose-50/90 border border-rose-100 flex items-center justify-center text-rose-500 shrink-0 group-hover:bg-[#E11D48] group-hover:text-white group-hover:border-[#E11D48] group-hover:shadow-md group-hover:shadow-rose-500/25 transition-all duration-300 ease-out">
+                  <ChevronRight className="h-4 w-4 sm:h-4.5 sm:w-4.5 stroke-[2.5] transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transform-none" />
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
       </section>
 

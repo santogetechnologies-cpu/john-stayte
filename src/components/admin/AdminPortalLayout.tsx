@@ -36,6 +36,7 @@ import {
   Car,
   Fuel,
   Tag,
+  CalendarClock,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ const adminNavGroups: NavGroup[] = [
       },
       { title: "Deliveries", href: "/admin/deliveries", icon: Truck },
       { title: "Drivers", href: "/admin/delivery-agents", icon: UserCheck },
+      { title: "Delivery Slot Management", href: "/admin/delivery-slots", icon: CalendarClock },
       { title: "Applications", href: "/admin/applications", icon: FileText },
       {
         title: "Inventory",
@@ -206,7 +208,7 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
           .maybeSingle(),
         supabase.from("orders").select("id").eq("status", "Pending"),
         supabase.from("products").select("id").lte("stock", 10),
-        supabase.from("notifications").select("id").eq("read", false),
+        supabase.from("notifications").select("id").or("read.eq.false,is_read.eq.false"),
       ]);
 
       if (moduleBlock?.content) {
@@ -242,7 +244,21 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
       loadModuleConfigAndBadges();
       const handleUpdate = () => loadModuleConfigAndBadges();
       window.addEventListener("admin_modules_updated", handleUpdate);
-      return () => window.removeEventListener("admin_modules_updated", handleUpdate);
+
+      // Subscribe to Realtime notifications so badge counts update without requiring page refresh
+      const channel = supabase
+        .channel("admin_portal_layout_notifications_realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "notifications" },
+          () => loadModuleConfigAndBadges(),
+        )
+        .subscribe();
+
+      return () => {
+        window.removeEventListener("admin_modules_updated", handleUpdate);
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -251,7 +267,9 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
       <div className="grid min-h-screen place-items-center bg-slate-50 px-4 font-sans">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-red-600 border-t-transparent" />
-          <p className="text-xs font-semibold text-slate-500">Verifying administrator authorization...</p>
+          <p className="text-xs font-semibold text-slate-500">
+            Verifying administrator authorization...
+          </p>
         </div>
       </div>
     );
@@ -270,7 +288,9 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
             asChild
             className="mt-6 w-full rounded-full shadow-md font-bold bg-red-600 hover:bg-red-700 text-white"
           >
-            <Link to="/login" search={{ redirect: currentPath || "/admin" }}>Go to Sign In</Link>
+            <Link to="/login" search={{ redirect: currentPath || "/admin" }}>
+              Go to Sign In
+            </Link>
           </Button>
         </div>
       </div>
