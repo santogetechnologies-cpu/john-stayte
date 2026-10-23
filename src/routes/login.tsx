@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Mail,
   Lock,
@@ -16,18 +16,40 @@ import {
   ArrowRight,
   Loader2,
   Info,
+  Calendar,
+  Check,
+  ChevronDown,
+  X,
+  Search,
 } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogPortal,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { speakLoginError, speakLoginSuccess } from "@/lib/auth-voice";
 import { cn } from "@/lib/utils";
 import { sendPasswordResetEmailServerFn } from "@/lib/password-reset-server-fn";
+import { validateDob, MONTHS, getBirthYears } from "@/lib/dob-validator";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -46,6 +68,14 @@ export const Route = createFileRoute("/login")({
   }),
   component: LoginPage,
 });
+
+const DECADE_PILLS = [
+  { label: "All", value: "all" },
+  { label: "2000s", value: "2000" },
+  { label: "1990s", value: "1990" },
+  { label: "1980s", value: "1980" },
+  { label: "1970s", value: "1970" },
+];
 
 function LoginPage() {
   const { login, register, resendConfirmationEmail, user, authLoading } = useStore();
@@ -66,6 +96,21 @@ function LoginPage() {
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Date of Birth (DOB) Age Verification State
+  const [dobModalOpen, setDobModalOpen] = useState(false);
+  const [dobDay, setDobDay] = useState("");
+  const [dobMonth, setDobMonth] = useState("");
+  const [dobYear, setDobYear] = useState("");
+  const [dobError, setDobError] = useState<string | null>(null);
+  const [isAgeVerified, setIsAgeVerified] = useState(false);
+
+  // Year selector popover & search state
+  const [yearPopoverOpen, setYearPopoverOpen] = useState(false);
+  const [yearSearch, setYearSearch] = useState("");
+  const [selectedDecade, setSelectedDecade] = useState("all");
+  const yearScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const selectedYearButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // Email Confirmation State
   const [pendingEmailConfirmation, setPendingEmailConfirmation] = useState<string | null>(null);
@@ -265,29 +310,28 @@ function LoginPage() {
     }
   };
 
-  // Handle Real Supabase Registration
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Execute Real Supabase Registration after Age Verification
+  const executeAccountCreation = async () => {
+    if (!isAgeVerified) {
+      setFormError("Please confirm that you are 18 years old or above.");
+      return;
+    }
+    if (loading) return;
+
+    setLoading(true);
     setFormError(null);
     setAuthStatus("idle");
 
-    if (regName.trim().length < 2) {
-      return setFormError("Please enter your full name.");
-    }
-    if (!regEmail.includes("@")) {
-      return setFormError("Please enter a valid email address.");
-    }
-    if (regPassword.length < 8) {
-      return setFormError("Password must be at least 8 characters long.");
-    }
-    if (regPassword !== regConfirmPassword) {
-      return setFormError("Passwords do not match. Please re-enter.");
-    }
-
-    setLoading(true);
-
     try {
-      const res = await register(regName.trim(), regEmail.trim(), regPassword, "customer");
+      // Prioritize customer privacy: full DOB is NEVER passed to register or stored in Supabase
+      // Only the verified boolean flag is recorded in auth metadata for legal 18+ eligibility compliance
+      const res = await register(
+        regName.trim(),
+        regEmail.trim(),
+        regPassword,
+        "customer",
+        true, // is18Confirmed
+      );
       setLoading(false);
 
       if (!res.ok) {
@@ -317,6 +361,97 @@ function LoginPage() {
       setAuthStatus("error");
       setFormError("Registration failed. Please try again later.");
       setTimeout(() => setAuthStatus("idle"), 1500);
+    }
+  };
+
+  // Handle Form Submission: validates fields and triggers registration
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setAuthStatus("idle");
+
+    if (regName.trim().length < 2) {
+      return setFormError("Please enter your full name.");
+    }
+    if (!regEmail.includes("@")) {
+      return setFormError("Please enter a valid email address.");
+    }
+    if (regPassword.length < 8) {
+      return setFormError("Password must be at least 8 characters long.");
+    }
+    if (!/[A-Z]/.test(regPassword)) {
+      return setFormError("Password must contain at least one uppercase letter.");
+    }
+    if (!/[0-9]/.test(regPassword)) {
+      return setFormError("Password must contain at least one number.");
+    }
+    if (regPassword !== regConfirmPassword) {
+      return setFormError("Passwords do not match. Please re-enter.");
+    }
+
+    // Require 18+ confirmation checkbox
+    if (!isAgeVerified) {
+      const msg = "Please confirm that you are 18 years old or above.";
+      setFormError(msg);
+      toast.error(msg);
+      return;
+    }
+
+    // Proceed with registration
+    await executeAccountCreation();
+  };
+
+  // Handle Confirmation of Date of Birth inside Modal
+  const handleConfirmDob = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setDobError(null);
+
+    // Ephemeral calculation: used ONLY to verify the customer is at least 18
+    const validation = validateDob(dobYear, dobMonth, dobDay);
+    if (!validation.valid) {
+      setDobError(validation.error || "You must be at least 18 years old to create an account.");
+      return;
+    }
+
+    // Customer privacy: Do NOT store the full DOB in Supabase, profiles, localStorage, or state!
+    // Discard raw day, month, year immediately and retain only the minimal verification boolean.
+    setIsAgeVerified(true);
+    setDobDay("");
+    setDobMonth("");
+    setDobYear("");
+    setDobModalOpen(false);
+
+    if (formError === "Please confirm that you are 18 years old or above.") {
+      setFormError(null);
+    }
+    toast.success("Age verified successfully (18+ confirmed)");
+  };
+
+  // Handle Cancelling Date of Birth Modal
+  const handleCancelDobModal = () => {
+    setDobModalOpen(false);
+    setDobError(null);
+    setDobDay("");
+    setDobMonth("");
+    setDobYear("");
+    setIsAgeVerified(false);
+  };
+
+  // Handle 18+ Checkbox Toggle
+  const handleToggleAgeCheckbox = () => {
+    if (isAgeVerified) {
+      // Uncheck / reset age confirmation
+      setIsAgeVerified(false);
+      setDobDay("");
+      setDobMonth("");
+      setDobYear("");
+    } else {
+      // Checking the checkbox opens the Verify Your Age modal
+      setDobError(null);
+      setDobDay("");
+      setDobMonth("");
+      setDobYear("");
+      setDobModalOpen(true);
     }
   };
 
@@ -407,6 +542,79 @@ function LoginPage() {
   const hasUppercase = /[A-Z]/.test(regPassword);
   const hasNumber = /[0-9]/.test(regPassword);
 
+  // Dynamic days in month calculation with leap year support
+  const availableDaysCount = useMemo(() => {
+    const month = parseInt(dobMonth, 10);
+    if (!month || isNaN(month)) return 31;
+    const year = parseInt(dobYear, 10) || 2024;
+    return new Date(year, month, 0).getDate();
+  }, [dobMonth, dobYear]);
+
+  // Automatically clamp selected day if it exceeds the days in newly selected month/year
+  useEffect(() => {
+    if (dobDay && dobMonth) {
+      const dayNum = parseInt(dobDay, 10);
+      if (!isNaN(dayNum) && dayNum > availableDaysCount) {
+        setDobDay(String(availableDaysCount));
+      }
+    }
+  }, [dobMonth, dobYear, dobDay, availableDaysCount]);
+
+  const allBirthYears = useMemo(() => getBirthYears(), []);
+
+  const filteredYears = useMemo(() => {
+    let list = allBirthYears;
+
+    const searchTrimmed = yearSearch.trim();
+    const isFourDigitSearch = searchTrimmed.length === 4;
+
+    // Filter by decade unless the user enters a full 4-digit search
+    if (selectedDecade !== "all" && !isFourDigitSearch) {
+      const decStart = parseInt(selectedDecade, 10);
+      if (!isNaN(decStart)) {
+        list = list.filter((y) => y >= decStart && y < decStart + 10);
+      }
+    }
+
+    if (searchTrimmed) {
+      list = list.filter((y) => String(y).includes(searchTrimmed));
+    }
+
+    return list;
+  }, [allBirthYears, selectedDecade, yearSearch]);
+
+  // Scroll selected year button into view when year popover opens
+  useEffect(() => {
+    if (yearPopoverOpen && dobYear) {
+      const timer = setTimeout(() => {
+        if (selectedYearButtonRef.current) {
+          selectedYearButtonRef.current.scrollIntoView({
+            block: "center",
+            behavior: "instant",
+          });
+        }
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [yearPopoverOpen, dobYear, selectedDecade]);
+
+  // Ensure mouse-wheel and trackpad scrolling work without being trapped by parent modal scroll lock
+  useEffect(() => {
+    const el = yearScrollContainerRef.current;
+    if (!el || !yearPopoverOpen) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (el.scrollHeight > el.clientHeight) {
+        e.stopPropagation();
+        el.scrollTop += e.deltaY;
+      }
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+    };
+  }, [yearPopoverOpen, filteredYears]);
   const signInBenefits = [
     "Track your orders in real-time",
     "View and download invoices",
@@ -1004,6 +1212,64 @@ function LoginPage() {
                             </div>
                           </div>
 
+                          {/* 18+ AGE CONFIRMATION CHECKBOX */}
+                          <div
+                            className={cn(
+                              "p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3 select-none",
+                              isAgeVerified
+                                ? "bg-[#F0FDF4] border-[#22C55E] shadow-xs shadow-emerald-500/10"
+                                : "bg-white border-slate-200/90 hover:border-slate-300",
+                            )}
+                          >
+                            <button
+                              type="button"
+                              id="reg-age-confirmation-checkbox"
+                              role="checkbox"
+                              aria-checked={isAgeVerified}
+                              onClick={handleToggleAgeCheckbox}
+                              className="flex items-center gap-3 text-left w-full cursor-pointer group focus:outline-none"
+                            >
+                              <div
+                                className={cn(
+                                  "w-5.5 h-5.5 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200",
+                                  isAgeVerified
+                                    ? "bg-[#22C55E] text-white shadow-xs shadow-emerald-500/30 scale-100"
+                                    : "border-2 border-slate-300 bg-white group-hover:border-slate-400",
+                                )}
+                              >
+                                {isAgeVerified ? (
+                                  <Check className="h-3.5 w-3.5 stroke-[3] text-white" />
+                                ) : null}
+                              </div>
+                              <span
+                                className={cn(
+                                  "text-xs leading-snug transition-colors",
+                                  isAgeVerified
+                                    ? "font-bold text-slate-900"
+                                    : "font-medium text-slate-700",
+                                )}
+                              >
+                                I confirm that I am 18 years old or above.
+                              </span>
+                            </button>
+
+                            {isAgeVerified && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDobError(null);
+                                  setDobDay("");
+                                  setDobMonth("");
+                                  setDobYear("");
+                                  setDobModalOpen(true);
+                                }}
+                                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline shrink-0 cursor-pointer ml-1"
+                              >
+                                Edit DOB
+                              </button>
+                            )}
+                          </div>
+
                           <Button
                             type="submit"
                             disabled={loading}
@@ -1038,6 +1304,371 @@ function LoginPage() {
           </div>
         </div>
       </section>
+
+      {/* DATE OF BIRTH (DOB) AGE VERIFICATION MODAL */}
+      <Dialog
+        open={dobModalOpen}
+        onOpenChange={(open) => {
+          setDobModalOpen(open);
+          if (!open) {
+            setDobError(null);
+            if (!isAgeVerified) {
+              setDobDay("");
+              setDobMonth("");
+              setDobYear("");
+            }
+          }
+        }}
+      >
+        <DialogPortal>
+          {/* Subtle backdrop overlay with soft blur */}
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+
+          {/* Premium 24px rounded white modal card (480-520px desktop width) */}
+          <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-[495px] translate-x-[-50%] translate-y-[-50%] gap-5 rounded-[24px] border border-slate-200/90 bg-white p-6 sm:p-7 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 max-h-[92vh] overflow-y-auto outline-none">
+            {/* Header: Circular red icon, title, subtitle & top-right close button */}
+            <div className="flex items-start justify-between gap-3.5">
+              <div className="flex items-start gap-3.5">
+                <div className="w-11 h-11 rounded-full bg-red-50 border border-red-100/90 flex items-center justify-center text-[#e31b23] shrink-0 shadow-xs mt-0.5">
+                  <Calendar className="h-5 w-5 stroke-[2.2] text-[#e31b23]" />
+                </div>
+                <div className="space-y-1 text-left">
+                  <DialogTitle className="font-display font-extrabold text-xl text-slate-900 tracking-tight leading-tight">
+                    Verify Your Age
+                  </DialogTitle>
+                  <DialogDescription className="text-xs sm:text-[13px] text-slate-500 font-medium leading-relaxed">
+                    Enter your date of birth to confirm you’re eligible to create an account.
+                  </DialogDescription>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCancelDobModal}
+                className="w-8 h-8 rounded-full bg-slate-100/80 hover:bg-slate-200/80 text-slate-400 hover:text-slate-700 transition-colors flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/20 -mr-1 -mt-1"
+                aria-label="Close dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmDob} className="space-y-4 pt-1 text-xs">
+              {/* Inline DOB Error Banner */}
+              {dobError && (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200/90 flex items-start gap-2.5 text-xs text-red-700 animate-in fade-in duration-200">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-[#e31b23]" />
+                  <p className="font-bold leading-relaxed">{dobError}</p>
+                </div>
+              )}
+
+              {/* Selectors Grid: Day, Month, Year - Custom-styled dropdown components */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* 1. Day Selector */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="dob-day-trigger" className="block text-xs font-bold text-slate-700">
+                    Day
+                  </Label>
+                  <Select
+                    value={dobDay}
+                    onValueChange={(val) => {
+                      setDobDay(val);
+                      setDobError(null);
+                    }}
+                  >
+                    <SelectTrigger
+                      id="dob-day-trigger"
+                      className="h-11 w-full rounded-xl border-slate-200/90 bg-slate-50/80 px-3.5 text-xs sm:text-[13px] font-bold text-slate-900 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus:border-[#e31b23] focus:bg-white focus:ring-2 focus:ring-red-500/20 data-[placeholder]:text-slate-400 data-[placeholder]:font-medium cursor-pointer"
+                    >
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      sideOffset={6}
+                      className="z-[9999] max-h-[220px] rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-xl"
+                    >
+                      {Array.from({ length: availableDaysCount }, (_, i) => i + 1).map((d) => (
+                        <SelectItem
+                          key={d}
+                          value={String(d)}
+                          className="rounded-xl py-2 text-xs font-semibold cursor-pointer focus:bg-red-50 focus:text-slate-900 data-[state=checked]:bg-red-50 data-[state=checked]:font-bold data-[state=checked]:text-[#e31b23]"
+                        >
+                          {d}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 2. Month Selector */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="dob-month-trigger" className="block text-xs font-bold text-slate-700">
+                    Month
+                  </Label>
+                  <Select
+                    value={dobMonth}
+                    onValueChange={(val) => {
+                      setDobMonth(val);
+                      setDobError(null);
+                    }}
+                  >
+                    <SelectTrigger
+                      id="dob-month-trigger"
+                      className="h-11 w-full rounded-xl border-slate-200/90 bg-slate-50/80 px-3.5 text-xs sm:text-[13px] font-bold text-slate-900 shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus:border-[#e31b23] focus:bg-white focus:ring-2 focus:ring-red-500/20 data-[placeholder]:text-slate-400 data-[placeholder]:font-medium cursor-pointer truncate"
+                    >
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      sideOffset={6}
+                      className="z-[9999] max-h-[240px] rounded-2xl border border-slate-200/90 bg-white p-1.5 shadow-xl"
+                    >
+                      {MONTHS.map((m) => (
+                        <SelectItem
+                          key={m.value}
+                          value={m.value}
+                          className="rounded-xl py-2 text-xs font-semibold cursor-pointer focus:bg-red-50 focus:text-slate-900 data-[state=checked]:bg-red-50 data-[state=checked]:font-bold data-[state=checked]:text-[#e31b23]"
+                        >
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* 3. Year Selector (Compact, Searchable & Decade-Navigable) */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="dob-year-trigger" className="block text-xs font-bold text-slate-700">
+                    Year
+                  </Label>
+                  <Popover
+                    modal={true}
+                    open={yearPopoverOpen}
+                    onOpenChange={(open) => {
+                      setYearPopoverOpen(open);
+                      if (open) {
+                        setYearSearch("");
+                        if (dobYear) {
+                          const yNum = parseInt(dobYear, 10);
+                          if (yNum >= 2000 && yNum < 2010) setSelectedDecade("2000");
+                          else if (yNum >= 1990 && yNum < 2000) setSelectedDecade("1990");
+                          else if (yNum >= 1980 && yNum < 1990) setSelectedDecade("1980");
+                          else if (yNum >= 1970 && yNum < 1980) setSelectedDecade("1970");
+                          else setSelectedDecade("all");
+                        } else {
+                          setSelectedDecade("all");
+                        }
+                      }
+                    }}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        id="dob-year-trigger"
+                        className={cn(
+                          "flex h-11 w-full items-center justify-between rounded-xl border border-slate-200/90 bg-slate-50/80 px-3.5 text-xs sm:text-[13px] shadow-2xs transition-all hover:border-slate-300 hover:bg-slate-50 focus:border-[#e31b23] focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 cursor-pointer",
+                          yearPopoverOpen && "border-[#e31b23] bg-white ring-2 ring-red-500/20",
+                          dobYear ? "font-bold text-slate-900" : "font-medium text-slate-400",
+                        )}
+                      >
+                        <span className="truncate">{dobYear || "Year"}</span>
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 shrink-0 opacity-50 transition-transform duration-200",
+                            yearPopoverOpen && "rotate-180 opacity-80 text-[#e31b23]",
+                          )}
+                        />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      sideOffset={6}
+                      collisionPadding={12}
+                      className="z-[9999] w-[285px] max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xl flex flex-col"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                    >
+                      {/* Refined Header - Fixed at top */}
+                      <div className="shrink-0 flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-100">
+                        <span className="text-xs font-bold text-slate-800 tracking-tight">
+                          Select birth year
+                        </span>
+                        {dobYear && (
+                          <span className="text-[11px] font-semibold text-slate-500">
+                            Selected: <span className="font-bold text-[#e31b23]">{dobYear}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Search Year Input - Fixed at top */}
+                      <div className="shrink-0 relative mb-2.5">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Search year..."
+                          value={yearSearch}
+                          onChange={(e) =>
+                            setYearSearch(e.target.value.replace(/\D/g, "").slice(0, 4))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && filteredYears.length > 0) {
+                              e.preventDefault();
+                              setDobYear(String(filteredYears[0]));
+                              setDobError(null);
+                              setYearPopoverOpen(false);
+                            }
+                          }}
+                          className="h-8.5 w-full rounded-xl border border-slate-200/90 bg-slate-50/80 pl-8 pr-7 text-xs font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal transition-all focus:border-[#e31b23] focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                          autoFocus
+                        />
+                        {yearSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setYearSearch("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 rounded-full text-slate-400 hover:text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+                            aria-label="Clear search"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Decade Filter Chips: All, 2000s, 1990s, 1980s, 1970s - Fixed at top */}
+                      <div className="shrink-0 grid grid-cols-5 gap-1 pb-2.5 text-[11px]">
+                        {DECADE_PILLS.map((pill) => {
+                          const isActive = selectedDecade === pill.value && !yearSearch;
+                          return (
+                            <button
+                              key={pill.value}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDecade(pill.value);
+                                setYearSearch("");
+                              }}
+                              className={cn(
+                                "flex h-7 items-center justify-center rounded-full text-[11px] transition-all cursor-pointer select-none",
+                                isActive
+                                  ? "bg-[#e31b23] text-white font-bold shadow-xs scale-[1.02]"
+                                  : "bg-slate-100 text-slate-700 hover:bg-slate-200/80 hover:text-slate-900 font-semibold",
+                              )}
+                            >
+                              {pill.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Year Grid Container: Independently vertically scrollable */}
+                      <div
+                        ref={yearScrollContainerRef}
+                        tabIndex={0}
+                        onWheel={(e) => {
+                          e.stopPropagation();
+                          const el = e.currentTarget;
+                          if (el.scrollHeight > el.clientHeight) {
+                            el.scrollTop += e.deltaY;
+                          }
+                        }}
+                        onTouchMove={(e) => e.stopPropagation()}
+                        className="h-[210px] max-h-[38vh] overflow-y-auto overscroll-contain pr-1 pt-1 custom-scrollbar border-t border-slate-100/80 focus:outline-none"
+                        style={{
+                          WebkitOverflowScrolling: "touch",
+                          touchAction: "pan-y",
+                        }}
+                      >
+                        <div className="grid grid-cols-3 gap-1.5 pb-1">
+                          {filteredYears.map((y) => {
+                            const isSelected = dobYear === String(y);
+                            const isExactSearchMatch =
+                              yearSearch.trim().length === 4 && String(y) === yearSearch.trim();
+
+                            return (
+                              <button
+                                key={y}
+                                ref={isSelected ? selectedYearButtonRef : undefined}
+                                type="button"
+                                onClick={() => {
+                                  setDobYear(String(y));
+                                  setDobError(null);
+                                  setYearPopoverOpen(false);
+                                }}
+                                className={cn(
+                                  "flex h-8.5 items-center justify-center rounded-xl text-xs transition-all duration-150 cursor-pointer select-none",
+                                  isSelected
+                                    ? "bg-[#e31b23] text-white font-bold shadow-xs shadow-red-500/20 scale-[1.02]"
+                                    : isExactSearchMatch
+                                      ? "bg-red-50 text-[#e31b23] font-bold border border-[#e31b23] ring-1 ring-[#e31b23]/30"
+                                      : "bg-slate-50/60 border border-slate-200/60 text-slate-700 hover:bg-red-50 hover:text-[#e31b23] hover:border-red-100 font-semibold",
+                                )}
+                              >
+                                {y}
+                              </button>
+                            );
+                          })}
+
+                          {/* Clean Empty State */}
+                          {filteredYears.length === 0 && (
+                            <div className="col-span-3 py-6 px-3 flex flex-col items-center justify-center text-center animate-in fade-in duration-150">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-1.5">
+                                <Search className="h-3.5 w-3.5" />
+                              </div>
+                              <p className="text-xs font-bold text-slate-700">No matching year</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                Try another year or reset filters
+                              </p>
+                              {(yearSearch || selectedDecade !== "all") && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setYearSearch("");
+                                    setSelectedDecade("all");
+                                  }}
+                                  className="mt-2 text-[11px] font-bold text-[#e31b23] hover:underline cursor-pointer"
+                                >
+                                  Reset filters
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Age Verification Helper Text in readable, properly spaced area */}
+              <div className="p-3.5 rounded-2xl bg-slate-50/90 border border-slate-100 flex items-start gap-2.5 text-slate-600">
+                <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <p className="text-xs sm:text-[12.5px] font-medium leading-relaxed">
+                  To create an account and purchase gas cylinders, you must be at least 18 years
+                  old.
+                </p>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="pt-2 flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelDobModal}
+                  disabled={loading}
+                  className="w-full sm:w-auto h-11 px-5 rounded-full font-bold text-xs sm:text-sm bg-white hover:bg-slate-50 border border-slate-200/90 hover:border-slate-300 text-slate-700 shadow-xs cursor-pointer transition-all"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!dobDay || !dobMonth || !dobYear}
+                  className="w-full sm:w-auto h-11 px-6 rounded-full font-black text-xs sm:text-sm bg-[#e31b23] hover:bg-[#c9151c] text-white shadow-md shadow-red-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer disabled:opacity-45 disabled:pointer-events-none disabled:shadow-none"
+                >
+                  Confirm Date of Birth
+                </Button>
+              </div>
+            </form>
+          </DialogPrimitive.Content>
+        </DialogPortal>
+      </Dialog>
 
       {/* FORGOT PASSWORD DIALOG */}
       <Dialog open={forgotModal} onOpenChange={setForgotModal}>

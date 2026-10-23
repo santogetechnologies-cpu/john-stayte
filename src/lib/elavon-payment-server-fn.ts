@@ -393,7 +393,7 @@ export const verifyElavonPaymentServerFn = createServerFn({ method: "POST" })
       // 1. Fetch current order state in Supabase
       const { data: order, error: orderErr } = await (supabase.from("orders") as any)
         .select(
-          "id, order_number, total, subtotal, payment_status, customer_id, customer_name, customer_email, offer_id, offer_code",
+          "id, order_number, total, subtotal, status, fulfillment_status, payment_status, customer_id, customer_name, customer_email, offer_id, offer_code",
         )
         .eq("id", orderId)
         .single();
@@ -664,35 +664,88 @@ export const verifyElavonPaymentServerFn = createServerFn({ method: "POST" })
         };
       }
 
+      // Determine valid lifecycle status adhering strictly to orders_status_check
+      // Permitted values: 'Pending', 'Approved', 'Packed', 'Out for Delivery', 'Delivered', 'Cancelled'
+      let autoApprove = false;
+      try {
+        const { data: settingsBlock } = await supabase
+          .from("cms_content_blocks")
+          .select("content")
+          .eq("section_key", "admin_system_settings")
+          .maybeSingle();
+        if (settingsBlock?.content) {
+          const parsed = JSON.parse(settingsBlock.content);
+          autoApprove = Boolean(parsed.autoApproveOrders);
+        }
+      } catch {
+        /* non-blocking */
+      }
+
+      const permittedStatuses = [
+        "Pending",
+        "Approved",
+        "Packed",
+        "Out for Delivery",
+        "Delivered",
+        "Cancelled",
+      ];
+      let targetLifecycleStatus = order.status || "Pending";
+      if (targetLifecycleStatus === "Pending" && autoApprove) {
+        targetLifecycleStatus = "Approved";
+      }
+      if (!permittedStatuses.includes(targetLifecycleStatus)) {
+        targetLifecycleStatus = "Pending";
+      }
+
       // 4. Update Database State Authoritatively with Concurrency Lock
       const { data: updatedOrder, error: updateOrderErr } = await (supabase.from("orders") as any)
         .update({
           payment_status: "Paid",
-          status: "Processing",
+          status: targetLifecycleStatus,
           notes: `[Payment: Credit / Debit Card (Elavon Verified - Auth: ${approvalCode || "Approved"}, Tx: ${transactionId || activeSessionId})]`,
           updated_at: new Date().toISOString(),
         })
         .eq("id", orderId)
         .neq("payment_status", "Paid")
-        .select("id, payment_status")
+        .select("id, payment_status, status")
         .maybeSingle();
 
       if (updateOrderErr) {
-        console.error("[Elavon] Order payment status update error:", updateOrderErr);
-      }
-
-      // If already paid by a concurrent process, return idempotently
-      if (!updatedOrder) {
+        console.error("[Elavon] Order payment status update database error:", updateOrderErr);
         return {
-          ok: true,
+          ok: false,
           orderId,
-          paymentStatus: "Paid",
-          alreadyPaid: true,
-          message: "Order has already been verified and marked as paid.",
+          paymentStatus: "Pending",
+          error: `Database update failed: ${updateOrderErr.message || "Failed to update order payment status."}`,
         };
       }
 
-      // Update payments table
+      // If no row was updated because it was already Paid by a concurrent process, verify and return idempotently
+      if (!updatedOrder) {
+        const { data: currentOrder } = await (supabase.from("orders") as any)
+          .select("id, payment_status, status")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (currentOrder?.payment_status === "Paid") {
+          return {
+            ok: true,
+            orderId,
+            paymentStatus: "Paid",
+            alreadyPaid: true,
+            message: "Order has already been verified and marked as paid.",
+          };
+        }
+
+        return {
+          ok: false,
+          orderId,
+          paymentStatus: "Pending",
+          error: "Order record not found or could not be updated to Paid.",
+        };
+      }
+
+      // Update payments table (lowercase 'paid' per payments table check constraint)
       await supabase
         .from("payments")
         .update({
@@ -712,14 +765,36 @@ export const verifyElavonPaymentServerFn = createServerFn({ method: "POST" })
       await supabase.from("order_status_history").insert([
         {
           order_id: orderId,
-          status: "Processing",
-          notes: `Payment of £${Number(order.total).toFixed(2)} verified successfully via Elavon (Auth: ${approvalCode || "Approved"}, Tx: ${transactionId || activeSessionId}).`,
+          status: targetLifecycleStatus,
+          notes: `Payment of £${Number(order.total).toFixed(2)} verified successfully via Elavon (Auth: ${approvalCode || "Approved"}, Tx: ${transactionId || activeSessionId}). Payment Status: Paid.`,
         },
       ]);
 
-      // Update invoice to Paid
+      // Update or insert invoice to Paid
       try {
-        await (supabase.from("invoices") as any).update({ status: "Paid" }).eq("order_id", orderId);
+        const { data: existingInv } = await (supabase.from("invoices") as any)
+          .select("id")
+          .eq("order_id", orderId)
+          .maybeSingle();
+
+        if (existingInv) {
+          await (supabase.from("invoices") as any)
+            .update({ status: "Paid" })
+            .eq("order_id", orderId);
+        } else {
+          await (supabase.from("invoices") as any).insert([
+            {
+              invoice_number: `INV-${order.order_number?.replace("JSS-", "") || Date.now()}`,
+              order_id: orderId,
+              customer_id: order.customer_id || null,
+              customer_name: order.customer_name || null,
+              customer_email: order.customer_email || null,
+              subtotal: order.subtotal || order.total,
+              total_amount: order.total,
+              status: "Paid",
+            },
+          ]);
+        }
       } catch (invErr) {
         console.warn("[Elavon] Invoice status update notice:", invErr);
       }

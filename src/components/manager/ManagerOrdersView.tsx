@@ -426,8 +426,17 @@ export function ManagerOrdersView() {
                       #{o.order_number || o.id.slice(0, 8)}
                     </TableCell>
                     <TableCell className="text-xs font-semibold text-slate-700">{o.customer_name}</TableCell>
-                    <TableCell className="font-bold text-xs text-slate-900">
-                      {gbp(Number(o.total))}
+                    <TableCell className="text-xs">
+                      <div className="font-bold text-slate-900">{gbp(Number(o.total))}</div>
+                      <div className="text-[10px] font-bold">
+                        <span
+                          className={
+                            o.payment_status === "Paid" ? "text-emerald-600" : "text-amber-600"
+                          }
+                        >
+                          {o.payment_status === "Paid" ? "Paid" : "Pending"}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span

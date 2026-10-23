@@ -36,6 +36,7 @@ type Store = {
     email: string,
     password: string,
     role?: Role,
+    is18Confirmed?: boolean,
   ) => Promise<{
     ok: boolean;
     error?: string;
@@ -501,13 +502,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const register: Store["register"] = useCallback(
-    async (name, email, password, role = "customer") => {
+    async (name, email, password, role = "customer", is18Confirmed = true) => {
       try {
         const cleanEmail = email.trim();
         const origin =
           typeof window !== "undefined" ? window.location.origin : "https://johnstayte.co.uk";
         const emailRedirectTo = `${origin}/login?confirmed=true`;
 
+        // Store ONLY minimal eligibility verification boolean and audit timestamp
+        // Prioritize customer privacy: DOB is NEVER stored or sent to Supabase
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
@@ -516,6 +519,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             data: {
               full_name: name,
               role: role,
+              is_18_confirmed: Boolean(is18Confirmed),
+              age_confirmed_at: is18Confirmed ? new Date().toISOString() : undefined,
             },
           },
         });
@@ -823,7 +828,7 @@ export const DEFAULT_CART_SYSTEM_SETTINGS: CartSystemSettings = {
   deliveryTierName: "Standard Fleet Delivery",
   freeDeliveryEnabled: false,
   freeDeliveryThreshold: 0.0,
-  minOrderValue: 15,
+  minOrderValue: 0,
   deliverySlaDays: 2,
   autoApproveOrders: false,
 };
@@ -865,7 +870,7 @@ export function useCartTotals(appliedOffer?: Offer | null) {
               deliveryTierName: String(parsed.deliveryTierName ?? "Standard Fleet Delivery"),
               freeDeliveryEnabled: Boolean(parsed.freeDeliveryEnabled ?? false),
               freeDeliveryThreshold: Number(parsed.freeDeliveryThreshold ?? 0),
-              minOrderValue: Number(parsed.minOrderValue ?? 15),
+              minOrderValue: Number(parsed.minOrderValue ?? 0),
               deliverySlaDays: Number(parsed.deliverySlaDays ?? 2),
               autoApproveOrders: Boolean(parsed.autoApproveOrders ?? false),
             });

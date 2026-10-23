@@ -64,7 +64,7 @@ export function AdminSettingsView() {
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState("0.00");
 
   // 5. Order Rules
-  const [minOrderValue, setMinOrderValue] = useState("15");
+  const [minOrderValue, setMinOrderValue] = useState("0");
   const [autoApproveOrders, setAutoApproveOrders] = useState(false);
 
   // 6. Notification Preferences
@@ -762,7 +762,7 @@ export function AdminSettingsView() {
                 onChange={(e) => setMinOrderValue(e.target.value)}
                 className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
               />
-              <p className="text-[10px] text-slate-400 mt-0.5">Checkout restriction for micro orders</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Minimum order threshold (set to 0 to allow all positive order amounts)</p>
             </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border mt-2">
               <div>

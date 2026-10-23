@@ -532,7 +532,18 @@ export function CustomerOrdersView() {
 
                   {/* Status & Actions */}
                   <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto border-t sm:border-t-0 pt-3 sm:pt-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "font-bold text-[11px] px-2.5 py-1",
+                          o.payment_status === "Paid"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200",
+                        )}
+                      >
+                        {o.payment_status === "Paid" ? "Paid in Full" : "Pending Payment"}
+                      </Badge>
                       {isCancelled ? (
                         <Badge
                           variant="outline"

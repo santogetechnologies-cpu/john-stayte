@@ -436,10 +436,8 @@ function Checkout() {
       );
     }
 
-    if (settings?.minOrderValue && subtotal < settings.minOrderValue) {
-      return toast.error(
-        `A minimum order value of ${gbp(settings.minOrderValue)} is required to place an order.`,
-      );
+    if (subtotal <= 0) {
+      return toast.error("Order total must be greater than £0.00 to place an order.");
     }
 
     if (!fullName || !email || !address || !postcode) {
@@ -496,6 +494,9 @@ function Checkout() {
       }
 
       const finalSubtotal = verifiedItems.reduce((s, i) => s + i.total_price, 0);
+      if (finalSubtotal <= 0) {
+        throw new Error("Order total must be greater than £0.00 to place an order.");
+      }
       const finalTotal = Math.max(0, finalSubtotal + shipping + vat);
       const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
 
@@ -752,14 +753,16 @@ function Checkout() {
         }
       }
 
-      // 10. Create Invoice Record in Supabase (Reusing existing discount field!)
+      // 10. Create Invoice Record in Supabase
       try {
         await (supabase.from("invoices") as any).insert([
           {
             invoice_number: `INV-${orderNumber.replace("JSS-", "")}`,
             order_id: newOrder.id,
             customer_id: currentUserId,
-            discount: verifiedDiscount,
+            customer_name: fullName.trim(),
+            customer_email: currentEmail,
+            subtotal: finalSubtotal,
             total_amount: finalAuthoritativeTotal,
             status: finalPaymentStatus === "Paid" ? "Paid" : "Issued",
           },
