@@ -60,7 +60,8 @@ function CartPage() {
   const [applyingCode, setApplyingCode] = useState(false);
   const [availableOffers, setAvailableOffers] = useState<Offer[]>([]);
 
-  const { lines, subtotal, offerDiscount, shipping, vat, total, loading } = useCartTotals(appliedOffer);
+  const { lines, subtotal, offerDiscount, shipping, vat, total, loading, settings } =
+    useCartTotals(appliedOffer);
   const navigate = useNavigate();
 
   // Load public offers
@@ -84,8 +85,16 @@ function CartPage() {
   }, 0);
   const catalogSavings = Math.max(0, originalTotal - subtotal);
   const totalCombinedSavings = catalogSavings + (offerDiscount || 0);
-  const qualifiesForFreeDelivery = subtotal >= 75;
-  const amountToFreeDelivery = Math.max(0, 75 - subtotal);
+
+  // Authoritative dynamic free delivery calculations
+  const freeThreshold = settings?.freeDeliveryThreshold ?? 0;
+  const isFreeDeliveryEnabled = Boolean(settings?.freeDeliveryEnabled);
+  const qualifiesForFreeDelivery = isFreeDeliveryEnabled
+    ? freeThreshold === 0
+      ? subtotal > 0
+      : subtotal >= freeThreshold && subtotal > 0
+    : false;
+  const amountToFreeDelivery = Math.max(0, freeThreshold - subtotal);
 
   const handleApplyPromoCode = async () => {
     const cleanCode = promoCodeInput.trim().toUpperCase();
@@ -164,28 +173,27 @@ function CartPage() {
           {/* EMPTY CART STATE                                            */}
           {/* ============================================================ */}
           {lines.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200/90 p-8 sm:p-14 text-center shadow-xs space-y-4 max-w-lg mx-auto my-6">
-              <div className="h-20 w-20 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto text-slate-400">
-                <ShoppingBag className="h-10 w-10 stroke-1" />
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-8 sm:p-14 text-center shadow-xs space-y-4 max-w-lg mx-auto my-6">
+              <div className="h-20 w-20 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto text-primary shadow-xs">
+                <ShoppingBag className="h-10 w-10 stroke-[1.5]" />
               </div>
 
               <div className="space-y-1.5">
                 <h1 className="font-display font-extrabold text-xl sm:text-2xl text-slate-900">
-                  Your cart is empty!
+                  Your cart is waiting for something useful.
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed max-w-xs mx-auto">
-                  Explore our Calor gas cylinders, winter solid fuels, and store essentials to add
-                  items.
+                  Explore our gas cylinders, refills and accessories to get started.
                 </p>
               </div>
 
               <div className="pt-2">
                 <Button
                   asChild
-                  className="rounded-lg font-bold text-xs shadow-sm bg-primary hover:bg-primary/90 text-white h-10 px-6 gap-2"
+                  className="rounded-xl font-bold text-xs shadow-md bg-primary hover:bg-primary/90 text-white h-11 px-7 gap-2"
                 >
                   <Link to="/products">
-                    <Package className="h-4 w-4" /> Shop Now
+                    <Package className="h-4 w-4" /> Browse Products
                   </Link>
                 </Button>
               </div>
@@ -221,9 +229,14 @@ function CartPage() {
                 <div className="bg-white rounded-xl border border-slate-200/90 shadow-xs divide-y divide-slate-100 overflow-hidden">
                   {/* Card Top Title Bar */}
                   <div className="px-4 py-3.5 sm:px-6 sm:py-4 flex items-center justify-between bg-slate-50/60 border-b border-slate-100">
-                    <h2 className="text-sm sm:text-base font-display font-extrabold text-slate-900 tracking-tight">
-                      My Cart ({totalItemsCount})
-                    </h2>
+                    <div>
+                      <h2 className="text-sm sm:text-base font-display font-extrabold text-slate-900 tracking-tight">
+                        Shopping Cart ({totalItemsCount} {totalItemsCount === 1 ? "item" : "items"})
+                      </h2>
+                      <p className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                        Review your selected products and arrange your gas delivery with ease.
+                      </p>
+                    </div>
                     <span className="text-xs text-slate-500 font-medium">
                       Standard Direct Fleet Delivery
                     </span>
@@ -564,11 +577,11 @@ function CartPage() {
 
                     {/* Delivery Charges */}
                     <div className="flex justify-between items-center text-slate-700">
-                      <span>Delivery Charges</span>
+                      <span>{settings?.deliveryTierName || "Delivery Charges"}</span>
                       <span>
                         {shipping === 0 ? (
                           <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200/60">
-                            FREE
+                            {settings?.freeDeliveryEnabled ? "FREE" : "£0.00"}
                           </span>
                         ) : (
                           <span className="font-semibold text-slate-900">{gbp(shipping)}</span>
@@ -578,7 +591,14 @@ function CartPage() {
 
                     {/* VAT Breakdown */}
                     <div className="flex justify-between items-center text-slate-700">
-                      <span>VAT (20% included)</span>
+                      <span>
+                        VAT (
+                        {settings?.taxEnabled && (settings?.vatRate ?? 0) > 0
+                          ? `${settings.vatRate}%`
+                          : "0%"}
+                        {settings?.taxPricingMode === "inclusive" ? " included" : ""}
+                        )
+                      </span>
                       <span className="font-semibold text-slate-900">{gbp(vat)}</span>
                     </div>
 

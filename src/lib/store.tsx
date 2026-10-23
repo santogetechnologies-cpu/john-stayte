@@ -86,9 +86,34 @@ function usePersisted<T>(key: string, initial: T) {
       /* ignore */
     }
     setLoaded(true);
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === key && e.newValue) {
+        try {
+          let parsed = JSON.parse(e.newValue);
+          if (key === "jss.cart" && Array.isArray(parsed)) {
+            parsed = parsed
+              .filter((i: any) => i && typeof i === "object")
+              .map((i: any) => ({
+                slug: typeof i.slug === "string" ? i.slug : "",
+                qty: typeof i.qty === "number" && i.qty > 0 ? i.qty : 1,
+              }))
+              .filter((i: any) => i.slug);
+          }
+          setValue(parsed as T);
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, [key]);
+
   useEffect(() => {
-    if (loaded) localStorage.setItem(key, JSON.stringify(value));
+    if (loaded) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
   }, [key, value, loaded]);
   return [value, setValue] as const;
 }
@@ -752,22 +777,55 @@ export function getOrderPaymentMethod(order: any): string {
   return "Pay on Delivery / Collection";
 }
 
+export type TaxPricingMode = "exclusive" | "inclusive";
+
+export interface CartTaxCategories {
+  standard: number;
+  reducedFuel: number;
+  zeroRated: number;
+}
+
 export interface CartSystemSettings {
-  vatRate: number;
-  fuelVatRate: number;
-  defaultShippingFee: number;
-  freeDeliveryThreshold: number;
+  // --- Tax & VAT Settings ---
+  vatRate: number; // Configured standard VAT rate (%). Initial: 0
+  fuelVatRate: number; // Configured reduced fuel VAT rate (%). Initial: 0
+  taxPricingMode: TaxPricingMode; // "exclusive" (VAT added on top) | "inclusive" (VAT included in price)
+  taxEnabled: boolean; // Whether tax engine is enabled. Initial: false
+  taxCategories?: CartTaxCategories;
+
+  // --- Delivery Settings ---
+  defaultShippingFee: number; // Configured standard delivery fee (£). Initial: 0.00
+  deliveryChargesEnabled: boolean; // Whether delivery charges are enabled. Initial: false
+  deliveryTierName?: string; // e.g. "Standard Fleet Delivery"
+
+  // --- Free Delivery Settings ---
+  freeDeliveryEnabled: boolean; // Whether free delivery rule is active. Initial: false
+  freeDeliveryThreshold: number; // Minimum qualifying spend (£). Initial: 0.00
+
+  // --- General Order Settings ---
   minOrderValue: number;
   deliverySlaDays: number;
+  autoApproveOrders?: boolean;
 }
 
 export const DEFAULT_CART_SYSTEM_SETTINGS: CartSystemSettings = {
-  vatRate: 20,
-  fuelVatRate: 5,
-  defaultShippingFee: 4.99,
-  freeDeliveryThreshold: 100,
+  vatRate: 0,
+  fuelVatRate: 0,
+  taxPricingMode: "exclusive",
+  taxEnabled: false,
+  taxCategories: {
+    standard: 0,
+    reducedFuel: 0,
+    zeroRated: 0,
+  },
+  defaultShippingFee: 0.0,
+  deliveryChargesEnabled: false,
+  deliveryTierName: "Standard Fleet Delivery",
+  freeDeliveryEnabled: false,
+  freeDeliveryThreshold: 0.0,
   minOrderValue: 15,
   deliverySlaDays: 2,
+  autoApproveOrders: false,
 };
 
 /**
@@ -797,12 +855,19 @@ export function useCartTotals(appliedOffer?: Offer | null) {
           const parsed = JSON.parse(data.content);
           if (parsed && typeof parsed === "object") {
             setSettings({
-              vatRate: Number(parsed.vatRate ?? 20),
-              fuelVatRate: Number(parsed.fuelVatRate ?? 5),
-              defaultShippingFee: Number(parsed.defaultShippingFee ?? 4.99),
-              freeDeliveryThreshold: Number(parsed.freeDeliveryThreshold ?? 100),
+              vatRate: Number(parsed.vatRate ?? 0),
+              fuelVatRate: Number(parsed.fuelVatRate ?? 0),
+              taxPricingMode: (parsed.taxPricingMode === "inclusive" ? "inclusive" : "exclusive") as TaxPricingMode,
+              taxEnabled: Boolean(parsed.taxEnabled ?? false),
+              taxCategories: parsed.taxCategories || { standard: 0, reducedFuel: 0, zeroRated: 0 },
+              defaultShippingFee: Number(parsed.defaultShippingFee ?? 0),
+              deliveryChargesEnabled: Boolean(parsed.deliveryChargesEnabled ?? false),
+              deliveryTierName: String(parsed.deliveryTierName ?? "Standard Fleet Delivery"),
+              freeDeliveryEnabled: Boolean(parsed.freeDeliveryEnabled ?? false),
+              freeDeliveryThreshold: Number(parsed.freeDeliveryThreshold ?? 0),
               minOrderValue: Number(parsed.minOrderValue ?? 15),
               deliverySlaDays: Number(parsed.deliverySlaDays ?? 2),
+              autoApproveOrders: Boolean(parsed.autoApproveOrders ?? false),
             });
           }
         }
@@ -922,15 +987,53 @@ export function useCartTotals(appliedOffer?: Offer | null) {
     [subtotal, offerDiscount],
   );
 
-  const shipping = useMemo(
-    () =>
-      subtotal === 0 || subtotal >= settings.freeDeliveryThreshold
-        ? 0
-        : settings.defaultShippingFee,
-    [subtotal, settings.freeDeliveryThreshold, settings.defaultShippingFee],
-  );
-  const vat = useMemo(() => taxableSubtotal * (settings.vatRate / 100), [taxableSubtotal, settings.vatRate]);
-  const total = useMemo(() => taxableSubtotal + shipping + vat, [taxableSubtotal, shipping, vat]);
+  const shipping = useMemo(() => {
+    if (subtotal === 0) return 0;
+
+    // Free delivery rule takes precedence when explicitly enabled
+    if (settings.freeDeliveryEnabled) {
+      if (settings.freeDeliveryThreshold === 0 || subtotal >= settings.freeDeliveryThreshold) {
+        return 0;
+      }
+    }
+
+    // Standard delivery fee applies if charges are enabled
+    if (settings.deliveryChargesEnabled && settings.defaultShippingFee > 0) {
+      return settings.defaultShippingFee;
+    }
+
+    // Default initial configured fee is £0.00
+    return 0;
+  }, [
+    subtotal,
+    settings.freeDeliveryEnabled,
+    settings.freeDeliveryThreshold,
+    settings.deliveryChargesEnabled,
+    settings.defaultShippingFee,
+  ]);
+
+  const vat = useMemo(() => {
+    if (taxableSubtotal === 0 || !settings.taxEnabled || settings.vatRate <= 0) {
+      return 0;
+    }
+
+    if (settings.taxPricingMode === "inclusive") {
+      // VAT is already included in catalog prices; extract tax portion
+      return taxableSubtotal - taxableSubtotal / (1 + settings.vatRate / 100);
+    }
+
+    // VAT is exclusive; calculate tax on top of taxable subtotal
+    return taxableSubtotal * (settings.vatRate / 100);
+  }, [taxableSubtotal, settings.taxEnabled, settings.vatRate, settings.taxPricingMode]);
+
+  const total = useMemo(() => {
+    if (taxableSubtotal === 0) return 0;
+    if (settings.taxPricingMode === "inclusive") {
+      // For inclusive pricing, VAT is already within taxableSubtotal
+      return taxableSubtotal + shipping;
+    }
+    return taxableSubtotal + shipping + vat;
+  }, [taxableSubtotal, shipping, vat, settings.taxPricingMode]);
 
   return { lines: liveLines, subtotal, offerDiscount, shipping, vat, total, loading, settings };
 }

@@ -683,7 +683,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
       .replace(/\[LAST_SENT:\d+\]/g, "")
       .trim();
 
-    await (supabase.from("delivery_assignments") as any)
+    const { error: updateError } = await (supabase.from("delivery_assignments") as any)
       .update({
         otp_code: hashedStorage,
         otp_expires_at: expiresAtIso,
@@ -695,6 +695,15 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       })
       .eq("id", assignment.id);
+
+    if (updateError) {
+      console.error("[Delivery OTP Server] Failed to save hashed OTP in database:", updateError);
+      return {
+        success: false,
+        error: "Failed to record delivery verification code in database. Please try again.",
+        message: "Failed to record delivery verification code in database.",
+      };
+    }
 
     // 6. Send SMS via Twilio Programmable Messaging
     const smsText = `Your John Stayte Services delivery verification code for Order #${orderNum} is: ${rawOtp}. Please share this 6-digit code with your driver upon arrival. Valid for 15 minutes.`;

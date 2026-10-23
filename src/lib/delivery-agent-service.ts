@@ -1632,7 +1632,7 @@ export async function getCustomerDeliveryOtp(orderId: string): Promise<string | 
       const { data: notif } = await (supabase.from("customer_notifications") as any)
         .select("message, created_at")
         .eq("user_id", ord.customer_id)
-        .eq("category", "delivery_otp")
+        .ilike("title", "%Delivery Verification Code%")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();

@@ -517,7 +517,12 @@ function Checkout() {
         : "STANDARD";
 
       // 5. Create Initial Order Record in Supabase (with provisional values)
-      const provisionalTotal = Math.max(0, finalSubtotal + shipping + vat);
+      const provisionalTotal = Math.max(
+        0,
+        settings.taxPricingMode === "inclusive"
+          ? finalSubtotal + shipping
+          : finalSubtotal + shipping + vat,
+      );
       const { data: newOrder, error: orderErr } = await (supabase.from("orders") as any)
         .insert([
           {
@@ -607,14 +612,40 @@ function Checkout() {
         }
       }
 
-      // Recompute authoritative final total
+      // Recompute authoritative final total using active system settings
       const taxableSubtotal = Math.max(0, finalSubtotal - verifiedDiscount);
-      const authoritativeVat = taxableSubtotal * (settings.vatRate / 100);
-      const finalAuthoritativeTotal = Math.max(0, taxableSubtotal + shipping + authoritativeVat);
 
-      // Update order record with authoritative total and offer linkage
+      let authoritativeShipping = 0;
+      if (settings.freeDeliveryEnabled) {
+        if (settings.freeDeliveryThreshold === 0 || finalSubtotal >= settings.freeDeliveryThreshold) {
+          authoritativeShipping = 0;
+        } else {
+          authoritativeShipping = settings.deliveryChargesEnabled ? settings.defaultShippingFee : 0;
+        }
+      } else {
+        authoritativeShipping = settings.deliveryChargesEnabled ? settings.defaultShippingFee : 0;
+      }
+
+      let authoritativeVat = 0;
+      if (settings.taxEnabled && settings.vatRate > 0) {
+        if (settings.taxPricingMode === "inclusive") {
+          authoritativeVat = taxableSubtotal - taxableSubtotal / (1 + settings.vatRate / 100);
+        } else {
+          authoritativeVat = taxableSubtotal * (settings.vatRate / 100);
+        }
+      }
+
+      const finalAuthoritativeTotal = Math.max(
+        0,
+        settings.taxPricingMode === "inclusive"
+          ? taxableSubtotal + authoritativeShipping
+          : taxableSubtotal + authoritativeShipping + authoritativeVat,
+      );
+
+      // Update order record with authoritative total, shipping, and offer linkage
       await (supabase.from("orders") as any)
         .update({
+          shipping_fee: authoritativeShipping,
           total: finalAuthoritativeTotal,
           offer_id: verifiedOfferId,
           offer_code: verifiedOfferCode,
@@ -1417,13 +1448,26 @@ function Checkout() {
               </div>
             )}
             <div className="flex justify-between text-slate-600">
-              <dt>Delivery</dt>
+              <dt>{settings?.deliveryTierName || "Delivery"}</dt>
               <dd className="font-bold text-slate-900">
-                {shipping === 0 ? "Free" : gbp(shipping)}
+                {shipping === 0 ? (
+                  <span className="text-emerald-700 font-bold">
+                    {settings?.freeDeliveryEnabled ? "Free" : "£0.00"}
+                  </span>
+                ) : (
+                  gbp(shipping)
+                )}
               </dd>
             </div>
             <div className="flex justify-between text-slate-600">
-              <dt>VAT (20%)</dt>
+              <dt>
+                VAT (
+                {settings?.taxEnabled && (settings?.vatRate ?? 0) > 0
+                  ? `${settings.vatRate}%`
+                  : "0%"}
+                {settings?.taxPricingMode === "inclusive" ? " incl." : ""}
+                )
+              </dt>
               <dd className="font-bold text-slate-900">{gbp(vat)}</dd>
             </div>
             <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-black text-slate-900">

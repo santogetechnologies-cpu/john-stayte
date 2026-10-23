@@ -29,6 +29,7 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AccountIndexRouteImport } from './routes/account.index'
 import { Route as AccountAddressesRouteImport } from './routes/account.addresses'
 import { Route as AccountApplicationRouteImport } from './routes/account.application'
+import { Route as AccountCartRouteImport } from './routes/account.cart'
 import { Route as AccountDeliveriesRouteImport } from './routes/account.deliveries'
 import { Route as AccountInvoicesRouteImport } from './routes/account.invoices'
 import { Route as AccountNotificationsRouteImport } from './routes/account.notifications'
@@ -202,6 +203,11 @@ const AccountAddressesRoute = AccountAddressesRouteImport.update({
 const AccountApplicationRoute = AccountApplicationRouteImport.update({
   id: '/application',
   path: '/application',
+  getParentRoute: () => AccountRoute,
+} as any)
+const AccountCartRoute = AccountCartRouteImport.update({
+  id: '/cart',
+  path: '/cart',
   getParentRoute: () => AccountRoute,
 } as any)
 const AccountDeliveriesRoute = AccountDeliveriesRouteImport.update({
@@ -596,6 +602,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/application': typeof AccountApplicationRoute
+  '/account/cart': typeof AccountCartRoute
   '/account/deliveries': typeof AccountDeliveriesRoute
   '/account/invoices': typeof AccountInvoicesRoute
   '/account/notifications': typeof AccountNotificationsRoute
@@ -687,6 +694,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/application': typeof AccountApplicationRoute
+  '/account/cart': typeof AccountCartRoute
   '/account/deliveries': typeof AccountDeliveriesRoute
   '/account/invoices': typeof AccountInvoicesRoute
   '/account/notifications': typeof AccountNotificationsRoute
@@ -783,6 +791,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/application': typeof AccountApplicationRoute
+  '/account/cart': typeof AccountCartRoute
   '/account/deliveries': typeof AccountDeliveriesRoute
   '/account/invoices': typeof AccountInvoicesRoute
   '/account/notifications': typeof AccountNotificationsRoute
@@ -881,6 +890,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/account/addresses'
     | '/account/application'
+    | '/account/cart'
     | '/account/deliveries'
     | '/account/invoices'
     | '/account/notifications'
@@ -972,6 +982,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/account/addresses'
     | '/account/application'
+    | '/account/cart'
     | '/account/deliveries'
     | '/account/invoices'
     | '/account/notifications'
@@ -1067,6 +1078,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/account/addresses'
     | '/account/application'
+    | '/account/cart'
     | '/account/deliveries'
     | '/account/invoices'
     | '/account/notifications'
@@ -1308,6 +1320,13 @@ declare module '@tanstack/react-router' {
       path: '/application'
       fullPath: '/account/application'
       preLoaderRoute: typeof AccountApplicationRouteImport
+      parentRoute: typeof AccountRoute
+    }
+    '/account/cart': {
+      id: '/account/cart'
+      path: '/cart'
+      fullPath: '/account/cart'
+      preLoaderRoute: typeof AccountCartRouteImport
       parentRoute: typeof AccountRoute
     }
     '/account/deliveries': {
@@ -1848,6 +1867,7 @@ const AccountOrdersRouteWithChildren = AccountOrdersRoute._addFileChildren(
 interface AccountRouteChildren {
   AccountAddressesRoute: typeof AccountAddressesRoute
   AccountApplicationRoute: typeof AccountApplicationRoute
+  AccountCartRoute: typeof AccountCartRoute
   AccountDeliveriesRoute: typeof AccountDeliveriesRoute
   AccountInvoicesRoute: typeof AccountInvoicesRoute
   AccountNotificationsRoute: typeof AccountNotificationsRoute
@@ -1864,6 +1884,7 @@ interface AccountRouteChildren {
 const AccountRouteChildren: AccountRouteChildren = {
   AccountAddressesRoute: AccountAddressesRoute,
   AccountApplicationRoute: AccountApplicationRoute,
+  AccountCartRoute: AccountCartRoute,
   AccountDeliveriesRoute: AccountDeliveriesRoute,
   AccountInvoicesRoute: AccountInvoicesRoute,
   AccountNotificationsRoute: AccountNotificationsRoute,

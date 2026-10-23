@@ -6,48 +6,72 @@ import {
   Loader2,
   Layers,
   ShieldCheck,
-  Mail,
   Building,
   Truck,
   ShoppingBag,
   Bell,
+  Info,
+  AlertTriangle,
+  Receipt,
+  Gift,
+  CheckCircle2,
+  Percent,
+  Coins,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
+import { gbp } from "@/lib/store";
 
 export function AdminSettingsView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // General & Business Preferences
+  // 1. General & Business Preferences
   const [platformName, setPlatformName] = useState("John Stayte Services — Admin Portal");
   const [businessName, setBusinessName] = useState("John Stayte Services Ltd");
   const [supportEmail, setSupportEmail] = useState("info@johnstayteservices.co.uk");
   const [phone, setPhone] = useState("+44 (0)1453 822859");
   const [operatingHours, setOperatingHours] = useState("Mon–Sat 7:00–20:00 · Sun 8:00–18:00");
 
-  // Tax & VAT Rates
-  const [vatRate, setVatRate] = useState("20");
-  const [fuelVatRate, setFuelVatRate] = useState("5");
+  // 2. Tax & VAT Settings (Initial configured rate: 0%)
+  const [vatRate, setVatRate] = useState("0");
+  const [fuelVatRate, setFuelVatRate] = useState("0");
+  const [taxPricingMode, setTaxPricingMode] = useState<"exclusive" | "inclusive">("exclusive");
+  const [taxEnabled, setTaxEnabled] = useState(false);
 
-  // Order & Delivery Settings
-  const [minOrderValue, setMinOrderValue] = useState("15");
-  const [defaultShippingFee, setDefaultShippingFee] = useState("4.99");
-  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState("100");
+  // 3. Delivery Settings (Initial configured fee: £0.00)
+  const [defaultShippingFee, setDefaultShippingFee] = useState("0.00");
+  const [deliveryChargesEnabled, setDeliveryChargesEnabled] = useState(false);
+  const [deliveryTierName, setDeliveryTierName] = useState("Standard Fleet Delivery");
   const [deliverySlaDays, setDeliverySlaDays] = useState("2");
+
+  // 4. Free Delivery Settings (Initial configured threshold: £0.00)
+  const [freeDeliveryEnabled, setFreeDeliveryEnabled] = useState(false);
+  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState("0.00");
+
+  // 5. Order Rules
+  const [minOrderValue, setMinOrderValue] = useState("15");
   const [autoApproveOrders, setAutoApproveOrders] = useState(false);
 
-  // Notification Preferences
+  // 6. Notification Preferences
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
 
-  // Sidebar Module Matrix
+  // 7. Sidebar Module Matrix
   const [modulesConfig, setModulesConfig] = useState<Record<string, boolean>>({
     stations: true,
     reports: true,
@@ -91,13 +115,31 @@ export function AdminSettingsView() {
           if (parsed.supportEmail) setSupportEmail(parsed.supportEmail);
           if (parsed.phone) setPhone(parsed.phone);
           if (parsed.operatingHours) setOperatingHours(parsed.operatingHours);
-          if (parsed.vatRate) setVatRate(String(parsed.vatRate));
-          if (parsed.fuelVatRate) setFuelVatRate(String(parsed.fuelVatRate));
-          if (parsed.minOrderValue) setMinOrderValue(String(parsed.minOrderValue));
-          if (parsed.defaultShippingFee) setDefaultShippingFee(String(parsed.defaultShippingFee));
-          if (parsed.freeDeliveryThreshold)
-            setFreeDeliveryThreshold(String(parsed.freeDeliveryThreshold));
+
+          // Tax & VAT
+          setVatRate(parsed.vatRate !== undefined ? String(parsed.vatRate) : "0");
+          setFuelVatRate(parsed.fuelVatRate !== undefined ? String(parsed.fuelVatRate) : "0");
+          setTaxPricingMode(parsed.taxPricingMode === "inclusive" ? "inclusive" : "exclusive");
+          setTaxEnabled(Boolean(parsed.taxEnabled ?? false));
+
+          // Delivery Charges
+          setDefaultShippingFee(
+            parsed.defaultShippingFee !== undefined ? String(parsed.defaultShippingFee) : "0.00",
+          );
+          setDeliveryChargesEnabled(Boolean(parsed.deliveryChargesEnabled ?? false));
+          if (parsed.deliveryTierName) setDeliveryTierName(parsed.deliveryTierName);
           if (parsed.deliverySlaDays) setDeliverySlaDays(String(parsed.deliverySlaDays));
+
+          // Free Delivery
+          setFreeDeliveryEnabled(Boolean(parsed.freeDeliveryEnabled ?? false));
+          setFreeDeliveryThreshold(
+            parsed.freeDeliveryThreshold !== undefined
+              ? String(parsed.freeDeliveryThreshold)
+              : "0.00",
+          );
+
+          // Order Rules & Alerts
+          if (parsed.minOrderValue !== undefined) setMinOrderValue(String(parsed.minOrderValue));
           if (typeof parsed.autoApproveOrders === "boolean")
             setAutoApproveOrders(parsed.autoApproveOrders);
           if (typeof parsed.emailAlerts === "boolean") setEmailAlerts(parsed.emailAlerts);
@@ -116,6 +158,39 @@ export function AdminSettingsView() {
   }, []);
 
   const handleSaveSettings = async () => {
+    // Basic Form Validation
+    const numVat = Number(vatRate);
+    const numFuelVat = Number(fuelVatRate);
+    const numShipping = Number(defaultShippingFee);
+    const numFreeThreshold = Number(freeDeliveryThreshold);
+    const numMinOrder = Number(minOrderValue);
+    const numSlaDays = Number(deliverySlaDays);
+
+    if (isNaN(numVat) || numVat < 0 || numVat > 100) {
+      toast.error("Standard VAT rate must be between 0% and 100%.");
+      return;
+    }
+    if (isNaN(numFuelVat) || numFuelVat < 0 || numFuelVat > 100) {
+      toast.error("Fuel VAT rate must be between 0% and 100%.");
+      return;
+    }
+    if (isNaN(numShipping) || numShipping < 0) {
+      toast.error("Default shipping fee must be £0.00 or greater.");
+      return;
+    }
+    if (isNaN(numFreeThreshold) || numFreeThreshold < 0) {
+      toast.error("Free delivery threshold must be £0.00 or greater.");
+      return;
+    }
+    if (isNaN(numMinOrder) || numMinOrder < 0) {
+      toast.error("Minimum order value must be £0.00 or greater.");
+      return;
+    }
+    if (isNaN(numSlaDays) || numSlaDays < 1) {
+      toast.error("Delivery SLA days must be at least 1 day.");
+      return;
+    }
+
     setSaving(true);
     try {
       const modulePayload = {
@@ -133,12 +208,22 @@ export function AdminSettingsView() {
           supportEmail,
           phone,
           operatingHours,
-          vatRate: Number(vatRate),
-          fuelVatRate: Number(fuelVatRate),
-          minOrderValue: Number(minOrderValue),
-          defaultShippingFee: Number(defaultShippingFee),
-          freeDeliveryThreshold: Number(freeDeliveryThreshold),
-          deliverySlaDays: Number(deliverySlaDays),
+          vatRate: numVat,
+          fuelVatRate: numFuelVat,
+          taxPricingMode,
+          taxEnabled,
+          taxCategories: {
+            standard: numVat,
+            reducedFuel: numFuelVat,
+            zeroRated: 0,
+          },
+          defaultShippingFee: numShipping,
+          deliveryChargesEnabled,
+          deliveryTierName,
+          freeDeliveryEnabled,
+          freeDeliveryThreshold: numFreeThreshold,
+          minOrderValue: numMinOrder,
+          deliverySlaDays: numSlaDays,
           autoApproveOrders,
           emailAlerts,
           lowStockAlerts,
@@ -154,9 +239,13 @@ export function AdminSettingsView() {
 
       await logAdminAuditAction("UPDATE_SETTINGS", "settings", "admin_config", {
         platformName,
-        vatRate,
+        vatRate: numVat,
+        taxEnabled,
+        defaultShippingFee: numShipping,
+        freeDeliveryThreshold: numFreeThreshold,
       });
-      toast.success("System preferences saved successfully!");
+
+      toast.success("System preferences and pricing settings saved successfully!");
       window.dispatchEvent(new Event("admin_modules_updated"));
       window.dispatchEvent(new Event("admin_system_settings_updated"));
     } catch (err: any) {
@@ -166,13 +255,32 @@ export function AdminSettingsView() {
     }
   };
 
-  const toggleModule = (key: string, enabled: boolean) => {
-    setModulesConfig((prev) => ({ ...prev, [key]: enabled }));
-  };
+  // Live Simulation Calculations
+  const simSubtotal = 50.0;
+  const numVat = Number(vatRate) || 0;
+  const simTaxActive = taxEnabled && numVat > 0;
+  const simVat = simTaxActive
+    ? taxPricingMode === "inclusive"
+      ? simSubtotal - simSubtotal / (1 + numVat / 100)
+      : simSubtotal * (numVat / 100)
+    : 0;
+  const numShipping = Number(defaultShippingFee) || 0;
+  const numFreeThreshold = Number(freeDeliveryThreshold) || 0;
+  const simFreeQualified =
+    freeDeliveryEnabled && (numFreeThreshold === 0 || simSubtotal >= numFreeThreshold);
+  const simShipping = simFreeQualified
+    ? 0
+    : deliveryChargesEnabled && numShipping > 0
+      ? numShipping
+      : 0;
+  const simTotal =
+    taxPricingMode === "inclusive"
+      ? simSubtotal + simShipping
+      : simSubtotal + simShipping + simVat;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground mb-1">
@@ -186,13 +294,13 @@ export function AdminSettingsView() {
             <Settings className="h-7 w-7 text-primary" /> Enterprise System Settings
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Configure persisted business rules, tax rates, delivery SLAs, and module controls.
+            Configure persisted business rules, tax rates, delivery fees, and module visibility.
           </p>
         </div>
 
         <Button
           onClick={handleSaveSettings}
-          disabled={saving}
+          disabled={saving || loading}
           className="rounded-full font-extrabold text-xs gap-1.5 shadow-md bg-primary hover:bg-primary/90 text-white shrink-0"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -206,13 +314,16 @@ export function AdminSettingsView() {
             <Building className="h-3.5 w-3.5" /> General & Business
           </TabsTrigger>
           <TabsTrigger value="vat" className="rounded-xl text-xs font-bold gap-1.5">
-            <Settings className="h-3.5 w-3.5" /> Tax & VAT
+            <Receipt className="h-3.5 w-3.5" /> Tax & VAT
+          </TabsTrigger>
+          <TabsTrigger value="delivery" className="rounded-xl text-xs font-bold gap-1.5">
+            <Truck className="h-3.5 w-3.5" /> Delivery Charges
+          </TabsTrigger>
+          <TabsTrigger value="freedelivery" className="rounded-xl text-xs font-bold gap-1.5">
+            <Gift className="h-3.5 w-3.5" /> Free Delivery
           </TabsTrigger>
           <TabsTrigger value="orders" className="rounded-xl text-xs font-bold gap-1.5">
             <ShoppingBag className="h-3.5 w-3.5" /> Order Rules
-          </TabsTrigger>
-          <TabsTrigger value="delivery" className="rounded-xl text-xs font-bold gap-1.5">
-            <Truck className="h-3.5 w-3.5" /> Delivery SLAs
           </TabsTrigger>
           <TabsTrigger value="notifications" className="rounded-xl text-xs font-bold gap-1.5">
             <Bell className="h-3.5 w-3.5" /> Alerts & Prefs
@@ -274,39 +385,366 @@ export function AdminSettingsView() {
           </div>
         </TabsContent>
 
-        {/* 2. Tax & VAT Rates */}
+        {/* 2. Tax & VAT Settings */}
         <TabsContent
           value="vat"
-          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-5 max-w-2xl shadow-xs"
         >
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
-            Tax & VAT Configuration
-          </h3>
-          <div className="space-y-3 text-xs">
+          <div className="flex items-center justify-between border-b pb-2">
             <div>
-              <Label className="font-bold text-slate-700">Standard UK VAT Rate (%)</Label>
-              <Input
-                type="number"
-                value={vatRate}
-                onChange={(e) => setVatRate(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-extrabold h-10 border-slate-200"
-              />
+              <h3 className="text-sm font-extrabold text-foreground">Tax & VAT Configuration</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Configure VAT rates, pricing rules, and tax engine activation.
+              </p>
             </div>
+            <span
+              className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                taxEnabled && Number(vatRate) > 0
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : "bg-slate-100 text-slate-700 border-slate-200"
+              }`}
+            >
+              {taxEnabled && Number(vatRate) > 0 ? "Tax Engine Active" : "0% Initial Config"}
+            </span>
+          </div>
+
+          {/* Critical UK Tax Advisory Notice */}
+          <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-950 flex items-start gap-3">
+            <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <span className="font-bold block">UK Tax Treatment Notice</span>
+              <p className="leading-relaxed text-blue-900 font-medium">
+                The initial configured VAT rate is <strong>0% (£0.00 cart VAT)</strong>. Treat 0% as the
+                initial application configuration, not as confirmation that every product is legally
+                zero-rated. The business must confirm the applicable UK tax treatment before production
+                tax rules are enabled.
+              </p>
+            </div>
+          </div>
+
+          {/* Enable Tax Engine Toggle */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
             <div>
-              <Label className="font-bold text-slate-700">
-                Reduced Domestic Gas & Fuel VAT Rate (%)
+              <Label className="font-bold text-slate-800 cursor-pointer text-xs">
+                Enable Tax / VAT Engine
               </Label>
-              <Input
-                type="number"
-                value={fuelVatRate}
-                onChange={(e) => setFuelVatRate(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-extrabold h-10 border-slate-200"
-              />
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                When disabled, 0% VAT (£0.00) is charged on all customer orders.
+              </p>
+            </div>
+            <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+          </div>
+
+          <div className="space-y-4 text-xs pt-1">
+            {/* Pricing Mode */}
+            <div>
+              <Label className="font-bold text-slate-700">Tax Pricing Model</Label>
+              <Select
+                value={taxPricingMode}
+                onValueChange={(val: "exclusive" | "inclusive") => setTaxPricingMode(val)}
+              >
+                <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200 bg-white">
+                  <SelectValue placeholder="Select pricing model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="exclusive">
+                    Tax Exclusive (VAT added on top of subtotal at checkout)
+                  </SelectItem>
+                  <SelectItem value="inclusive">
+                    Tax Inclusive (Catalog prices include VAT; tax is extracted for invoicing)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Standard UK e-commerce consumer prices typically display tax inclusive or exclusive depending on trade vs domestic customer segment.
+              </p>
+            </div>
+
+            {/* Standard VAT Rate */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="font-bold text-slate-700">Standard UK VAT Rate (%)</Label>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={vatRate}
+                    onChange={(e) => setVatRate(e.target.value)}
+                    className="rounded-xl text-xs font-extrabold h-10 border-slate-200 pr-8"
+                  />
+                  <Percent className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-3" />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">Initial configured value: 0%</p>
+              </div>
+
+              <div>
+                <Label className="font-bold text-slate-700">
+                  Reduced Domestic Fuel VAT Rate (%)
+                </Label>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    value={fuelVatRate}
+                    onChange={(e) => setFuelVatRate(e.target.value)}
+                    className="rounded-xl text-xs font-extrabold h-10 border-slate-200 pr-8"
+                  />
+                  <Percent className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-3" />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Applies to domestic heating and qualifying fuel
+                </p>
+              </div>
+            </div>
+
+            {/* Live Tax Simulation Card */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                Live Tax Calculation Preview (Sample Basket: £50.00)
+              </span>
+              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block">Taxable Subtotal</span>
+                  <span className="text-xs font-black text-slate-800">{gbp(simSubtotal)}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block">
+                    Calculated VAT ({simTaxActive ? `${numVat}%` : "0%"})
+                  </span>
+                  <span className="text-xs font-black text-primary">{gbp(simVat)}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                  <span className="text-[10px] text-slate-400 font-bold block">Basket Total</span>
+                  <span className="text-xs font-black text-slate-900">{gbp(simTotal)}</span>
+                </div>
+              </div>
             </div>
           </div>
         </TabsContent>
 
-        {/* 3. Order Settings */}
+        {/* 3. Delivery Settings */}
+        <TabsContent
+          value="delivery"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-5 max-w-2xl shadow-xs"
+        >
+          <div className="flex items-center justify-between border-b pb-2">
+            <div>
+              <h3 className="text-sm font-extrabold text-foreground">
+                Delivery Charges & Logistics
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Configure standard fleet delivery fees, method name, and dispatch SLAs.
+              </p>
+            </div>
+            <span
+              className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                deliveryChargesEnabled && Number(defaultShippingFee) > 0
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : "bg-slate-100 text-slate-700 border-slate-200"
+              }`}
+            >
+              {deliveryChargesEnabled && Number(defaultShippingFee) > 0
+                ? `${gbp(Number(defaultShippingFee))} Fee`
+                : "£0.00 Initial Fee"}
+            </span>
+          </div>
+
+          {/* Delivery Advisory Notice */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <span className="font-bold block">Approved Delivery Fee Notice</span>
+              <p className="leading-relaxed text-amber-900 font-medium">
+                The initial configured delivery fee is <strong>£0.00</strong> until an approved commercial
+                fee is entered by the business. Do not silently assume £4.99 or any prior value is
+                approved.
+              </p>
+            </div>
+          </div>
+
+          {/* Enable Delivery Charges Switch */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <div>
+              <Label className="font-bold text-slate-800 cursor-pointer text-xs">
+                Enable Standard Delivery Charges
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                When disabled, £0.00 is charged for delivery on customer orders.
+              </p>
+            </div>
+            <Switch
+              checked={deliveryChargesEnabled}
+              onCheckedChange={setDeliveryChargesEnabled}
+            />
+          </div>
+
+          <div className="space-y-4 text-xs pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="font-bold text-slate-700">Standard Delivery Fee (£)</Label>
+                <div className="relative mt-1">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={defaultShippingFee}
+                    onChange={(e) => setDefaultShippingFee(e.target.value)}
+                    className="rounded-xl text-xs font-extrabold h-10 border-slate-200"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">Initial configured value: £0.00</p>
+              </div>
+
+              <div>
+                <Label className="font-bold text-slate-700">Delivery Tier Display Label</Label>
+                <Input
+                  value={deliveryTierName}
+                  onChange={(e) => setDeliveryTierName(e.target.value)}
+                  placeholder="Standard Fleet Delivery"
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Shown to customers at checkout</p>
+              </div>
+            </div>
+
+            <div>
+              <Label className="font-bold text-slate-700">Target Delivery SLA (Days)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={deliverySlaDays}
+                onChange={(e) => setDeliverySlaDays(e.target.value)}
+                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200 max-w-xs"
+              />
+              <p className="text-[10px] text-slate-400 mt-0.5">Expected transit days from depot dispatch</p>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 4. Free Delivery Settings */}
+        <TabsContent
+          value="freedelivery"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-5 max-w-2xl shadow-xs"
+        >
+          <div className="flex items-center justify-between border-b pb-2">
+            <div>
+              <h3 className="text-sm font-extrabold text-foreground">
+                Free Delivery Eligibility & Threshold
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Configure spending thresholds for customer free shipping qualification.
+              </p>
+            </div>
+            <span
+              className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                freeDeliveryEnabled
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                  : "bg-slate-100 text-slate-700 border-slate-200"
+              }`}
+            >
+              {freeDeliveryEnabled
+                ? Number(freeDeliveryThreshold) === 0
+                  ? "All Orders Free"
+                  : `Free over ${gbp(Number(freeDeliveryThreshold))}`
+                : "Rule Disabled"}
+            </span>
+          </div>
+
+          {/* Free Delivery Advisory Notice */}
+          <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-950 flex items-start gap-3">
+            <Gift className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="text-xs space-y-1">
+              <span className="font-bold block">Free Delivery Policy Notice</span>
+              <p className="leading-relaxed text-emerald-900 font-medium">
+                The initial configured threshold is <strong>£0.00</strong>, meaning no minimum spending
+                threshold is required by this setting. Note: This does not automatically entitle all orders
+                to free delivery unless free delivery eligibility is explicitly enabled by the Admin.
+              </p>
+            </div>
+          </div>
+
+          {/* Free Delivery Enable Switch */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+            <div>
+              <Label className="font-bold text-slate-800 cursor-pointer text-xs">
+                Enable Free Delivery Eligibility Rule
+              </Label>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                When active, qualifying orders receive £0.00 delivery fee.
+              </p>
+            </div>
+            <Switch
+              checked={freeDeliveryEnabled}
+              onCheckedChange={setFreeDeliveryEnabled}
+            />
+          </div>
+
+          <div className="space-y-4 text-xs pt-1">
+            <div>
+              <Label className="font-bold text-slate-700">
+                Minimum Qualifying Spend (£) Threshold
+              </Label>
+              <div className="relative mt-1 max-w-sm">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={freeDeliveryThreshold}
+                  onChange={(e) => setFreeDeliveryThreshold(e.target.value)}
+                  className="rounded-xl text-xs font-extrabold h-10 border-slate-200"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5">Initial configured value: £0.00</p>
+            </div>
+
+            {/* Operational Logic Breakdown */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-600 block">
+                Active Rule Behavior Summary
+              </span>
+              <ul className="space-y-1.5 text-[11px] text-slate-600">
+                <li className="flex items-start gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Rule Status:</strong>{" "}
+                    {freeDeliveryEnabled ? (
+                      <span className="text-emerald-700 font-bold">Enabled</span>
+                    ) : (
+                      <span className="text-slate-600 font-bold">
+                        Disabled (Standard delivery fee applies to all orders)
+                      </span>
+                    )}
+                  </span>
+                </li>
+                {freeDeliveryEnabled && (
+                  <li className="flex items-start gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>
+                      {Number(freeDeliveryThreshold) === 0 ? (
+                        <>
+                          Threshold is <strong>£0.00</strong>: Free delivery is granted on{" "}
+                          <strong>all orders</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Threshold is <strong>{gbp(Number(freeDeliveryThreshold))}</strong>: Orders
+                          at or above this amount qualify for free delivery; orders below pay{" "}
+                          <strong>{gbp(Number(defaultShippingFee))}</strong>.
+                        </>
+                      )}
+                    </span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* 5. Order Settings */}
         <TabsContent
           value="orders"
           className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
@@ -319,10 +757,12 @@ export function AdminSettingsView() {
               <Label className="font-bold text-slate-700">Minimum Order Value (£)</Label>
               <Input
                 type="number"
+                min="0"
                 value={minOrderValue}
                 onChange={(e) => setMinOrderValue(e.target.value)}
                 className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
               />
+              <p className="text-[10px] text-slate-400 mt-0.5">Checkout restriction for micro orders</p>
             </div>
             <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border mt-2">
               <div>
@@ -330,7 +770,7 @@ export function AdminSettingsView() {
                   Auto-approve Customer Orders
                 </Label>
                 <p className="text-[11px] text-muted-foreground">
-                  Automatically mark new customer orders as Approved
+                  Automatically mark new customer orders as Approved upon submission
                 </p>
               </div>
               <Switch checked={autoApproveOrders} onCheckedChange={setAutoApproveOrders} />
@@ -338,46 +778,7 @@ export function AdminSettingsView() {
           </div>
         </TabsContent>
 
-        {/* 4. Delivery Settings */}
-        <TabsContent
-          value="delivery"
-          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
-        >
-          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
-            Logistics & Delivery SLAs
-          </h3>
-          <div className="space-y-3 text-xs">
-            <div>
-              <Label className="font-bold text-slate-700">Default Shipping Fee (£)</Label>
-              <Input
-                type="number"
-                value={defaultShippingFee}
-                onChange={(e) => setDefaultShippingFee(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
-              />
-            </div>
-            <div>
-              <Label className="font-bold text-slate-700">Free Delivery Threshold (£)</Label>
-              <Input
-                type="number"
-                value={freeDeliveryThreshold}
-                onChange={(e) => setFreeDeliveryThreshold(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
-              />
-            </div>
-            <div>
-              <Label className="font-bold text-slate-700">Target Delivery SLA (Days)</Label>
-              <Input
-                type="number"
-                value={deliverySlaDays}
-                onChange={(e) => setDeliverySlaDays(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
-              />
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* 5. Notification Preferences */}
+        {/* 6. Notification Preferences */}
         <TabsContent
           value="notifications"
           className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
@@ -409,62 +810,31 @@ export function AdminSettingsView() {
           </div>
         </TabsContent>
 
-        {/* 6. Sidebar Module Control Matrix */}
+        {/* 7. Module Matrix */}
         <TabsContent
           value="modules"
-          className="surface-card p-6 rounded-3xl border bg-white space-y-6 max-w-3xl shadow-xs"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
         >
-          <div>
-            <h3 className="text-base font-extrabold text-foreground">
-              Admin Sidebar Module Availability Matrix
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Control which operational, content, and system modules appear in the Admin portal
-              sidebar.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              {
-                key: "stations",
-                title: "Autogas Stations",
-                desc: "Depot & refilling station directory",
-              },
-              { key: "reports", title: "Reports & Audits", desc: "Commercial sales & VAT reports" },
-              { key: "analytics", title: "Revenue Analytics", desc: "Live interactive BI charts" },
-              {
-                key: "cms",
-                title: "CMS Content Manager",
-                desc: "Content blocks & category management",
-              },
-              { key: "banners", title: "Banners", desc: "Homepage promotional banners" },
-              { key: "blog", title: "Blog Posts", desc: "News & energy advisory guides" },
-              { key: "faqs", title: "FAQs", desc: "Customer help center Q&A" },
-              {
-                key: "notifications",
-                title: "Notifications",
-                desc: "Real-time admin notification center",
-              },
-              { key: "audit", title: "Audit Trail Logs", desc: "Immutable security & action logs" },
-            ].map((m) => (
+          <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
+            Admin Modules Visibility Matrix
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Control which operational modules appear in the administrative portal sidebar.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {Object.entries(modulesConfig).map(([key, enabled]) => (
               <div
-                key={m.key}
-                className="flex items-center justify-between p-4 rounded-2xl border bg-slate-50/50"
+                key={key}
+                className="flex items-center justify-between p-3 rounded-xl border bg-slate-50"
               >
-                <div className="space-y-0.5">
-                  <Label
-                    htmlFor={`mod-${m.key}`}
-                    className="font-extrabold text-xs text-foreground cursor-pointer"
-                  >
-                    {m.title}
-                  </Label>
-                  <p className="text-[11px] text-muted-foreground">{m.desc}</p>
-                </div>
+                <Label className="font-bold text-xs capitalize text-slate-700 cursor-pointer">
+                  {key} Module
+                </Label>
                 <Switch
-                  id={`mod-${m.key}`}
-                  checked={modulesConfig[m.key] !== false}
-                  onCheckedChange={(checked) => toggleModule(m.key, checked)}
+                  checked={enabled}
+                  onCheckedChange={(checked) =>
+                    setModulesConfig((prev) => ({ ...prev, [key]: checked }))
+                  }
                 />
               </div>
             ))}

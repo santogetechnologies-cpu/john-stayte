@@ -181,6 +181,12 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
           badge: activeDeliveriesCount > 0 ? activeDeliveriesCount : undefined,
         },
         {
+          title: "Shopping Cart",
+          href: "/account/cart",
+          icon: ShoppingCart,
+          badge: cartCount > 0 ? cartCount : undefined,
+        },
+        {
           title: "Wishlist",
           href: "/account/wishlist",
           icon: Heart,
@@ -220,6 +226,7 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
     if (currentPath.includes("deliveries")) return "Active Deliveries";
     if (currentPath.includes("tracking")) return "Delivery Tracking";
     if (currentPath.includes("orders")) return "My Orders";
+    if (currentPath.includes("cart")) return "Shopping Cart";
     if (currentPath.includes("wishlist")) return "Wishlist";
     if (currentPath.includes("invoices")) return "Invoices";
     if (currentPath.includes("addresses")) return "Addresses";
@@ -482,7 +489,7 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
             size="sm"
             className="rounded-lg text-[12px] font-semibold gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30 h-8 px-2.5 sm:px-3 relative transition-colors"
           >
-            <Link to="/cart" aria-label={`View Cart, ${cartCount} items`}>
+            <Link to="/account/cart" aria-label={`View Cart, ${cartCount} items`}>
               <ShoppingCart className="h-3.5 w-3.5 text-primary shrink-0" />
               <span className="hidden sm:inline font-bold">Cart</span>
               {cartCount > 0 && (
