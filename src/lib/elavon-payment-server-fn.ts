@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { triggerPaymentStatusPushInternal } from "./push-notification-server-fn";
 
 export interface CreateElavonSessionInput {
   orderId: string;
@@ -872,6 +873,17 @@ export const verifyElavonPaymentServerFn = createServerFn({ method: "POST" })
         }
       } catch (postPaymentErr) {
         console.warn("[Elavon] Post-payment stock/offer execution notice:", postPaymentErr);
+      }
+
+      // 6. Asynchronous Push Notification Dispatch (Post-Payment Capture)
+      if (order?.customer_id) {
+        triggerPaymentStatusPushInternal({
+          orderId,
+          orderNumber: String(order.order_number || orderId.slice(0, 8)),
+          customerId: order.customer_id,
+          status: "succeeded",
+          amountFormatted: `£${(order.total || txAmount).toFixed(2)}`,
+        }).catch((pushErr) => console.warn("[Elavon] Post-payment push notice:", pushErr));
       }
 
       return {

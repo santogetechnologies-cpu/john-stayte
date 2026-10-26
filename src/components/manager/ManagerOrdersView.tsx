@@ -37,6 +37,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { triggerOrderStatusPush } from "@/lib/push-notifications";
 
 export function ManagerOrdersView() {
   const navigate = useNavigate();
@@ -196,6 +197,15 @@ export function ManagerOrdersView() {
             is_read: false,
           },
         ]);
+
+        if (["Approved", "Packed", "Cancelled"].includes(newStatus)) {
+          triggerOrderStatusPush({
+            orderId: order.id,
+            orderNumber: String(order.order_number || order.id.slice(0, 8)),
+            customerId: order.customer_id,
+            newStatus: newStatus as any,
+          }).catch((pushErr) => console.warn("[Manager] Status push notice:", pushErr));
+        }
       }
 
       toast.success(`Order #${order.order_number} updated to ${newStatus}`);

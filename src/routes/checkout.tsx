@@ -41,6 +41,7 @@ import {
   createElavonPaymentSessionServerFn,
   verifyElavonPaymentServerFn,
 } from "@/lib/elavon-payment-server-fn";
+import { triggerOrderPlacedPush } from "@/lib/push-notifications";
 
 interface CheckoutSearch {
   payment?: "verify" | "cancelled" | "declined";
@@ -821,6 +822,20 @@ function Checkout() {
         }
       } catch (staffErr) {
         console.error("Manager notification creation notice:", staffErr);
+      }
+
+      // 11b. Native Push Notifications for Customer & Staff
+      try {
+        triggerOrderPlacedPush({
+          orderId: newOrder.id,
+          orderNumber: String(orderNumber),
+          customerId: currentUserId,
+          itemCount: verifiedItems.length,
+          totalFormatted: gbp(finalTotal),
+          customerName: fullName.trim(),
+        }).catch((err) => console.warn("[Checkout] Order placed push notice:", err));
+      } catch (pushErr) {
+        console.warn("[Checkout] Native push trigger notice:", pushErr);
       }
 
       // 12. If Card payment: Initiate secure Elavon payment session and redirect customer

@@ -41,6 +41,11 @@ import {
 } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import {
+  isNativePushSupported,
+  requestPushPermissionsAndRegister,
+  unregisterPushNotifications,
+} from "@/lib/push-notifications";
 
 export function CustomerSettingsView() {
   const { user, logout } = useStore();
@@ -56,6 +61,21 @@ export function CustomerSettingsView() {
   const [emailNotifs, setEmailNotifs] = useState(true);
   const [smsNotifs, setSmsNotifs] = useState(true);
   const [pushNotifs, setPushNotifs] = useState(false);
+
+  const handlePushToggle = async (checked: boolean) => {
+    setPushNotifs(checked);
+    if (checked && isNativePushSupported()) {
+      const granted = await requestPushPermissionsAndRegister();
+      if (!granted) {
+        toast.info("Push notification permission was not granted in system settings.");
+      } else {
+        toast.success("Push notifications enabled on this device.");
+      }
+    } else if (!checked && isNativePushSupported()) {
+      await unregisterPushNotifications();
+      toast.info("Push notifications disabled for this device.");
+    }
+  };
 
   const [saving, setSaving] = useState(false);
   const [loadingPrefs, setLoadingPrefs] = useState(false);
@@ -386,7 +406,7 @@ export function CustomerSettingsView() {
                 </div>
                 <Switch
                   checked={pushNotifs}
-                  onCheckedChange={setPushNotifs}
+                  onCheckedChange={handlePushToggle}
                   className="data-[state=checked]:bg-primary shrink-0"
                 />
               </div>

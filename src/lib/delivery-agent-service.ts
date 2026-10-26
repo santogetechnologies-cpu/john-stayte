@@ -6,6 +6,12 @@ import {
   requestDeliveryOtpServerFn,
   verifyDeliveryOtpServerFn,
 } from "@/lib/delivery-otp-server-fn";
+import {
+  triggerDeliveryAssignedPush,
+  triggerOutForDeliveryPush,
+  triggerDeliveryCompletedPush,
+  triggerDriverOperationalUpdatePush,
+} from "@/lib/push-notifications";
 
 export interface DeliveryAgentRecord {
   id: string;
@@ -1080,6 +1086,17 @@ export async function assignDeliveryAgentToDelivery(params: AssignDeliveryParams
             notes: `Delivery assigned to agent ${agentName} (${vehiclePlate || "Fleet Van"}).`,
           },
         ]);
+
+        // Push notification dispatch for assigned driver and customer
+        triggerDeliveryAssignedPush({
+          orderId: actualOrderId,
+          orderNumber: fullOrderData?.order_number || actualOrderId.slice(0, 8),
+          customerId: fullOrderData?.customer_id || undefined,
+          driverId: verifiedProfileId || verifiedAgentTableId || "",
+          driverName: agentName,
+          deliveryArea: routeArea,
+          deliverySlot: timeSlot,
+        }).catch((pushErr) => console.warn("[Delivery] Assignment push notice:", pushErr));
       } catch (ordErr) {
         console.warn("Notice syncing orders table status history:", ordErr);
       }
@@ -1310,6 +1327,44 @@ export async function updateDeliveryWorkflowStep(params: UpdateWorkflowParams) {
         ]);
       } catch (histErr) {
         console.warn("Status history log notice:", histErr);
+      }
+
+      // Asynchronous Push Notifications for Out for Delivery / Delivery Completed
+      try {
+        const { data: ordInfo } = await supabase
+          .from("orders")
+          .select("id, order_number, customer_id")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (status === "Out for Delivery" && ordInfo?.customer_id) {
+          triggerOutForDeliveryPush({
+            orderId,
+            orderNumber: ordInfo.order_number || orderId.slice(0, 8),
+            customerId: ordInfo.customer_id,
+            driverName: agentName,
+          }).catch((err) => console.warn("[Delivery] Out for delivery push notice:", err));
+        } else if (status === "Delivered") {
+          triggerDeliveryCompletedPush({
+            orderId,
+            orderNumber: ordInfo?.order_number || orderId.slice(0, 8),
+            customerId: ordInfo?.customer_id || undefined,
+            driverId: agentId || undefined,
+            driverName: agentName,
+          }).catch((err) => console.warn("[Delivery] Delivery completed push notice:", err));
+        }
+
+        if (exceptionData) {
+          triggerDriverOperationalUpdatePush({
+            orderId,
+            driverId: agentId || "",
+            driverName: agentName,
+            issueType: exceptionData.issueType,
+            notes: exceptionData.notes,
+          }).catch((err) => console.warn("[Delivery] Exception push notice:", err));
+        }
+      } catch (pushErr) {
+        console.warn("[Delivery] Workflow push notification notice:", pushErr);
       }
     }
 

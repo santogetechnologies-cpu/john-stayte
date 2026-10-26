@@ -1449,6 +1449,116 @@ export interface Database {
         };
         Relationships: [];
       };
+      user_device_tokens: {
+        Row: {
+          id: string;
+          user_id: string;
+          token: string;
+          platform: "android" | "ios" | "web";
+          role: UserRole;
+          installation_id: string | null;
+          device_info: Json;
+          is_active: boolean;
+          last_used_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          token: string;
+          platform: "android" | "ios" | "web";
+          role: UserRole;
+          installation_id?: string | null;
+          device_info?: Json;
+          is_active?: boolean;
+          last_used_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          token?: string;
+          platform?: "android" | "ios" | "web";
+          role?: UserRole;
+          installation_id?: string | null;
+          device_info?: Json;
+          is_active?: boolean;
+          last_used_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_device_tokens_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      notification_dispatch_logs: {
+        Row: {
+          id: string;
+          idempotency_key: string;
+          event_type: string;
+          recipient_user_id: string | null;
+          recipient_role: string;
+          title: string;
+          body: string;
+          data: Json;
+          status: "pending" | "sent" | "failed" | "skipped" | "no_tokens";
+          tokens_attempted: number;
+          tokens_succeeded: number;
+          tokens_failed: number;
+          error_message: string | null;
+          created_at: string;
+          sent_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          idempotency_key: string;
+          event_type: string;
+          recipient_user_id?: string | null;
+          recipient_role: string;
+          title: string;
+          body: string;
+          data?: Json;
+          status: "pending" | "sent" | "failed" | "skipped" | "no_tokens";
+          tokens_attempted?: number;
+          tokens_succeeded?: number;
+          tokens_failed?: number;
+          error_message?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          idempotency_key?: string;
+          event_type?: string;
+          recipient_user_id?: string | null;
+          recipient_role?: string;
+          title?: string;
+          body?: string;
+          data?: Json;
+          status?: "pending" | "sent" | "failed" | "skipped" | "no_tokens";
+          tokens_attempted?: number;
+          tokens_succeeded?: number;
+          tokens_failed?: number;
+          error_message?: string | null;
+          created_at?: string;
+          sent_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_dispatch_logs_recipient_user_id_fkey";
+            columns: ["recipient_user_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {

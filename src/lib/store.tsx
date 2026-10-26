@@ -12,6 +12,11 @@ import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
 import { INITIAL_ACTIVE_AGENTS } from "@/lib/delivery-agent-service";
 import { type Offer, evaluateOfferForCart } from "@/lib/offer-service";
+import {
+  initializePushNotifications,
+  unregisterPushNotifications,
+  triggerNewCustomerRegistrationPush,
+} from "@/lib/push-notifications";
 
 export type Role = "customer" | "manager" | "admin" | "delivery_agent";
 export type User = { id?: string; name: string; email: string; role: Role; avatar?: string };
@@ -382,6 +387,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         // Sync Supabase-backed Wishlist for authenticated user
         syncWishlistWithDb(currentUid);
+
+        // Initialize native push notifications for authenticated user
+        if (currentUid) {
+          initializePushNotifications().catch((err) => {
+            console.warn("[Push Service] Push init notice:", err);
+          });
+        }
       } finally {
         setAuthLoading(false);
       }
@@ -529,6 +541,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return { ok: false, error: error.message };
         }
 
+        if (data.user) {
+          triggerNewCustomerRegistrationPush({
+            customerId: data.user.id,
+            customerName: name,
+            customerEmail: cleanEmail,
+          }).catch((err) => console.warn("[Auth] New customer push notice:", err));
+        }
+
         // Case 1: Supabase email confirmation is enabled (or required)
         // User is created, but no active session is granted until email is confirmed.
         if (data.user && !data.session) {
@@ -613,6 +633,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     setUser(null);
     setWishlist([]);
+    try {
+      await unregisterPushNotifications();
+    } catch {
+      /* ignore */
+    }
     try {
       await supabase.auth.signOut();
     } catch {

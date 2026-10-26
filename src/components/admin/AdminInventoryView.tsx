@@ -40,6 +40,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
+import { triggerLowStockAlertPush } from "@/lib/push-notifications";
 
 export function AdminInventoryView() {
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
@@ -233,6 +234,12 @@ export function AdminInventoryView() {
             read: false,
           },
         ]);
+
+        triggerLowStockAlertPush({
+          productId: selectedProduct.id,
+          productName: selectedProduct.name,
+          currentStock: newStock,
+        }).catch((pushErr) => console.warn("[Inventory] Low stock push notice:", pushErr));
       }
 
       toast.success(`Updated stock for ${selectedProduct.name} to ${newStock} units!`);
