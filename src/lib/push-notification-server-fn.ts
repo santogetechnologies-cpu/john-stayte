@@ -86,7 +86,8 @@ function getSupabaseServerClient(userToken?: string | null): SupabaseClient<Data
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYwMTA0MDIsImV4cCI6MjA2MTU4NjQwMn0.O-f8p0u2v_5Hj6xL60Dk1wD-u3Tj9iWp0x8Y5x8X0wA";
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
 
   return createClient<Database>(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -837,10 +838,13 @@ export async function handleRegisterDeviceToken(
 
   if (data.authToken) {
     try {
-      const { data: authData } = await supabase.auth.getUser(data.authToken);
+      const { data: authData, error: authError } = await supabase.auth.getUser(data.authToken);
+      if (authError) {
+        console.warn("[Push Service] Token registration auth check notice:", authError.message);
+      }
       callerUserId = authData?.user?.id || null;
-    } catch (authErr) {
-      console.warn("[Push Service] Token registration auth check notice:", authErr);
+    } catch (authErr: any) {
+      console.warn("[Push Service] Token registration auth check notice:", authErr?.message || authErr);
     }
   }
 
@@ -884,10 +888,13 @@ export async function handleDeactivateDeviceToken(
 
   if (data.authToken) {
     try {
-      const { data: authData } = await supabase.auth.getUser(data.authToken);
+      const { data: authData, error: authError } = await supabase.auth.getUser(data.authToken);
+      if (authError) {
+        console.warn("[Push Service] Token deactivation auth check notice:", authError.message);
+      }
       callerUserId = authData?.user?.id || null;
-    } catch (authErr) {
-      console.warn("[Push Service] Token deactivation auth check notice:", authErr);
+    } catch (authErr: any) {
+      console.warn("[Push Service] Token deactivation auth check notice:", authErr?.message || authErr);
     }
   }
 

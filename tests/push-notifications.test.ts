@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../src/types/database.types";
+import { getAuthToken } from "../src/lib/push-notifications";
 import type {
   PushDispatchEvent,
   PushEventType,
@@ -100,6 +101,12 @@ export function createMockSupabase(initialData: MockData): SupabaseClient<Databa
     auth: {
       getUser: async (token?: string) => {
         if (!token) return { data: { user: null }, error: { message: "No token" } };
+        if (token === "expired-jwt-token") {
+          return { data: { user: null }, error: { message: "JWT expired" } };
+        }
+        if (token === "invalid-api-key-token") {
+          return { data: { user: null }, error: { message: "Invalid API key" } };
+        }
         const found = profiles.find((p) => p.id === token || `tok-${p.id}` === token);
         if (found) {
           return { data: { user: { id: found.id } }, error: null };
@@ -1604,6 +1611,180 @@ describe("Push Notification System - Hardened Production Test Suite", () => {
       );
       assert.equal(resSusp.success, true);
       assert.equal(resSusp.result.role, "customer"); // Must NOT be delivery_agent
+    });
+
+    it("should reject token registration when session is expired or API key is invalid", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+      });
+
+      // 1. Expired JWT session
+      const expiredRes = await handleRegisterDeviceToken(
+        {
+          token: "fcm-device-token-1",
+          platform: "android",
+          authToken: "expired-jwt-token",
+        },
+        db
+      );
+      assert.equal(expiredRes.success, false);
+      assert.equal(expiredRes.error, "Not authenticated");
+
+      // 2. Invalid API key error from Supabase Auth
+      const badKeyRes = await handleRegisterDeviceToken(
+        {
+          token: "fcm-device-token-1",
+          platform: "android",
+          authToken: "invalid-api-key-token",
+        },
+        db
+      );
+      assert.equal(badKeyRes.success, false);
+      assert.equal(badKeyRes.error, "Not authenticated");
+    });
+
+    it("should recover and successfully register device token once refreshed auth token is provided", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+      });
+
+      // Initial attempt with expired token fails cleanly
+      const failedAttempt = await handleRegisterDeviceToken(
+        {
+          token: "fcm-sync-device-999",
+          platform: "android",
+          installationId: "inst-alice-device",
+          authToken: "expired-jwt-token",
+        },
+        db
+      );
+      assert.equal(failedAttempt.success, false);
+      assert.equal(failedAttempt.error, "Not authenticated");
+
+      // Once auth hydrates with fresh session token, retry succeeds
+      const recoveryAttempt = await handleRegisterDeviceToken(
+        {
+          token: "fcm-sync-device-999",
+          platform: "android",
+          installationId: "inst-alice-device",
+          authToken: "user-alice", // Fresh hydrated token
+        },
+        db
+      );
+      assert.equal(recoveryAttempt.success, true);
+      assert.equal(recoveryAttempt.result.user_id, "user-alice");
+      assert.equal(recoveryAttempt.result.platform, "android");
+    });
+
+    it("should safely reject deactivating device token when user is unauthenticated or has invalid token", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-alice-logout-tok",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+          },
+        ],
+      });
+
+      // Deactivation without auth or with invalid token
+      const resExpired = await handleDeactivateDeviceToken(
+        {
+          token: "fcm-alice-logout-tok",
+          authToken: "expired-jwt-token",
+        },
+        db
+      );
+      // RPC is called with caller_user_id = null so another user's token cannot be deactivated
+      assert.equal(resExpired.deactivated, false);
+
+      // Deactivation with valid owner auth succeeds
+      const resSuccess = await handleDeactivateDeviceToken(
+        {
+          token: "fcm-alice-logout-tok",
+          authToken: "user-alice",
+        },
+        db
+      );
+      assert.equal(resSuccess.success, true);
+      assert.equal(resSuccess.deactivated, true);
+    });
+
+    it("should proactively refresh session in getAuthToken when access token is expired", async () => {
+      let refreshCalled = false;
+      const mockExpiredAuthClient = {
+        auth: {
+          getSession: async () => ({
+            data: {
+              session: {
+                access_token: "stale-expired-jwt",
+                expires_at: Math.floor(Date.now() / 1000) - 300, // Expired 5 minutes ago
+              },
+            },
+            error: null,
+          }),
+          refreshSession: async () => {
+            refreshCalled = true;
+            return {
+              data: {
+                session: {
+                  access_token: "fresh-refreshed-jwt",
+                  expires_at: Math.floor(Date.now() / 1000) + 3600, // Valid for 1 hour
+                },
+              },
+              error: null,
+            };
+          },
+          getUser: async () => ({ data: { user: { id: "user-alice" } }, error: null }),
+        },
+      };
+
+      const resolvedToken = await getAuthToken(mockExpiredAuthClient);
+      assert.equal(refreshCalled, true);
+      assert.equal(resolvedToken, "fresh-refreshed-jwt");
+    });
+
+    it("should return existing valid token in getAuthToken without calling refreshSession", async () => {
+      let refreshCalled = false;
+      const mockValidAuthClient = {
+        auth: {
+          getSession: async () => ({
+            data: {
+              session: {
+                access_token: "active-valid-jwt",
+                expires_at: Math.floor(Date.now() / 1000) + 1800, // Valid for 30 more minutes
+              },
+            },
+            error: null,
+          }),
+          refreshSession: async () => {
+            refreshCalled = true;
+            return { data: { session: null }, error: { message: "Should not be called" } };
+          },
+          getUser: async () => ({ data: { user: { id: "user-alice" } }, error: null }),
+        },
+      };
+
+      const resolvedToken = await getAuthToken(mockValidAuthClient);
+      assert.equal(refreshCalled, false);
+      assert.equal(resolvedToken, "active-valid-jwt");
+    });
+
+    it("should cleanly return null from getAuthToken when user is completely unauthenticated", async () => {
+      const mockUnauthClient = {
+        auth: {
+          getSession: async () => ({ data: { session: null }, error: null }),
+          refreshSession: async () => ({ data: { session: null }, error: { message: "No session to refresh" } }),
+          getUser: async () => ({ data: { user: null }, error: { message: "No user found" } }),
+        },
+      };
+
+      const resolvedToken = await getAuthToken(mockUnauthClient);
+      assert.equal(resolvedToken, null);
     });
   });
 });

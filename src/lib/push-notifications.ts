@@ -1,11 +1,212 @@
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications, type ActionPerformed, type PushNotificationSchema, type Token } from "@capacitor/push-notifications";
 import { toast } from "sonner";
-import { registerDeviceTokenServerFn, deactivateDeviceTokenServerFn } from "./push-notification-server-fn";
+import { supabase } from "@/lib/supabase";
+import {
+  registerDeviceTokenServerFn,
+  deactivateDeviceTokenServerFn,
+  dispatchPushNotificationServerFn,
+} from "./push-notification-server-fn";
 import type { PushPlatform } from "./push-notifications-types";
 
 const STORAGE_KEY_TOKEN = "jss_device_push_token";
 const STORAGE_KEY_INSTALLATION_ID = "jss_installation_id";
+
+/**
+ * Resolves a valid, unexpired Supabase access token for the current user session.
+ * Proactively refreshes the session if expired or near expiry (< 60s), ensuring
+ * backend calls never receive an invalid or stale JWT.
+ */
+export async function getAuthToken(supabaseClient?: any): Promise<string | null> {
+  const client = supabaseClient || supabase;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const { data: sessionData, error: sessionErr } = await client.auth.getSession();
+      if (sessionErr) {
+        console.warn("[Push Service] Notice retrieving auth session:", sessionErr.message);
+      }
+      let session = sessionData?.session;
+
+      // Check if session is missing or near expiry (within 60 seconds)
+      const isExpiredOrNearExpiry =
+        !session ||
+        (session.expires_at && session.expires_at * 1000 - Date.now() < 60000);
+
+      if (isExpiredOrNearExpiry) {
+        try {
+          const { data: refreshData, error: refreshErr } = await client.auth.refreshSession();
+          if (!refreshErr && refreshData?.session?.access_token) {
+            session = refreshData.session;
+          }
+        } catch {
+          // Fallback to existing session or getUser()
+        }
+      }
+
+      if (session?.access_token) {
+        return session.access_token;
+      }
+
+      // Fallback check to getUser() to trigger internal session recovery if getSession returned empty
+      const { data: userData } = await client.auth.getUser();
+      if (userData?.user) {
+        const { data: rechecked } = await client.auth.getSession();
+        if (rechecked?.session?.access_token) {
+          return rechecked.session.access_token;
+        }
+      }
+    } catch (err: any) {
+      console.warn("[Push Service] getAuthToken notice:", err?.message || err);
+    }
+
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+
+  return null;
+}
+
+let activeSyncPromise: Promise<{ success: boolean; deferred?: boolean; error?: string }> | null = null;
+let lastSyncedToken: string | null = null;
+
+/**
+ * Registers or synchronizes a device token with the backend database for the current authenticated user.
+ * 
+ * Rules:
+ * 1. Does not assume a cached token implies an active authenticated user session.
+ * 2. If the user session is unavailable (unauthenticated or hydrating), defers synchronization
+ *    safely without displaying misleading error toasts.
+ * 3. When triggered by explicit user action (e.g. settings toggle or permission grant), surfaces
+ *    user-facing feedback.
+ * 4. Deduplicates concurrent sync calls and avoids redundant syncs when token is already active.
+ */
+export async function registerDeviceTokenToServer(
+  tokenToSync?: string,
+  providedAuthToken?: string | null,
+  isExplicitUserAction: boolean = false
+): Promise<{ success: boolean; deferred?: boolean; error?: string }> {
+  if (!isNativePushSupported()) {
+    return { success: false, error: "Native push not supported on this platform" };
+  }
+
+  const token =
+    tokenToSync ||
+    (typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_TOKEN) : null);
+
+  if (!token || !token.trim()) {
+    return { success: false, error: "No device token available" };
+  }
+
+  // Avoid redundant network RPC if already synced during this session
+  if (!isExplicitUserAction && lastSyncedToken === token.trim()) {
+    console.log("[Push Service] Device token already synchronized for current session.");
+    return { success: true };
+  }
+
+  // Deduplicate concurrent inflight sync calls
+  if (activeSyncPromise) {
+    return activeSyncPromise;
+  }
+
+  activeSyncPromise = (async () => {
+    try {
+      let authToken = providedAuthToken || null;
+      if (!authToken) {
+        authToken = await getAuthToken();
+      }
+
+      console.log(`[Push Service] Device token sync - authenticated session available: ${Boolean(authToken)}`);
+
+      if (!authToken) {
+        console.log(
+          "[Push Service] Device token present but user session not yet hydrated. Deferred until authentication is available."
+        );
+        if (isExplicitUserAction) {
+          toast.error("Please sign in to enable push notifications on this device.");
+        }
+        return { success: false, deferred: true, error: "Not authenticated" };
+      }
+
+      const platform: PushPlatform = Capacitor.getPlatform() === "ios" ? "ios" : "android";
+
+      console.log(`[Push Service] Calling registerDeviceTokenServerFn (platform: ${platform})...`);
+      const serverRes = await registerDeviceTokenServerFn({
+        data: {
+          token: token.trim(),
+          platform,
+          installationId: getOrCreateInstallationId(),
+          deviceInfo: getDeviceMetadata(),
+          authToken,
+        },
+      });
+
+      console.log("[Push Service] Server function response:", {
+        success: Boolean(serverRes?.success),
+        hasResult: Boolean(serverRes?.result),
+        error: serverRes?.error || null,
+      });
+
+      if (!serverRes || !serverRes.success) {
+        const reason = serverRes?.error || "Server rejected registration";
+        console.error("[Push Service] Failed to register token with backend server:", reason);
+        if (isExplicitUserAction) {
+          toast.error(`Push registration failed: ${reason}`);
+        }
+        return { success: false, error: reason };
+      }
+
+      lastSyncedToken = token.trim();
+      console.log("[Push Service] Device token successfully registered in database for current user.");
+      if (isExplicitUserAction) {
+        toast.success("Push notifications enabled on this device.");
+      }
+      return { success: true };
+    } catch (serverErr: any) {
+      const errMsg = serverErr?.message || String(serverErr || "Network error");
+      console.error("[Push Service] Exception calling registerDeviceTokenServerFn:", errMsg);
+      if (isExplicitUserAction) {
+        toast.error(`Push registration network error: ${errMsg}`);
+      }
+      return { success: false, error: errMsg };
+    } finally {
+      activeSyncPromise = null;
+    }
+  })();
+
+  return activeSyncPromise;
+}
+
+let authListenerAttached = false;
+
+/**
+ * Listens for auth state changes (e.g. login, session refresh)
+ * to automatically synchronize cached device tokens when auth hydrates.
+ */
+export function setupPushAuthSyncListener(): void {
+  if (authListenerAttached || typeof window === "undefined") return;
+  authListenerAttached = true;
+
+  try {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (
+        (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") &&
+        session?.access_token &&
+        isNativePushSupported()
+      ) {
+        const cachedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
+        if (cachedToken) {
+          console.log(`[Push Service] Auth state changed (${event}); synchronizing device token...`);
+          await registerDeviceTokenToServer(cachedToken, session.access_token, false);
+        }
+      } else if (event === "SIGNED_OUT") {
+        lastSyncedToken = null;
+      }
+    });
+  } catch (err) {
+    console.warn("[Push Service] Could not attach push auth sync listener:", err);
+  }
+}
 
 /**
  * Checks if the current runtime environment supports native push notifications.
@@ -135,6 +336,9 @@ export async function initializePushNotifications(options?: {
 
     // 3. Set up event listeners once
     if (!isInitialized) {
+      // Set up auth state change listener to auto-sync when session hydrates or user logs in
+      setupPushAuthSyncListener();
+
       // Registration successful: capture FCM device token
       await PushNotifications.addListener("registration", async (token: Token) => {
         console.log(`[Push Service] Native device token registered successfully (length: ${token.value?.length || 0})`);
@@ -142,45 +346,7 @@ export async function initializePushNotifications(options?: {
           localStorage.setItem(STORAGE_KEY_TOKEN, token.value);
         } catch {}
 
-        // Send token to server
-        const platform: PushPlatform = Capacitor.getPlatform() === "ios" ? "ios" : "android";
-        try {
-          const authToken = await getAuthToken();
-          console.log(`[Push Service] Authenticated session available: ${Boolean(authToken)}`);
-          if (!authToken) {
-            console.warn("[Push Service] Registration token received before user login; saved locally for login sync.");
-            return;
-          }
-          console.log(`[Push Service] Calling registerDeviceTokenServerFn (platform: ${platform})...`);
-          const serverRes = await registerDeviceTokenServerFn({
-            data: {
-              token: token.value,
-              platform,
-              installationId: getOrCreateInstallationId(),
-              deviceInfo: getDeviceMetadata(),
-              authToken,
-            },
-          });
-
-          console.log("[Push Service] Server function response:", {
-            success: Boolean(serverRes?.success),
-            hasResult: Boolean(serverRes?.result),
-            error: serverRes?.error || null,
-          });
-
-          if (!serverRes || !serverRes.success) {
-            const reason = serverRes?.error || "Server rejected registration";
-            console.error("[Push Service] Failed to register token with backend server:", reason);
-            toast.error(`Push registration failed: ${reason}`);
-          } else {
-            console.log("[Push Service] Token successfully registered in database for current user.");
-            toast.success("Push notifications enabled on this device.");
-          }
-        } catch (serverErr: any) {
-          const errMsg = serverErr?.message || String(serverErr);
-          console.error("[Push Service] Exception calling registerDeviceTokenServerFn:", errMsg);
-          toast.error(`Push registration network error: ${errMsg}`);
-        }
+        await registerDeviceTokenToServer(token.value, null, false);
       });
 
       // Registration failure
@@ -250,42 +416,11 @@ export async function initializePushNotifications(options?: {
       console.log("[Push Service] Calling PushNotifications.register() to obtain/refresh FCM token...");
       await PushNotifications.register();
 
-      // If cached token already exists on device, ensure backend registration is up-to-date with current auth session
+      // If cached token already exists on device, attempt sync (deferred cleanly if unauthenticated)
       const cachedToken = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_TOKEN) : null;
       if (cachedToken) {
         console.log(`[Push Service] Syncing cached device token (length: ${cachedToken.length})...`);
-        const authToken = await getAuthToken();
-        console.log(`[Push Service] Cached token sync - authenticated session available: ${Boolean(authToken)}`);
-        if (authToken) {
-          const platform: PushPlatform = Capacitor.getPlatform() === "ios" ? "ios" : "android";
-          registerDeviceTokenServerFn({
-            data: {
-              token: cachedToken,
-              platform,
-              installationId: getOrCreateInstallationId(),
-              deviceInfo: getDeviceMetadata(),
-              authToken,
-            },
-          })
-            .then((res) => {
-              console.log("[Push Service] Cached token sync response:", {
-                success: Boolean(res?.success),
-                error: res?.error || null,
-              });
-              if (!res || !res.success) {
-                const reason = res?.error || "Server rejected registration";
-                console.error("[Push Service] Cached token sync failed on server:", reason);
-                toast.error(`Push sync failed: ${reason}`);
-              } else {
-                console.log("[Push Service] Cached token successfully synced with database.");
-              }
-            })
-            .catch((err: any) => {
-              const errMsg = err?.message || String(err || "Network error");
-              console.error("[Push Service] Cached token sync network error:", errMsg);
-              toast.error(`Push sync network error: ${errMsg}`);
-            });
-        }
+        await registerDeviceTokenToServer(cachedToken, null, false);
       }
     }
 
@@ -303,8 +438,9 @@ export async function initializePushNotifications(options?: {
 
 /**
  * Requests push notification permission and triggers registration if granted.
+ * @param isExplicitUserAction Set to true when invoked by direct user interaction (e.g. settings toggle)
  */
-export async function requestPushPermissionsAndRegister(): Promise<boolean> {
+export async function requestPushPermissionsAndRegister(isExplicitUserAction: boolean = false): Promise<boolean> {
   if (!isNativePushSupported()) return false;
 
   try {
@@ -326,13 +462,20 @@ export async function requestPushPermissionsAndRegister(): Promise<boolean> {
     if (permStatus.receive === "granted") {
       console.log("[Push Service] Calling PushNotifications.register() from requestPushPermissionsAndRegister...");
       await PushNotifications.register();
+
+      const cachedToken = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_TOKEN) : null;
+      if (cachedToken) {
+        await registerDeviceTokenToServer(cachedToken, null, isExplicitUserAction);
+      }
       return true;
     }
     return false;
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     console.error("[Push Service] Permission request failed:", errMsg);
-    toast.error(`Push permission request failed: ${errMsg}`);
+    if (isExplicitUserAction) {
+      toast.error(`Push permission request failed: ${errMsg}`);
+    }
     return false;
   }
 }
@@ -357,6 +500,7 @@ export async function unregisterPushNotifications(): Promise<void> {
       try {
         localStorage.removeItem(STORAGE_KEY_TOKEN);
       } catch {}
+      lastSyncedToken = null;
     }
 
     // Remove delivered notifications from system drawer
@@ -371,26 +515,6 @@ export async function unregisterPushNotifications(): Promise<void> {
 // ============================================================================
 // CLIENT EVENT TRIGGER WRAPPERS (INVOKES SECURE SERVER FN VIA RPC)
 // ============================================================================
-
-import { supabase } from "@/lib/supabase";
-import { dispatchPushNotificationServerFn } from "./push-notification-server-fn";
-
-async function getAuthToken(): Promise<string | null> {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const { data } = await supabase.auth.getSession();
-      if (data.session?.access_token) {
-        return data.session.access_token;
-      }
-    } catch {
-      // ignore
-    }
-    if (attempt < 2) {
-      await new Promise((r) => setTimeout(r, 300));
-    }
-  }
-  return null;
-}
 
 export async function triggerOrderPlacedPush(params: {
   orderId: string;

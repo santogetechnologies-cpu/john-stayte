@@ -65,7 +65,7 @@ export function CustomerSettingsView() {
   const handlePushToggle = async (checked: boolean) => {
     setPushNotifs(checked);
     if (checked && isNativePushSupported()) {
-      const granted = await requestPushPermissionsAndRegister();
+      const granted = await requestPushPermissionsAndRegister(true);
       if (!granted) {
         toast.info("Push notification permission was not granted in system settings.");
       }
@@ -110,7 +110,7 @@ export function CustomerSettingsView() {
           if (typeof prefs.pushNotifs === "boolean") {
             setPushNotifs(prefs.pushNotifs);
             if (prefs.pushNotifs && isNativePushSupported()) {
-              requestPushPermissionsAndRegister().catch((err) => {
+              requestPushPermissionsAndRegister(false).catch((err) => {
                 console.warn("[Customer Settings] Push auto-registration notice:", err);
               });
             }
