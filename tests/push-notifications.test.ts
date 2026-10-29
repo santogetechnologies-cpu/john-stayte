@@ -15,6 +15,8 @@ import {
   triggerPaymentStatusPushInternal,
   handleDispatchPushNotification,
   dispatchPushNotificationServerFn,
+  handleRegisterDeviceToken,
+  handleDeactivateDeviceToken,
 } from "../src/lib/push-notification-server-fn";
 
 // ============================================================================
@@ -50,6 +52,7 @@ interface MockData {
     platform: string;
     role: string;
     is_active: boolean;
+    installation_id?: string | null;
   }>;
   notification_dispatch_logs?: Array<{
     id: string;
@@ -71,6 +74,12 @@ interface MockData {
   profiles?: Array<{
     id: string;
     role: string;
+    email?: string;
+  }>;
+  delivery_agents?: Array<{
+    id: string;
+    email?: string | null;
+    status?: string;
   }>;
   simulateDbErrorOnTable?: string;
 }
@@ -186,10 +195,22 @@ export function createMockSupabase(initialData: MockData): SupabaseClient<Databa
       }
 
       if (table === "delivery_agents") {
+        const daList = initialData.delivery_agents || [];
         return {
           select: (_cols?: string) => ({
-            eq: (_col: string, _val: any) => ({
-              maybeSingle: async () => ({ data: null, error: null }),
+            eq: (col: string, val: any) => ({
+              maybeSingle: async () => {
+                const found = daList.find((d: any) => d[col] === val);
+                return { data: found ? { ...found } : null, error: null };
+              },
+            }),
+            ilike: (col: string, val: any) => ({
+              maybeSingle: async () => {
+                const found = daList.find(
+                  (d: any) => String(d[col]).toLowerCase() === String(val).toLowerCase()
+                );
+                return { data: found ? { ...found } : null, error: null };
+              },
             }),
           }),
         };
@@ -261,15 +282,27 @@ export function createMockSupabase(initialData: MockData): SupabaseClient<Databa
             logs.push(newRecord);
             return { data: { ...newRecord }, error: null };
           },
-          update: (updates: any) => ({
-            eq: async (col: string, val: any) => {
-              const found = logs.find((l) => (l as any)[col] === val);
-              if (found) {
-                Object.assign(found, updates);
-              }
-              return { data: found ? { ...found } : null, error: null };
-            },
-          }),
+          update: (updates: any) => {
+            const filters: Array<{ col: string; val: any }> = [];
+            const execute = async () => {
+              const matched = logs.filter((l) =>
+                filters.every((f) => (l as any)[f.col] === f.val)
+              );
+              matched.forEach((m) => Object.assign(m, updates));
+              return { data: matched.map((m) => ({ ...m })), error: null };
+            };
+            const builder: any = {
+              eq: (col: string, val: any) => {
+                filters.push({ col, val });
+                return builder;
+              },
+              select: (_cols?: string) => builder,
+              then: (onFulfilled?: any, onRejected?: any) =>
+                execute().then(onFulfilled, onRejected),
+              catch: (onRejected?: any) => execute().catch(onRejected),
+            };
+            return builder;
+          },
           upsert: async (record: any, _opts?: any) => {
             const idx = logs.findIndex((l) => l.idempotency_key === record.idempotency_key);
             if (idx >= 0) {
@@ -287,6 +320,95 @@ export function createMockSupabase(initialData: MockData): SupabaseClient<Databa
       return {
         select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
       };
+    },
+    rpc: async (fnName: string, params: any) => {
+      if (fnName === "register_device_token") {
+        const { p_token, p_platform, p_installation_id, p_caller_user_id } = params || {};
+        if (!p_caller_user_id) {
+          return { data: null, error: { message: "Not authenticated" } };
+        }
+        if (!p_token || !String(p_token).trim()) {
+          return { data: null, error: { message: "Device token must not be empty" } };
+        }
+        if (!["android", "ios", "web"].includes(p_platform)) {
+          return { data: null, error: { message: "Invalid platform. Must be android, ios, or web." } };
+        }
+        const profile = profiles.find((p) => p.id === p_caller_user_id);
+        if (!profile) {
+          return { data: null, error: { message: "User profile not found" } };
+        }
+        let resolvedRole = profile.role || "customer";
+        const da = (initialData.delivery_agents || []).find(
+          (d) =>
+            d.id === p_caller_user_id ||
+            (profile.email && d.email?.toLowerCase() === profile.email.toLowerCase())
+        );
+        if (da && ["Active", "On Delivery", "Busy"].includes(da.status || "")) {
+          resolvedRole = "delivery_agent";
+        }
+
+        const existingToken = tokens.find((t) => t.token === p_token);
+        if (existingToken && existingToken.user_id !== p_caller_user_id) {
+          if (
+            existingToken.is_active &&
+            (existingToken.installation_id == null ||
+              p_installation_id == null ||
+              existingToken.installation_id !== p_installation_id)
+          ) {
+            return {
+              data: null,
+              error: {
+                message: "Device token is currently registered to another active user session",
+              },
+            };
+          }
+        }
+
+        if (existingToken) {
+          existingToken.user_id = p_caller_user_id;
+          existingToken.platform = p_platform;
+          existingToken.role = resolvedRole;
+          existingToken.installation_id = p_installation_id || existingToken.installation_id;
+          existingToken.is_active = true;
+        } else {
+          tokens.push({
+            id: `tok-${Date.now()}-${Math.random()}`,
+            user_id: p_caller_user_id,
+            token: p_token,
+            platform: p_platform,
+            role: resolvedRole,
+            is_active: true,
+            installation_id: p_installation_id || null,
+          });
+        }
+
+        return {
+          data: {
+            success: true,
+            user_id: p_caller_user_id,
+            role: resolvedRole,
+            platform: p_platform,
+          },
+          error: null,
+        };
+      }
+
+      if (fnName === "deactivate_device_token") {
+        const { p_token, p_caller_user_id } = params || {};
+        if (!p_caller_user_id || !p_token || !String(p_token).trim()) {
+          return { data: false, error: null };
+        }
+        const existing = tokens.find(
+          (t) => t.token === p_token && t.user_id === p_caller_user_id
+        );
+        if (existing) {
+          existing.is_active = false;
+          return { data: true, error: null };
+        }
+        return { data: false, error: null };
+      }
+
+      return { data: null, error: { message: `Unknown RPC function: ${fnName}` } };
     },
   };
 
@@ -945,6 +1067,543 @@ describe("Push Notification System - Hardened Production Test Suite", () => {
 
       assert.equal(paymentCommitted, true);
       assert.equal(caughtPushNotice, "FCM transport gateway unreachable");
+    });
+  });
+
+  // ============================================================================
+  // Production Device Token Hardening & Ownership Protection
+  // ============================================================================
+
+  describe("Production Device Token Hardening & Ownership Protection", () => {
+    const baseProfiles = [
+      { id: "user-alice", role: "customer", email: "alice@example.com" },
+      { id: "user-bob", role: "customer", email: "bob@example.com" },
+      { id: "user-driver-active", role: "customer", email: "driver.active@jss.com" },
+      { id: "user-driver-inactive", role: "customer", email: "driver.inactive@jss.com" },
+      { id: "user-admin", role: "admin", email: "admin@jss.com" },
+      { id: "user-manager", role: "manager", email: "manager@jss.com" },
+    ];
+
+    const baseDeliveryAgents = [
+      { id: "da-active-1", email: "driver.active@jss.com", status: "Active" },
+      { id: "da-inactive-1", email: "driver.inactive@jss.com", status: "Inactive" },
+    ];
+
+    it("should successfully register device token for authenticated customer", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        delivery_agents: baseDeliveryAgents,
+      });
+
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-alice-valid-token-12345",
+          platform: "android",
+          installationId: "inst-alice-1",
+          authToken: "user-alice",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.user_id, "user-alice");
+      assert.equal(res.result.role, "customer");
+      assert.equal(res.result.platform, "android");
+    });
+
+    it("should reject registration if user is unauthenticated or missing authToken", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+      });
+
+      const noTokenRes = await handleRegisterDeviceToken(
+        {
+          token: "fcm-alice-token",
+          platform: "android",
+        },
+        db
+      );
+      assert.equal(noTokenRes.success, false);
+      assert.equal(noTokenRes.error, "Not authenticated");
+
+      const invalidTokenRes = await handleRegisterDeviceToken(
+        {
+          token: "fcm-alice-token",
+          platform: "android",
+          authToken: "",
+        },
+        db
+      );
+      assert.equal(invalidTokenRes.success, false);
+      assert.equal(invalidTokenRes.error, "Not authenticated");
+    });
+
+    it("should reject registration with empty token or invalid platform", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+      });
+
+      const emptyTokenRes = await handleRegisterDeviceToken(
+        {
+          token: "   ",
+          platform: "android",
+          authToken: "user-alice",
+        },
+        db
+      );
+      assert.equal(emptyTokenRes.success, false);
+      assert.equal(emptyTokenRes.error, "Token is required");
+
+      const badPlatformRes = await handleRegisterDeviceToken(
+        {
+          token: "fcm-some-token",
+          platform: "windows" as any,
+          authToken: "user-alice",
+        },
+        db
+      );
+      assert.equal(badPlatformRes.success, false);
+      assert.match(badPlatformRes.error || "", /Valid platform is required/);
+    });
+
+    it("should assign delivery_agent role for active driver", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        delivery_agents: baseDeliveryAgents,
+      });
+
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-driver-token-777",
+          platform: "ios",
+          installationId: "inst-driver-1",
+          authToken: "user-driver-active",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.role, "delivery_agent");
+    });
+
+    it("should NOT assign delivery_agent role if driver status is Inactive", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        delivery_agents: baseDeliveryAgents,
+      });
+
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-driver-inactive-token",
+          platform: "android",
+          installationId: "inst-driver-2",
+          authToken: "user-driver-inactive",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.role, "customer");
+    });
+
+    it("should assign admin role for admin profile", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+      });
+
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-admin-token",
+          platform: "web",
+          authToken: "user-admin",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.role, "admin");
+    });
+
+    it("should assign manager role for manager profile", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+      });
+
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-manager-token",
+          platform: "ios",
+          authToken: "user-manager",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.role, "manager");
+    });
+
+    it("should block malicious user on a different installation from hijacking an active token", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-alice-shared-token",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+            installation_id: "alice-physical-phone",
+          },
+        ],
+      });
+
+      // Attacker Bob tries to claim Alice's active token from a different device
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-alice-shared-token",
+          platform: "android",
+          installationId: "bob-attacker-phone",
+          authToken: "user-bob",
+        },
+        db
+      );
+
+      assert.equal(res.success, false);
+      assert.match(res.error || "", /registered to another active user session/);
+    });
+
+    it("should allow account switching on the same physical device with matching installation_id", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-shared-tablet-token",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+            installation_id: "whitminster-shared-tablet-01",
+          },
+        ],
+      });
+
+      // Bob logs into the same shared tablet with the matching installation_id
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-shared-tablet-token",
+          platform: "android",
+          installationId: "whitminster-shared-tablet-01",
+          authToken: "user-bob",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.user_id, "user-bob");
+    });
+
+    it("should allow claiming token when previous session was deactivated (logged out)", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-reassigned-token",
+            platform: "ios",
+            role: "customer",
+            is_active: false, // Logged out
+            installation_id: "alice-old-device",
+          },
+        ],
+      });
+
+      // Bob claims the deactivated token on a new session
+      const res = await handleRegisterDeviceToken(
+        {
+          token: "fcm-reassigned-token",
+          platform: "ios",
+          installationId: "bob-new-device",
+          authToken: "user-bob",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.result.user_id, "user-bob");
+    });
+
+    it("should prevent concurrent race condition where an unauthorized user attempts to register a brand-new token concurrently", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [], // brand new token, not yet in table
+      });
+
+      // User Alice (legitimate user on installation A) and User Bob (attacker on installation B)
+      // both submit registration requests for brand-new token "fcm-brand-new-token"
+      const [aliceRes, bobRes] = await Promise.all([
+        handleRegisterDeviceToken(
+          {
+            token: "fcm-brand-new-token",
+            platform: "android",
+            installationId: "alice-physical-device-uuid",
+            authToken: "user-alice",
+          },
+          db
+        ),
+        handleRegisterDeviceToken(
+          {
+            token: "fcm-brand-new-token",
+            platform: "android",
+            installationId: "bob-physical-device-uuid",
+            authToken: "user-bob",
+          },
+          db
+        ),
+      ]);
+
+      // Exactly one user must win ownership of the new token; the other must be rejected
+      const oneSucceeded = (aliceRes.success && !bobRes.success) || (!aliceRes.success && bobRes.success);
+      assert.ok(oneSucceeded, "Exactly one caller should register the token, other must be blocked by ownership check");
+
+      if (aliceRes.success) {
+        assert.equal(aliceRes.result.user_id, "user-alice");
+        assert.match(bobRes.error || "", /registered to another active user session/);
+      } else {
+        assert.equal(bobRes.result.user_id, "user-bob");
+        assert.match(aliceRes.error || "", /registered to another active user session/);
+      }
+    });
+
+    it("should deactivate device token when owner logs out", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-alice-logout-token",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+          },
+        ],
+      });
+
+      const res = await handleDeactivateDeviceToken(
+        {
+          token: "fcm-alice-logout-token",
+          authToken: "user-alice",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.deactivated, true);
+    });
+
+    it("should not allow deactivating another user's device token", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-alice-safe-token",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+          },
+        ],
+      });
+
+      // Bob tries to deactivate Alice's token
+      const res = await handleDeactivateDeviceToken(
+        {
+          token: "fcm-alice-safe-token",
+          authToken: "user-bob",
+        },
+        db
+      );
+
+      assert.equal(res.success, true);
+      assert.equal(res.deactivated, false);
+    });
+
+    it("should safely retry a failed notification dispatch without 23505 unique collision", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-alice-phone",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+          },
+        ],
+        notification_dispatch_logs: [
+          {
+            id: "log-failed-1",
+            idempotency_key: "retry_order_status_approved_ord-100",
+            event_type: "ORDER_APPROVED",
+            recipient_user_id: "user-alice",
+            recipient_role: "customer",
+            title: "Order Approved",
+            body: "Your order has been approved.",
+            status: "failed",
+            error_message: "Network timeout on previous attempt",
+          },
+        ],
+      });
+
+      // Retry the event with the same idempotency key
+      const dispatchResult = await executePushDispatch(
+        {
+          eventType: "ORDER_APPROVED",
+          idempotencyKey: "retry_order_status_approved_ord-100",
+          target: { userId: "user-alice" },
+          payload: {
+            title: "Order Approved",
+            body: "Your order has been approved.",
+          },
+        },
+        db
+      );
+
+      // The pre-check allows retry because status was 'failed', and update transitions it back to pending/skipped
+      assert.ok(dispatchResult.idempotencyKey === "retry_order_status_approved_ord-100");
+      // Since Firebase credentials are not set in the test environment, it safely completes as 'skipped'
+      assert.equal(dispatchResult.status, "skipped");
+    });
+
+    it("should suppress concurrent retry attempt when another worker already transitioned status from failed", async () => {
+      const db = createMockSupabase({
+        profiles: baseProfiles,
+        user_device_tokens: [
+          {
+            id: "tok-alice",
+            user_id: "user-alice",
+            token: "fcm-alice-phone",
+            platform: "android",
+            role: "customer",
+            is_active: true,
+          },
+        ],
+        notification_dispatch_logs: [
+          {
+            id: "log-failed-race",
+            idempotency_key: "retry_race_condition_ord-200",
+            event_type: "ORDER_APPROVED",
+            recipient_user_id: "user-alice",
+            recipient_role: "customer",
+            title: "Order Approved",
+            body: "Your order has been approved.",
+            status: "failed",
+          },
+        ],
+      });
+
+      // Launch two concurrent retry requests with the exact same idempotency key
+      const [res1, res2] = await Promise.all([
+        executePushDispatch(
+          {
+            eventType: "ORDER_APPROVED",
+            idempotencyKey: "retry_race_condition_ord-200",
+            target: { userId: "user-alice" },
+            payload: { title: "Order Approved", body: "Your order has been approved." },
+          },
+          db
+        ),
+        executePushDispatch(
+          {
+            eventType: "ORDER_APPROVED",
+            idempotencyKey: "retry_race_condition_ord-200",
+            target: { userId: "user-alice" },
+            payload: { title: "Order Approved", body: "Your order has been approved." },
+          },
+          db
+        ),
+      ]);
+
+      // Both must complete safely without uncaught exceptions or unique constraint collisions
+      assert.equal(res1.status, "skipped");
+      assert.equal(res2.status, "skipped");
+      // At least one worker was suppressed by the concurrency status guard
+      const concurrencySuppressed = [res1, res2].some((r) =>
+        r.message?.includes("Concurrent retry attempt suppressed")
+      );
+      assert.ok(concurrencySuppressed);
+    });
+
+    it("should reject driver notification dispatch from inactive delivery agent", async () => {
+      const db = createMockSupabase({
+        profiles: [
+          { id: "driver-inactive-user", role: "customer", email: "inactive.driver@jss.com" },
+        ],
+        delivery_agents: [
+          { id: "da-inactive-99", email: "inactive.driver@jss.com", status: "Inactive" },
+        ],
+        delivery_assignments: [
+          { id: "asg-1", order_id: "ord-test-drive", driver_id: "driver-inactive-user" },
+        ],
+        orders: [
+          { id: "ord-test-drive", order_number: "ORD-9999", customer_id: "user-alice", status: "Approved" },
+        ],
+      });
+
+      // Inactive driver attempts to trigger OUT_FOR_DELIVERY
+      await assert.rejects(
+        async () => {
+          await handleDispatchPushNotification(
+            {
+              eventType: "OUT_FOR_DELIVERY",
+              authToken: "driver-inactive-user",
+              orderId: "ord-test-drive",
+            },
+            db
+          );
+        },
+        /Unauthorized/
+      );
+    });
+
+    it("should reject delivery_agent role registration when delivery_agents record has null or suspended status", async () => {
+      const db = createMockSupabase({
+        profiles: [
+          { id: "driver-null-status", role: "customer", email: "driver.null@jss.com" },
+          { id: "driver-suspended", role: "customer", email: "driver.suspended@jss.com" },
+        ],
+        delivery_agents: [
+          { id: "da-null", email: "driver.null@jss.com", status: undefined },
+          { id: "da-susp", email: "driver.suspended@jss.com", status: "Suspended" },
+        ],
+      });
+
+      const resNull = await handleRegisterDeviceToken(
+        {
+          token: "fcm-null-driver",
+          platform: "android",
+          authToken: "driver-null-status",
+        },
+        db
+      );
+      assert.equal(resNull.success, true);
+      assert.equal(resNull.result.role, "customer"); // Must NOT be delivery_agent
+
+      const resSusp = await handleRegisterDeviceToken(
+        {
+          token: "fcm-susp-driver",
+          platform: "ios",
+          authToken: "driver-suspended",
+        },
+        db
+      );
+      assert.equal(resSusp.success, true);
+      assert.equal(resSusp.result.role, "customer"); // Must NOT be delivery_agent
     });
   });
 });

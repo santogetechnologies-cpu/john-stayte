@@ -59,6 +59,7 @@ import {
   type DeliveryAgentRecord,
 } from "@/lib/delivery-agent-service";
 import { deleteOrder } from "@/lib/order-service";
+import { triggerOrderStatusPush } from "@/lib/push-notifications";
 import { cn } from "@/lib/utils";
 
 export function AdminOrdersView() {
@@ -414,6 +415,15 @@ export function AdminOrdersView() {
           notes: `Status changed to ${newStatus} by Admin`,
         },
       ]);
+
+      if (["Approved", "Packed", "Cancelled"].includes(newStatus)) {
+        triggerOrderStatusPush({
+          orderId: order.id,
+          orderNumber: String(order.order_number || order.id.slice(0, 8)),
+          customerId: order.customer_id,
+          newStatus: newStatus as any,
+        }).catch((pushErr) => console.warn("[Admin] Status push notice:", pushErr));
+      }
 
       toast.success(`Order ${order.order_number} marked as ${newStatus}`);
       await loadOrders();

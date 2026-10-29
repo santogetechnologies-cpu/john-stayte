@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "385746553078",
+    "project_id": "john-stayte-services",
+    "storage_bucket": "john-stayte-services.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:385746553078:android:3c6730dedba6a3755e84d7",
+        "android_client_info": {
+          "package_name": "com.johnstayte.services"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB0PeoueO5tl-0mpUPwAX-lzzyevrOEBX4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

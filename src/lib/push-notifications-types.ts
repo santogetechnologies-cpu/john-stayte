@@ -71,6 +71,7 @@ export interface RegisterDeviceTokenInput {
   platform: PushPlatform;
   installationId?: string;
   deviceInfo?: Record<string, any>;
+  authToken?: string | null;
 }
 
 export interface DeviceTokenRecord {

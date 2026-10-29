@@ -390,7 +390,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
         // Initialize native push notifications for authenticated user
         if (currentUid) {
-          initializePushNotifications().catch((err) => {
+          initializePushNotifications({ promptPermission: true }).catch((err) => {
             console.warn("[Push Service] Push init notice:", err);
           });
         }

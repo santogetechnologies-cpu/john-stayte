@@ -109,7 +109,14 @@ export function CustomerSettingsView() {
           if (typeof prefs.promotions === "boolean") setPromotions(prefs.promotions);
           if (typeof prefs.emailNotifs === "boolean") setEmailNotifs(prefs.emailNotifs);
           if (typeof prefs.smsNotifs === "boolean") setSmsNotifs(prefs.smsNotifs);
-          if (typeof prefs.pushNotifs === "boolean") setPushNotifs(prefs.pushNotifs);
+          if (typeof prefs.pushNotifs === "boolean") {
+            setPushNotifs(prefs.pushNotifs);
+            if (prefs.pushNotifs && isNativePushSupported()) {
+              requestPushPermissionsAndRegister().catch((err) => {
+                console.warn("[Customer Settings] Push auto-registration notice:", err);
+              });
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load customer settings:", err);

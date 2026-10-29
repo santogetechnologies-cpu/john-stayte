@@ -77,7 +77,7 @@ export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
  * Creates a server-side Supabase client.
  * Uses SUPABASE_SERVICE_ROLE_KEY if available for privileged backend queries.
  */
-function getSupabaseServerClient(): SupabaseClient<Database> {
+function getSupabaseServerClient(userToken?: string | null): SupabaseClient<Database> {
   const supabaseUrl =
     process.env.VITE_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
@@ -90,6 +90,13 @@ function getSupabaseServerClient(): SupabaseClient<Database> {
 
   return createClient<Database>(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: userToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+          },
+        }
+      : undefined,
   });
 }
 
@@ -524,27 +531,20 @@ export async function executePushDispatch(
   }
 
   // 3. Atomic Reservation via PostgreSQL UNIQUE constraint on idempotency_key
-  const { error: reserveErr } = await supabase
-    .from("notification_dispatch_logs")
-    .insert({
-      idempotency_key: idempotencyKey,
-      event_type: eventType,
-      recipient_user_id: target.userId || null,
-      recipient_role: target.roles?.join(",") || (target.userId ? "targeted_user" : "unknown"),
-      title: payload.title,
-      body: payload.body,
-      data: payload.data || {},
-      status: "pending",
-      created_at: new Date().toISOString(),
-    });
+  if (existingLog && existingLog.status === "failed") {
+    // Retry flow: atomically transition existing failed log to 'pending'
+    const { data: updatedRows, error: retryErr } = await supabase
+      .from("notification_dispatch_logs")
+      .update({
+        status: "pending",
+        error_message: null,
+        created_at: new Date().toISOString(),
+      })
+      .eq("idempotency_key", idempotencyKey)
+      .eq("status", "failed")
+      .select("id");
 
-  if (reserveErr) {
-    // Unique violation (PostgreSQL 23505) indicates a concurrent worker won the race
-    if (
-      reserveErr.code === "23505" ||
-      reserveErr.message?.includes("unique") ||
-      reserveErr.message?.includes("duplicate")
-    ) {
+    if (retryErr || !updatedRows || updatedRows.length === 0) {
       return {
         success: true,
         idempotencyKey,
@@ -554,7 +554,53 @@ export async function executePushDispatch(
         tokensSucceeded: 0,
         tokensFailed: 0,
         status: "skipped",
-        message: "Concurrent dispatch attempt suppressed by atomic reservation lock",
+        message: "Concurrent retry attempt suppressed",
+      };
+    }
+  } else {
+    const { error: reserveErr } = await supabase
+      .from("notification_dispatch_logs")
+      .insert({
+        idempotency_key: idempotencyKey,
+        event_type: eventType,
+        recipient_user_id: target.userId || null,
+        recipient_role: target.roles?.join(",") || (target.userId ? "targeted_user" : "unknown"),
+        title: payload.title,
+        body: payload.body,
+        data: payload.data || {},
+        status: "pending",
+        created_at: new Date().toISOString(),
+      });
+
+    if (reserveErr) {
+      // Unique violation (PostgreSQL 23505) indicates a concurrent worker won the race
+      if (
+        reserveErr.code === "23505" ||
+        reserveErr.message?.includes("unique") ||
+        reserveErr.message?.includes("duplicate")
+      ) {
+        return {
+          success: true,
+          idempotencyKey,
+          eventType,
+          recipientCount: 0,
+          tokensAttempted: 0,
+          tokensSucceeded: 0,
+          tokensFailed: 0,
+          status: "skipped",
+          message: "Concurrent dispatch attempt suppressed by atomic reservation lock",
+        };
+      }
+      return {
+        success: false,
+        idempotencyKey,
+        eventType,
+        recipientCount: 0,
+        tokensAttempted: 0,
+        tokensSucceeded: 0,
+        tokensFailed: 0,
+        status: "failed",
+        message: `Database reservation error: ${reserveErr.message}`,
       };
     }
   }
@@ -772,6 +818,89 @@ export async function executePushDispatch(
 }
 
 /**
+ * Authoritative handler to register a device token in Supabase.
+ * Validates inputs, authenticates caller via authToken, and calls hardened RPC.
+ */
+export async function handleRegisterDeviceToken(
+  data: RegisterDeviceTokenInput,
+  supabaseClient?: SupabaseClient<Database>
+): Promise<{ success: boolean; result?: any; error?: string }> {
+  if (!data.token || typeof data.token !== "string" || !data.token.trim()) {
+    return { success: false, error: "Token is required" };
+  }
+  if (!data.platform || !["android", "ios", "web"].includes(data.platform)) {
+    return { success: false, error: "Valid platform is required (android, ios, web)" };
+  }
+
+  const supabase = supabaseClient || getSupabaseServerClient(data.authToken);
+  let callerUserId: string | null = null;
+
+  if (data.authToken) {
+    try {
+      const { data: authData } = await supabase.auth.getUser(data.authToken);
+      callerUserId = authData?.user?.id || null;
+    } catch (authErr) {
+      console.warn("[Push Service] Token registration auth check notice:", authErr);
+    }
+  }
+
+  if (!callerUserId) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const { data: result, error } = await supabase.rpc("register_device_token" as any, {
+    p_token: data.token.trim(),
+    p_platform: data.platform,
+    p_installation_id: data.installationId ? String(data.installationId).trim() : null,
+    p_device_info: data.deviceInfo || {},
+    p_caller_user_id: callerUserId,
+  });
+
+  if (error) {
+    console.error("[Push Service] Token registration RPC error:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, result };
+}
+
+/**
+ * Authoritative handler to deactivate a device token on logout or account switch.
+ */
+export async function handleDeactivateDeviceToken(
+  data: { token: string; authToken?: string | null },
+  supabaseClient?: SupabaseClient<Database>
+): Promise<{ success: boolean; deactivated?: boolean; error?: string }> {
+  if (!data.token || typeof data.token !== "string" || !data.token.trim()) {
+    return { success: false, error: "Token is required" };
+  }
+
+  const supabase = supabaseClient || getSupabaseServerClient(data.authToken);
+  let callerUserId: string | null = null;
+
+  if (data.authToken) {
+    try {
+      const { data: authData } = await supabase.auth.getUser(data.authToken);
+      callerUserId = authData?.user?.id || null;
+    } catch (authErr) {
+      console.warn("[Push Service] Token deactivation auth check notice:", authErr);
+    }
+  }
+
+  const { data: result, error } = await supabase.rpc("deactivate_device_token" as any, {
+    p_token: data.token.trim(),
+    p_caller_user_id: callerUserId,
+  });
+
+  if (error) {
+    console.error("[Push Service] Token deactivation RPC error:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, deactivated: Boolean(result) };
+}
+
+/**
  * Authenticated Server Function to register a device token.
  */
 export const registerDeviceTokenServerFn = createServerFn({ method: "POST" })
@@ -787,49 +916,28 @@ export const registerDeviceTokenServerFn = createServerFn({ method: "POST" })
       platform: input.platform as any,
       installationId: input.installationId ? String(input.installationId) : undefined,
       deviceInfo: input.deviceInfo || {},
+      authToken: input.authToken ? String(input.authToken) : null,
     };
   })
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient();
-
-    const { data: result, error } = await supabase.rpc("register_device_token" as any, {
-      p_token: data.token,
-      p_platform: data.platform,
-      p_installation_id: data.installationId || null,
-      p_device_info: data.deviceInfo || {},
-    });
-
-    if (error) {
-      console.error("[Push Service] Token registration RPC error:", error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, result };
+    return handleRegisterDeviceToken(data);
   });
 
 /**
  * Authenticated Server Function to deactivate a device token on logout or account switch.
  */
 export const deactivateDeviceTokenServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown): { token: string } => {
+  .validator((d: unknown): { token: string; authToken?: string | null } => {
     if (!d || typeof d !== "object") throw new Error("Invalid request payload");
     const input = d as Record<string, any>;
     if (!input.token || typeof input.token !== "string") throw new Error("Token is required");
-    return { token: input.token.trim() };
+    return {
+      token: input.token.trim(),
+      authToken: input.authToken ? String(input.authToken) : null,
+    };
   })
   .handler(async ({ data }) => {
-    const supabase = getSupabaseServerClient();
-
-    const { data: result, error } = await supabase.rpc("deactivate_device_token" as any, {
-      p_token: data.token,
-    });
-
-    if (error) {
-      console.error("[Push Service] Token deactivation RPC error:", error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, deactivated: result };
+    return handleDeactivateDeviceToken(data);
   });
 
 // ============================================================================
@@ -1389,10 +1497,21 @@ export async function handleDispatchPushNotification(
         if (prof?.role) callerRole = prof.role;
         const { data: da } = await supabase
           .from("delivery_agents")
-          .select("id")
+          .select("id, status")
           .eq("id", callerUserId)
           .maybeSingle();
-        if (da) callerRole = "delivery_agent";
+        if (da && ["Active", "On Delivery", "Busy"].includes(da.status)) {
+          callerRole = "delivery_agent";
+        } else if (!da && authData?.user?.email) {
+          const { data: daEmail } = await supabase
+            .from("delivery_agents")
+            .select("id, status")
+            .ilike("email", authData.user.email.trim())
+            .maybeSingle();
+          if (daEmail && ["Active", "On Delivery", "Busy"].includes(daEmail.status)) {
+            callerRole = "delivery_agent";
+          }
+        }
       }
     } catch (authErr) {
       console.warn("[Push Service] Auth token validation notice:", authErr);
