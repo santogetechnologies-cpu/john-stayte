@@ -844,7 +844,10 @@ export async function handleRegisterDeviceToken(
     }
   }
 
+  console.log(`[Push Service] handleRegisterDeviceToken: platform=${data.platform}, hasAuthToken=${Boolean(data.authToken)}, authenticated=${Boolean(callerUserId)}`);
+
   if (!callerUserId) {
+    console.warn("[Push Service] Token registration rejected: Not authenticated");
     return { success: false, error: "Not authenticated" };
   }
 
@@ -861,6 +864,7 @@ export async function handleRegisterDeviceToken(
     return { success: false, error: error.message };
   }
 
+  console.log("[Push Service] Token registration RPC succeeded");
   return { success: true, result };
 }
 

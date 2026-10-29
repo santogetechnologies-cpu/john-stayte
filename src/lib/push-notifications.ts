@@ -119,18 +119,25 @@ export async function initializePushNotifications(options?: {
 
     // 2. Check or Request Permissions
     let permStatus = await PushNotifications.checkPermissions();
+    console.log(`[Push Service] Initial permission check: receive=${permStatus.receive}`);
 
-    if (permStatus.receive === "prompt" && options?.promptPermission) {
+    if (
+      (permStatus.receive === "prompt" || (permStatus.receive as string) === "prompt-with-rationale") &&
+      options?.promptPermission
+    ) {
+      console.log("[Push Service] Prompting user for notification permission...");
       permStatus = await PushNotifications.requestPermissions();
+      console.log(`[Push Service] Permission prompt result: receive=${permStatus.receive}`);
     }
 
     const permissionGranted = permStatus.receive === "granted";
+    console.log(`[Push Service] Notification permission granted: ${permissionGranted}`);
 
     // 3. Set up event listeners once
     if (!isInitialized) {
       // Registration successful: capture FCM device token
       await PushNotifications.addListener("registration", async (token: Token) => {
-        console.log("[Push Service] Native device token registered successfully:", token.value);
+        console.log(`[Push Service] Native device token registered successfully (length: ${token.value?.length || 0})`);
         try {
           localStorage.setItem(STORAGE_KEY_TOKEN, token.value);
         } catch {}
@@ -139,11 +146,13 @@ export async function initializePushNotifications(options?: {
         const platform: PushPlatform = Capacitor.getPlatform() === "ios" ? "ios" : "android";
         try {
           const authToken = await getAuthToken();
+          console.log(`[Push Service] Authenticated session available: ${Boolean(authToken)}`);
           if (!authToken) {
-            console.log("[Push Service] Registration token received before user login; saved locally for login sync.");
+            console.warn("[Push Service] Registration token received before user login; saved locally for login sync.");
             return;
           }
-          await registerDeviceTokenServerFn({
+          console.log(`[Push Service] Calling registerDeviceTokenServerFn (platform: ${platform})...`);
+          const serverRes = await registerDeviceTokenServerFn({
             data: {
               token: token.value,
               platform,
@@ -152,14 +161,36 @@ export async function initializePushNotifications(options?: {
               authToken,
             },
           });
-        } catch (serverErr) {
-          console.error("[Push Service] Failed to register token with backend server:", serverErr);
+
+          console.log("[Push Service] Server function response:", {
+            success: Boolean(serverRes?.success),
+            hasResult: Boolean(serverRes?.result),
+            error: serverRes?.error || null,
+          });
+
+          if (!serverRes || !serverRes.success) {
+            const reason = serverRes?.error || "Server rejected registration";
+            console.error("[Push Service] Failed to register token with backend server:", reason);
+            toast.error(`Push registration failed: ${reason}`);
+          } else {
+            console.log("[Push Service] Token successfully registered in database for current user.");
+            toast.success("Push notifications enabled on this device.");
+          }
+        } catch (serverErr: any) {
+          const errMsg = serverErr?.message || String(serverErr);
+          console.error("[Push Service] Exception calling registerDeviceTokenServerFn:", errMsg);
+          toast.error(`Push registration network error: ${errMsg}`);
         }
       });
 
       // Registration failure
       await PushNotifications.addListener("registrationError", (error: any) => {
-        console.error("[Push Service] Push notification registration failed:", error);
+        const errMsg =
+          typeof error === "object" && error !== null
+            ? error.error || error.message || JSON.stringify(error)
+            : String(error || "Unknown registration error");
+        console.error("[Push Service] Push notification registration error from OS/Firebase:", errMsg);
+        toast.error(`Push notification registration failed: ${errMsg}`);
       });
 
       // Foreground notification received while the app is active
@@ -216,12 +247,15 @@ export async function initializePushNotifications(options?: {
 
     // 4. If permission granted, call register to obtain or refresh the token
     if (permissionGranted) {
+      console.log("[Push Service] Calling PushNotifications.register() to obtain/refresh FCM token...");
       await PushNotifications.register();
 
       // If cached token already exists on device, ensure backend registration is up-to-date with current auth session
       const cachedToken = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY_TOKEN) : null;
       if (cachedToken) {
+        console.log(`[Push Service] Syncing cached device token (length: ${cachedToken.length})...`);
         const authToken = await getAuthToken();
+        console.log(`[Push Service] Cached token sync - authenticated session available: ${Boolean(authToken)}`);
         if (authToken) {
           const platform: PushPlatform = Capacitor.getPlatform() === "ios" ? "ios" : "android";
           registerDeviceTokenServerFn({
@@ -232,7 +266,25 @@ export async function initializePushNotifications(options?: {
               deviceInfo: getDeviceMetadata(),
               authToken,
             },
-          }).catch((err) => console.warn("[Push Service] Token sync notice:", err));
+          })
+            .then((res) => {
+              console.log("[Push Service] Cached token sync response:", {
+                success: Boolean(res?.success),
+                error: res?.error || null,
+              });
+              if (!res || !res.success) {
+                const reason = res?.error || "Server rejected registration";
+                console.error("[Push Service] Cached token sync failed on server:", reason);
+                toast.error(`Push sync failed: ${reason}`);
+              } else {
+                console.log("[Push Service] Cached token successfully synced with database.");
+              }
+            })
+            .catch((err: any) => {
+              const errMsg = err?.message || String(err || "Network error");
+              console.error("[Push Service] Cached token sync network error:", errMsg);
+              toast.error(`Push sync network error: ${errMsg}`);
+            });
         }
       }
     }
@@ -260,16 +312,27 @@ export async function requestPushPermissionsAndRegister(): Promise<boolean> {
     await initializePushNotifications({ promptPermission: true });
 
     let permStatus = await PushNotifications.checkPermissions();
-    if (permStatus.receive === "prompt") {
+    console.log(`[Push Service] requestPushPermissionsAndRegister checkPermissions: receive=${permStatus.receive}`);
+
+    if (
+      permStatus.receive === "prompt" ||
+      (permStatus.receive as string) === "prompt-with-rationale"
+    ) {
+      console.log("[Push Service] requestPushPermissionsAndRegister: Requesting permissions...");
       permStatus = await PushNotifications.requestPermissions();
+      console.log(`[Push Service] requestPushPermissionsAndRegister: Request result receive=${permStatus.receive}`);
     }
+
     if (permStatus.receive === "granted") {
+      console.log("[Push Service] Calling PushNotifications.register() from requestPushPermissionsAndRegister...");
       await PushNotifications.register();
       return true;
     }
     return false;
-  } catch (err) {
-    console.error("[Push Service] Permission request failed:", err);
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    console.error("[Push Service] Permission request failed:", errMsg);
+    toast.error(`Push permission request failed: ${errMsg}`);
     return false;
   }
 }

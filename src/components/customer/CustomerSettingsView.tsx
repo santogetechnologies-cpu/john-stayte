@@ -68,8 +68,6 @@ export function CustomerSettingsView() {
       const granted = await requestPushPermissionsAndRegister();
       if (!granted) {
         toast.info("Push notification permission was not granted in system settings.");
-      } else {
-        toast.success("Push notifications enabled on this device.");
       }
     } else if (!checked && isNativePushSupported()) {
       await unregisterPushNotifications();
