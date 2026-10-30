@@ -174,6 +174,15 @@ export function AdminNotificationsView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link to="/admin/settings">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white hover:bg-slate-50"
+            >
+              <Bell className="h-3.5 w-3.5 text-primary" /> Push Engine Diagnostic
+            </Button>
+          </Link>
           {unreadCount > 0 && (
             <Button
               onClick={markAllAsRead}

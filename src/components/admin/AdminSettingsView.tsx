@@ -370,7 +370,7 @@ export function AdminSettingsView() {
             <ShoppingBag className="h-3.5 w-3.5" /> Order Rules
           </TabsTrigger>
           <TabsTrigger value="notifications" className="rounded-xl text-xs font-bold gap-1.5">
-            <Bell className="h-3.5 w-3.5" /> Alerts & Prefs
+            <Bell className="h-3.5 w-3.5 text-primary" /> Push Notifications & Alerts
           </TabsTrigger>
           <TabsTrigger value="modules" className="rounded-xl text-xs font-bold gap-1.5">
             <Layers className="h-3.5 w-3.5" /> Module Matrix

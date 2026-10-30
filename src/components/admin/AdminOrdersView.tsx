@@ -22,6 +22,7 @@ import {
   Clock,
   Edit2,
   Trash2,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -550,6 +551,12 @@ export function AdminOrdersView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-bold gap-1.5 border-slate-200 bg-white">
+            <Link to="/admin/settings">
+              <Bell className="h-3.5 w-3.5 text-primary" /> Push Diagnostic
+            </Link>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
