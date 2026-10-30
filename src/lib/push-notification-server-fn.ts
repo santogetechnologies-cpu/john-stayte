@@ -23,38 +23,111 @@ interface FirebaseServiceAccount {
 /**
  * Safely parses Firebase service account credentials from environment variables.
  * Supports FIREBASE_SERVICE_ACCOUNT_KEY (JSON string or base64) or individual variables.
+ * Emits structured diagnostics to help debug Vercel/serverless environment issues.
  */
 export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
+  const envNames = [
+    "FIREBASE_SERVICE_ACCOUNT_KEY",
+    "FIREBASE_SERVICE_ACCOUNT_JSON",
+    "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+  ] as const;
+
   const jsonRaw =
     process.env.FIREBASE_SERVICE_ACCOUNT_KEY ||
     process.env.FIREBASE_SERVICE_ACCOUNT_JSON ||
     process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
 
   if (jsonRaw) {
+    const whichVar = envNames.find((n) => !!process.env[n]) || "unknown";
+    const preview = jsonRaw.trim().substring(0, 12);
+    console.log(
+      `[Push Service] Credential env var found: ${whichVar}, length=${jsonRaw.length}, preview="${preview}..."`
+    );
+
     try {
       let rawString = jsonRaw.trim();
-      if (rawString.startsWith("ey") || !rawString.startsWith("{")) {
+
+      // Remove surrounding quotes if user entered '"...value..."' in Vercel UI
+      if (
+        (rawString.startsWith('"') && rawString.endsWith('"')) ||
+        (rawString.startsWith("'") && rawString.endsWith("'"))
+      ) {
+        rawString = rawString.slice(1, -1).trim();
+      }
+
+      // Detect and decode base64: if string does not start with '{'
+      const looksLikeBase64 = !rawString.startsWith("{");
+      if (looksLikeBase64) {
+        console.log("[Push Service] Attempting base64 decode of credential...");
         try {
-          const decoded = Buffer.from(rawString, "base64").toString("utf-8");
-          if (decoded.startsWith("{")) {
-            rawString = decoded;
+          // Remove internal whitespace or newlines that copy-paste may introduce
+          const cleanedB64 = rawString.replace(/\s+/g, "");
+          const decoded = Buffer.from(cleanedB64, "base64").toString("utf-8");
+          if (decoded.trim().startsWith("{")) {
+            rawString = decoded.trim();
+            console.log("[Push Service] Base64 decode succeeded.");
+          } else {
+            console.warn("[Push Service] Base64 decoded but result does not start with '{'. Trying raw parse.");
           }
-        } catch {
-          // not base64, proceed
+        } catch (b64Err) {
+          console.warn("[Push Service] Base64 decode failed, attempting raw JSON parse:", b64Err);
         }
       }
 
-      const parsed = JSON.parse(rawString);
-      if (parsed.project_id && parsed.client_email && parsed.private_key) {
-        return {
-          project_id: parsed.project_id,
-          client_email: parsed.client_email,
-          private_key: parsed.private_key.replace(/\\n/g, "\n"),
-        };
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(rawString);
+      } catch (jsonErr) {
+        console.warn("[Push Service] JSON.parse failed, attempting resilient regex field extraction fallback...", jsonErr);
+        // Resilient regex fallback: handles literal unescaped newlines in private key pasted into Vercel
+        const projMatch = rawString.match(/"project_id"\s*:\s*"([^"]+)"/);
+        const emailMatch = rawString.match(/"client_email"\s*:\s*"([^"]+)"/);
+        const keyMatch = rawString.match(/"private_key"\s*:\s*"([\s\S]*?)(?="(?:\s*,|\s*}))/);
+
+        if (projMatch && emailMatch && keyMatch) {
+          parsed = {
+            project_id: projMatch[1],
+            client_email: emailMatch[1],
+            private_key: keyMatch[1],
+          };
+          console.log("[Push Service] Resilient regex extraction succeeded for malformed JSON.");
+        }
+      }
+
+      if (parsed) {
+        const hasProjectId = !!parsed.project_id;
+        const hasClientEmail = !!parsed.client_email;
+        const hasPrivateKey = !!parsed.private_key;
+
+        if (hasProjectId && hasClientEmail && hasPrivateKey) {
+          console.log(
+            `[Push Service] Firebase credentials loaded successfully. project_id=${parsed.project_id}`
+          );
+          return {
+            project_id: parsed.project_id,
+            client_email: parsed.client_email,
+            private_key: parsed.private_key.replace(/\\n/g, "\n"),
+          };
+        } else {
+          console.error(
+            `[Push Service] Credential JSON parsed but missing fields: project_id=${hasProjectId}, client_email=${hasClientEmail}, private_key=${hasPrivateKey}`
+          );
+        }
       }
     } catch (err) {
-      console.error("[Push Service] Error parsing FIREBASE_SERVICE_ACCOUNT_KEY JSON:", err);
+      console.error(
+        "[Push Service] Fatal: Could not parse FIREBASE_SERVICE_ACCOUNT_KEY.",
+        "Ensure the value in Vercel is either (a) base64-encoded JSON or (b) discrete env vars.",
+        "Error:", err
+      );
     }
+  } else {
+    // Log which vars were checked so Vercel logs show the exact missing variable names
+    console.warn(
+      "[Push Service] No Firebase credentials found. Checked env vars:",
+      envNames.join(", "),
+      "— also checking discrete vars: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY"
+    );
   }
 
   // Fallback to discrete environment variables
@@ -63,11 +136,29 @@ export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
   if (projectId && clientEmail && privateKey) {
+    let cleanKey = privateKey.trim().replace(/^["']|["']$/g, "");
+    // Support base64-encoded private key in discrete var
+    if (!cleanKey.includes("BEGIN PRIVATE KEY")) {
+      try {
+        const decoded = Buffer.from(cleanKey.replace(/\s+/g, ""), "base64").toString("utf-8");
+        if (decoded.includes("BEGIN PRIVATE KEY")) {
+          cleanKey = decoded;
+        }
+      } catch {}
+    }
+    cleanKey = cleanKey.replace(/\\n/g, "\n");
+    console.log(`[Push Service] Firebase credentials loaded from discrete env vars. project_id=${projectId.trim()}`);
     return {
-      project_id: projectId,
-      client_email: clientEmail,
-      private_key: privateKey.replace(/\\n/g, "\n"),
+      project_id: projectId.trim().replace(/^["']|["']$/g, ""),
+      client_email: clientEmail.trim().replace(/^["']|["']$/g, ""),
+      private_key: cleanKey,
     };
+  }
+
+  if (projectId || clientEmail || privateKey) {
+    console.error(
+      `[Push Service] Discrete vars partially set: FIREBASE_PROJECT_ID=${!!projectId}, FIREBASE_CLIENT_EMAIL=${!!clientEmail}, FIREBASE_PRIVATE_KEY=${!!privateKey}. All three must be set.`
+    );
   }
 
   return null;
@@ -488,6 +579,8 @@ export async function executePushDispatch(
   const { eventType, idempotencyKey, target, payload } = event;
 
   // 1. Fast Idempotency Pre-Check
+  // NOTE: "skipped" (due to missing Firebase credentials) and "failed" are BOTH retryable.
+  // Only "sent", "no_tokens", and "pending" (in-flight) are truly terminal/non-retryable.
   const { data: existingLog } = await supabase
     .from("notification_dispatch_logs")
     .select("id, status")
@@ -1762,4 +1855,145 @@ export const dispatchPushNotificationServerFn = createServerFn({ method: "POST" 
   })
   .handler(async ({ data }) => {
     return handleDispatchPushNotification(data);
+  });
+
+/**
+ * Server function to verify Firebase credentials are correctly loaded in the runtime environment.
+ * Returns only safe metadata — never exposes key values.
+ * Call from admin UI or curl to diagnose Vercel credential configuration.
+ */
+export const verifyFirebaseCredentialsServerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => d)
+  .handler(async () => {
+    const creds = getFirebaseServiceAccount();
+    const supabase = getSupabaseServerClient();
+
+    // Query active device tokens count
+    let androidCount = 0;
+    let iosCount = 0;
+    try {
+      const { data: tokens } = await supabase
+        .from("user_device_tokens")
+        .select("platform")
+        .eq("is_active", true);
+
+      if (tokens) {
+        androidCount = tokens.filter((t) => t.platform === "android").length;
+        iosCount = tokens.filter((t) => t.platform === "ios").length;
+      }
+    } catch {}
+
+    // Query recent logs
+    let recentLogs: any[] = [];
+    try {
+      const { data: logs } = await supabase
+        .from("notification_dispatch_logs")
+        .select("id, event_type, status, error_message, created_at, tokens_attempted, tokens_succeeded, tokens_failed")
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (logs) recentLogs = logs;
+    } catch {}
+
+    if (!creds) {
+      const envKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      const envProj = process.env.FIREBASE_PROJECT_ID;
+      const envEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const envKey2 = process.env.FIREBASE_PRIVATE_KEY;
+      return {
+        credentialsLoaded: false,
+        activeTokens: {
+          android: androidCount,
+          ios: iosCount,
+          total: androidCount + iosCount,
+        },
+        recentLogs,
+        details: {
+          FIREBASE_SERVICE_ACCOUNT_KEY: envKey
+            ? `present (length=${envKey.length}, preview="${envKey.substring(0, 8)}...")`
+            : "MISSING",
+          FIREBASE_PROJECT_ID: envProj ? "present" : "MISSING",
+          FIREBASE_CLIENT_EMAIL: envEmail ? "present" : "MISSING",
+          FIREBASE_PRIVATE_KEY: envKey2 ? "present" : "MISSING",
+        },
+        error:
+          "Firebase credentials not configured. Configure FIREBASE_SERVICE_ACCOUNT_KEY (Base64) in Vercel Production environment variables.",
+      };
+    }
+
+    // Test the OAuth2 token exchange to confirm credentials work
+    let oauthOk = false;
+    let oauthError: string | null = null;
+    try {
+      await getGoogleOAuth2Token(creds);
+      oauthOk = true;
+    } catch (err: any) {
+      oauthError = err?.message || String(err);
+    }
+
+    return {
+      credentialsLoaded: true,
+      projectId: creds.project_id,
+      clientEmail: creds.client_email,
+      privateKeyLength: creds.private_key.length,
+      oauthTokenExchangeOk: oauthOk,
+      oauthError,
+      activeTokens: {
+        android: androidCount,
+        ios: iosCount,
+        total: androidCount + iosCount,
+      },
+      recentLogs,
+    };
+  });
+
+/**
+ * Server function to dispatch a diagnostic test push notification to all active devices.
+ * Restricted to authenticated admins and managers.
+ */
+export const sendTestPushNotificationServerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => d as { authToken?: string | null })
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient();
+    let callerRole = "customer";
+
+    if (data?.authToken) {
+      try {
+        const { data: authData } = await supabase.auth.getUser(data.authToken);
+        if (authData?.user?.id) {
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", authData.user.id)
+            .maybeSingle();
+          if (prof?.role) callerRole = prof.role;
+        }
+      } catch {}
+    }
+
+    if (!["admin", "manager"].includes(callerRole)) {
+      throw new Error("Unauthorized: only managers and admins can trigger test push notifications");
+    }
+
+    const testIdempotency = `admin_diagnostic_test_${Date.now()}`;
+    const result = await executePushDispatch(
+      {
+        eventType: "PROMOTIONAL_OFFER",
+        idempotencyKey: testIdempotency,
+        target: {
+          roles: ["customer", "admin", "manager", "delivery_agent"],
+        },
+        payload: {
+          title: "Push Notification Test",
+          body: "John Stayte Services: Push notification delivery is working 100% on this device!",
+          category: "general",
+          data: {
+            url: "/account",
+            type: "TEST_NOTIFICATION",
+          },
+        },
+      },
+      supabase
+    );
+
+    return result;
   });

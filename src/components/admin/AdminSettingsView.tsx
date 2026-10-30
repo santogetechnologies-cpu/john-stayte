@@ -35,6 +35,11 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 import { gbp } from "@/lib/store";
+import {
+  verifyFirebaseCredentialsServerFn,
+  sendTestPushNotificationServerFn,
+  getAuthToken,
+} from "@/lib/push-notifications";
 
 export function AdminSettingsView() {
   const [loading, setLoading] = useState(true);
@@ -70,6 +75,45 @@ export function AdminSettingsView() {
   // 6. Notification Preferences
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [lowStockAlerts, setLowStockAlerts] = useState(true);
+  const [pushDiagLoading, setPushDiagLoading] = useState(false);
+  const [pushDiagResult, setPushDiagResult] = useState<any>(null);
+  const [testPushLoading, setTestPushLoading] = useState(false);
+
+  const runPushDiagnostic = async () => {
+    setPushDiagLoading(true);
+    try {
+      const res = await verifyFirebaseCredentialsServerFn({ data: {} });
+      setPushDiagResult(res);
+      if (res.credentialsLoaded && res.oauthTokenExchangeOk) {
+        toast.success("Push Notification credentials verified successfully with Firebase!");
+      } else {
+        toast.error(res.error || "Firebase credentials check failed.");
+      }
+    } catch (err: any) {
+      toast.error("Failed to run push diagnostic: " + err.message);
+    } finally {
+      setPushDiagLoading(false);
+    }
+  };
+
+  const sendTestPush = async () => {
+    setTestPushLoading(true);
+    try {
+      const authToken = await getAuthToken();
+      const res: any = await sendTestPushNotificationServerFn({ data: { authToken } });
+      if (res?.success) {
+        toast.success(`Test push dispatched! Attempted: ${res.tokensAttempted}, Succeeded: ${res.tokensSucceeded}`);
+      } else {
+        toast.error(`Test push failed: ${res?.message || res?.status || "Unknown error"}`);
+      }
+      // Re-run diagnostic to update recent logs
+      await runPushDiagnostic();
+    } catch (err: any) {
+      toast.error("Test push error: " + err.message);
+    } finally {
+      setTestPushLoading(false);
+    }
+  };
 
   // 7. Sidebar Module Matrix
   const [modulesConfig, setModulesConfig] = useState<Record<string, boolean>>({
@@ -781,7 +825,7 @@ export function AdminSettingsView() {
         {/* 6. Notification Preferences */}
         <TabsContent
           value="notifications"
-          className="surface-card p-6 rounded-3xl border bg-white space-y-4 max-w-2xl shadow-xs"
+          className="surface-card p-6 rounded-3xl border bg-white space-y-5 max-w-2xl shadow-xs"
         >
           <h3 className="text-sm font-extrabold text-foreground border-b pb-2">
             System Notification Preferences
@@ -807,6 +851,118 @@ export function AdminSettingsView() {
               </div>
               <Switch checked={lowStockAlerts} onCheckedChange={setLowStockAlerts} />
             </div>
+          </div>
+
+          {/* Mobile Push Notification Engine & Live Diagnostic */}
+          <div className="pt-2 border-t space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-primary" />
+                  Mobile Push Notifications (Android & iOS)
+                </h4>
+                <p className="text-[11px] text-muted-foreground">
+                  FCM HTTP v1 delivery engine, Vercel credentials & active device status
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={runPushDiagnostic}
+                  disabled={pushDiagLoading}
+                  className="h-8 text-xs font-bold rounded-xl"
+                >
+                  {pushDiagLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  ) : (
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1 text-primary" />
+                  )}
+                  Run Diagnostic
+                </Button>
+                {pushDiagResult?.credentialsLoaded && (
+                  <Button
+                    size="sm"
+                    onClick={sendTestPush}
+                    disabled={testPushLoading}
+                    className="h-8 text-xs font-bold rounded-xl bg-primary text-white"
+                  >
+                    {testPushLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                    ) : (
+                      <Bell className="w-3.5 h-3.5 mr-1" />
+                    )}
+                    Send Test Push
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {pushDiagResult && (
+              <div className="p-4 rounded-2xl bg-slate-50 border space-y-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-600">Firebase Credentials:</span>
+                  {pushDiagResult.credentialsLoaded ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <CheckCircle2 className="w-3 h-3" /> Loaded ({pushDiagResult.projectId})
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
+                      <AlertTriangle className="w-3 h-3" /> Not Configured
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-600">Google OAuth2 Token Exchange:</span>
+                  {pushDiagResult.oauthTokenExchangeOk ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <CheckCircle2 className="w-3 h-3" /> Verified (HTTP 200)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                      <AlertTriangle className="w-3 h-3" /> {pushDiagResult.oauthError || "Not verified"}
+                    </span>
+                  )}
+                </div>
+
+                {pushDiagResult.activeTokens && (
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-600">Active Mobile Devices:</span>
+                    <span className="font-mono text-slate-800 font-bold">
+                      {pushDiagResult.activeTokens.total} total (Android: {pushDiagResult.activeTokens.android}, iOS: {pushDiagResult.activeTokens.ios})
+                    </span>
+                  </div>
+                )}
+
+                {pushDiagResult.details && (
+                  <div className="pt-2 border-t text-[11px] text-muted-foreground font-mono space-y-0.5">
+                    <div>FIREBASE_SERVICE_ACCOUNT_KEY: {pushDiagResult.details.FIREBASE_SERVICE_ACCOUNT_KEY}</div>
+                    <div>FIREBASE_PROJECT_ID: {pushDiagResult.details.FIREBASE_PROJECT_ID}</div>
+                  </div>
+                )}
+
+                {pushDiagResult.recentLogs && pushDiagResult.recentLogs.length > 0 && (
+                  <div className="pt-2 border-t">
+                    <span className="font-bold text-slate-600 block mb-1.5">Recent Notification Dispatches:</span>
+                    <div className="space-y-1 font-mono text-[11px]">
+                      {pushDiagResult.recentLogs.slice(0, 3).map((log: any) => (
+                        <div key={log.id} className="flex items-center justify-between bg-white p-2 rounded-lg border">
+                          <span className="font-bold">{log.event_type}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            log.status === "sent" ? "bg-emerald-100 text-emerald-700" :
+                            log.status === "no_tokens" ? "bg-amber-100 text-amber-700" :
+                            "bg-rose-100 text-rose-700"
+                          }`}>
+                            {log.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </TabsContent>
 

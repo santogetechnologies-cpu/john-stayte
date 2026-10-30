@@ -6,8 +6,12 @@ import {
   registerDeviceTokenServerFn,
   deactivateDeviceTokenServerFn,
   dispatchPushNotificationServerFn,
+  verifyFirebaseCredentialsServerFn,
+  sendTestPushNotificationServerFn,
 } from "./push-notification-server-fn";
 import type { PushPlatform } from "./push-notifications-types";
+
+export { verifyFirebaseCredentialsServerFn, sendTestPushNotificationServerFn };
 
 const STORAGE_KEY_TOKEN = "jss_device_push_token";
 const STORAGE_KEY_INSTALLATION_ID = "jss_installation_id";

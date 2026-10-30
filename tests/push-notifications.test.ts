@@ -290,17 +290,23 @@ export function createMockSupabase(initialData: MockData): SupabaseClient<Databa
             return { data: { ...newRecord }, error: null };
           },
           update: (updates: any) => {
-            const filters: Array<{ col: string; val: any }> = [];
+            const eqFilters: Array<{ col: string; val: any }> = [];
+            const inFilters: Array<{ col: string; vals: any[] }> = [];
             const execute = async () => {
               const matched = logs.filter((l) =>
-                filters.every((f) => (l as any)[f.col] === f.val)
+                eqFilters.every((f) => (l as any)[f.col] === f.val) &&
+                inFilters.every((f) => f.vals.includes((l as any)[f.col]))
               );
               matched.forEach((m) => Object.assign(m, updates));
               return { data: matched.map((m) => ({ ...m })), error: null };
             };
             const builder: any = {
               eq: (col: string, val: any) => {
-                filters.push({ col, val });
+                eqFilters.push({ col, val });
+                return builder;
+              },
+              in: (col: string, vals: any[]) => {
+                inFilters.push({ col, vals });
                 return builder;
               },
               select: (_cols?: string) => builder,
