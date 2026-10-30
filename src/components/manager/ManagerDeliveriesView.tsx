@@ -44,6 +44,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
+import { triggerOrderStatusPush } from "@/lib/push-notifications";
 import {
   getDeliveryAgents,
   assignDeliveryAgentToDelivery,
@@ -233,12 +234,37 @@ export function ManagerDeliveriesView() {
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      const { error } = await supabase
+      const { data: updatedAsgn, error } = await supabase
         .from("delivery_assignments")
-        .update({ status: newStatus })
-        .eq("id", id);
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", id)
+        .select("id, order_id, agent_id")
+        .maybeSingle();
 
       if (error) throw error;
+
+      if (updatedAsgn?.order_id && (newStatus === "Out for Delivery" || newStatus === "Delivered")) {
+        await supabase
+          .from("orders")
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq("id", updatedAsgn.order_id);
+
+        const { data: ord } = await supabase
+          .from("orders")
+          .select("id, order_number, customer_id")
+          .eq("id", updatedAsgn.order_id)
+          .maybeSingle();
+
+        if (ord?.customer_id) {
+          triggerOrderStatusPush({
+            orderId: ord.id,
+            orderNumber: String(ord.order_number || ord.id.slice(0, 8)),
+            customerId: ord.customer_id,
+            newStatus: newStatus as any,
+          }).catch((err) => console.warn("[Manager Deliveries] Push notice:", err));
+        }
+      }
+
       toast.success(`Delivery status updated to ${newStatus}`);
       await loadDeliveries();
     } catch (err: any) {

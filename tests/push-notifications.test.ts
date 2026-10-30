@@ -14,6 +14,7 @@ import {
   validateTargetAuthorization,
   executePushDispatch,
   triggerPaymentStatusPushInternal,
+  triggerOrderStatusPushInternal,
   handleDispatchPushNotification,
   dispatchPushNotificationServerFn,
   handleRegisterDeviceToken,
@@ -1791,6 +1792,281 @@ describe("Push Notification System - Hardened Production Test Suite", () => {
 
       const resolvedToken = await getAuthToken(mockUnauthClient);
       assert.equal(resolvedToken, null);
+    });
+  });
+
+  // ============================================================================
+  // SUITE 4: ORDER LIFECYCLE PUSH NOTIFICATION SYSTEM (ALL 5 EVENTS)
+  // ============================================================================
+  describe("Order Lifecycle Push Notification System - All 5 Events", () => {
+    const testProfiles = [
+      { id: "cust-101", role: "customer", email: "cust101@example.com" },
+      { id: "admin-1", role: "admin", email: "admin@johnstayte.com" },
+      { id: "manager-1", role: "manager", email: "manager@johnstayte.com" },
+    ];
+
+    const testTokens = [
+      {
+        id: "tok-cust-101",
+        user_id: "cust-101",
+        token: "fcm-android-cust-101",
+        platform: "android",
+        role: "customer",
+        is_active: true,
+      },
+    ];
+
+    const testOrders = [
+      {
+        id: "ord-life-1",
+        order_number: "JSS-LIFE-1",
+        customer_id: "cust-101",
+        status: "Pending",
+        total: 55.0,
+      },
+    ];
+
+    it("1. ORDER_APPROVED: should dispatch customer notification with exact content", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      const res = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Approved",
+        supabaseClient: db,
+      });
+
+      assert.equal(res.eventType, "ORDER_APPROVED");
+      assert.equal(res.idempotencyKey, "order_status_approved_ord-life-1");
+      assert.equal(res.recipientCount, 1);
+      assert.equal(res.status, "skipped");
+
+      // Verify log content
+      const logged = (db as any)._logs.find((l: any) => l.idempotency_key === "order_status_approved_ord-life-1");
+      assert.ok(logged);
+      assert.equal(logged.title, "Order #JSS-LIFE-1 Approved");
+      assert.equal(logged.body, "Your order has been approved.");
+    });
+
+    it("2. ORDER_PACKED: should dispatch customer notification with exact content", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      const res = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Packed",
+        supabaseClient: db,
+      });
+
+      assert.equal(res.eventType, "ORDER_PACKED");
+      assert.equal(res.idempotencyKey, "order_status_packed_ord-life-1");
+      assert.equal(res.recipientCount, 1);
+
+      const logged = (db as any)._logs.find((l: any) => l.idempotency_key === "order_status_packed_ord-life-1");
+      assert.ok(logged);
+      assert.equal(logged.title, "Order #JSS-LIFE-1 Packed");
+      assert.equal(logged.body, "Your order has been packed and is ready for dispatch.");
+    });
+
+    it("3. OUT_FOR_DELIVERY: should dispatch customer notification with exact content", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      const res = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Out for Delivery",
+        supabaseClient: db,
+      });
+
+      assert.equal(res.eventType, "OUT_FOR_DELIVERY");
+      assert.equal(res.idempotencyKey, "order_status_out_for_delivery_ord-life-1");
+      assert.equal(res.recipientCount, 1);
+
+      const logged = (db as any)._logs.find(
+        (l: any) => l.idempotency_key === "order_status_out_for_delivery_ord-life-1"
+      );
+      assert.ok(logged);
+      assert.equal(logged.title, "Order #JSS-LIFE-1 Out for Delivery");
+      assert.equal(logged.body, "Your order is out for delivery.");
+    });
+
+    it("4. ORDER_DELIVERED: should dispatch customer notification with exact content", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      const res = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Delivered",
+        supabaseClient: db,
+      });
+
+      assert.equal(res.eventType, "DELIVERY_COMPLETED");
+      assert.equal(res.idempotencyKey, "order_status_delivered_ord-life-1");
+      assert.equal(res.recipientCount, 1);
+
+      const logged = (db as any)._logs.find(
+        (l: any) => l.idempotency_key === "order_status_delivered_ord-life-1"
+      );
+      assert.ok(logged);
+      assert.equal(logged.title, "Order #JSS-LIFE-1 Delivered");
+      assert.equal(logged.body, "Your order has been delivered successfully.");
+    });
+
+    it("5. ORDER_CANCELLED: should dispatch customer and staff notification with exact content", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: [
+          ...testTokens,
+          {
+            id: "tok-admin-1",
+            user_id: "admin-1",
+            token: "fcm-admin-1",
+            platform: "android",
+            role: "admin",
+            is_active: true,
+          },
+        ],
+      });
+
+      const res = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Cancelled",
+        reason: "Customer requested cancellation",
+        supabaseClient: db,
+      });
+
+      assert.equal(res.eventType, "ORDER_CANCELLED");
+      assert.equal(res.idempotencyKey, "order_status_cancelled_ord-life-1");
+
+      const loggedCust = (db as any)._logs.find(
+        (l: any) => l.idempotency_key === "order_status_cancelled_ord-life-1"
+      );
+      assert.ok(loggedCust);
+      assert.equal(loggedCust.title, "Order #JSS-LIFE-1 Cancelled");
+      assert.equal(loggedCust.body, "Your order has been cancelled: Customer requested cancellation");
+
+      const loggedStaff = (db as any)._logs.find(
+        (l: any) => l.idempotency_key === "order_cancelled_staff_ord-life-1"
+      );
+      assert.ok(loggedStaff);
+    });
+
+    it("should allow Admin and Manager to dispatch lifecycle updates via server function", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      // Admin caller succeeds
+      const adminRes = await handleDispatchPushNotification(
+        {
+          eventType: "ORDER_APPROVED",
+          orderId: "ord-life-1",
+          authToken: "admin-1",
+        },
+        db
+      );
+      assert.equal(adminRes.success, true);
+
+      // Manager caller succeeds
+      const managerRes = await handleDispatchPushNotification(
+        {
+          eventType: "ORDER_PACKED",
+          orderId: "ord-life-1",
+          authToken: "manager-1",
+        },
+        db
+      );
+      assert.equal(managerRes.success, true);
+    });
+
+    it("should reject customer or unauthenticated caller attempting to dispatch order lifecycle updates", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      // Customer caller rejected
+      await assert.rejects(
+        () =>
+          handleDispatchPushNotification(
+            {
+              eventType: "ORDER_APPROVED",
+              orderId: "ord-life-1",
+              authToken: "cust-101",
+            },
+            db
+          ),
+        /Unauthorized/
+      );
+
+      // Unauthenticated caller rejected
+      await assert.rejects(
+        () =>
+          handleDispatchPushNotification(
+            {
+              eventType: "ORDER_APPROVED",
+              orderId: "ord-life-1",
+              authToken: undefined,
+            },
+            db
+          ),
+        /Unauthorized/
+      );
+    });
+
+    it("should suppress duplicate lifecycle notification with idempotency check", async () => {
+      const db = createMockSupabase({
+        profiles: testProfiles,
+        orders: testOrders,
+        user_device_tokens: testTokens,
+      });
+
+      // First call
+      const first = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Approved",
+        supabaseClient: db,
+      });
+      assert.ok(first);
+
+      // Duplicate call
+      const duplicate = await triggerOrderStatusPushInternal({
+        orderId: "ord-life-1",
+        orderNumber: "JSS-LIFE-1",
+        customerId: "cust-101",
+        newStatus: "Approved",
+        supabaseClient: db,
+      });
+      assert.equal(duplicate.status, "skipped");
+      assert.match(duplicate.message || "", /already processed/);
     });
   });
 });

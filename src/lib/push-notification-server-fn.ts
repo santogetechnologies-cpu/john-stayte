@@ -579,21 +579,22 @@ export async function executePushDispatch(
   const { eventType, idempotencyKey, target, payload } = event;
 
   // 1. Fast Idempotency Pre-Check
-  // NOTE: "skipped" (due to missing Firebase credentials) and "failed" are BOTH retryable.
-  // Only "sent", "no_tokens", and "pending" (in-flight) are truly terminal/non-retryable.
+  // Preserves strict duplicate protection while permitting safe retry of failed dispatches
+  // or historically skipped dispatches whose credentials have now been properly configured.
   const { data: existingLog } = await supabase
     .from("notification_dispatch_logs")
-    .select("id, status")
+    .select("id, status, error_message")
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
 
-  if (
-    existingLog &&
-    (existingLog.status === "sent" ||
-      existingLog.status === "skipped" ||
-      existingLog.status === "no_tokens" ||
-      existingLog.status === "pending")
-  ) {
+  const isConfigSkipped =
+    existingLog?.status === "skipped" &&
+    Boolean(existingLog.error_message?.includes("Firebase"));
+  const hasFirebaseNow = Boolean(getFirebaseServiceAccount());
+  const isRetryable =
+    existingLog?.status === "failed" || (isConfigSkipped && hasFirebaseNow);
+
+  if (existingLog && !isRetryable) {
     return {
       success: true,
       idempotencyKey,
@@ -625,8 +626,8 @@ export async function executePushDispatch(
   }
 
   // 3. Atomic Reservation via PostgreSQL UNIQUE constraint on idempotency_key
-  if (existingLog && existingLog.status === "failed") {
-    // Retry flow: atomically transition existing failed log to 'pending'
+  if (existingLog && isRetryable) {
+    // Retry flow: atomically transition existing failed/config-skipped log to 'pending'
     const { data: updatedRows, error: retryErr } = await supabase
       .from("notification_dispatch_logs")
       .update({
@@ -635,7 +636,7 @@ export async function executePushDispatch(
         created_at: new Date().toISOString(),
       })
       .eq("idempotency_key", idempotencyKey)
-      .eq("status", "failed")
+      .in("status", ["failed", "skipped"])
       .select("id");
 
     if (retryErr || !updatedRows || updatedRows.length === 0) {
@@ -1058,42 +1059,43 @@ export async function triggerOrderPlacedPushInternal(params: {
 }): Promise<void> {
   const { orderId, orderNumber, customerId, itemCount, totalFormatted, customerName } = params;
 
-  executePushDispatch({
-    eventType: "ORDER_PLACED",
-    idempotencyKey: `order_placed_cust_${orderId}`,
-    target: {
-      userId: customerId,
-      requireOrderOwnership: { orderId, customerId },
-    },
-    payload: {
-      title: `Order #${orderNumber} Confirmed`,
-      body: `Your order for ${itemCount} item(s) totalling ${totalFormatted} has been received.`,
-      category: "orders",
-      data: {
-        url: `/orders?orderId=${orderId}`,
-        orderId,
-        type: "ORDER_PLACED",
+  await Promise.allSettled([
+    executePushDispatch({
+      eventType: "ORDER_PLACED",
+      idempotencyKey: `order_placed_cust_${orderId}`,
+      target: {
+        userId: customerId,
+        requireOrderOwnership: { orderId, customerId },
       },
-    },
-  }).catch((err) => console.error("[Push Service] Order placed customer push notice:", err));
-
-  executePushDispatch({
-    eventType: "ORDER_PLACED",
-    idempotencyKey: `order_placed_staff_${orderId}`,
-    target: {
-      roles: ["admin", "manager"],
-    },
-    payload: {
-      title: `New Order #${orderNumber}`,
-      body: `${customerName || "Customer"} placed order #${orderNumber} (${itemCount} items, ${totalFormatted}).`,
-      category: "orders",
-      data: {
-        url: `/manager/orders?orderId=${orderId}`,
-        orderId,
-        type: "ORDER_PLACED",
+      payload: {
+        title: `Order #${orderNumber} Confirmed`,
+        body: `Your order for ${itemCount} item(s) totalling ${totalFormatted} has been received.`,
+        category: "orders",
+        data: {
+          url: `/account/orders?orderId=${orderId}`,
+          orderId,
+          type: "ORDER_PLACED",
+        },
       },
-    },
-  }).catch((err) => console.error("[Push Service] Order placed staff push notice:", err));
+    }),
+    executePushDispatch({
+      eventType: "ORDER_PLACED",
+      idempotencyKey: `order_placed_staff_${orderId}`,
+      target: {
+        roles: ["admin", "manager"],
+      },
+      payload: {
+        title: `New Order #${orderNumber}`,
+        body: `${customerName || "Customer"} placed order #${orderNumber} (${itemCount} items, ${totalFormatted}).`,
+        category: "orders",
+        data: {
+          url: `/manager/orders?orderId=${orderId}`,
+          orderId,
+          type: "ORDER_PLACED",
+        },
+      },
+    }),
+  ]);
 }
 
 export async function triggerPaymentStatusPushInternal(params: {
@@ -1227,67 +1229,86 @@ export async function triggerOrderStatusPushInternal(params: {
   orderId: string;
   orderNumber: string;
   customerId: string;
-  newStatus: "Approved" | "Packed" | "Cancelled";
+  newStatus: "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled";
   reason?: string;
-}): Promise<void> {
-  const { orderId, orderNumber, customerId, newStatus, reason } = params;
+  driverName?: string;
+  supabaseClient?: SupabaseClient<Database>;
+}): Promise<PushDispatchResult> {
+  const { orderId, orderNumber, customerId, newStatus, reason, driverName, supabaseClient } = params;
 
   let eventType: PushEventType;
-  let title = `Order #${orderNumber} ${newStatus}`;
-  let body = `Your order status has been updated to ${newStatus}.`;
+  let title: string;
+  let body: string;
 
   if (newStatus === "Approved") {
     eventType = "ORDER_APPROVED";
     title = `Order #${orderNumber} Approved`;
-    body = `Your order has been approved and is being prepared for fulfillment.`;
+    body = `Your order has been approved.`;
   } else if (newStatus === "Packed") {
     eventType = "ORDER_PACKED";
     title = `Order #${orderNumber} Packed`;
-    body = `Your order is packed and awaiting courier collection.`;
+    body = `Your order has been packed and is ready for dispatch.`;
+  } else if (newStatus === "Out for Delivery") {
+    eventType = "OUT_FOR_DELIVERY";
+    title = `Order #${orderNumber} Out for Delivery`;
+    body = `Your order is out for delivery.`;
+  } else if (newStatus === "Delivered") {
+    eventType = "DELIVERY_COMPLETED";
+    title = `Order #${orderNumber} Delivered`;
+    body = `Your order has been delivered successfully.`;
   } else {
     eventType = "ORDER_CANCELLED";
     title = `Order #${orderNumber} Cancelled`;
-    body = reason ? `Your order was cancelled: ${reason}` : `Your order #${orderNumber} has been cancelled.`;
+    body = reason ? `Your order has been cancelled: ${reason}` : `Your order has been cancelled.`;
   }
 
-  executePushDispatch({
-    eventType,
-    idempotencyKey: `order_status_${newStatus.toLowerCase()}_${orderId}`,
-    target: {
-      userId: customerId,
-      requireOrderOwnership: { orderId, customerId },
-    },
-    payload: {
-      title,
-      body,
-      category: "orders",
-      data: {
-        url: `/orders?orderId=${orderId}`,
-        orderId,
-        type: eventType,
-      },
-    },
-  }).catch((err) => console.error(`[Push Service] Order ${newStatus} customer push notice:`, err));
-
-  if (newStatus === "Cancelled") {
-    executePushDispatch({
-      eventType: "ORDER_CANCELLED",
-      idempotencyKey: `order_cancelled_staff_${orderId}`,
+  // Await the push dispatch to guarantee completion in serverless environments
+  const custResult = await executePushDispatch(
+    {
+      eventType,
+      idempotencyKey: `order_status_${newStatus.toLowerCase().replace(/\s+/g, "_")}_${orderId}`,
       target: {
-        roles: ["admin", "manager"],
+        userId: customerId,
+        requireOrderOwnership: { orderId, customerId },
       },
       payload: {
-        title: `Order #${orderNumber} Cancelled`,
-        body: `Order #${orderNumber} was cancelled. ${reason ? `Reason: ${reason}` : ""}`,
+        title,
+        body,
         category: "orders",
         data: {
-          url: `/manager/orders?orderId=${orderId}`,
+          url: `/account/orders?orderId=${orderId}`,
           orderId,
-          type: "ORDER_CANCELLED",
+          type: eventType,
         },
       },
-    }).catch((err) => console.error("[Push Service] Order cancelled staff push notice:", err));
+    },
+    supabaseClient
+  );
+
+  if (newStatus === "Cancelled") {
+    await executePushDispatch(
+      {
+        eventType: "ORDER_CANCELLED",
+        idempotencyKey: `order_cancelled_staff_${orderId}`,
+        target: {
+          roles: ["admin", "manager"],
+        },
+        payload: {
+          title: `Order #${orderNumber} Cancelled`,
+          body: `Order #${orderNumber} was cancelled. ${reason ? `Reason: ${reason}` : ""}`,
+          category: "orders",
+          data: {
+            url: `/manager/orders?orderId=${orderId}`,
+            orderId,
+            type: "ORDER_CANCELLED",
+          },
+        },
+      },
+      supabaseClient
+    );
   }
+
+  return custResult;
 }
 
 export async function triggerDeliveryAssignedPushInternal(params: {
@@ -1347,27 +1368,27 @@ export async function triggerOutForDeliveryPushInternal(params: {
   orderNumber: string;
   customerId: string;
   driverName?: string;
-}): Promise<void> {
+}): Promise<PushDispatchResult> {
   const { orderId, orderNumber, customerId, driverName } = params;
 
-  executePushDispatch({
+  return await executePushDispatch({
     eventType: "OUT_FOR_DELIVERY",
-    idempotencyKey: `out_for_delivery_${orderId}`,
+    idempotencyKey: `order_status_out_for_delivery_${orderId}`,
     target: {
       userId: customerId,
       requireOrderOwnership: { orderId, customerId },
     },
     payload: {
-      title: `Out for Delivery - #${orderNumber}`,
-      body: `Your order #${orderNumber} is on its way${driverName ? ` with ${driverName}` : ""}!`,
+      title: `Order #${orderNumber} Out for Delivery`,
+      body: `Your order is out for delivery.`,
       category: "deliveries",
       data: {
-        url: `/orders?orderId=${orderId}`,
+        url: `/account/orders?orderId=${orderId}`,
         orderId,
         type: "OUT_FOR_DELIVERY",
       },
     },
-  }).catch((err) => console.error("[Push Service] Out for delivery customer push notice:", err));
+  });
 }
 
 export async function triggerDeliveryCompletedPushInternal(params: {
@@ -1376,31 +1397,32 @@ export async function triggerDeliveryCompletedPushInternal(params: {
   customerId?: string;
   driverId?: string;
   driverName?: string;
-}): Promise<void> {
+}): Promise<PushDispatchResult | { success: boolean }> {
   const { orderId, orderNumber, customerId, driverId, driverName } = params;
 
+  let custResult: PushDispatchResult | null = null;
   if (customerId) {
-    executePushDispatch({
+    custResult = await executePushDispatch({
       eventType: "DELIVERY_COMPLETED",
-      idempotencyKey: `delivery_completed_cust_${orderId}`,
+      idempotencyKey: `order_status_delivered_${orderId}`,
       target: {
         userId: customerId,
         requireOrderOwnership: { orderId, customerId },
       },
       payload: {
-        title: `Delivery Completed - #${orderNumber}`,
-        body: `Your order #${orderNumber} has been successfully delivered. Thank you for choosing John Stayte Services!`,
+        title: `Order #${orderNumber} Delivered`,
+        body: `Your order has been delivered successfully.`,
         category: "deliveries",
         data: {
-          url: `/orders?orderId=${orderId}`,
+          url: `/account/orders?orderId=${orderId}`,
           orderId,
           type: "DELIVERY_COMPLETED",
         },
       },
-    }).catch((err) => console.error("[Push Service] Delivery completed customer push notice:", err));
+    });
   }
 
-  executePushDispatch({
+  await executePushDispatch({
     eventType: "DELIVERY_COMPLETED",
     idempotencyKey: `delivery_completed_staff_${orderId}`,
     target: {
@@ -1416,10 +1438,10 @@ export async function triggerDeliveryCompletedPushInternal(params: {
         type: "DELIVERY_COMPLETED",
       },
     },
-  }).catch((err) => console.error("[Push Service] Delivery completed staff push notice:", err));
+  });
 
   if (driverId) {
-    executePushDispatch({
+    await executePushDispatch({
       eventType: "DELIVERY_COMPLETED",
       idempotencyKey: `delivery_completed_driver_${orderId}_${driverId}`,
       target: {
@@ -1435,8 +1457,10 @@ export async function triggerDeliveryCompletedPushInternal(params: {
           type: "DELIVERY_COMPLETED",
         },
       },
-    }).catch((err) => console.error("[Push Service] Delivery completed driver push notice:", err));
+    });
   }
+
+  return custResult || { success: true };
 }
 
 export async function triggerLowStockAlertPushInternal(params: {
@@ -1581,7 +1605,7 @@ export async function triggerPromotionalOfferPushInternal(params: {
 export async function handleDispatchPushNotification(
   data: DispatchPushNotificationInput,
   supabaseClient?: SupabaseClient<Database>
-): Promise<{ success: boolean; message?: string }> {
+): Promise<{ success: boolean; message?: string; result?: any }> {
   const supabase = supabaseClient || getSupabaseServerClient();
 
   // 1. Authenticate caller if authToken is provided
@@ -1664,9 +1688,22 @@ export async function handleDispatchPushNotification(
 
     case "ORDER_APPROVED":
     case "ORDER_PACKED":
+    case "OUT_FOR_DELIVERY":
+    case "ORDER_DELIVERED":
+    case "DELIVERY_COMPLETED":
     case "ORDER_CANCELLED": {
-      if (!["admin", "manager"].includes(callerRole)) {
-        throw new Error("Unauthorized: only managers and admins can trigger order lifecycle updates");
+      if (!["admin", "manager", "delivery_agent"].includes(callerRole)) {
+        throw new Error("Unauthorized: only managers, admins, and assigned delivery agents can trigger order lifecycle updates");
+      }
+      if (callerRole === "delivery_agent" && callerUserId && data.orderId) {
+        const { data: asgn } = await supabase
+          .from("delivery_assignments")
+          .select("id, agent_id, driver_id")
+          .eq("order_id", data.orderId)
+          .maybeSingle();
+        if (!asgn || (asgn.agent_id !== callerUserId && asgn.driver_id !== callerUserId)) {
+          throw new Error("Unauthorized: delivery agent is not assigned to this order");
+        }
       }
       if (!data.orderId) throw new Error("orderId is required");
       const { data: ord } = await supabase
@@ -1676,18 +1713,22 @@ export async function handleDispatchPushNotification(
         .maybeSingle();
 
       if (!ord || !ord.customer_id) throw new Error("Order or customer not found");
-      let mappedStatus: "Approved" | "Packed" | "Cancelled" = "Approved";
+      let mappedStatus: "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled" = "Approved";
       if (data.eventType === "ORDER_PACKED") mappedStatus = "Packed";
-      if (data.eventType === "ORDER_CANCELLED") mappedStatus = "Cancelled";
+      else if (data.eventType === "OUT_FOR_DELIVERY") mappedStatus = "Out for Delivery";
+      else if (data.eventType === "DELIVERY_COMPLETED" || data.eventType === "ORDER_DELIVERED") mappedStatus = "Delivered";
+      else if (data.eventType === "ORDER_CANCELLED") mappedStatus = "Cancelled";
 
-      await triggerOrderStatusPushInternal({
+      const dispatchResult = await triggerOrderStatusPushInternal({
         orderId: ord.id,
         orderNumber: ord.order_number || ord.id.slice(0, 8),
         customerId: ord.customer_id,
         newStatus: mappedStatus,
         reason: data.reason,
+        driverName: data.driverName,
+        supabaseClient: supabase,
       });
-      return { success: true };
+      return { success: dispatchResult.status === "sent" || dispatchResult.status === "skipped", result: dispatchResult };
     }
 
     case "DELIVERY_ASSIGNED": {
@@ -1709,68 +1750,6 @@ export async function handleDispatchPushNotification(
         driverName: data.driverName,
         deliveryArea: data.deliveryArea,
         deliverySlot: data.deliverySlot,
-      });
-      return { success: true };
-    }
-
-    case "OUT_FOR_DELIVERY": {
-      if (!["admin", "manager", "delivery_agent"].includes(callerRole)) {
-        throw new Error("Unauthorized: delivery role required");
-      }
-      if (!data.orderId) throw new Error("orderId is required");
-      if (callerRole === "delivery_agent" && callerUserId) {
-        const { data: asgn } = await supabase
-          .from("delivery_assignments")
-          .select("id, agent_id, driver_id")
-          .eq("order_id", data.orderId)
-          .maybeSingle();
-        if (!asgn || (asgn.agent_id !== callerUserId && asgn.driver_id !== callerUserId)) {
-          throw new Error("Unauthorized: delivery agent is not assigned to this order");
-        }
-      }
-      const { data: ord } = await supabase
-        .from("orders")
-        .select("id, order_number, customer_id")
-        .eq("id", data.orderId)
-        .maybeSingle();
-
-      if (!ord?.customer_id) throw new Error("Customer not found for order");
-      await triggerOutForDeliveryPushInternal({
-        orderId: ord.id,
-        orderNumber: ord.order_number || ord.id.slice(0, 8),
-        customerId: ord.customer_id,
-        driverName: data.driverName,
-      });
-      return { success: true };
-    }
-
-    case "DELIVERY_COMPLETED": {
-      if (!["admin", "manager", "delivery_agent"].includes(callerRole)) {
-        throw new Error("Unauthorized: delivery role required");
-      }
-      if (!data.orderId) throw new Error("orderId is required");
-      if (callerRole === "delivery_agent" && callerUserId) {
-        const { data: asgn } = await supabase
-          .from("delivery_assignments")
-          .select("id, agent_id, driver_id")
-          .eq("order_id", data.orderId)
-          .maybeSingle();
-        if (!asgn || (asgn.agent_id !== callerUserId && asgn.driver_id !== callerUserId)) {
-          throw new Error("Unauthorized: delivery agent is not assigned to this order");
-        }
-      }
-      const { data: ord } = await supabase
-        .from("orders")
-        .select("id, order_number, customer_id")
-        .eq("id", data.orderId)
-        .maybeSingle();
-
-      await triggerDeliveryCompletedPushInternal({
-        orderId: data.orderId,
-        orderNumber: ord?.order_number || data.orderId.slice(0, 8),
-        customerId: ord?.customer_id || data.customerId,
-        driverId: data.driverId,
-        driverName: data.driverName,
       });
       return { success: true };
     }

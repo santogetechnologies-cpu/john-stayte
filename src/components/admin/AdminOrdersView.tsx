@@ -417,13 +417,20 @@ export function AdminOrdersView() {
         },
       ]);
 
-      if (["Approved", "Packed", "Cancelled"].includes(newStatus)) {
+      const lifecycleStatuses = ["Approved", "Packed", "Out for Delivery", "Delivered", "Cancelled"];
+      if (lifecycleStatuses.includes(newStatus)) {
         triggerOrderStatusPush({
           orderId: order.id,
           orderNumber: String(order.order_number || order.id.slice(0, 8)),
           customerId: order.customer_id,
           newStatus: newStatus as any,
-        }).catch((pushErr) => console.warn("[Admin] Status push notice:", pushErr));
+        }).then((pushRes) => {
+          if (pushRes?.success) {
+            console.log(`[Admin] Push notification dispatched for ${newStatus} on order #${order.order_number}`);
+          }
+        }).catch((pushErr) => {
+          console.error(`[Admin] Push notification dispatch failed for ${newStatus}:`, pushErr);
+        });
       }
 
       toast.success(`Order ${order.order_number} marked as ${newStatus}`);

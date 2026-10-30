@@ -9,7 +9,7 @@ import {
   verifyFirebaseCredentialsServerFn,
   sendTestPushNotificationServerFn,
 } from "./push-notification-server-fn";
-import type { PushPlatform } from "./push-notifications-types";
+import type { PushPlatform, PushEventType } from "./push-notifications-types";
 
 export { verifyFirebaseCredentialsServerFn, sendTestPushNotificationServerFn };
 
@@ -556,25 +556,36 @@ export async function triggerPaymentStatusPush(params: {
   );
 }
 
+export type OrderLifecycleStatus =
+  | "Approved"
+  | "Packed"
+  | "Out for Delivery"
+  | "Delivered"
+  | "Cancelled";
+
 export async function triggerOrderStatusPush(params: {
   orderId: string;
   orderNumber: string;
   customerId: string;
-  newStatus: "Approved" | "Packed" | "Cancelled";
+  newStatus: OrderLifecycleStatus;
   reason?: string;
-}): Promise<void> {
+  driverName?: string;
+}): Promise<{ success: boolean; result?: any; message?: string }> {
   const authToken = await getAuthToken();
-  let eventType: "ORDER_APPROVED" | "ORDER_PACKED" | "ORDER_CANCELLED" = "ORDER_APPROVED";
+  let eventType: PushEventType = "ORDER_APPROVED";
   if (params.newStatus === "Packed") eventType = "ORDER_PACKED";
-  if (params.newStatus === "Cancelled") eventType = "ORDER_CANCELLED";
+  else if (params.newStatus === "Out for Delivery") eventType = "OUT_FOR_DELIVERY";
+  else if (params.newStatus === "Delivered") eventType = "ORDER_DELIVERED";
+  else if (params.newStatus === "Cancelled") eventType = "ORDER_CANCELLED";
 
-  await dispatchPushNotificationServerFn({
+  const res = await dispatchPushNotificationServerFn({
     data: {
       eventType,
       authToken,
       ...params,
     },
   });
+  return res;
 }
 
 export async function triggerDeliveryAssignedPush(params: {

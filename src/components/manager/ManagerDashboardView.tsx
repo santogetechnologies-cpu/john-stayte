@@ -43,6 +43,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { getDeliveryAgents, type DeliveryAgentRecord } from "@/lib/delivery-agent-service";
+import { triggerOrderStatusPush } from "@/lib/push-notifications";
 
 export function ManagerDashboardView() {
   const { user } = useStore();
@@ -173,12 +174,42 @@ export function ManagerDashboardView() {
   const handleApprove = async (orderId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const { error } = await supabase
+      const { data: ord, error: updateErr } = await supabase
         .from("orders")
         .update({ status: "Approved", updated_at: new Date().toISOString() })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .select("id, order_number, customer_id")
+        .maybeSingle();
 
-      if (error) throw error;
+      if (updateErr) throw updateErr;
+
+      // Log status history
+      const { data: authUser } = await supabase.auth.getUser();
+      await supabase.from("order_status_history").insert([
+        {
+          order_id: orderId,
+          status: "Approved",
+          actor_id: authUser?.user?.id || null,
+          created_by: authUser?.user?.id || null,
+          notes: "Status changed to Approved by Manager via Dashboard",
+        },
+      ]);
+
+      if (ord?.customer_id) {
+        triggerOrderStatusPush({
+          orderId: ord.id,
+          orderNumber: String(ord.order_number || ord.id.slice(0, 8)),
+          customerId: ord.customer_id,
+          newStatus: "Approved",
+        }).then((pushRes) => {
+          if (pushRes?.success) {
+            console.log(`[Manager Dashboard] Push notification dispatched for Approved on order #${ord.order_number}`);
+          }
+        }).catch((pushErr) => {
+          console.error("[Manager Dashboard] Push notification dispatch failed:", pushErr);
+        });
+      }
+
       toast.success("Order approved successfully!");
       await loadManagerData();
     } catch (err: any) {

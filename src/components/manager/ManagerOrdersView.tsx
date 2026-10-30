@@ -198,13 +198,20 @@ export function ManagerOrdersView() {
           },
         ]);
 
-        if (["Approved", "Packed", "Cancelled"].includes(newStatus)) {
+        const lifecycleStatuses = ["Approved", "Packed", "Out for Delivery", "Delivered", "Cancelled"];
+        if (lifecycleStatuses.includes(newStatus)) {
           triggerOrderStatusPush({
             orderId: order.id,
             orderNumber: String(order.order_number || order.id.slice(0, 8)),
             customerId: order.customer_id,
             newStatus: newStatus as any,
-          }).catch((pushErr) => console.warn("[Manager] Status push notice:", pushErr));
+          }).then((pushRes) => {
+            if (pushRes?.success) {
+              console.log(`[Manager] Push notification dispatched for ${newStatus} on order #${order.order_number}`);
+            }
+          }).catch((pushErr) => {
+            console.error(`[Manager] Push notification dispatch failed for ${newStatus}:`, pushErr);
+          });
         }
       }
 
