@@ -86,3 +86,9 @@ CREATE TRIGGER trg_set_gas_application_reference
   BEFORE INSERT ON public.gas_customer_applications
   FOR EACH ROW
   EXECUTE FUNCTION public.set_gas_application_reference();
+
+-- 7. Record migration in schema_migrations
+INSERT INTO supabase_migrations.schema_migrations (version, name)
+VALUES ('00091', 'gas_customer_applications_phase1_workflow')
+ON CONFLICT (version) DO NOTHING;
+

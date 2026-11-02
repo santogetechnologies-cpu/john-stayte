@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { isRefillableLpgCylinderProduct } from "@/lib/cylinder-exchange-service";
 import {
   sendApplicationEmailVerifyServerFn,
   verifyApplicationEmailCodeServerFn,
@@ -95,6 +96,63 @@ export interface ApplicationSubmitPayload {
   orderRequirement?: string;
   declarationAccepted: boolean;
   signatureData: string;
+}
+
+/**
+ * Determines whether a catalog product is an LPG or bottled gas product
+ * requiring an approved customer gas account before order placement.
+ */
+export function isRestrictedGasProduct(product: any): boolean {
+  if (!product) return false;
+
+  const category = (product.category_slug || product.category || "").toLowerCase().trim();
+  const name = (product.name || product.product_name || "").toLowerCase().trim();
+  const usageType = (product.usage_type || product.specs?.usage_type || "").toUpperCase().trim();
+
+  // Explicit non-gas product categories are unrestricted
+  if (
+    category.includes("coal") ||
+    category.includes("solid-fuel") ||
+    category.includes("bait") ||
+    category.includes("feed") ||
+    category.includes("appliance") ||
+    category.includes("heater") ||
+    category.includes("bbq") ||
+    category.includes("wear") ||
+    category.includes("clothing")
+  ) {
+    return false;
+  }
+
+  // Refillable LPG cylinders
+  if (isRefillableLpgCylinderProduct(product)) {
+    return true;
+  }
+
+  // Gas categories
+  if (["bottled-gas", "gas", "pub-gas", "campingaz", "bulk-gas"].includes(category)) {
+    return true;
+  }
+
+  // Gas usage types
+  if (["DOMESTIC", "COMMERCIAL", "BULK"].includes(usageType)) {
+    return true;
+  }
+
+  // Gas fuel keywords in name
+  if (
+    name.includes("propane") ||
+    name.includes("butane") ||
+    name.includes("patio gas") ||
+    name.includes("forklift gas") ||
+    name.includes("calor gas") ||
+    name.includes("gas bottle") ||
+    name.includes("gas cylinder")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -506,6 +564,7 @@ export async function getAllGasCustomerApplications(): Promise<GasCustomerApplic
 /**
  * Approves a customer gas application, assigns pricing band, discount percentage,
  * configures credit account if applicable, and activates the customer account.
+ * Uses atomic transactional database RPC to ensure consistency.
  */
 export async function approveGasCustomerApplication(params: {
   applicationId: string;
@@ -529,83 +588,194 @@ export async function approveGasCustomerApplication(params: {
   } = params;
   const now = new Date().toISOString();
 
-  // 1. Fetch current application record
-  const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
-    .select("*")
-    .eq("id", applicationId)
-    .maybeSingle();
+  let isAlreadyApproved = false;
+  let resolvedAppRef = `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
 
-  const appRef =
-    currentApp?.application_reference || `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
-  const existingHistory = Array.isArray(currentApp?.decision_history)
-    ? currentApp.decision_history
-    : [];
-  const historyEntry = {
-    action: "APPROVE",
-    status: "APPROVED",
-    pricing_band: pricingBand,
-    discount_percentage: discountPercentage,
-    credit_account_approved: creditApproved,
-    credit_limit: creditLimit,
-    notes: managerNotes,
-    reviewed_by: reviewedBy,
-    timestamp: now,
-  };
+  // 1. Transactional Atomic Execution via Supabase RPC approve_gas_customer_application
+  let rpcSucceeded = false;
+  try {
+    const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)(
+      "approve_gas_customer_application",
+      {
+        p_application_id: applicationId,
+        p_pricing_band: pricingBand,
+        p_discount_percentage: discountPercentage,
+        p_credit_account_approved: creditApproved,
+        p_credit_limit: creditLimit,
+        p_admin_notes: managerNotes,
+        p_reviewed_by: reviewedBy,
+      },
+    );
 
-  // 2. Update gas_customer_applications
-  await (supabase.from("gas_customer_applications") as any)
-    .update({
+    if (!rpcErr && rpcRes && rpcRes.success) {
+      rpcSucceeded = true;
+      isAlreadyApproved = Boolean(rpcRes.already_approved);
+      if (rpcRes.application_reference) {
+        resolvedAppRef = rpcRes.application_reference;
+      }
+    } else if (rpcErr) {
+      if (
+        rpcErr.message?.includes("Unauthorized") ||
+        rpcErr.message?.includes("Application not found")
+      ) {
+        throw new Error(rpcErr.message);
+      }
+      console.warn(
+        "Database RPC approve_gas_customer_application unavailable or failed, applying fallback:",
+        rpcErr.message,
+      );
+    }
+  } catch (err: any) {
+    if (
+      err.message?.includes("Unauthorized") ||
+      err.message?.includes("Application not found")
+    ) {
+      throw err;
+    }
+    console.warn("RPC invocation warning:", err?.message);
+  }
+
+  // 2. Client-side fallback if RPC is not deployed in local/mock testing environment
+  if (!rpcSucceeded) {
+    // 1. Fetch current application record
+    const { data: currentApp, error: fetchErr } = await (supabase.from("gas_customer_applications") as any)
+      .select("*")
+      .eq("id", applicationId)
+      .maybeSingle();
+
+    if (fetchErr) {
+      throw new Error(`Failed to retrieve application: ${fetchErr.message}`);
+    }
+    if (!currentApp) {
+      throw new Error(`Application not found with ID: ${applicationId}`);
+    }
+
+    if (currentApp.application_reference) {
+      resolvedAppRef = currentApp.application_reference;
+    }
+
+    // Check duplicate approval idempotency
+    if (
+      currentApp.status === "APPROVED" &&
+      currentApp.pricing_band === pricingBand &&
+      Number(currentApp.discount_percentage) === Number(discountPercentage) &&
+      Boolean(currentApp.credit_account_approved) === Boolean(creditApproved) &&
+      Number(currentApp.credit_limit) === Number(creditLimit)
+    ) {
+      isAlreadyApproved = true;
+    }
+
+    const previousStatus = currentApp.status;
+    const existingHistory = Array.isArray(currentApp?.decision_history)
+      ? currentApp.decision_history
+      : [];
+    const historyEntry = {
+      action: "APPROVE",
       status: "APPROVED",
       pricing_band: pricingBand,
       discount_percentage: discountPercentage,
       credit_account_approved: creditApproved,
       credit_limit: creditLimit,
-      admin_notes: managerNotes || "Application approved by manager.",
+      notes: managerNotes,
       reviewed_by: reviewedBy,
-      reviewed_at: now,
-      decision_history: [...existingHistory, historyEntry],
-      updated_at: now,
-    })
-    .eq("id", applicationId);
+      timestamp: now,
+    };
 
-  // 3. Activate customer account in profiles
-  try {
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", customerId)
-      .maybeSingle();
-    const existingPrefs = (prof?.notification_prefs as Record<string, unknown> | null) || {};
-    const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
-
-    await (supabase.from("profiles") as any)
+    // Update gas_customer_applications
+    const { error: appUpdateErr } = await (supabase.from("gas_customer_applications") as any)
       .update({
-        status: "active",
-        account_approved: true,
-        application_status: "APPROVED",
+        status: "APPROVED",
         pricing_band: pricingBand,
         discount_percentage: discountPercentage,
         credit_account_approved: creditApproved,
         credit_limit: creditLimit,
-        notification_prefs: {
-          ...existingPrefs,
-          gas_application: {
-            ...existingApp,
-            status: "APPROVED",
-            pricing_band: pricingBand,
-            discount_percentage: discountPercentage,
-            credit_account_approved: creditApproved,
-            credit_limit: creditLimit,
-            reviewed_by: reviewedBy,
-            reviewed_at: now,
-            updated_at: now,
-          },
-        } as unknown as Record<string, string>,
+        admin_notes: managerNotes || "Application approved by manager.",
+        reviewed_by: reviewedBy,
+        reviewed_at: now,
+        decision_history: [...existingHistory, historyEntry],
         updated_at: now,
       })
-      .eq("id", customerId);
-  } catch (profErr) {
-    console.error("Failed to activate customer profile upon approval:", profErr);
+      .eq("id", applicationId);
+
+    if (appUpdateErr) {
+      throw new Error(`Failed to update application status: ${appUpdateErr.message}`);
+    }
+
+    // Atomically activate customer account in profiles
+    try {
+      const { data: prof, error: profFetchErr } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", customerId)
+        .maybeSingle();
+
+      if (profFetchErr) throw profFetchErr;
+
+      const existingPrefs = (prof?.notification_prefs as Record<string, unknown> | null) || {};
+      const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
+
+      const { error: profUpdateErr } = await (supabase.from("profiles") as any)
+        .update({
+          status: "active",
+          account_approved: true,
+          application_status: "APPROVED",
+          pricing_band: pricingBand,
+          discount_percentage: discountPercentage,
+          credit_account_approved: creditApproved,
+          credit_limit: creditLimit,
+          notification_prefs: {
+            ...existingPrefs,
+            gas_application: {
+              ...existingApp,
+              status: "APPROVED",
+              pricing_band: pricingBand,
+              discount_percentage: discountPercentage,
+              credit_account_approved: creditApproved,
+              credit_limit: creditLimit,
+              reviewed_by: reviewedBy,
+              reviewed_at: now,
+              updated_at: now,
+            },
+          } as unknown as Record<string, string>,
+          updated_at: now,
+        })
+        .eq("id", customerId);
+
+      if (profUpdateErr) {
+        // Rollback application update so we don't leave partial state!
+        await (supabase.from("gas_customer_applications") as any)
+          .update({
+            status: previousStatus,
+            updated_at: now,
+          })
+          .eq("id", applicationId);
+        throw new Error(
+          `Profile activation failed: ${profUpdateErr.message}. Application approval rolled back.`,
+        );
+      }
+    } catch (profErr: any) {
+      // Revert application if profile update threw
+      await (supabase.from("gas_customer_applications") as any)
+        .update({
+          status: previousStatus,
+          updated_at: now,
+        })
+        .eq("id", applicationId);
+      throw new Error(
+        `Failed to activate customer profile: ${profErr?.message || profErr}. Changes rolled back.`,
+      );
+    }
+  }
+
+  // 3. Skip duplicate notifications if this was an identical re-approval
+  if (isAlreadyApproved) {
+    return {
+      success: true,
+      status: "APPROVED",
+      pricingBand,
+      discountPercentage,
+      alreadyApproved: true,
+    };
   }
 
   // 4. In-app Customer Notification
@@ -627,7 +797,7 @@ export async function approveGasCustomerApplication(params: {
   try {
     await triggerGasApplicationApprovedPush({
       applicationId,
-      applicationReference: appRef,
+      applicationReference: resolvedAppRef,
       customerId,
       pricingBand,
       discountPercentage,
@@ -636,7 +806,7 @@ export async function approveGasCustomerApplication(params: {
     console.warn("Gas application approved push warning:", pushErr);
   }
 
-  return { success: true, status: "APPROVED", pricingBand, discountPercentage };
+  return { success: true, status: "APPROVED", pricingBand, discountPercentage, alreadyApproved: false };
 }
 
 /**

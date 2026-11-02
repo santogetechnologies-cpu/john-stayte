@@ -32,6 +32,10 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { isRefillableLpgCylinderProduct } from "@/lib/cylinder-exchange-service";
 import {
+  getCustomerGasApplication,
+  isRestrictedGasProduct,
+} from "@/lib/application-service";
+import {
   sendCheckoutEmailOtp,
   verifyCheckoutEmailOtp,
   checkEmailVerifiedStatus,
@@ -416,7 +420,67 @@ function Checkout() {
       return;
     }
 
-    // 2. Strict Real Email Verification Security Enforcement
+    // 2. Gas Customer Account & Approval Verification for Restricted LPG Products
+    const containsRestrictedGas = lines.some((l) => isRestrictedGasProduct(l.product));
+    if (containsRestrictedGas) {
+      const app = await getCustomerGasApplication(activeAuthUser.id);
+      let isProfileApproved = false;
+      try {
+        const { data: prof } = await (supabase.from("profiles") as any)
+          .select("account_approved, application_status")
+          .eq("id", activeAuthUser.id)
+          .maybeSingle();
+        isProfileApproved = Boolean(prof?.account_approved);
+      } catch (e) {
+        // Non-critical profile query error
+      }
+
+      const isApproved = isProfileApproved || app?.status === "APPROVED";
+
+      if (!isApproved) {
+        if (!app || app.status === "NOT_COMPLETED") {
+          toast.error("Gas Customer Application Required", {
+            description:
+              "Purchasing bottled gas or LPG products requires a completed and approved customer gas application.",
+            action: {
+              label: "Complete Application",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        } else if (app.status === "MORE_INFO_NEEDED") {
+          toast.warning("Additional Information Needed", {
+            description:
+              "Depot manager requested additional details on your gas application before orders can be placed.",
+            action: {
+              label: "Provide Details",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        } else if (app.status === "DECLINED" || app.status === "REJECTED") {
+          toast.error("Gas Customer Application Declined", {
+            description:
+              "Your gas customer application was not approved. Please review your application details.",
+            action: {
+              label: "View Application",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        } else {
+          toast.info("Gas Application Pending Approval", {
+            description:
+              "Your gas customer application is currently awaiting manager review. LPG orders will be unlocked upon approval.",
+            action: {
+              label: "Check Status",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        }
+        navigate({ to: "/account/application" });
+        return;
+      }
+    }
+
+    // 3. Strict Real Email Verification Security Enforcement
     const cleanEmail = email.trim().toLowerCase();
     if (!isEmailVerified || verifiedEmail?.toLowerCase() !== cleanEmail) {
       if (verificationStep !== "OTP_SENT") {
