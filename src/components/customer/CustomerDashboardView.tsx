@@ -373,19 +373,45 @@ export function CustomerDashboardView() {
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0 flex-1">
               <div className="flex items-center gap-2 shrink-0">
-                <Badge className="bg-emerald-100 text-emerald-900 border border-emerald-300/80 font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-none hover:bg-emerald-100">
+                <Badge
+                  className={cn(
+                    "border font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-full shadow-none",
+                    customerApp.status === "APPROVED"
+                      ? "bg-emerald-100 text-emerald-900 border-emerald-300/80"
+                      : customerApp.status === "MORE_INFO_NEEDED"
+                        ? "bg-amber-100 text-amber-900 border-amber-300/80"
+                        : customerApp.status === "DECLINED" || customerApp.status === "REJECTED"
+                          ? "bg-rose-100 text-rose-900 border-rose-300/80"
+                          : "bg-blue-100 text-blue-900 border-blue-300/80",
+                  )}
+                >
                   {customerApp.status === "APPROVED"
                     ? "Application Approved"
-                    : "Application Submitted"}
+                    : customerApp.status === "MORE_INFO_NEEDED"
+                      ? "More Info Needed"
+                      : customerApp.status === "DECLINED" || customerApp.status === "REJECTED"
+                        ? "Application Declined"
+                        : "Awaiting Manager Approval"}
                 </Badge>
                 <span className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight">
-                  Gas application on file
+                  {customerApp.status === "APPROVED"
+                    ? `Active • ${customerApp.pricing_band || "Standard"}`
+                    : customerApp.status === "MORE_INFO_NEEDED"
+                      ? "Manager query awaiting your reply"
+                      : customerApp.status === "DECLINED" || customerApp.status === "REJECTED"
+                        ? "Application review complete"
+                        : "Application pending review"}
                 </span>
               </div>
               <span className="hidden sm:inline text-slate-300 text-xs">·</span>
               <p className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
-                Authorized for cylinder deliveries · Signed{" "}
-                {new Date(customerApp.signed_at).toLocaleDateString("en-GB")}
+                {customerApp.status === "APPROVED"
+                  ? `Authorized for deliveries${customerApp.discount_percentage ? ` · ${customerApp.discount_percentage}% discount` : ""}`
+                  : customerApp.status === "MORE_INFO_NEEDED"
+                    ? "Click View Application to provide requested details"
+                    : customerApp.status === "DECLINED" || customerApp.status === "REJECTED"
+                      ? "Review notes or update and resubmit"
+                      : "Manager approval pending · Submitted " + new Date(customerApp.signed_at).toLocaleDateString("en-GB")}
               </p>
             </div>
           </div>

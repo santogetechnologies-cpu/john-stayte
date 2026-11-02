@@ -3,8 +3,22 @@ import {
   sendApplicationEmailVerifyServerFn,
   verifyApplicationEmailCodeServerFn,
 } from "@/lib/application-email-verify-server-fn";
+import {
+  triggerGasApplicationSubmittedPush,
+  triggerGasApplicationApprovedPush,
+  triggerGasApplicationDeclinedPush,
+  triggerGasApplicationMoreInfoPush,
+  triggerGasApplicationInfoSubmittedPush,
+} from "@/lib/push-notifications";
 
-export type ApplicationStatus = "NOT_COMPLETED" | "SUBMITTED" | "APPROVED" | "REJECTED";
+export type ApplicationStatus =
+  | "NOT_COMPLETED"
+  | "SUBMITTED"
+  | "PENDING"
+  | "MORE_INFO_NEEDED"
+  | "APPROVED"
+  | "DECLINED"
+  | "REJECTED";
 
 export interface GasCustomerApplication {
   id: string;
@@ -20,6 +34,16 @@ export interface GasCustomerApplication {
   billing_address?: string | null;
   preferred_contact_method?: string | null;
   usage_type: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
+  customer_type?: "HOME" | "BUSINESS";
+  has_previous_purchases?: boolean;
+  previous_account_details?: string | null;
+  application_reference?: string;
+  pricing_band?: string | null;
+  discount_percentage?: number | null;
+  credit_account_approved?: boolean | null;
+  credit_limit?: number | null;
+  more_info_requested?: string | null;
+  more_info_response?: string | null;
   // Business fields (for Commercial / Bulk)
   business_name?: string | null;
   business_type?: string | null;
@@ -36,6 +60,8 @@ export interface GasCustomerApplication {
   signed_at: string;
   status: ApplicationStatus;
   admin_notes?: string | null;
+  rejection_reason?: string | null;
+  decision_history?: any[];
   reviewed_by?: string | null;
   reviewed_at?: string | null;
   created_at: string;
@@ -55,6 +81,10 @@ export interface ApplicationSubmitPayload {
   billingAddress?: string;
   preferredContactMethod?: string;
   usageType: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
+  customerType?: "HOME" | "BUSINESS";
+  hasPreviousPurchases?: boolean;
+  previousAccountDetails?: string;
+  applicationReference?: string;
   businessName?: string;
   businessType?: string;
   businessAddress?: string;
@@ -179,6 +209,12 @@ export async function submitGasCustomerApplication(
   }
 
   const now = new Date().toISOString();
+  const rawRef = payload.applicationReference || `JSS-APP-${Date.now().toString().slice(-6)}`;
+  const resolvedCustomerType: "HOME" | "BUSINESS" =
+    payload.customerType ||
+    (usageType === "COMMERCIAL" || usageType === "BULK" ? "BUSINESS" : "HOME");
+  const hasPrevious = Boolean(payload.hasPreviousPurchases);
+  const previousDetails = payload.previousAccountDetails?.trim() || null;
   const appId = `app-${customerId.slice(0, 8)}-${Date.now().toString().slice(-6)}`;
 
   const applicationRecord: GasCustomerApplication = {
@@ -195,6 +231,10 @@ export async function submitGasCustomerApplication(
     billing_address: billingAddress?.trim() || null,
     preferred_contact_method: preferredContactMethod?.trim() || "Phone",
     usage_type: usageType,
+    customer_type: resolvedCustomerType,
+    has_previous_purchases: hasPrevious,
+    previous_account_details: previousDetails,
+    application_reference: rawRef,
     business_name: businessName?.trim() || null,
     business_type: businessType?.trim() || null,
     business_address: businessAddress?.trim() || null,
@@ -207,10 +247,18 @@ export async function submitGasCustomerApplication(
     declaration_accepted: true,
     signature_data: signatureData,
     signed_at: now,
-    status: "SUBMITTED",
+    status: "PENDING",
     admin_notes: null,
     reviewed_by: null,
     reviewed_at: null,
+    decision_history: [
+      {
+        action: "SUBMITTED",
+        status: "PENDING",
+        customer_type: resolvedCustomerType,
+        timestamp: now,
+      },
+    ],
     created_at: now,
     updated_at: now,
   };
@@ -233,6 +281,10 @@ export async function submitGasCustomerApplication(
         billing_address: billingAddress?.trim() || null,
         preferred_contact_method: preferredContactMethod?.trim() || "Phone",
         usage_type: usageType,
+        customer_type: resolvedCustomerType,
+        has_previous_purchases: hasPrevious,
+        previous_account_details: previousDetails,
+        application_reference: rawRef,
         business_name: businessName?.trim() || null,
         business_type: businessType?.trim() || null,
         business_address: businessAddress?.trim() || null,
@@ -245,7 +297,8 @@ export async function submitGasCustomerApplication(
         declaration_accepted: true,
         signature_data: signatureData,
         signed_at: now,
-        status: "SUBMITTED",
+        status: "PENDING",
+        decision_history: applicationRecord.decision_history,
         updated_at: now,
       },
       { onConflict: "customer_id" },
@@ -262,6 +315,7 @@ export async function submitGasCustomerApplication(
   const finalRecord: GasCustomerApplication = savedDbRecord
     ? (savedDbRecord as GasCustomerApplication)
     : applicationRecord;
+  const canonicalRef = finalRecord.application_reference || rawRef;
 
   // 2. Synchronize to customer's profile record in Supabase
   try {
@@ -273,11 +327,11 @@ export async function submitGasCustomerApplication(
 
     const existingPrefs =
       (currentProfile?.notification_prefs as Record<string, unknown> | null) || {};
-    await supabase
-      .from("profiles")
+    await (supabase.from("profiles") as any)
       .update({
         full_name: fullName.trim(),
         phone: phone.trim(),
+        application_status: "PENDING",
         notification_prefs: {
           ...existingPrefs,
           gas_application: finalRecord,
@@ -288,8 +342,6 @@ export async function submitGasCustomerApplication(
   } catch (err) {
     console.error("Failed to update profile with application:", err);
   }
-
-  // Application persisted to public.gas_customer_applications table above
 
   // 4. Update customer_addresses with primary address
   try {
@@ -309,15 +361,15 @@ export async function submitGasCustomerApplication(
     // Non-critical
   }
 
-  // 5. Create Staff & Admin Notification (Broadcast to Admin/Operations Portal)
+  // 5. Create Staff & Manager Notification (Broadcast to Manager/Admin Portal)
   try {
-    const notifLink = `/admin/applications?appId=${finalRecord.id}`;
+    const notifLink = `/manager/applications?appId=${finalRecord.id}`;
 
-    // Idempotency: Avoid duplicate admin notifications on re-submission or retry
+    // Idempotency: Avoid duplicate notifications on re-submission
     const { data: existingStaffNotifs } = await supabase
       .from("notifications")
       .select("id")
-      .or(`link.eq.${notifLink},message.ilike.%Ref: ${finalRecord.id}%`)
+      .or(`link.eq.${notifLink},message.ilike.%Ref: ${canonicalRef}%`)
       .limit(1);
 
     if (!existingStaffNotifs || existingStaffNotifs.length === 0) {
@@ -329,34 +381,42 @@ export async function submitGasCustomerApplication(
         minute: "2-digit",
       });
 
-      const { error: staffNotifErr } = await (supabase.from("notifications") as any).insert([
+      await (supabase.from("notifications") as any).insert([
         {
-          user_id: null, // Broadcast to all authorized staff & admins
-          title: "New Gas Customer Application",
-          message: `A new gas customer application has been submitted and is awaiting review. Customer: ${fullName.trim()} • Ref: ${finalRecord.id} • Status: Pending Review • Submitted: ${submissionTime}`,
+          user_id: null, // Broadcast to all authorized staff & managers
+          title: `New Gas Application: ${resolvedCustomerType}`,
+          message: `New gas application ${canonicalRef} submitted by ${fullName.trim()} (${resolvedCustomerType}). Awaiting manager review • Submitted: ${submissionTime}`,
           category: "Applications",
           link: notifLink,
           read: false,
           is_read: false,
         },
       ]);
-
-      if (staffNotifErr) {
-        console.error("Failed to insert admin application notification:", staffNotifErr);
-      }
     }
   } catch (staffNotifErr) {
-    console.error("Admin notification dispatch notice:", staffNotifErr);
+    console.error("Manager notification dispatch notice:", staffNotifErr);
   }
 
-  // 6. Create Customer Confirmation Notification
+  // 6. Push Notification to Managers & Admins
+  try {
+    await triggerGasApplicationSubmittedPush({
+      applicationId: finalRecord.id,
+      applicationReference: canonicalRef,
+      customerId,
+      customerName: fullName.trim(),
+      customerType: resolvedCustomerType,
+    });
+  } catch (pushErr) {
+    console.warn("Gas application submitted push dispatch notice:", pushErr);
+  }
+
+  // 7. Create Customer Confirmation Notification
   try {
     await supabase.from("customer_notifications").insert([
       {
         user_id: customerId,
         title: "Gas Customer Application Submitted",
-        message:
-          "Your gas customer application has been successfully registered. You may now proceed to order gas cylinders.",
+        message: `Your application (${canonicalRef}) has been received and is pending manager review. We will notify you once your account is approved.`,
         category: "Account",
         is_read: false,
       },
@@ -444,6 +504,437 @@ export async function getAllGasCustomerApplications(): Promise<GasCustomerApplic
 }
 
 /**
+ * Approves a customer gas application, assigns pricing band, discount percentage,
+ * configures credit account if applicable, and activates the customer account.
+ */
+export async function approveGasCustomerApplication(params: {
+  applicationId: string;
+  customerId: string;
+  pricingBand: string;
+  discountPercentage: number;
+  creditApproved?: boolean;
+  creditLimit?: number;
+  managerNotes?: string;
+  reviewedBy?: string;
+}) {
+  const {
+    applicationId,
+    customerId,
+    pricingBand,
+    discountPercentage,
+    creditApproved = false,
+    creditLimit = 0,
+    managerNotes = "",
+    reviewedBy = "Manager",
+  } = params;
+  const now = new Date().toISOString();
+
+  // 1. Fetch current application record
+  const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
+    .select("*")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  const appRef =
+    currentApp?.application_reference || `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
+  const existingHistory = Array.isArray(currentApp?.decision_history)
+    ? currentApp.decision_history
+    : [];
+  const historyEntry = {
+    action: "APPROVE",
+    status: "APPROVED",
+    pricing_band: pricingBand,
+    discount_percentage: discountPercentage,
+    credit_account_approved: creditApproved,
+    credit_limit: creditLimit,
+    notes: managerNotes,
+    reviewed_by: reviewedBy,
+    timestamp: now,
+  };
+
+  // 2. Update gas_customer_applications
+  await (supabase.from("gas_customer_applications") as any)
+    .update({
+      status: "APPROVED",
+      pricing_band: pricingBand,
+      discount_percentage: discountPercentage,
+      credit_account_approved: creditApproved,
+      credit_limit: creditLimit,
+      admin_notes: managerNotes || "Application approved by manager.",
+      reviewed_by: reviewedBy,
+      reviewed_at: now,
+      decision_history: [...existingHistory, historyEntry],
+      updated_at: now,
+    })
+    .eq("id", applicationId);
+
+  // 3. Activate customer account in profiles
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", customerId)
+      .maybeSingle();
+    const existingPrefs = (prof?.notification_prefs as Record<string, unknown> | null) || {};
+    const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
+
+    await (supabase.from("profiles") as any)
+      .update({
+        status: "active",
+        account_approved: true,
+        application_status: "APPROVED",
+        pricing_band: pricingBand,
+        discount_percentage: discountPercentage,
+        credit_account_approved: creditApproved,
+        credit_limit: creditLimit,
+        notification_prefs: {
+          ...existingPrefs,
+          gas_application: {
+            ...existingApp,
+            status: "APPROVED",
+            pricing_band: pricingBand,
+            discount_percentage: discountPercentage,
+            credit_account_approved: creditApproved,
+            credit_limit: creditLimit,
+            reviewed_by: reviewedBy,
+            reviewed_at: now,
+            updated_at: now,
+          },
+        } as unknown as Record<string, string>,
+        updated_at: now,
+      })
+      .eq("id", customerId);
+  } catch (profErr) {
+    console.error("Failed to activate customer profile upon approval:", profErr);
+  }
+
+  // 4. In-app Customer Notification
+  try {
+    await supabase.from("customer_notifications").insert([
+      {
+        user_id: customerId,
+        title: "Gas Application Approved",
+        message: `Your gas application has been approved! Assigned: ${pricingBand} with ${discountPercentage}% discount.${creditApproved ? ` Credit facility approved (£${Number(creditLimit || 0).toFixed(2)} limit).` : ""} You can now place gas orders.`,
+        category: "Account",
+        is_read: false,
+      },
+    ]);
+  } catch (notifErr) {
+    console.warn("Notice inserting customer approval notification:", notifErr);
+  }
+
+  // 5. Customer Push Notification
+  try {
+    await triggerGasApplicationApprovedPush({
+      applicationId,
+      applicationReference: appRef,
+      customerId,
+      pricingBand,
+      discountPercentage,
+    });
+  } catch (pushErr) {
+    console.warn("Gas application approved push warning:", pushErr);
+  }
+
+  return { success: true, status: "APPROVED", pricingBand, discountPercentage };
+}
+
+/**
+ * Declines a customer gas application with a documented reason, keeping decision history.
+ */
+export async function declineGasCustomerApplication(params: {
+  applicationId: string;
+  customerId: string;
+  reason: string;
+  reviewedBy?: string;
+}) {
+  const { applicationId, customerId, reason, reviewedBy = "Manager" } = params;
+  const now = new Date().toISOString();
+
+  const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
+    .select("*")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  const appRef =
+    currentApp?.application_reference || `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
+  const existingHistory = Array.isArray(currentApp?.decision_history)
+    ? currentApp.decision_history
+    : [];
+  const historyEntry = {
+    action: "DECLINE",
+    status: "DECLINED",
+    reason,
+    reviewed_by: reviewedBy,
+    timestamp: now,
+  };
+
+  // 1. Update gas_customer_applications
+  await (supabase.from("gas_customer_applications") as any)
+    .update({
+      status: "DECLINED",
+      rejection_reason: reason,
+      admin_notes: reason,
+      reviewed_by: reviewedBy,
+      reviewed_at: now,
+      decision_history: [...existingHistory, historyEntry],
+      updated_at: now,
+    })
+    .eq("id", applicationId);
+
+  // 2. Prevent account from being treated as approved in profiles
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", customerId)
+      .maybeSingle();
+    const existingPrefs = (prof?.notification_prefs as Record<string, unknown> | null) || {};
+    const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
+
+    await (supabase.from("profiles") as any)
+      .update({
+        account_approved: false,
+        application_status: "DECLINED",
+        notification_prefs: {
+          ...existingPrefs,
+          gas_application: {
+            ...existingApp,
+            status: "DECLINED",
+            rejection_reason: reason,
+            reviewed_by: reviewedBy,
+            reviewed_at: now,
+            updated_at: now,
+          },
+        } as unknown as Record<string, string>,
+        updated_at: now,
+      })
+      .eq("id", customerId);
+  } catch (profErr) {
+    console.error("Failed to update profile upon decline:", profErr);
+  }
+
+  // 3. In-app Customer Notification
+  try {
+    await supabase.from("customer_notifications").insert([
+      {
+        user_id: customerId,
+        title: "Gas Application Update",
+        message: `Your gas application has been declined. Reason: ${reason}. Please contact customer support if you have questions.`,
+        category: "Account",
+        is_read: false,
+      },
+    ]);
+  } catch (notifErr) {
+    console.warn("Notice inserting customer decline notification:", notifErr);
+  }
+
+  // 4. Customer Push Notification
+  try {
+    await triggerGasApplicationDeclinedPush({
+      applicationId,
+      applicationReference: appRef,
+      customerId,
+      reason,
+    });
+  } catch (pushErr) {
+    console.warn("Gas application declined push warning:", pushErr);
+  }
+
+  return { success: true, status: "DECLINED", reason };
+}
+
+/**
+ * Requests more information from the customer for their gas application.
+ */
+export async function requestMoreInfoGasCustomerApplication(params: {
+  applicationId: string;
+  customerId: string;
+  requestedInfo: string;
+  reviewedBy?: string;
+}) {
+  const { applicationId, customerId, requestedInfo, reviewedBy = "Manager" } = params;
+  const now = new Date().toISOString();
+
+  const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
+    .select("*")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  const appRef =
+    currentApp?.application_reference || `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
+  const existingHistory = Array.isArray(currentApp?.decision_history)
+    ? currentApp.decision_history
+    : [];
+  const historyEntry = {
+    action: "MORE_INFO_NEEDED",
+    status: "MORE_INFO_NEEDED",
+    requested_info: requestedInfo,
+    reviewed_by: reviewedBy,
+    timestamp: now,
+  };
+
+  // 1. Update gas_customer_applications
+  await (supabase.from("gas_customer_applications") as any)
+    .update({
+      status: "MORE_INFO_NEEDED",
+      more_info_requested: requestedInfo,
+      admin_notes: requestedInfo,
+      reviewed_by: reviewedBy,
+      reviewed_at: now,
+      decision_history: [...existingHistory, historyEntry],
+      updated_at: now,
+    })
+    .eq("id", applicationId);
+
+  // 2. Update profile
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", customerId)
+      .maybeSingle();
+    const existingPrefs = (prof?.notification_prefs as Record<string, unknown> | null) || {};
+    const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
+
+    await (supabase.from("profiles") as any)
+      .update({
+        application_status: "MORE_INFO_NEEDED",
+        notification_prefs: {
+          ...existingPrefs,
+          gas_application: {
+            ...existingApp,
+            status: "MORE_INFO_NEEDED",
+            more_info_requested: requestedInfo,
+            reviewed_by: reviewedBy,
+            reviewed_at: now,
+            updated_at: now,
+          },
+        } as unknown as Record<string, string>,
+        updated_at: now,
+      })
+      .eq("id", customerId);
+  } catch (profErr) {
+    console.error("Failed to update profile upon more info requested:", profErr);
+  }
+
+  // 3. In-app Customer Notification
+  try {
+    await supabase.from("customer_notifications").insert([
+      {
+        user_id: customerId,
+        title: "Action Required: Gas Application Details Needed",
+        message: `Our depot manager requested additional information for your gas application: "${requestedInfo}". Please review and update your application.`,
+        category: "Account",
+        is_read: false,
+      },
+    ]);
+  } catch (notifErr) {
+    console.warn("Notice inserting more info notification:", notifErr);
+  }
+
+  // 4. Push Notification
+  try {
+    await triggerGasApplicationMoreInfoPush({
+      applicationId,
+      applicationReference: appRef,
+      customerId,
+      moreInfoNeededNotes: requestedInfo,
+    });
+  } catch (pushErr) {
+    console.warn("Gas application more info push warning:", pushErr);
+  }
+
+  return { success: true, status: "MORE_INFO_NEEDED", requestedInfo };
+}
+
+/**
+ * Submits additional requested information back to the manager for review.
+ */
+export async function submitMoreInfoResponse(params: {
+  applicationId: string;
+  customerId: string;
+  responseNotes: string;
+}) {
+  const { applicationId, customerId, responseNotes } = params;
+  const now = new Date().toISOString();
+
+  const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
+    .select("*")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  const appRef =
+    currentApp?.application_reference || `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
+  const existingHistory = Array.isArray(currentApp?.decision_history)
+    ? currentApp.decision_history
+    : [];
+  const historyEntry = {
+    action: "CUSTOMER_RESPONDED",
+    status: "PENDING",
+    response_notes: responseNotes,
+    timestamp: now,
+  };
+
+  // 1. Update gas_customer_applications back to PENDING with customer's response
+  await (supabase.from("gas_customer_applications") as any)
+    .update({
+      status: "PENDING",
+      more_info_response: responseNotes,
+      decision_history: [...existingHistory, historyEntry],
+      updated_at: now,
+    })
+    .eq("id", applicationId);
+
+  // 2. Update profile
+  try {
+    await (supabase.from("profiles") as any)
+      .update({
+        application_status: "PENDING",
+        updated_at: now,
+      })
+      .eq("id", customerId);
+  } catch (profErr) {
+    console.error("Failed to update profile upon customer response:", profErr);
+  }
+
+  // 3. Notify Managers
+  try {
+    await (supabase.from("notifications") as any).insert([
+      {
+        user_id: null, // Broadcast to managers and staff
+        title: "Gas Application Details Provided",
+        message: `Customer provided requested details for application Ref: ${appRef}. Details: "${responseNotes.slice(0, 100)}..."`,
+        category: "Applications",
+        link: `/manager/applications?appId=${applicationId}`,
+        is_read: false,
+      },
+    ]);
+  } catch (notifErr) {
+    console.warn("Notice inserting manager notification for more info response:", notifErr);
+  }
+
+  // 4. Manager Push Notification
+  try {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", customerId)
+      .maybeSingle();
+    await triggerGasApplicationInfoSubmittedPush({
+      applicationId,
+      applicationReference: appRef,
+      customerId,
+      customerName: prof?.full_name || currentApp?.full_name || "Applicant",
+    });
+  } catch (pushErr) {
+    console.warn("Gas application info submitted push warning:", pushErr);
+  }
+
+  return { success: true, status: "PENDING" };
+}
+
+/**
  * Updates application status (Approve / Reject / Add Notes) from Admin portal.
  */
 export async function updateGasApplicationStatus(params: {
@@ -452,17 +943,62 @@ export async function updateGasApplicationStatus(params: {
   status: ApplicationStatus;
   adminNotes?: string;
   reviewedBy?: string;
+  pricingBand?: string;
+  discountPercentage?: number;
+  creditApproved?: boolean;
+  creditLimit?: number;
 }) {
-  const { customerId, status, adminNotes = "", reviewedBy = "Admin" } = params;
+  const {
+    applicationId,
+    customerId,
+    status,
+    adminNotes = "",
+    reviewedBy = "Admin",
+    pricingBand = "Standard Domestic",
+    discountPercentage = 0,
+    creditApproved = false,
+    creditLimit = 0,
+  } = params;
+
+  if (status === "APPROVED") {
+    return approveGasCustomerApplication({
+      applicationId,
+      customerId,
+      pricingBand,
+      discountPercentage,
+      creditApproved,
+      creditLimit,
+      managerNotes: adminNotes,
+      reviewedBy,
+    });
+  }
+
+  if (status === "DECLINED" || status === "REJECTED") {
+    return declineGasCustomerApplication({
+      applicationId,
+      customerId,
+      reason: adminNotes || "Application details do not meet criteria.",
+      reviewedBy,
+    });
+  }
+
+  if (status === "MORE_INFO_NEEDED") {
+    return requestMoreInfoGasCustomerApplication({
+      applicationId,
+      customerId,
+      requestedInfo: adminNotes || "Additional details required.",
+      reviewedBy,
+    });
+  }
+
   const now = new Date().toISOString();
 
-  // 1. Update in dedicated gas_customer_applications table
+  // Update in dedicated gas_customer_applications table
   try {
     await (supabase.from("gas_customer_applications") as any)
       .update({
         status,
         admin_notes: adminNotes,
-        rejection_reason: status === "REJECTED" ? adminNotes : null,
         reviewed_by: reviewedBy,
         reviewed_at: now,
         updated_at: now,
@@ -470,104 +1006,6 @@ export async function updateGasApplicationStatus(params: {
       .eq("customer_id", customerId);
   } catch (e) {
     // Non-critical fallback
-  }
-
-  // 2. Update in customer's profile
-  try {
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("notification_prefs")
-      .eq("id", customerId)
-      .maybeSingle();
-
-    if (prof) {
-      const existingPrefs = (prof.notification_prefs as Record<string, unknown> | null) || {};
-      const existingApp = (existingPrefs.gas_application as Record<string, unknown> | null) || {};
-      const updatedApp = {
-        ...existingApp,
-        status,
-        admin_notes: adminNotes,
-        reviewed_by: reviewedBy,
-        reviewed_at: now,
-        updated_at: now,
-      };
-
-      await supabase
-        .from("profiles")
-        .update({
-          notification_prefs: {
-            ...existingPrefs,
-            gas_application: updatedApp,
-          } as unknown as Record<string, string>,
-          updated_at: now,
-        })
-        .eq("id", customerId);
-    }
-  } catch (e) {
-    console.error("Failed to update application in profile:", e);
-  }
-
-  // 3. Update in cms_content_blocks container
-  try {
-    const sectionKey = `gas_app_${customerId}`;
-    const { data: existing } = await supabase
-      .from("cms_content_blocks")
-      .select("content")
-      .eq("section_key", sectionKey)
-      .maybeSingle();
-
-    if (existing?.content) {
-      try {
-        const parsed = JSON.parse(existing.content);
-        parsed.status = status;
-        parsed.admin_notes = adminNotes;
-        parsed.reviewed_by = reviewedBy;
-        parsed.reviewed_at = now;
-        parsed.updated_at = now;
-
-        await supabase.from("cms_content_blocks").upsert({
-          section_key: sectionKey,
-          title: `Gas Application: ${parsed.full_name} (${parsed.usage_type})`,
-          content: JSON.stringify(parsed),
-          updated_at: now,
-        });
-      } catch (e) {
-        // ignore
-      }
-    }
-  } catch (e) {
-    // Non-critical
-  }
-
-  // 3. Notify customer of status change
-  try {
-    const notifTitle =
-      status === "APPROVED"
-        ? "Gas Application Approved"
-        : status === "REJECTED"
-          ? "Gas Application Rejected"
-          : "Gas Application Status Updated";
-
-    const notifMessage =
-      status === "APPROVED"
-        ? "Your gas application has been approved. You can now place gas orders."
-        : status === "REJECTED"
-          ? adminNotes
-            ? `Your gas application has been rejected. Reason: ${adminNotes}`
-            : "Your gas application has been rejected. Please review and update your application details."
-          : `Your gas customer application has been marked as ${status} by John Stayte Services.`;
-
-    await supabase.from("customer_notifications").insert([
-      {
-        user_id: customerId,
-        title: notifTitle,
-        message: notifMessage,
-        category: "Account",
-        is_read: false,
-      },
-    ]);
-  } catch (e) {
-    // Non-critical
   }
 
   return { success: true, status };

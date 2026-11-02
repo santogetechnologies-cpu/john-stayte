@@ -12,13 +12,23 @@ import {
   Loader2,
   XCircle,
   RefreshCw,
+  HelpCircle,
+  Send,
+  CreditCard,
+  Percent,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
-import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
+import {
+  getCustomerGasApplication,
+  submitMoreInfoResponse,
+  GasCustomerApplication,
+} from "@/lib/application-service";
 import { GasCustomerApplicationForm } from "./GasCustomerApplicationForm";
 
 export function CustomerApplicationView() {
@@ -26,6 +36,8 @@ export function CustomerApplicationView() {
   const [application, setApplication] = useState<GasCustomerApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [moreInfoResponseText, setMoreInfoResponseText] = useState("");
+  const [submittingResponse, setSubmittingResponse] = useState(false);
 
   const loadApplication = useCallback(async () => {
     setLoading(true);
@@ -67,6 +79,33 @@ export function CustomerApplicationView() {
       supabase.removeChannel(channel);
     };
   }, [loadApplication]);
+
+  const handleSendMoreInfoResponse = async () => {
+    if (!application || !moreInfoResponseText.trim()) {
+      toast.error("Please enter the requested information before submitting.");
+      return;
+    }
+    setSubmittingResponse(true);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const activeUid = authData?.user?.id || user?.id;
+      if (!activeUid) throw new Error("Authentication required.");
+
+      await submitMoreInfoResponse({
+        applicationId: application.id,
+        customerId: activeUid,
+        responseNotes: moreInfoResponseText.trim(),
+      });
+
+      toast.success("Additional information submitted to manager for review!");
+      setMoreInfoResponseText("");
+      await loadApplication();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit information to manager.");
+    } finally {
+      setSubmittingResponse(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -114,9 +153,14 @@ export function CustomerApplicationView() {
     );
   }
 
-  // Case 2: Application is SUBMITTED, APPROVED, or REJECTED -> render read-only summary & signature
+  // Case 2: Application is SUBMITTED, PENDING, MORE_INFO_NEEDED, APPROVED, or DECLINED -> render read-only summary & signature
   const isApproved = application.status === "APPROVED";
-  const isRejected = application.status === "REJECTED";
+  const isMoreInfoNeeded = application.status === "MORE_INFO_NEEDED";
+  const isDeclined = application.status === "DECLINED" || application.status === "REJECTED";
+  const isPending =
+    application.status === "PENDING" ||
+    application.status === "SUBMITTED" ||
+    (!isApproved && !isMoreInfoNeeded && !isDeclined);
 
   return (
     <div className="space-y-6 text-left">
@@ -130,18 +174,33 @@ export function CustomerApplicationView() {
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className="bg-emerald-700 text-white font-black text-[10px] uppercase">
-                  Verified & Approved
+                  Account Approved &amp; Active
                 </Badge>
-                <span className="text-[11px] text-emerald-800 font-bold">
-                  Signed on {new Date(application.signed_at).toLocaleDateString("en-GB")}
-                </span>
+                {application.pricing_band && (
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-800 font-extrabold text-[10px]">
+                    <Tag className="h-3 w-3 mr-1" />
+                    {application.pricing_band}
+                  </Badge>
+                )}
+                {typeof application.discount_percentage === "number" && application.discount_percentage > 0 && (
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-800 font-extrabold text-[10px]">
+                    <Percent className="h-3 w-3 mr-1" />
+                    {application.discount_percentage}% Discount
+                  </Badge>
+                )}
+                {application.credit_account_approved && (
+                  <Badge variant="outline" className="border-emerald-300 text-emerald-800 font-extrabold text-[10px]">
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Credit Approved (£{Number(application.credit_limit || 0).toFixed(2)})
+                  </Badge>
+                )}
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
-                Gas Customer Application Active
+                Customer Account Activated
               </h2>
               <p className="text-xs sm:text-sm text-emerald-900">
-                Your gas customer onboarding is verified and approved. You are authorized to order
-                domestic, commercial and bulk gas cylinders.
+                Your gas onboarding application has been verified and approved by the depot manager.
+                You are authorized to purchase cylinders with your assigned account pricing band.
               </p>
             </div>
           </div>
@@ -149,7 +208,7 @@ export function CustomerApplicationView() {
           <div className="flex items-center gap-2.5 shrink-0 self-stretch sm:self-auto">
             <Button
               asChild
-              className="w-full sm:w-auto rounded-full px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs shadow-md gap-2"
+              className="w-full sm:w-auto rounded-full px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs shadow-md gap-2 cursor-pointer"
             >
               <Link to="/order-gas">
                 <PackagePlus className="h-4 w-4" />
@@ -158,7 +217,77 @@ export function CustomerApplicationView() {
             </Button>
           </div>
         </div>
-      ) : isRejected ? (
+      ) : isMoreInfoNeeded ? (
+        <div className="rounded-3xl border border-amber-300 bg-amber-50/90 p-6 sm:p-8 space-y-5 shadow-xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <HelpCircle className="h-6 w-6 stroke-[2.5]" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="bg-amber-600 text-white font-black text-[10px] uppercase">
+                    Action Required • More Information Needed
+                  </Badge>
+                  <span className="text-[11px] text-amber-900 font-bold">
+                    Ref: {application.application_reference || application.id}
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
+                  Additional Details Requested by Manager
+                </h2>
+                <p className="text-xs sm:text-sm text-amber-950 font-medium">
+                  {application.more_info_requested ||
+                    application.admin_notes ||
+                    "Our manager requested additional clarification or documentation before approving your application."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Interactive Customer Reply Form */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-amber-200 space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Send className="h-3.5 w-3.5 text-primary" />
+                Provide Requested Details to Manager
+              </label>
+              <p className="text-[11px] text-slate-500">
+                Please enter the requested details, answers, or premises information below:
+              </p>
+            </div>
+            <Textarea
+              rows={3}
+              value={moreInfoResponseText}
+              onChange={(e) => setMoreInfoResponseText(e.target.value)}
+              placeholder="Type your response here (e.g. cylinder storage photos confirmed, previous account reference JSS-12345, business trading name details...)"
+              className="text-xs bg-slate-50 border-slate-300 focus:bg-white resize-y"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <span className="text-[11px] text-slate-400">
+                Submitting this response will update your application back to Pending Review.
+              </span>
+              <Button
+                onClick={handleSendMoreInfoResponse}
+                disabled={submittingResponse || !moreInfoResponseText.trim()}
+                className="rounded-full px-5 py-2 text-xs font-black bg-primary hover:bg-primary/90 text-white shadow-sm gap-1.5 cursor-pointer"
+              >
+                {submittingResponse ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Submitting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Submit to Manager</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : isDeclined ? (
         <div className="rounded-3xl border border-rose-200 bg-rose-50/90 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-xs">
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -167,18 +296,19 @@ export function CustomerApplicationView() {
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className="bg-rose-700 text-white font-black text-[10px] uppercase">
-                  Update Required / Rejected
+                  Application Declined
                 </Badge>
                 <span className="text-[11px] text-rose-800 font-bold">
                   Submitted {new Date(application.signed_at).toLocaleDateString("en-GB")}
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
-                Application Requires Attention
+                Application Not Approved
               </h2>
               <p className="text-xs sm:text-sm text-rose-900 font-medium">
-                {application.admin_notes ||
-                  "Our Gloucestershire depot team requested updates on your onboarding application before cylinder deliveries can proceed."}
+                {application.rejection_reason ||
+                  application.admin_notes ||
+                  "Our Gloucestershire depot team reviewed your application and determined it does not meet our supply or delivery criteria."}
               </p>
             </div>
           </div>
@@ -189,7 +319,7 @@ export function CustomerApplicationView() {
               className="w-full sm:w-auto rounded-full px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs shadow-md gap-2 cursor-pointer"
             >
               <RefreshCw className="h-4 w-4" />
-              <span>Update & Resubmit</span>
+              <span>Update &amp; Resubmit</span>
             </Button>
           </div>
         </div>
@@ -202,32 +332,27 @@ export function CustomerApplicationView() {
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge className="bg-blue-700 text-white font-black text-[10px] uppercase">
-                  Application Submitted
+                  Application Pending Manager Review
                 </Badge>
                 <span className="text-[11px] text-blue-800 font-bold">
-                  Signed on {new Date(application.signed_at).toLocaleDateString("en-GB")}
+                  Ref: {application.application_reference || application.id}
                 </span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-display">
-                Application Under Review
+                Approval Pending
               </h2>
-              <p className="text-xs sm:text-sm text-blue-900">
-                Your gas customer onboarding application has been received and is being verified by
-                our depot team.
+              <p className="text-xs sm:text-sm text-blue-900 leading-relaxed max-w-xl">
+                Your gas application has been received and is currently under review by our depot manager.
+                Once your account is approved and assigned a pricing band, full ordering access will be activated.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0 self-stretch sm:self-auto">
-            <Button
-              asChild
-              className="w-full sm:w-auto rounded-full px-6 py-2.5 bg-primary hover:bg-primary/90 text-white font-extrabold text-xs shadow-md gap-2"
-            >
-              <Link to="/order-gas">
-                <PackagePlus className="h-4 w-4" />
-                <span>Order Gas</span>
-              </Link>
-            </Button>
+            <Badge variant="outline" className="px-4 py-2 text-xs font-bold text-blue-800 border-blue-300 bg-white">
+              <Clock className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
+              Awaiting Approval
+            </Badge>
           </div>
         </div>
       )}
@@ -239,18 +364,40 @@ export function CustomerApplicationView() {
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
               Application Reference
             </span>
-            <p className="text-base font-black text-slate-900 font-mono">#{application.id}</p>
+            <p className="text-base font-black text-slate-900 font-mono">
+              #{application.application_reference || application.id}
+            </p>
           </div>
           <div className="text-right">
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
               Classification
             </span>
-            <p className="text-sm font-black text-primary">{application.usage_type} LPG</p>
+            <p className="text-sm font-black text-primary">
+              {application.customer_type || (application.usage_type === "COMMERCIAL" ? "BUSINESS" : "HOME")} • {application.usage_type} LPG
+            </p>
           </div>
         </div>
 
         {/* Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-xs sm:text-sm">
+          <div className="space-y-1">
+            <span className="text-slate-500 font-medium">Customer Type:</span>
+            <p className="font-extrabold text-slate-900">
+              {application.customer_type === "BUSINESS" ? "🏢 Business / Commercial" : "🏠 Domestic Home"}
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-slate-500 font-medium">Previous Customer:</span>
+            <p className="font-extrabold text-slate-900">
+              {application.has_previous_purchases ? "Yes (Purchased Previously)" : "No (New Customer)"}
+            </p>
+            {application.previous_account_details && (
+              <p className="text-[11px] text-slate-600 font-mono">
+                Ref: {application.previous_account_details}
+              </p>
+            )}
+          </div>
           <div className="space-y-1">
             <span className="text-slate-500 font-medium">Customer Name:</span>
             <p className="font-extrabold text-slate-900">{application.full_name}</p>

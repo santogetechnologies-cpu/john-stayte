@@ -47,8 +47,13 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   getAllGasCustomerApplications,
+  approveGasCustomerApplication,
+  declineGasCustomerApplication,
+  requestMoreInfoGasCustomerApplication,
   updateGasApplicationStatus,
   GasCustomerApplication,
   ApplicationStatus,
@@ -69,8 +74,16 @@ export function AdminApplicationsView() {
 
   // Approval & Rejection Confirmation Dialogs
   const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [pricingBand, setPricingBand] = useState("Standard Domestic");
+  const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [creditApproved, setCreditApproved] = useState(false);
+  const [creditLimit, setCreditLimit] = useState<number>(500);
+
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  const [moreInfoModalOpen, setMoreInfoModalOpen] = useState(false);
+  const [requestedInfoText, setRequestedInfoText] = useState("");
 
   const loadApplications = async () => {
     setLoading(true);
@@ -150,7 +163,14 @@ export function AdminApplicationsView() {
   const handleOpenDetails = (app: GasCustomerApplication) => {
     setSelectedApp(app);
     setAdminNotes(app.admin_notes || "");
-    setRejectionReason(app.admin_notes || "");
+    setRejectionReason(app.rejection_reason || app.admin_notes || "");
+    setRequestedInfoText(app.more_info_requested || "");
+    const isBusiness =
+      app.customer_type === "BUSINESS" || app.usage_type === "COMMERCIAL" || app.usage_type === "BULK";
+    setPricingBand(app.pricing_band || (isBusiness ? "Commercial Trade (Band B)" : "Standard Domestic"));
+    setDiscountPercentage(app.discount_percentage || (isBusiness ? 5 : 0));
+    setCreditApproved(Boolean(app.credit_account_approved));
+    setCreditLimit(app.credit_limit || (isBusiness ? 1000 : 500));
     setModalOpen(true);
   };
 
@@ -161,11 +181,14 @@ export function AdminApplicationsView() {
       const { data: authData } = await supabase.auth.getUser();
       const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
 
-      await updateGasApplicationStatus({
+      await approveGasCustomerApplication({
         applicationId: selectedApp.id,
         customerId: selectedApp.customer_id,
-        status: "APPROVED",
-        adminNotes: adminNotes.trim(),
+        pricingBand,
+        discountPercentage: Number(discountPercentage) || 0,
+        creditApproved,
+        creditLimit: creditApproved ? Number(creditLimit) || 0 : 0,
+        managerNotes: adminNotes.trim(),
         reviewedBy: adminName,
       });
 
@@ -192,21 +215,51 @@ export function AdminApplicationsView() {
       const finalReason =
         rejectionReason.trim() || adminNotes.trim() || "Application details require verification.";
 
-      await updateGasApplicationStatus({
+      await declineGasCustomerApplication({
         applicationId: selectedApp.id,
         customerId: selectedApp.customer_id,
-        status: "REJECTED",
-        adminNotes: finalReason,
+        reason: finalReason,
         reviewedBy: adminName,
       });
 
-      toast.success(`Application for ${selectedApp.full_name} rejected.`);
+      toast.success(`Application for ${selectedApp.full_name} declined.`);
       setRejectModalOpen(false);
       setModalOpen(false);
       await loadApplications();
     } catch (err: unknown) {
       toast.error(
-        "Failed to reject application: " + (err instanceof Error ? err.message : "Error"),
+        "Failed to decline application: " + (err instanceof Error ? err.message : "Error"),
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleConfirmMoreInfo = async () => {
+    if (!selectedApp) return;
+    if (!requestedInfoText.trim()) {
+      toast.error("Please specify what additional information is needed.");
+      return;
+    }
+    setUpdating(true);
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
+
+      await requestMoreInfoGasCustomerApplication({
+        applicationId: selectedApp.id,
+        customerId: selectedApp.customer_id,
+        requestedInfo: requestedInfoText.trim(),
+        reviewedBy: adminName,
+      });
+
+      toast.success(`More information requested for ${selectedApp.full_name}. Customer notified.`);
+      setMoreInfoModalOpen(false);
+      setModalOpen(false);
+      await loadApplications();
+    } catch (err: unknown) {
+      toast.error(
+        "Failed to request more info: " + (err instanceof Error ? err.message : "Error"),
       );
     } finally {
       setUpdating(false);
@@ -653,10 +706,20 @@ export function AdminApplicationsView() {
                         type="button"
                         variant="outline"
                         disabled={updating}
+                        onClick={() => setMoreInfoModalOpen(true)}
+                        className="flex-1 sm:flex-none rounded-full text-amber-700 border-amber-300 hover:bg-amber-50 text-xs font-bold cursor-pointer"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1 text-amber-600" /> More Info Needed
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={updating}
                         onClick={() => setRejectModalOpen(true)}
                         className="flex-1 sm:flex-none rounded-full text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 text-xs font-bold cursor-pointer"
                       >
-                        <XCircle className="h-3.5 w-3.5 mr-1" /> Reject Application
+                        <XCircle className="h-3.5 w-3.5 mr-1" /> Decline Application
                       </Button>
 
                       <Button
@@ -678,8 +741,8 @@ export function AdminApplicationsView() {
 
       {/* 5. APPROVE CONFIRMATION DIALOG */}
       <Dialog open={approveModalOpen} onOpenChange={setApproveModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200 shadow-xl text-left">
-          <DialogHeader className="space-y-2.5">
+        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200 shadow-xl text-left space-y-4">
+          <DialogHeader className="space-y-2">
             <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-600 flex items-center justify-center">
               <CheckCircle2 className="h-5 w-5 stroke-[2.5]" />
             </div>
@@ -687,14 +750,66 @@ export function AdminApplicationsView() {
               Approve gas customer application?
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
-              This will approve{" "}
-              <span className="font-bold text-slate-800">{selectedApp?.full_name}</span>'s
-              application. They will receive an instant notification and be authorized to place
-              cylinder orders.
+              Assign pricing band, applicable discount, and credit facilities to activate{" "}
+              <span className="font-bold text-slate-800">{selectedApp?.full_name}</span>'s account.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="flex sm:justify-end gap-2 pt-4">
+          <div className="space-y-3 text-xs">
+            <div className="space-y-1">
+              <Label className="font-bold text-slate-800">Pricing Band *</Label>
+              <Select value={pricingBand} onValueChange={setPricingBand}>
+                <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50 border-slate-300 font-bold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Standard Domestic">Standard Domestic</SelectItem>
+                  <SelectItem value="High Volume Domestic (Band A)">High Volume Domestic (Band A)</SelectItem>
+                  <SelectItem value="Commercial Trade (Band B)">Commercial Trade (Band B)</SelectItem>
+                  <SelectItem value="Hospitality & Catering (Band C)">Hospitality &amp; Catering (Band C)</SelectItem>
+                  <SelectItem value="Industrial & Agricultural (Band D)">Industrial &amp; Agricultural (Band D)</SelectItem>
+                  <SelectItem value="Bulk LPG Propane (Band E)">Bulk LPG Propane (Band E)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="font-bold text-slate-800">Discount Percentage (%)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={50}
+                value={discountPercentage}
+                onChange={(e) => setDiscountPercentage(Number(e.target.value))}
+                className="h-9 text-xs bg-slate-50 border-slate-300 rounded-xl"
+              />
+            </div>
+
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-extrabold text-xs text-slate-900">Credit Account Facility</p>
+                  <p className="text-[10px] text-slate-500">Enable 30-day invoice credit</p>
+                </div>
+                <Switch checked={creditApproved} onCheckedChange={setCreditApproved} />
+              </div>
+              {creditApproved && (
+                <div className="space-y-1 pt-1">
+                  <Label className="font-bold text-slate-800">Credit Limit (£ GBP)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={creditLimit}
+                    onChange={(e) => setCreditLimit(Number(e.target.value))}
+                    className="h-8 text-xs bg-white border-slate-300 rounded-xl"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter className="flex sm:justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
@@ -714,6 +829,58 @@ export function AdminApplicationsView() {
             >
               {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Confirm Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 6. MORE INFO CONFIRMATION DIALOG */}
+      <Dialog open={moreInfoModalOpen} onOpenChange={setMoreInfoModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl p-6 bg-white border border-slate-200 shadow-xl text-left space-y-3">
+          <DialogHeader className="space-y-2">
+            <div className="h-10 w-10 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <DialogTitle className="font-display font-extrabold text-lg text-slate-900">
+              Request more information?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium leading-relaxed">
+              Specify what additional clarification or documentation is required from{" "}
+              <span className="font-bold text-slate-800">{selectedApp?.full_name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-700">Missing Information / Request *</Label>
+            <Textarea
+              rows={3}
+              value={requestedInfoText}
+              onChange={(e) => setRequestedInfoText(e.target.value)}
+              placeholder="e.g. Please clarify cylinder cage storage accessibility..."
+              className="rounded-xl text-xs"
+            />
+          </div>
+
+          <DialogFooter className="flex sm:justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={updating}
+              onClick={() => setMoreInfoModalOpen(false)}
+              className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 h-9 px-4 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={updating || !requestedInfoText.trim()}
+              onClick={handleConfirmMoreInfo}
+              className="rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white h-9 px-4 gap-1.5 cursor-pointer shadow-xs shadow-amber-200"
+            >
+              {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Send Request
             </Button>
           </DialogFooter>
         </DialogContent>

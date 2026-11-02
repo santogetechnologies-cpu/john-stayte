@@ -22,7 +22,12 @@ export type PushEventType =
   | "NEW_CUSTOMER_REGISTRATION"
   | "DRIVER_OPERATIONAL_UPDATE"
   | "ADMIN_ALERT"
-  | "PROMOTIONAL_OFFER";
+  | "PROMOTIONAL_OFFER"
+  | "GAS_APPLICATION_SUBMITTED"
+  | "GAS_APPLICATION_APPROVED"
+  | "GAS_APPLICATION_DECLINED"
+  | "GAS_APPLICATION_MORE_INFO"
+  | "GAS_APPLICATION_INFO_SUBMITTED";
 
 export interface PushNotificationPayload {
   title: string;
@@ -118,5 +123,11 @@ export interface DispatchPushNotificationInput {
   linkUrl?: string;
   itemCount?: number;
   totalFormatted?: string;
+  applicationId?: string;
+  applicationReference?: string;
+  customerType?: string;
+  pricingBand?: string;
+  discountPercentage?: number;
+  moreInfoNeededNotes?: string;
 }
 

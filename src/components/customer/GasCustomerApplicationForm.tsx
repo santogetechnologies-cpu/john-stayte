@@ -87,8 +87,14 @@ export function GasCustomerApplicationForm({
   const [billingAddress, setBillingAddress] = useState("");
 
   // =========================================================================
-  // SECTION 3: GAS USAGE
+  // SECTION 3: GAS USAGE & CUSTOMER CLASSIFICATION
   // =========================================================================
+  const [customerType, setCustomerType] = useState<"HOME" | "BUSINESS">(
+    initialUsage === "COMMERCIAL" || initialUsage === "BULK" ? "BUSINESS" : "HOME",
+  );
+  const [hasPreviousPurchases, setHasPreviousPurchases] = useState(false);
+  const [previousAccountDetails, setPreviousAccountDetails] = useState("");
+
   const [selectedUsages, setSelectedUsages] = useState<Array<"DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS">>([
     initialUsage || "DOMESTIC",
   ]);
@@ -321,7 +327,9 @@ export function GasCustomerApplicationForm({
   };
 
   const isCommercialOrBulk =
-    selectedUsages.includes("COMMERCIAL") || selectedUsages.includes("BULK");
+    customerType === "BUSINESS" ||
+    selectedUsages.includes("COMMERCIAL") ||
+    selectedUsages.includes("BULK");
 
   // Set up canvas drawing on mount
   useEffect(() => {
@@ -660,6 +668,11 @@ export function GasCustomerApplicationForm({
       .filter(Boolean)
       .join(" | ");
 
+    if (customerType === "BUSINESS" && !businessName.trim()) {
+      toast.error("Business name is required for Business customer applications.");
+      return;
+    }
+
     // Signature data payload
     const signatureData = finalSignatureData;
 
@@ -678,6 +691,9 @@ export function GasCustomerApplicationForm({
         billingAddress: hasDifferentBilling && billingAddress.trim() ? billingAddress.trim() : undefined,
         preferredContactMethod,
         usageType: primaryUsageCategory,
+        customerType,
+        hasPreviousPurchases,
+        previousAccountDetails: hasPreviousPurchases ? previousAccountDetails.trim() : undefined,
         businessName: businessName.trim() || undefined,
         businessType: businessType.trim() || undefined,
         businessAddress: businessAddress.trim() || undefined,
@@ -690,7 +706,7 @@ export function GasCustomerApplicationForm({
         signatureData,
       });
 
-      toast.success("Gas Customer Application submitted successfully!");
+      toast.success("Gas Customer Application submitted successfully! Status: Pending Approval.");
       if (onSuccess) {
         onSuccess(savedApp);
       }
@@ -980,24 +996,147 @@ export function GasCustomerApplicationForm({
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 3: GAS USAGE (MULTI-SELECT SUPPORTED) */}
+      {/* SECTION 3: GAS USAGE & APPLICATION CLASSIFICATION */}
       {/* ========================================================================= */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
           <div>
             <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
               <span className="flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-primary text-xs font-black">
                 3
               </span>
-              <Flame className="h-4 w-4 text-primary" /> Gas Usage
+              <Flame className="h-4 w-4 text-primary" /> Customer Classification &amp; Gas Requirements
             </h3>
             <p className="text-[11px] text-slate-500 font-medium">
-              Select all classifications that apply to your account (Multi-select enabled)
+              Specify your account category, household or business requirements, and previous supply history.
             </p>
           </div>
           <Badge variant="outline" className="text-[10px] font-bold text-slate-600">
-            {selectedUsages.length} Selected
+            {customerType === "HOME" ? "Home Account" : "Business Account"}
           </Badge>
+        </div>
+
+        {/* 3.A CUSTOMER TYPE SELECTION: HOME VS BUSINESS */}
+        <div className="space-y-2">
+          <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+            Customer Type <span className="text-primary">*</span>
+          </Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setCustomerType("HOME");
+                setSelectedUsages(["DOMESTIC"]);
+              }}
+              className={cn(
+                "p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer",
+                customerType === "HOME"
+                  ? "border-primary bg-red-50/60 ring-2 ring-primary/20 shadow-xs"
+                  : "border-slate-200 bg-white hover:border-slate-300",
+              )}
+            >
+              <div
+                className={cn(
+                  "p-2.5 rounded-xl shrink-0",
+                  customerType === "HOME" ? "bg-primary text-white" : "bg-slate-100 text-slate-600",
+                )}
+              >
+                <Home className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-slate-900">Home Customer</p>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Domestic household gas supply for central heating, cooking, portable radiant heaters, and patio BBQ.
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setCustomerType("BUSINESS");
+                if (!selectedUsages.some((u) => u === "COMMERCIAL" || u === "BULK")) {
+                  setSelectedUsages(["COMMERCIAL"]);
+                }
+              }}
+              className={cn(
+                "p-4 rounded-2xl border text-left flex items-start gap-3 transition-all cursor-pointer",
+                customerType === "BUSINESS"
+                  ? "border-primary bg-red-50/60 ring-2 ring-primary/20 shadow-xs"
+                  : "border-slate-200 bg-white hover:border-slate-300",
+              )}
+            >
+              <div
+                className={cn(
+                  "p-2.5 rounded-xl shrink-0",
+                  customerType === "BUSINESS" ? "bg-primary text-white" : "bg-slate-100 text-slate-600",
+                )}
+              >
+                <Building2 className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-slate-900">Business Customer</p>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Commercial kitchens, pubs, hotels, agricultural estates, forklift truck fleets, and trade bulk vessels.
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* 3.B PREVIOUS CUSTOMER CHECK */}
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+          <div className="space-y-0.5">
+            <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+              Have you previously purchased from John Stayte Services? <span className="text-primary">*</span>
+            </Label>
+            <p className="text-[11px] text-slate-500">
+              Let us know if you already have an existing paper depot account or previous purchase record.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setHasPreviousPurchases(false)}
+              className={cn(
+                "flex-1 py-2.5 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center",
+                !hasPreviousPurchases
+                  ? "border-primary bg-primary text-white shadow-xs"
+                  : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700",
+              )}
+            >
+              No, I am a New Customer
+            </button>
+            <button
+              type="button"
+              onClick={() => setHasPreviousPurchases(true)}
+              className={cn(
+                "flex-1 py-2.5 px-4 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center",
+                hasPreviousPurchases
+                  ? "border-primary bg-primary text-white shadow-xs"
+                  : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700",
+              )}
+            >
+              Yes, I have Purchased Previously
+            </button>
+          </div>
+
+          {hasPreviousPurchases && (
+            <div className="pt-2 space-y-1.5 animate-in fade-in-50 duration-200">
+              <Label className="text-xs font-bold text-slate-800">
+                Previous Account Details or Historical Depot Reference
+              </Label>
+              <Input
+                value={previousAccountDetails}
+                onChange={(e) => setPreviousAccountDetails(e.target.value)}
+                placeholder="Enter previous customer account number, registered business name, or historical address"
+                className="h-10 text-xs bg-white border-slate-300"
+              />
+              <p className="text-[10px] text-slate-500">
+                Our manager will cross-reference your historical records to link your existing terms or cylinder agreements.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

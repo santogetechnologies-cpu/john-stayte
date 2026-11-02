@@ -646,8 +646,35 @@ function OrderGasPage() {
       try {
         const app = await getCustomerGasApplication(user.id);
         setCustomerApp(app);
-        if (!app || (app.status !== "SUBMITTED" && app.status !== "APPROVED")) {
+        if (!app) {
           setShowApplicationModal(true);
+          return;
+        }
+        if (app.status === "PENDING" || app.status === "SUBMITTED") {
+          toast.info("Your gas application is currently awaiting manager approval. You can view its status on your account page.", {
+            action: {
+              label: "View Status",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+          return;
+        }
+        if (app.status === "MORE_INFO_NEEDED") {
+          toast.warning("Depot manager requested additional information on your application.", {
+            action: {
+              label: "Provide Details",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+          return;
+        }
+        if (app.status === "DECLINED" || app.status === "REJECTED") {
+          toast.error("Your gas customer application was not approved. Please review your application details.", {
+            action: {
+              label: "Review",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
           return;
         }
       } catch (err) {
@@ -735,8 +762,33 @@ function OrderGasPage() {
     try {
       const app = await getCustomerGasApplication(user.id);
       setCustomerApp(app);
-      if (!app || (app.status !== "SUBMITTED" && app.status !== "APPROVED")) {
+      if (!app) {
         setShowApplicationModal(true);
+        return;
+      }
+      if (app.status !== "APPROVED") {
+        if (app.status === "MORE_INFO_NEEDED") {
+          toast.warning("Manager requested additional information on your application.", {
+            action: {
+              label: "Provide Details",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        } else if (app.status === "DECLINED" || app.status === "REJECTED") {
+          toast.error("Your gas application was declined. Please review your account application.", {
+            action: {
+              label: "View Application",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        } else {
+          toast.info("Your gas customer application is currently pending manager approval.", {
+            action: {
+              label: "Check Status",
+              onClick: () => navigate({ to: "/account/application" }),
+            },
+          });
+        }
         return;
       }
     } catch (err) {
@@ -2411,13 +2463,14 @@ function OrderGasPage() {
                 setCustomerApp(savedApp);
                 setShowApplicationModal(false);
                 toast.success(
-                  "Gas Customer Application verified and saved! Continuing with your order...",
+                  "Gas application submitted! Status: Pending Manager Approval.",
+                  {
+                    action: {
+                      label: "View Application",
+                      onClick: () => navigate({ to: "/account/application" }),
+                    },
+                  },
                 );
-                if (step === 2) {
-                  setStep(3); // Proceed to Delivery/Schedule
-                } else if (step === 4) {
-                  handlePlaceOrder();
-                }
               }}
               onCancel={() => setShowApplicationModal(false)}
             />

@@ -354,7 +354,7 @@ function LoginPage() {
       setAuthStatus("success");
       toast.success("Account created successfully!");
       setTimeout(() => {
-        navigate({ to: "/account" });
+        navigate({ to: "/account/application" });
       }, 500);
     } catch (err: any) {
       setLoading(false);

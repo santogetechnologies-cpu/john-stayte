@@ -27,6 +27,7 @@ import {
   AlertTriangle,
   Layers,
   AlertOctagon,
+  FileText,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,8 @@ type NavItem = {
     | "outForDelivery"
     | "delayedDeliveries"
     | "lowStock"
-    | "openEnquiries";
+    | "openEnquiries"
+    | "pendingApplications";
 };
 
 type NavGroup = {
@@ -139,6 +141,12 @@ const managerNavGroups: NavGroup[] = [
   {
     groupLabel: "CUSTOMERS & SUPPORT",
     items: [
+      {
+        title: "Gas Applications",
+        href: "/manager/applications",
+        icon: FileText,
+        badgeKey: "pendingApplications",
+      },
       { title: "Customers", href: "/manager/customers", icon: Users },
       { title: "All Enquiries", href: "/manager/enquiries", icon: HelpCircle },
       {
@@ -185,6 +193,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
     delayedDeliveries?: number;
     lowStock?: number;
     openEnquiries?: number;
+    pendingApplications?: number;
   }>({});
 
   const loadSidebarCounts = async () => {
@@ -197,6 +206,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
         { count: outCount },
         { data: lowStockData },
         { count: openEnqCount },
+        { count: pendingAppsCount },
       ] = await Promise.all([
         supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "Pending"),
         supabase.from("orders").select("id, status").or("status.eq.Approved,status.eq.Packed"),
@@ -217,6 +227,9 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
           .from("support_tickets")
           .select("*", { count: "exact", head: true })
           .eq("status", "Open"),
+        (supabase.from("gas_customer_applications") as any)
+          .select("*", { count: "exact", head: true })
+          .or("status.eq.PENDING,status.eq.SUBMITTED"),
       ]);
 
       setCounts({
@@ -227,6 +240,7 @@ export function ManagerPortalLayout({ children }: { children: ReactNode }) {
         outForDelivery: outCount || 0,
         lowStock: lowStockData?.length || 0,
         openEnquiries: openEnqCount || 0,
+        pendingApplications: pendingAppsCount || 0,
       });
     } catch (e) {
       console.error("Failed to load sidebar counts:", e);

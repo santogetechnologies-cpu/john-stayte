@@ -704,3 +704,86 @@ export async function triggerPromotionalOfferPush(params: {
   });
 }
 
+export async function triggerGasApplicationSubmittedPush(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  customerName: string;
+  customerType: string;
+}): Promise<void> {
+  const authToken = await getAuthToken();
+  await dispatchPushNotificationServerFn({
+    data: {
+      eventType: "GAS_APPLICATION_SUBMITTED",
+      authToken,
+      ...params,
+    },
+  });
+}
+
+export async function triggerGasApplicationApprovedPush(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  pricingBand: string;
+  discountPercentage: number;
+}): Promise<void> {
+  const authToken = await getAuthToken();
+  await dispatchPushNotificationServerFn({
+    data: {
+      eventType: "GAS_APPLICATION_APPROVED",
+      authToken,
+      ...params,
+    },
+  });
+}
+
+export async function triggerGasApplicationDeclinedPush(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  reason?: string;
+}): Promise<void> {
+  const authToken = await getAuthToken();
+  await dispatchPushNotificationServerFn({
+    data: {
+      eventType: "GAS_APPLICATION_DECLINED",
+      authToken,
+      ...params,
+    },
+  });
+}
+
+export async function triggerGasApplicationMoreInfoPush(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  moreInfoNeededNotes: string;
+}): Promise<void> {
+  const authToken = await getAuthToken();
+  await dispatchPushNotificationServerFn({
+    data: {
+      eventType: "GAS_APPLICATION_MORE_INFO",
+      authToken,
+      ...params,
+    },
+  });
+}
+
+export async function triggerGasApplicationInfoSubmittedPush(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  customerName: string;
+}): Promise<void> {
+  const authToken = await getAuthToken();
+  await dispatchPushNotificationServerFn({
+    data: {
+      eventType: "GAS_APPLICATION_INFO_SUBMITTED",
+      authToken,
+      ...params,
+    },
+  });
+}
+
+

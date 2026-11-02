@@ -1594,6 +1594,167 @@ export async function triggerPromotionalOfferPushInternal(params: {
   }
 }
 
+export async function triggerGasApplicationSubmittedPushInternal(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  customerName: string;
+  customerType: string;
+  supabaseClient?: SupabaseClient<Database>;
+}): Promise<PushDispatchResult> {
+  const { applicationId, applicationReference, customerId, customerName, customerType, supabaseClient } = params;
+  return await executePushDispatch(
+    {
+      eventType: "GAS_APPLICATION_SUBMITTED",
+      idempotencyKey: `gas_app_sub_${applicationId}`,
+      target: {
+        roles: ["admin", "manager"],
+      },
+      payload: {
+        title: `New Gas Application: ${customerType}`,
+        body: `Application ${applicationReference} submitted by ${customerName}. Awaiting manager review.`,
+        category: "applications",
+        data: {
+          url: `/manager/applications?appId=${applicationId}`,
+          applicationId,
+          applicationReference,
+          customerId,
+          type: "GAS_APPLICATION_SUBMITTED",
+        },
+      },
+    },
+    supabaseClient,
+  );
+}
+
+export async function triggerGasApplicationApprovedPushInternal(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  pricingBand: string;
+  discountPercentage: number;
+  supabaseClient?: SupabaseClient<Database>;
+}): Promise<PushDispatchResult> {
+  const { applicationId, applicationReference, customerId, pricingBand, discountPercentage, supabaseClient } = params;
+  return await executePushDispatch(
+    {
+      eventType: "GAS_APPLICATION_APPROVED",
+      idempotencyKey: `gas_app_appr_${applicationId}`,
+      target: {
+        userId: customerId,
+      },
+      payload: {
+        title: `Gas Application Approved`,
+        body: `Your gas application (${applicationReference}) has been approved! Assigned: ${pricingBand} (${discountPercentage}% discount).`,
+        category: "account",
+        data: {
+          url: `/account/application`,
+          applicationId,
+          applicationReference,
+          pricingBand,
+          discountPercentage: String(discountPercentage),
+          type: "GAS_APPLICATION_APPROVED",
+        },
+      },
+    },
+    supabaseClient,
+  );
+}
+
+export async function triggerGasApplicationDeclinedPushInternal(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  reason?: string;
+  supabaseClient?: SupabaseClient<Database>;
+}): Promise<PushDispatchResult> {
+  const { applicationId, applicationReference, customerId, reason, supabaseClient } = params;
+  return await executePushDispatch(
+    {
+      eventType: "GAS_APPLICATION_DECLINED",
+      idempotencyKey: `gas_app_decl_${applicationId}`,
+      target: {
+        userId: customerId,
+      },
+      payload: {
+        title: `Gas Application Update`,
+        body: `Your gas customer application has been declined.${reason ? ` Reason: ${reason}` : ""}`,
+        category: "account",
+        data: {
+          url: `/account/application`,
+          applicationId,
+          applicationReference,
+          type: "GAS_APPLICATION_DECLINED",
+        },
+      },
+    },
+    supabaseClient,
+  );
+}
+
+export async function triggerGasApplicationMoreInfoPushInternal(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  moreInfoNeededNotes: string;
+  supabaseClient?: SupabaseClient<Database>;
+}): Promise<PushDispatchResult> {
+  const { applicationId, applicationReference, customerId, moreInfoNeededNotes, supabaseClient } = params;
+  return await executePushDispatch(
+    {
+      eventType: "GAS_APPLICATION_MORE_INFO",
+      idempotencyKey: `gas_app_moreinfo_${applicationId}_${Date.now()}`,
+      target: {
+        userId: customerId,
+      },
+      payload: {
+        title: `Action Required: Gas Application`,
+        body: `More information needed for your application (${applicationReference}): ${moreInfoNeededNotes}`,
+        category: "account",
+        data: {
+          url: `/account/application`,
+          applicationId,
+          applicationReference,
+          type: "GAS_APPLICATION_MORE_INFO",
+        },
+      },
+    },
+    supabaseClient,
+  );
+}
+
+export async function triggerGasApplicationInfoSubmittedPushInternal(params: {
+  applicationId: string;
+  applicationReference: string;
+  customerId: string;
+  customerName: string;
+  supabaseClient?: SupabaseClient<Database>;
+}): Promise<PushDispatchResult> {
+  const { applicationId, applicationReference, customerId, customerName, supabaseClient } = params;
+  return await executePushDispatch(
+    {
+      eventType: "GAS_APPLICATION_INFO_SUBMITTED",
+      idempotencyKey: `gas_app_infosub_${applicationId}_${Date.now()}`,
+      target: {
+        roles: ["admin", "manager"],
+      },
+      payload: {
+        title: `Gas Application Updated`,
+        body: `Customer ${customerName} provided requested details for application ${applicationReference}.`,
+        category: "applications",
+        data: {
+          url: `/manager/applications?appId=${applicationId}`,
+          applicationId,
+          applicationReference,
+          customerId,
+          type: "GAS_APPLICATION_INFO_SUBMITTED",
+        },
+      },
+    },
+    supabaseClient,
+  );
+}
+
 // ============================================================================
 // AUTHENTICATED SERVER FUNCTION ENTRYPOINT (CALLED FROM CLIENT VIA RPC)
 // ============================================================================
@@ -1816,6 +1977,93 @@ export async function handleDispatchPushNotification(
         linkUrl: data.linkUrl,
       });
       return { success: true };
+    }
+
+    case "GAS_APPLICATION_SUBMITTED": {
+      if (!data.applicationId || !data.customerId) {
+        throw new Error("applicationId and customerId are required");
+      }
+      if (callerUserId && callerUserId !== data.customerId && !["admin", "manager"].includes(callerRole)) {
+        throw new Error("Unauthorized: cannot submit application notification for another customer");
+      }
+      const dispatchResult = await triggerGasApplicationSubmittedPushInternal({
+        applicationId: data.applicationId,
+        applicationReference: data.applicationReference || `JSS-APP-${data.applicationId.slice(0, 8).toUpperCase()}`,
+        customerId: data.customerId,
+        customerName: data.customerName || "Applicant",
+        customerType: data.customerType || "Home",
+        supabaseClient: supabase,
+      });
+      return { success: dispatchResult.status === "sent" || dispatchResult.status === "skipped", result: dispatchResult };
+    }
+
+    case "GAS_APPLICATION_APPROVED": {
+      if (!["admin", "manager"].includes(callerRole)) {
+        throw new Error("Unauthorized: only managers and admins can approve gas applications");
+      }
+      if (!data.applicationId || !data.customerId) {
+        throw new Error("applicationId and customerId are required");
+      }
+      const dispatchResult = await triggerGasApplicationApprovedPushInternal({
+        applicationId: data.applicationId,
+        applicationReference: data.applicationReference || `JSS-APP-${data.applicationId.slice(0, 8).toUpperCase()}`,
+        customerId: data.customerId,
+        pricingBand: data.pricingBand || "Standard Domestic",
+        discountPercentage: data.discountPercentage ?? 0,
+        supabaseClient: supabase,
+      });
+      return { success: dispatchResult.status === "sent" || dispatchResult.status === "skipped", result: dispatchResult };
+    }
+
+    case "GAS_APPLICATION_DECLINED": {
+      if (!["admin", "manager"].includes(callerRole)) {
+        throw new Error("Unauthorized: only managers and admins can decline gas applications");
+      }
+      if (!data.applicationId || !data.customerId) {
+        throw new Error("applicationId and customerId are required");
+      }
+      const dispatchResult = await triggerGasApplicationDeclinedPushInternal({
+        applicationId: data.applicationId,
+        applicationReference: data.applicationReference || `JSS-APP-${data.applicationId.slice(0, 8).toUpperCase()}`,
+        customerId: data.customerId,
+        reason: data.reason,
+        supabaseClient: supabase,
+      });
+      return { success: dispatchResult.status === "sent" || dispatchResult.status === "skipped", result: dispatchResult };
+    }
+
+    case "GAS_APPLICATION_MORE_INFO": {
+      if (!["admin", "manager"].includes(callerRole)) {
+        throw new Error("Unauthorized: only managers and admins can request additional application information");
+      }
+      if (!data.applicationId || !data.customerId) {
+        throw new Error("applicationId and customerId are required");
+      }
+      const dispatchResult = await triggerGasApplicationMoreInfoPushInternal({
+        applicationId: data.applicationId,
+        applicationReference: data.applicationReference || `JSS-APP-${data.applicationId.slice(0, 8).toUpperCase()}`,
+        customerId: data.customerId,
+        moreInfoNeededNotes: data.moreInfoNeededNotes || "Please provide the requested information to complete your gas application.",
+        supabaseClient: supabase,
+      });
+      return { success: dispatchResult.status === "sent" || dispatchResult.status === "skipped", result: dispatchResult };
+    }
+
+    case "GAS_APPLICATION_INFO_SUBMITTED": {
+      if (!data.applicationId || !data.customerId) {
+        throw new Error("applicationId and customerId are required");
+      }
+      if (callerUserId && callerUserId !== data.customerId && !["admin", "manager"].includes(callerRole)) {
+        throw new Error("Unauthorized: cannot submit updated details for another customer");
+      }
+      const dispatchResult = await triggerGasApplicationInfoSubmittedPushInternal({
+        applicationId: data.applicationId,
+        applicationReference: data.applicationReference || `JSS-APP-${data.applicationId.slice(0, 8).toUpperCase()}`,
+        customerId: data.customerId,
+        customerName: data.customerName || "Applicant",
+        supabaseClient: supabase,
+      });
+      return { success: dispatchResult.status === "sent" || dispatchResult.status === "skipped", result: dispatchResult };
     }
 
     default:

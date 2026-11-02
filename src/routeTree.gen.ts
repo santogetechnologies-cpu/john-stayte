@@ -83,6 +83,7 @@ import { Route as DeliveryReturnsRouteImport } from './routes/delivery.returns'
 import { Route as DeliverySupportRouteImport } from './routes/delivery.support'
 import { Route as DeliveryTodayRouteImport } from './routes/delivery.today'
 import { Route as ManagerIndexRouteImport } from './routes/manager.index'
+import { Route as ManagerApplicationsRouteImport } from './routes/manager.applications'
 import { Route as ManagerCustomersRouteImport } from './routes/manager.customers'
 import { Route as ManagerDeliveriesRouteImport } from './routes/manager.deliveries'
 import { Route as ManagerDeliveryAgentsRouteImport } from './routes/manager.delivery-agents'
@@ -475,6 +476,11 @@ const ManagerIndexRoute = ManagerIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ManagerRoute,
 } as any)
+const ManagerApplicationsRoute = ManagerApplicationsRouteImport.update({
+  id: '/applications',
+  path: '/applications',
+  getParentRoute: () => ManagerRoute,
+} as any)
 const ManagerCustomersRoute = ManagerCustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
@@ -651,6 +657,7 @@ export interface FileRoutesByFullPath {
   '/delivery/returns': typeof DeliveryReturnsRoute
   '/delivery/support': typeof DeliverySupportRoute
   '/delivery/today': typeof DeliveryTodayRoute
+  '/manager/applications': typeof ManagerApplicationsRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
@@ -742,6 +749,7 @@ export interface FileRoutesByTo {
   '/delivery/returns': typeof DeliveryReturnsRoute
   '/delivery/support': typeof DeliverySupportRoute
   '/delivery/today': typeof DeliveryTodayRoute
+  '/manager/applications': typeof ManagerApplicationsRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
@@ -840,6 +848,7 @@ export interface FileRoutesById {
   '/delivery/returns': typeof DeliveryReturnsRoute
   '/delivery/support': typeof DeliverySupportRoute
   '/delivery/today': typeof DeliveryTodayRoute
+  '/manager/applications': typeof ManagerApplicationsRoute
   '/manager/customers': typeof ManagerCustomersRoute
   '/manager/deliveries': typeof ManagerDeliveriesRoute
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
@@ -939,6 +948,7 @@ export interface FileRouteTypes {
     | '/delivery/returns'
     | '/delivery/support'
     | '/delivery/today'
+    | '/manager/applications'
     | '/manager/customers'
     | '/manager/deliveries'
     | '/manager/delivery-agents'
@@ -1030,6 +1040,7 @@ export interface FileRouteTypes {
     | '/delivery/returns'
     | '/delivery/support'
     | '/delivery/today'
+    | '/manager/applications'
     | '/manager/customers'
     | '/manager/deliveries'
     | '/manager/delivery-agents'
@@ -1127,6 +1138,7 @@ export interface FileRouteTypes {
     | '/delivery/returns'
     | '/delivery/support'
     | '/delivery/today'
+    | '/manager/applications'
     | '/manager/customers'
     | '/manager/deliveries'
     | '/manager/delivery-agents'
@@ -1700,6 +1712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManagerIndexRouteImport
       parentRoute: typeof ManagerRoute
     }
+    '/manager/applications': {
+      id: '/manager/applications'
+      path: '/applications'
+      fullPath: '/manager/applications'
+      preLoaderRoute: typeof ManagerApplicationsRouteImport
+      parentRoute: typeof ManagerRoute
+    }
     '/manager/customers': {
       id: '/manager/customers'
       path: '/customers'
@@ -2016,6 +2035,7 @@ const DeliveryRouteWithChildren = DeliveryRoute._addFileChildren(
 )
 
 interface ManagerRouteChildren {
+  ManagerApplicationsRoute: typeof ManagerApplicationsRoute
   ManagerCustomersRoute: typeof ManagerCustomersRoute
   ManagerDeliveriesRoute: typeof ManagerDeliveriesRoute
   ManagerDeliveryAgentsRoute: typeof ManagerDeliveryAgentsRoute
@@ -2033,6 +2053,7 @@ interface ManagerRouteChildren {
 }
 
 const ManagerRouteChildren: ManagerRouteChildren = {
+  ManagerApplicationsRoute: ManagerApplicationsRoute,
   ManagerCustomersRoute: ManagerCustomersRoute,
   ManagerDeliveriesRoute: ManagerDeliveriesRoute,
   ManagerDeliveryAgentsRoute: ManagerDeliveryAgentsRoute,
