@@ -163,7 +163,9 @@ function LoginPage() {
               ? "/manager"
               : role === "delivery_agent"
                 ? "/delivery"
-                : "/account",
+                : role === "branch_staff"
+                  ? "/branch"
+                  : "/account",
       });
     },
     [navigate],

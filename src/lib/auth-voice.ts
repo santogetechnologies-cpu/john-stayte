@@ -271,6 +271,8 @@ export function speakLoginError(errorMessage?: string, email?: string): void {
 export function speakLoginSuccess(role?: string): void {
   if (role === "admin") {
     speakVoiceFeedback("Welcome, Admin! Have a great day!");
+  } else if (role === "branch_staff") {
+    speakVoiceFeedback("Welcome to Branch Operations! Have a productive shift.");
   } else {
     speakVoiceFeedback("hello! Welcome to John Stayte Services. Great to have you back!");
   }

@@ -15,6 +15,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AutoGasRouteImport } from './routes/auto-gas'
 import { Route as BlogRouteImport } from './routes/blog'
+import { Route as BranchRouteImport } from './routes/branch'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -70,6 +71,14 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminStationsRouteImport } from './routes/admin.stations'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as BranchIndexRouteImport } from './routes/branch.index'
+import { Route as BranchCollectionHistoryRouteImport } from './routes/branch.collection-history'
+import { Route as BranchDailyReportRouteImport } from './routes/branch.daily-report'
+import { Route as BranchExchangeHistoryRouteImport } from './routes/branch.exchange-history'
+import { Route as BranchNotificationsRouteImport } from './routes/branch.notifications'
+import { Route as BranchOrdersRouteImport } from './routes/branch.orders'
+import { Route as BranchProfileRouteImport } from './routes/branch.profile'
+import { Route as BranchStockRouteImport } from './routes/branch.stock'
 import { Route as BrandsIndexRouteImport } from './routes/brands.index'
 import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
 import { Route as DeliveryIndexRouteImport } from './routes/delivery.index'
@@ -134,6 +143,11 @@ const AutoGasRoute = AutoGasRouteImport.update({
 const BlogRoute = BlogRouteImport.update({
   id: '/blog',
   path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BranchRoute = BranchRouteImport.update({
+  id: '/branch',
+  path: '/branch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -411,6 +425,46 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => BlogRoute,
 } as any)
+const BranchIndexRoute = BranchIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchCollectionHistoryRoute = BranchCollectionHistoryRouteImport.update({
+  id: '/collection-history',
+  path: '/collection-history',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchDailyReportRoute = BranchDailyReportRouteImport.update({
+  id: '/daily-report',
+  path: '/daily-report',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchExchangeHistoryRoute = BranchExchangeHistoryRouteImport.update({
+  id: '/exchange-history',
+  path: '/exchange-history',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchNotificationsRoute = BranchNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchOrdersRoute = BranchOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchProfileRoute = BranchProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchStockRoute = BranchStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => BranchRoute,
+} as any)
 const BrandsIndexRoute = BrandsIndexRouteImport.update({
   id: '/brands/',
   path: '/brands/',
@@ -595,6 +649,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/auto-gas': typeof AutoGasRoute
   '/blog': typeof BlogRouteWithChildren
+  '/branch': typeof BranchRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -647,6 +702,13 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/branch/collection-history': typeof BranchCollectionHistoryRoute
+  '/branch/daily-report': typeof BranchDailyReportRoute
+  '/branch/exchange-history': typeof BranchExchangeHistoryRoute
+  '/branch/notifications': typeof BranchNotificationsRoute
+  '/branch/orders': typeof BranchOrdersRoute
+  '/branch/profile': typeof BranchProfileRoute
+  '/branch/stock': typeof BranchStockRoute
   '/categories/$slug': typeof CategoriesSlugRoute
   '/delivery/completed': typeof DeliveryCompletedRoute
   '/delivery/deliveries': typeof DeliveryDeliveriesRoute
@@ -675,6 +737,7 @@ export interface FileRoutesByFullPath {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/branch/': typeof BranchIndexRoute
   '/brands/': typeof BrandsIndexRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/manager/': typeof ManagerIndexRoute
@@ -739,6 +802,13 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/branch/collection-history': typeof BranchCollectionHistoryRoute
+  '/branch/daily-report': typeof BranchDailyReportRoute
+  '/branch/exchange-history': typeof BranchExchangeHistoryRoute
+  '/branch/notifications': typeof BranchNotificationsRoute
+  '/branch/orders': typeof BranchOrdersRoute
+  '/branch/profile': typeof BranchProfileRoute
+  '/branch/stock': typeof BranchStockRoute
   '/categories/$slug': typeof CategoriesSlugRoute
   '/delivery/completed': typeof DeliveryCompletedRoute
   '/delivery/deliveries': typeof DeliveryDeliveriesRoute
@@ -767,6 +837,7 @@ export interface FileRoutesByTo {
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
   '/blog': typeof BlogIndexRoute
+  '/branch': typeof BranchIndexRoute
   '/brands': typeof BrandsIndexRoute
   '/delivery': typeof DeliveryIndexRoute
   '/manager': typeof ManagerIndexRoute
@@ -786,6 +857,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/auto-gas': typeof AutoGasRoute
   '/blog': typeof BlogRouteWithChildren
+  '/branch': typeof BranchRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -838,6 +910,13 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stations': typeof AdminStationsRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/branch/collection-history': typeof BranchCollectionHistoryRoute
+  '/branch/daily-report': typeof BranchDailyReportRoute
+  '/branch/exchange-history': typeof BranchExchangeHistoryRoute
+  '/branch/notifications': typeof BranchNotificationsRoute
+  '/branch/orders': typeof BranchOrdersRoute
+  '/branch/profile': typeof BranchProfileRoute
+  '/branch/stock': typeof BranchStockRoute
   '/categories/$slug': typeof CategoriesSlugRoute
   '/delivery/completed': typeof DeliveryCompletedRoute
   '/delivery/deliveries': typeof DeliveryDeliveriesRoute
@@ -866,6 +945,7 @@ export interface FileRoutesById {
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/branch/': typeof BranchIndexRoute
   '/brands/': typeof BrandsIndexRoute
   '/delivery/': typeof DeliveryIndexRoute
   '/manager/': typeof ManagerIndexRoute
@@ -886,6 +966,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auto-gas'
     | '/blog'
+    | '/branch'
     | '/cart'
     | '/checkout'
     | '/contact'
@@ -938,6 +1019,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/stations'
     | '/blog/$slug'
+    | '/branch/collection-history'
+    | '/branch/daily-report'
+    | '/branch/exchange-history'
+    | '/branch/notifications'
+    | '/branch/orders'
+    | '/branch/profile'
+    | '/branch/stock'
     | '/categories/$slug'
     | '/delivery/completed'
     | '/delivery/deliveries'
@@ -966,6 +1054,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/blog/'
+    | '/branch/'
     | '/brands/'
     | '/delivery/'
     | '/manager/'
@@ -1030,6 +1119,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/stations'
     | '/blog/$slug'
+    | '/branch/collection-history'
+    | '/branch/daily-report'
+    | '/branch/exchange-history'
+    | '/branch/notifications'
+    | '/branch/orders'
+    | '/branch/profile'
+    | '/branch/stock'
     | '/categories/$slug'
     | '/delivery/completed'
     | '/delivery/deliveries'
@@ -1058,6 +1154,7 @@ export interface FileRouteTypes {
     | '/account'
     | '/admin'
     | '/blog'
+    | '/branch'
     | '/brands'
     | '/delivery'
     | '/manager'
@@ -1076,6 +1173,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auto-gas'
     | '/blog'
+    | '/branch'
     | '/cart'
     | '/checkout'
     | '/contact'
@@ -1128,6 +1226,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/stations'
     | '/blog/$slug'
+    | '/branch/collection-history'
+    | '/branch/daily-report'
+    | '/branch/exchange-history'
+    | '/branch/notifications'
+    | '/branch/orders'
+    | '/branch/profile'
+    | '/branch/stock'
     | '/categories/$slug'
     | '/delivery/completed'
     | '/delivery/deliveries'
@@ -1156,6 +1261,7 @@ export interface FileRouteTypes {
     | '/account/'
     | '/admin/'
     | '/blog/'
+    | '/branch/'
     | '/brands/'
     | '/delivery/'
     | '/manager/'
@@ -1175,6 +1281,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AutoGasRoute: typeof AutoGasRoute
   BlogRoute: typeof BlogRouteWithChildren
+  BranchRoute: typeof BranchRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
@@ -1234,6 +1341,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog'
       preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/branch': {
+      id: '/branch'
+      path: '/branch'
+      fullPath: '/branch'
+      preLoaderRoute: typeof BranchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -1621,6 +1735,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof BlogRoute
     }
+    '/branch/': {
+      id: '/branch/'
+      path: '/'
+      fullPath: '/branch/'
+      preLoaderRoute: typeof BranchIndexRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/collection-history': {
+      id: '/branch/collection-history'
+      path: '/collection-history'
+      fullPath: '/branch/collection-history'
+      preLoaderRoute: typeof BranchCollectionHistoryRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/daily-report': {
+      id: '/branch/daily-report'
+      path: '/daily-report'
+      fullPath: '/branch/daily-report'
+      preLoaderRoute: typeof BranchDailyReportRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/exchange-history': {
+      id: '/branch/exchange-history'
+      path: '/exchange-history'
+      fullPath: '/branch/exchange-history'
+      preLoaderRoute: typeof BranchExchangeHistoryRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/notifications': {
+      id: '/branch/notifications'
+      path: '/notifications'
+      fullPath: '/branch/notifications'
+      preLoaderRoute: typeof BranchNotificationsRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/orders': {
+      id: '/branch/orders'
+      path: '/orders'
+      fullPath: '/branch/orders'
+      preLoaderRoute: typeof BranchOrdersRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/profile': {
+      id: '/branch/profile'
+      path: '/profile'
+      fullPath: '/branch/profile'
+      preLoaderRoute: typeof BranchProfileRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/stock': {
+      id: '/branch/stock'
+      path: '/stock'
+      fullPath: '/branch/stock'
+      preLoaderRoute: typeof BranchStockRouteImport
+      parentRoute: typeof BranchRoute
+    }
     '/brands/': {
       id: '/brands/'
       path: '/brands'
@@ -2004,6 +2174,31 @@ const BlogRouteChildren: BlogRouteChildren = {
 
 const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
+interface BranchRouteChildren {
+  BranchCollectionHistoryRoute: typeof BranchCollectionHistoryRoute
+  BranchDailyReportRoute: typeof BranchDailyReportRoute
+  BranchExchangeHistoryRoute: typeof BranchExchangeHistoryRoute
+  BranchNotificationsRoute: typeof BranchNotificationsRoute
+  BranchOrdersRoute: typeof BranchOrdersRoute
+  BranchProfileRoute: typeof BranchProfileRoute
+  BranchStockRoute: typeof BranchStockRoute
+  BranchIndexRoute: typeof BranchIndexRoute
+}
+
+const BranchRouteChildren: BranchRouteChildren = {
+  BranchCollectionHistoryRoute: BranchCollectionHistoryRoute,
+  BranchDailyReportRoute: BranchDailyReportRoute,
+  BranchExchangeHistoryRoute: BranchExchangeHistoryRoute,
+  BranchNotificationsRoute: BranchNotificationsRoute,
+  BranchOrdersRoute: BranchOrdersRoute,
+  BranchProfileRoute: BranchProfileRoute,
+  BranchStockRoute: BranchStockRoute,
+  BranchIndexRoute: BranchIndexRoute,
+}
+
+const BranchRouteWithChildren =
+  BranchRoute._addFileChildren(BranchRouteChildren)
+
 interface DeliveryRouteChildren {
   DeliveryCompletedRoute: typeof DeliveryCompletedRoute
   DeliveryDeliveriesRoute: typeof DeliveryDeliveriesRoute
@@ -2080,6 +2275,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AutoGasRoute: AutoGasRoute,
   BlogRoute: BlogRouteWithChildren,
+  BranchRoute: BranchRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,

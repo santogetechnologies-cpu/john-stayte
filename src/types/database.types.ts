@@ -1,6 +1,6 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
-export type UserRole = "customer" | "manager" | "admin" | "delivery_agent";
+export type UserRole = "customer" | "manager" | "admin" | "delivery_agent" | "branch_staff";
 export type OrderStatus =
   "Pending" | "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled";
 export type TicketPriority = "Low" | "Medium" | "High" | "Urgent";

@@ -88,6 +88,11 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
       navigate({ to: "/manager" });
       return;
     }
+
+    if (user.role === "branch_staff") {
+      navigate({ to: "/branch" });
+      return;
+    }
   }, [user, authLoading, navigate]);
 
   // Live real-time Supabase query for customer's active deliveries & unread notifications badge
@@ -394,6 +399,27 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
             className="w-full rounded-xl font-bold text-xs bg-primary hover:bg-primary/90 text-white h-10 shadow-xs"
           >
             <Link to="/manager">Open Manager Portal</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 6. Branch Staff Gate
+  if (user.role === "branch_staff") {
+    return (
+      <div className="min-h-screen grid place-items-center bg-[#f8f8fa] px-4 font-sans">
+        <div className="max-w-sm w-full p-8 text-center shadow-2xl rounded-3xl border border-slate-200 bg-white space-y-4">
+          <img src={logo} alt="JSS" className="mx-auto h-12 w-12 rounded-xl shadow-xs" />
+          <h1 className="text-xl font-bold font-display text-slate-900">Branch Staff Portal</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your account is authenticated as Branch Staff. Taking you to Branch Operations Portal...
+          </p>
+          <Button
+            asChild
+            className="w-full rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white h-10 shadow-xs"
+          >
+            <Link to="/branch">Open Branch Portal</Link>
           </Button>
         </div>
       </div>

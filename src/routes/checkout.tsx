@@ -13,7 +13,11 @@ import {
   Mail,
   KeyRound,
   RefreshCw,
+  Truck,
+  Store,
+  MapPin,
 } from "lucide-react";
+import { KNOWN_BRANCHES } from "@/lib/branch-service";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -232,7 +236,9 @@ function Checkout() {
     }
   }, [user, navigate]);
 
-  // Delivery Form Fields
+  // Delivery & Fulfilment Form Fields
+  const [fulfilmentMethod, setFulfilmentMethod] = useState<"delivery" | "collection">("delivery");
+  const [selectedBranch, setSelectedBranch] = useState<string>("John Stayte Services – Cirencester");
   const [fullName, setFullName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [verifiedEmail, setVerifiedEmail] = useState<string | null>(null);
@@ -582,12 +588,20 @@ function Checkout() {
           : "NEW_CYLINDER"
         : "STANDARD";
 
+      const isCollection = fulfilmentMethod === "collection";
+      const selectedBranchObj = isCollection
+        ? KNOWN_BRANCHES.find(
+            (b) => b.name === selectedBranch || b.town.toLowerCase() === selectedBranch.toLowerCase(),
+          )
+        : null;
+      const targetDepot = isCollection ? selectedBranch : "Whitminster";
+
       // 5. Create Initial Order Record in Supabase (with provisional values)
       const provisionalTotal = Math.max(
         0,
         settings.taxPricingMode === "inclusive"
-          ? finalSubtotal + shipping
-          : finalSubtotal + shipping + vat,
+          ? finalSubtotal + (isCollection ? 0 : shipping)
+          : finalSubtotal + (isCollection ? 0 : shipping) + vat,
       );
       const { data: newOrder, error: orderErr } = await (supabase.from("orders") as any)
         .insert([
@@ -599,22 +613,26 @@ function Checkout() {
             customer_phone: phone.trim(),
             delivery_address: {
               name: fullName.trim(),
-              street: address.trim(),
-              postcode: postcode.trim(),
+              street: isCollection ? `[Click & Collect: ${selectedBranch}]` : address.trim(),
+              postcode: isCollection ? "" : postcode.trim(),
               phone: phone.trim(),
               payment_method: finalPaymentMethod,
               empty_cylinder_required: isEmptyRequired,
               order_type: orderTypeTag,
+              fulfilment_method: fulfilmentMethod,
+              collection_branch: isCollection ? selectedBranch : null,
+              collection_branch_id: isCollection ? selectedBranchObj?.id : null,
             },
             subtotal: finalSubtotal,
-            shipping_fee: shipping,
+            shipping_fee: isCollection ? 0 : shipping,
             total: provisionalTotal,
             status: "Pending",
             fulfillment_status: "Pending",
-            assigned_depot: "Whitminster",
+            assigned_depot: targetDepot,
             payment_status: finalPaymentStatus,
             notes: [
               `[Payment: ${finalPaymentMethod}]`,
+              isCollection ? `[Click & Collect: ${selectedBranch}]` : "[Standard Delivery]",
               hasCylinderInCart
                 ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]`
                 : "",
@@ -961,18 +979,109 @@ function Checkout() {
         className="container-page grid gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_380px]"
       >
         <div className="space-y-6 text-left">
-          {/* Section 1: Delivery Details */}
+          {/* Section 1: Delivery / Collection Details */}
           <section className="surface-card p-7 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-black text-slate-900 font-display">Delivery Details</h2>
-              {savedAddresses.length > 0 && (
+              <h2 className="text-lg font-black text-slate-900 font-display">
+                {fulfilmentMethod === "collection" ? "Click & Collect Details" : "Delivery Details"}
+              </h2>
+              {savedAddresses.length > 0 && fulfilmentMethod === "delivery" && (
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
                   Using saved address
                 </span>
               )}
             </div>
 
-            {savedAddresses.length > 1 && (
+            {/* Fulfilment Method Selector */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+              <button
+                type="button"
+                onClick={() => setFulfilmentMethod("delivery")}
+                className={cn(
+                  "p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3 select-none",
+                  fulfilmentMethod === "delivery"
+                    ? "border-red-600 bg-red-50/30 ring-2 ring-red-600/20 shadow-xs"
+                    : "border-slate-200 bg-white hover:bg-slate-50",
+                )}
+              >
+                <div
+                  className={cn(
+                    "h-8 w-8 rounded-xl flex items-center justify-center shrink-0",
+                    fulfilmentMethod === "delivery" ? "bg-red-600 text-white" : "bg-slate-100 text-slate-600",
+                  )}
+                >
+                  <Truck className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="font-extrabold text-xs text-slate-900 block">Home / Business Delivery</span>
+                  <span className="text-[11px] text-slate-500">Delivered directly to your Gloucestershire address</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFulfilmentMethod("collection")}
+                className={cn(
+                  "p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-3 select-none",
+                  fulfilmentMethod === "collection"
+                    ? "border-amber-600 bg-amber-50/30 ring-2 ring-amber-600/20 shadow-xs"
+                    : "border-slate-200 bg-white hover:bg-slate-50",
+                )}
+              >
+                <div
+                  className={cn(
+                    "h-8 w-8 rounded-xl flex items-center justify-center shrink-0",
+                    fulfilmentMethod === "collection" ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-600",
+                  )}
+                >
+                  <Store className="h-4 w-4" />
+                </div>
+                <div>
+                  <span className="font-extrabold text-xs text-slate-900 block">Click &amp; Collect</span>
+                  <span className="text-[11px] text-slate-500">Collect at your chosen JSS station forecourt</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Click & Collect Station Selector */}
+            {fulfilmentMethod === "collection" && (
+              <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-3 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                    Select Collection Branch:
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {KNOWN_BRANCHES.map((b) => {
+                    const isSelected = selectedBranch === b.name;
+                    return (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setSelectedBranch(b.name)}
+                        className={cn(
+                          "p-3 rounded-xl border text-left transition-all flex items-center justify-between gap-3 text-xs cursor-pointer",
+                          isSelected
+                            ? "border-amber-600 bg-white font-bold ring-2 ring-amber-500/20 text-slate-900 shadow-2xs"
+                            : "border-amber-200/60 bg-white/70 text-slate-700 hover:bg-white",
+                        )}
+                      >
+                        <div>
+                          <p className="font-black text-xs text-slate-900">{b.name}</p>
+                          <p className="text-[11px] text-slate-500">{b.address}, {b.town} {b.postcode}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[10px] text-slate-500 block font-medium">{b.telephone}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {savedAddresses.length > 1 && fulfilmentMethod === "delivery" && (
               <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
                   Select Delivery Address:
@@ -1159,35 +1268,39 @@ function Checkout() {
                   className="mt-1.5 rounded-full text-xs font-medium"
                 />
               </div>
+              {fulfilmentMethod === "delivery" && (
+                <div>
+                  <Label htmlFor="pc" className="text-xs font-bold text-slate-700">
+                    Postcode
+                  </Label>
+                  <Input
+                    id="pc"
+                    required={fulfilmentMethod === "delivery"}
+                    maxLength={10}
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+                    placeholder="GL2 7LZ"
+                    className="mt-1.5 rounded-full text-xs font-medium"
+                  />
+                </div>
+              )}
+            </div>
+            {fulfilmentMethod === "delivery" && (
               <div>
-                <Label htmlFor="pc" className="text-xs font-bold text-slate-700">
-                  Postcode
+                <Label htmlFor="ad" className="text-xs font-bold text-slate-700">
+                  Delivery Address &amp; Instructions
                 </Label>
-                <Input
-                  id="pc"
-                  required
-                  maxLength={10}
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                  placeholder="GL2 7LZ"
-                  className="mt-1.5 rounded-full text-xs font-medium"
+                <Textarea
+                  id="ad"
+                  required={fulfilmentMethod === "delivery"}
+                  maxLength={300}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Street address, town, and any delivery access instructions..."
+                  className="mt-1.5 rounded-2xl text-xs font-medium"
                 />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="ad" className="text-xs font-bold text-slate-700">
-                Delivery Address & Instructions
-              </Label>
-              <Textarea
-                id="ad"
-                required
-                maxLength={300}
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Street address, town, and any delivery access instructions..."
-                className="mt-1.5 rounded-2xl text-xs font-medium"
-              />
-            </div>
+            )}
           </section>
 
           {/* Section 1.5: Gas Cylinder Exchange Option (shown only if gas cylinder in basket) */}

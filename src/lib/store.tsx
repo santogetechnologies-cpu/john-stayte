@@ -18,8 +18,16 @@ import {
   triggerNewCustomerRegistrationPush,
 } from "@/lib/push-notifications";
 
-export type Role = "customer" | "manager" | "admin" | "delivery_agent";
-export type User = { id?: string; name: string; email: string; role: Role; avatar?: string };
+export type Role = "customer" | "manager" | "admin" | "delivery_agent" | "branch_staff";
+export type User = {
+  id?: string;
+  name: string;
+  email: string;
+  role: Role;
+  avatar?: string;
+  assignedBranch?: string;
+  assignedBranchId?: string;
+};
 
 export type CartLine = { slug: string; qty: number };
 
@@ -124,11 +132,51 @@ function usePersisted<T>(key: string, initial: T) {
   return [value, setValue] as const;
 }
 
+function extractBranchAssignment(
+  userMetadata?: Record<string, any> | null,
+  profile?: Record<string, any> | null,
+): { assignedBranch?: string; assignedBranchId?: string } {
+  let assignedBranch: string | undefined = undefined;
+  let assignedBranchId: string | undefined = undefined;
+
+  if (userMetadata?.assigned_branch) {
+    assignedBranch = String(userMetadata.assigned_branch);
+  }
+  if (userMetadata?.assigned_branch_id) {
+    assignedBranchId = String(userMetadata.assigned_branch_id);
+  }
+
+  if (
+    profile?.notification_prefs &&
+    typeof profile.notification_prefs === "object" &&
+    !Array.isArray(profile.notification_prefs)
+  ) {
+    const prefs = profile.notification_prefs as Record<string, unknown>;
+    if (typeof prefs.assigned_branch === "string" && prefs.assigned_branch) {
+      assignedBranch = prefs.assigned_branch;
+    }
+    if (typeof prefs.assigned_branch_id === "string" && prefs.assigned_branch_id) {
+      assignedBranchId = prefs.assigned_branch_id;
+    }
+  }
+
+  if (profile && (profile as any).assigned_branch && typeof (profile as any).assigned_branch === "string") {
+    assignedBranch = (profile as any).assigned_branch;
+  }
+  if (profile && (profile as any).assigned_branch_id && typeof (profile as any).assigned_branch_id === "string") {
+    assignedBranchId = (profile as any).assigned_branch_id;
+  }
+
+  return { assignedBranch, assignedBranchId };
+}
+
 function resolveUserRole(
   uid?: string,
   email?: string | null,
   metadataRole?: string | null,
   profileRole?: string | null,
+  notificationPrefs?: Record<string, unknown> | null,
+  staffRole?: string | null,
 ): Role {
   const normEmail = (email || "").trim().toLowerCase();
 
@@ -143,7 +191,17 @@ function resolveUserRole(
     return "delivery_agent";
   }
 
-  // 2. Explicit elevated role in Supabase Auth user_metadata
+  // 2. Explicit branch_staff in staffRole, metadataRole, profileRole, or notificationPrefs
+  if (
+    staffRole === "branch_staff" ||
+    metadataRole === "branch_staff" ||
+    profileRole === "branch_staff" ||
+    (notificationPrefs && notificationPrefs.role === "branch_staff")
+  ) {
+    return "branch_staff";
+  }
+
+  // 3. Explicit elevated role in Supabase Auth user_metadata
   if (
     metadataRole === "delivery_agent" ||
     metadataRole === "manager" ||
@@ -152,7 +210,7 @@ function resolveUserRole(
     return metadataRole as Role;
   }
 
-  // 3. Explicit elevated role in Supabase profiles table
+  // 4. Explicit elevated role in Supabase profiles table
   if (
     profileRole === "delivery_agent" ||
     profileRole === "manager" ||
@@ -323,11 +381,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             .eq("id", currentUid)
             .maybeSingle();
 
+          const userPrefs =
+            profile?.notification_prefs &&
+            typeof profile.notification_prefs === "object" &&
+            !Array.isArray(profile.notification_prefs)
+              ? (profile.notification_prefs as Record<string, unknown>)
+              : null;
+
           let resolvedRole: Role = resolveUserRole(
             currentUid,
             session.user.email,
             session.user.user_metadata?.role,
             profile?.role,
+            userPrefs,
+            session.user.user_metadata?.staff_role,
           );
 
           // If role is still customer, check delivery_agents table by id or email
@@ -342,16 +409,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
 
           let userAvatar: string | undefined = undefined;
-          if (
-            profile?.notification_prefs &&
-            typeof profile.notification_prefs === "object" &&
-            !Array.isArray(profile.notification_prefs)
-          ) {
-            const prefs = profile.notification_prefs as Record<string, unknown>;
-            if (typeof prefs.avatar_url === "string") {
-              userAvatar = prefs.avatar_url;
-            }
+          if (userPrefs && typeof userPrefs.avatar_url === "string") {
+            userAvatar = userPrefs.avatar_url;
           }
+
+          const { assignedBranch, assignedBranchId } = extractBranchAssignment(
+            session.user.user_metadata,
+            profile,
+          );
 
           const u: User = {
             id: currentUid,
@@ -363,6 +428,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             email: session.user.email || "",
             role: resolvedRole,
             avatar: userAvatar,
+            assignedBranch: assignedBranch || (resolvedRole === "branch_staff" ? "Pending Confirmation" : undefined),
+            assignedBranchId,
           };
           setUser(u);
         } catch {
@@ -370,6 +437,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             currentUid,
             session.user.email,
             session.user.user_metadata?.role,
+            null,
+            null,
+            session.user.user_metadata?.staff_role,
+          );
+          const { assignedBranch, assignedBranchId } = extractBranchAssignment(
+            session.user.user_metadata,
             null,
           );
           const u: User = {
@@ -381,6 +454,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ),
             email: session.user.email || "",
             role: resolvedRole,
+            assignedBranch: assignedBranch || (resolvedRole === "branch_staff" ? "Pending Confirmation" : undefined),
+            assignedBranchId,
           };
           setUser(u);
         }
@@ -461,11 +536,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .eq("id", uid)
           .maybeSingle();
 
+        const userPrefs =
+          profile?.notification_prefs &&
+          typeof profile.notification_prefs === "object" &&
+          !Array.isArray(profile.notification_prefs)
+            ? (profile.notification_prefs as Record<string, unknown>)
+            : null;
+
         let resolvedRole: Role = resolveUserRole(
           uid,
           authRes.data.user.email || cleanEmail,
           authRes.data.user.user_metadata?.role,
           profile?.role,
+          userPrefs,
+          authRes.data.user.user_metadata?.staff_role,
         );
 
         // Check if user is registered in delivery_agents table
@@ -480,16 +564,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
 
         let userAvatar: string | undefined = undefined;
-        if (
-          profile?.notification_prefs &&
-          typeof profile.notification_prefs === "object" &&
-          !Array.isArray(profile.notification_prefs)
-        ) {
-          const prefs = profile.notification_prefs as Record<string, unknown>;
-          if (typeof prefs.avatar_url === "string") {
-            userAvatar = prefs.avatar_url;
-          }
+        if (userPrefs && typeof userPrefs.avatar_url === "string") {
+          userAvatar = userPrefs.avatar_url;
         }
+
+        const { assignedBranch, assignedBranchId } = extractBranchAssignment(
+          authRes.data.user.user_metadata,
+          profile,
+        );
 
         const u: User = {
           id: uid,
@@ -501,6 +583,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           email: authRes.data.user.email || cleanEmail,
           role: resolvedRole,
           avatar: userAvatar,
+          assignedBranch: assignedBranch || (resolvedRole === "branch_staff" ? "Pending Confirmation" : undefined),
+          assignedBranchId,
         };
 
         setUser(u);
