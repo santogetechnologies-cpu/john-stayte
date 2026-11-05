@@ -303,14 +303,21 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
 }
 
 // Server-side Supabase client initialization
-function getServerSupabase() {
+function getServerSupabase(authToken?: string | null) {
   const url =
     process.env.VITE_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
     "https://wttchknauwvbfjatdscc.supabase.co";
+
+  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // If rawKey is not set, or is a management key rather than a valid supabase JWT, fallback to anon key
+  const isKeyUnregistered = rawKey && rawKey.startsWith("sb_secret_");
   const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    "sb_secret_ZwtR_A-zCLMJfCqNkqNbEw_Fa9r_c5x";
+    !isKeyUnregistered && rawKey
+      ? rawKey
+      : process.env.VITE_SUPABASE_ANON_KEY ||
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
 
   const options: any = {
     auth: {
@@ -318,6 +325,14 @@ function getServerSupabase() {
       autoRefreshToken: false,
     },
   };
+
+  if (authToken && !authToken.startsWith("mock-")) {
+    options.global = {
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+      },
+    };
+  }
 
   return createClient<Database>(url, key, options);
 }
@@ -564,7 +579,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
       customerName: fallbackName,
       authToken,
     } = data;
-    const supabase = getServerSupabase();
+    const supabase = getServerSupabase(authToken);
 
     if (authToken && !authToken.startsWith("mock-")) {
       try {
@@ -841,7 +856,7 @@ export const verifyDeliveryOtpServerFn = createServerFn({ method: "POST" })
       };
     }
 
-    const supabase = getServerSupabase();
+    const supabase = getServerSupabase(authToken);
 
     if (authToken && !authToken.startsWith("mock-")) {
       try {

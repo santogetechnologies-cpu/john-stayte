@@ -1542,6 +1542,7 @@ export async function getOrCreateDeliveryOtp(
       maskedPhone: res.maskedPhone,
       smsError: res.smsError,
       message: res.message,
+      error: res.error,
       cooldownEndsAt: res.cooldownEndsAt,
       cooldownRemainingSec: res.cooldownRemainingSec,
     };
