@@ -15,6 +15,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { StoreProvider } from "@/lib/store";
 import { Toaster } from "@/components/ui/sonner";
+import { CookieConsentBanner } from "@/components/site/CookieConsentBanner";
 
 function NotFoundComponent() {
   return (
@@ -200,6 +201,7 @@ function RootComponent() {
         <div key={location.pathname} className="route-vertical-reveal min-h-screen">
           <Outlet />
         </div>
+        <CookieConsentBanner />
         <Toaster position="top-right" richColors />
       </StoreProvider>
     </QueryClientProvider>

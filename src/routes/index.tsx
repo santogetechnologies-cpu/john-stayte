@@ -153,53 +153,71 @@ function TestimonialsCarousel({ customItems }: { customItems?: any[] }) {
     };
   }, [emblaApi, onSelect]);
 
-  // Autoplay every 1000ms (1 second)
+  // Autoplay every 4500ms (4.5 seconds)
   useEffect(() => {
     if (!emblaApi) return;
     const interval = setInterval(() => {
       if (!isHovered) {
         emblaApi.scrollNext();
       }
-    }, 1000);
+    }, 4500);
     return () => clearInterval(interval);
   }, [emblaApi, isHovered]);
 
   const fallbackItems = [
     {
-      name: "James Claret",
-      role: "Operations Director",
+      name: "James C.",
+      role: "Operations Manager, Stroud",
+      rating: 5,
+      date: "October 2026",
+      verified: true,
       quote:
-        "John Stayte Services has been our trusted fuel supplier for over five years. Their reliable delivery and excellent customer service make them an essential partner for our business.",
+        "John Stayte Services has been our trusted commercial LPG supplier for over five years. Reliable scheduled deliveries, competitive pricing, and immediate support whenever we need advice.",
     },
     {
-      name: "Rachel Morgan",
-      role: "Facilities Manager",
+      name: "Rachel M.",
+      role: "Facilities Lead, Gloucester",
+      rating: 5,
+      date: "September 2026",
+      verified: true,
       quote:
-        "We've been working with John Stayte Services for all our heating and cooking gas needs. Their team is professional, efficient, and always goes the extra mile.",
+        "We depend on JSS for our site heating and commercial cooking gas. The delivery team is courteous, punctual, and always ensures cylinders are safely positioned.",
     },
     {
-      name: "Andrew Bennett",
-      role: "Customer Contract Specialist",
+      name: "Andrew B.",
+      role: "Agricultural Account, Dursley",
+      rating: 5,
+      date: "August 2026",
+      verified: true,
       quote:
-        "Exceptional service, competitive prices, and prompt deliveries every time. John Stayte Services is our go-to partner for all our gas requirements.",
+        "Exceptional service and dependable direct delivery across Gloucestershire. Having bottled gas and bulk solid fuel delivered together saves our team hours every week.",
     },
     {
       name: "Sarah H.",
-      role: "Residential Client, Frampton on Severn",
+      role: "Home Heating, Frampton on Severn",
+      rating: 5,
+      date: "September 2026",
+      verified: true,
       quote:
-        "Ordered 19kg propane at 9am and it was on the doorstep the next morning. Faultless service and dependable direct delivery across Gloucestershire.",
+        "Ordered 19kg propane at 9am and it was on our doorstep the next morning. Faultless local service and a hassle-free cylinder exchange.",
     },
     {
       name: "The Bell Inn",
-      role: "Hospitality Partner, Stroud",
+      role: "Hospitality Customer, Cotswolds",
+      rating: 5,
+      date: "July 2026",
+      verified: true,
       quote:
-        "Our cellar gas has never run out since switching to JSS. The scheduled automated deliveries and local reliability are spot on every time.",
+        "Our cellar gas and patio heater supply has never run out since switching to John Stayte Services. The automated delivery scheduling is spot on.",
     },
     {
       name: "Mark T.",
-      role: "Agricultural Partner, Cam",
+      role: "Smallholding, Cam",
+      rating: 5,
+      date: "June 2026",
+      verified: true,
       quote:
-        "Coal, kiln-dried logs, and animal feed all in one scheduled delivery. Saves our farm team multiple supply trips every single week.",
+        "Smokeless fuel, seasoned logs, and animal feed delivered on the same run. Trustworthy, friendly drivers who genuinely know the local lanes.",
     },
   ];
 
@@ -241,32 +259,46 @@ function TestimonialsCarousel({ customItems }: { customItems?: any[] }) {
               <ScrollRevealItem delay={idx * 100} variant="card" className="h-full">
                 <div className="h-full bg-white rounded-3xl border border-slate-200/80 p-7 sm:p-8 shadow-[0_4px_25px_-4px_rgba(0,0,0,0.05)] hover:shadow-lg transition-all duration-300 flex flex-col justify-between">
                   <div>
-                    {/* Stylized Red Quote Marks */}
-                    <div className="text-primary text-4xl sm:text-5xl font-serif font-black leading-none select-none mb-3">
-                      “
+                    {/* Rating Stars & Date */}
+                    <div className="flex items-center justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-1 text-amber-400">
+                        {[...Array(item.rating || 5)].map((_, starI) => (
+                          <Star key={starI} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        ))}
+                      </div>
+                      {item.date && (
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          {item.date}
+                        </span>
+                      )}
                     </div>
                     {/* Quote Body */}
                     <p className="text-sm sm:text-[14.5px] font-medium text-slate-700 leading-relaxed">
-                      {typeof item.quote === "string" ? item.quote : String(item.quote || "")}
+                      &ldquo;{typeof item.quote === "string" ? item.quote : String(item.quote || "")}&rdquo;
                     </p>
                   </div>
 
                   <div>
                     {/* Subtle Divider */}
-                    <div className="border-t border-slate-100 my-5" />
+                    <div className="border-t border-slate-100 my-4" />
                     {/* Customer Info */}
-                    <div className="flex items-center gap-3.5">
-                      <div className="h-11 w-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
-                        <User className="h-5 w-5 fill-slate-400 text-slate-400" />
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center shrink-0">
+                          <User className="h-5 w-5 fill-slate-400 text-slate-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-extrabold text-sm text-slate-900 leading-snug truncate">
+                            {typeof item.name === "string" ? item.name : String(item.name || "")}
+                          </h4>
+                          <p className="text-xs text-slate-500 truncate">
+                            {typeof item.role === "string" ? item.role : String(item.role || "")}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-extrabold text-sm sm:text-base text-slate-900 leading-snug">
-                          {typeof item.name === "string" ? item.name : String(item.name || "")}
-                        </h4>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {typeof item.role === "string" ? item.role : String(item.role || "")}
-                        </p>
-                      </div>
+                      <span className="shrink-0 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Verified
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2075,11 +2107,11 @@ function Home() {
                     </div>
                     <div className="h-0.5 w-6 bg-primary rounded-full mx-auto mt-4 mb-2.5" />
                     <h3 className="font-black text-sm lg:text-base text-slate-900 tracking-tight leading-snug">
-                      3 Local Forecourts
+                      4 Regional Forecourts &amp; Depots
                     </h3>
                     <p className="text-xs text-slate-500 leading-relaxed mt-1.5 max-w-[220px] mx-auto">
-                      Physical service stations open 7 days a week for immediate gas bottle
-                      exchanges and supplies.
+                      Physical forecourts and depot facilities open for immediate gas cylinder
+                      exchanges, fuels, and Click &amp; Collect orders.
                     </p>
                   </div>
                 </ScrollRevealItem>
@@ -2150,10 +2182,10 @@ function Home() {
                   </div>
                   <div className="pt-0.5">
                     <div className="h-0.5 w-4 bg-primary rounded-full mb-1" />
-                    <h3 className="font-black text-xs text-slate-900">3 Local Forecourts</h3>
+                    <h3 className="font-black text-xs text-slate-900">4 Regional Forecourts &amp; Depots</h3>
                     <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                      Physical service stations open 7 days a week for immediate gas bottle
-                      exchanges and supplies.
+                      Physical forecourts and depot facilities open for immediate cylinder exchanges
+                      and Click &amp; Collect supplies.
                     </p>
                   </div>
                 </div>

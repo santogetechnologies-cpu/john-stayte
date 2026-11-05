@@ -1,6 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { isRestrictedGasProduct } from "../src/lib/application-service";
+import fs from "node:fs";
+import path from "node:path";
+import { isRestrictedGasProduct, isValidUuid } from "../src/lib/application-service";
 
 // ============================================================================
 // SIMULATED DATABASE LAYER WITH RLS, DEFENSE TRIGGERS & ATOMIC RPC
@@ -623,6 +625,205 @@ describe("Phase 1 Hardening & Atomic Gas Customer Application Workflow", () => {
     // 3. Approved customer purchasing LPG -> Allowed
     const lpgAllowed = simulateCheckoutEvaluation(lpgCart, approvedCustomer);
     assert.equal(lpgAllowed.allowed, true, "Approved customer is allowed to checkout LPG");
+  });
+
+  describe("Reviewer UUID Validation and RPC Error Handling", () => {
+    it("isValidUuid strictly differentiates valid UUIDs from display names and emails", () => {
+      // Valid UUID formats
+      assert.equal(isValidUuid("c6832dbb-5e19-482f-8700-0e998a136bfb"), true);
+      assert.equal(isValidUuid("C6832DBB-5E19-482F-8700-0E998A136BFB"), true);
+      assert.equal(isValidUuid("123e4567-e89b-12d3-a456-426614174000"), true);
+
+      // Invalid strings (Display names, emails, empty, arbitrary text)
+      assert.equal(isValidUuid("John Stayte Admin"), false);
+      assert.equal(isValidUuid("Admin Staff"), false);
+      assert.equal(isValidUuid("Depot Manager"), false);
+      assert.equal(isValidUuid("admin@stayte.co.uk"), false);
+      assert.equal(isValidUuid(""), false);
+      assert.equal(isValidUuid("   "), false);
+      assert.equal(isValidUuid(null), false);
+      assert.equal(isValidUuid(undefined), false);
+      assert.equal(isValidUuid(12345), false);
+    });
+
+    it("Resolves reviewer UUID strictly to authentic UUID and sanitizes display names", () => {
+      function resolveReviewer(reviewedBy: any, sessionUserId: any): string {
+        if (isValidUuid(reviewedBy)) {
+          return reviewedBy;
+        }
+        if (isValidUuid(sessionUserId)) {
+          return sessionUserId;
+        }
+        throw new Error("Invalid reviewer identity: An authenticated user UUID is required");
+      }
+
+      const authenticAdminUuid = "d982b68c-5e19-482f-8700-0e998a136bfb";
+      const validReviewerUuid = "e1234567-e89b-12d3-a456-426614174000";
+
+      // 1. When passed a display name, fallback to authentic session UUID
+      const resolvedFromDisplayName = resolveReviewer("John Stayte Admin", authenticAdminUuid);
+      assert.equal(resolvedFromDisplayName, authenticAdminUuid);
+
+      // 2. When passed a valid UUID, use the provided UUID
+      const resolvedFromValidUuid = resolveReviewer(validReviewerUuid, authenticAdminUuid);
+      assert.equal(resolvedFromValidUuid, validReviewerUuid);
+
+      // 3. When neither is a valid UUID, throw error
+      assert.throws(
+        () => resolveReviewer("John Stayte Admin", "invalid-session-id"),
+        /Invalid reviewer identity/,
+      );
+    });
+
+    it("Does not silently fallback to direct database write when RPC returns real postgres error", () => {
+      function evaluateRpcErrorHandling(rpcErr: { code?: string; message: string }) {
+        const isRpcMissing =
+          rpcErr.code === "PGRST202" ||
+          rpcErr.code === "42883" ||
+          rpcErr.message?.toLowerCase().includes("could not find the function") ||
+          (rpcErr.message?.toLowerCase().includes("function") &&
+            rpcErr.message?.toLowerCase().includes("does not exist"));
+
+        if (!isRpcMissing) {
+          throw new Error(rpcErr.message || "Approval transaction failed in database RPC.");
+        }
+
+        return "FALLBACK_ALLOWED";
+      }
+
+      // 1. Real database error (e.g. invalid syntax for type uuid, foreign key, or constraint failure)
+      assert.throws(
+        () =>
+          evaluateRpcErrorHandling({
+            code: "22P02",
+            message: 'invalid input syntax for type uuid: "John Stayte Admin"',
+          }),
+        /invalid input syntax for type uuid/,
+      );
+
+      // 2. Function not found (local testing / mock DB environment)
+      const fallbackResult = evaluateRpcErrorHandling({
+        code: "PGRST202",
+        message: "could not find the function approve_gas_customer_application",
+      });
+      assert.equal(fallbackResult, "FALLBACK_ALLOWED");
+    });
+
+    it("Migration 00097 correctly fixes RPC signature, typing, and drops legacy TEXT overload", () => {
+      const migrationPath = path.resolve(
+        process.cwd(),
+        "supabase/migrations/00097_fix_application_reviewer_uuid.sql",
+      );
+      assert.equal(fs.existsSync(migrationPath), true, "00097 migration file must exist");
+
+      const sql = fs.readFileSync(migrationPath, "utf-8");
+
+      // 1. Must drop legacy signature to avoid PostgREST ambiguity (PGRST204)
+      assert.match(
+        sql,
+        /DROP FUNCTION IF EXISTS public\.approve_gas_customer_application\(\s*UUID,\s*TEXT,\s*NUMERIC,\s*BOOLEAN,\s*NUMERIC,\s*TEXT,\s*TEXT\s*\);/i,
+        "Must drop legacy TEXT signature",
+      );
+
+      // 2. Must define p_reviewed_by as UUID
+      assert.match(
+        sql,
+        /p_reviewed_by UUID DEFAULT NULL/i,
+        "Parameter p_reviewed_by must be typed as UUID",
+      );
+
+      // 3. Must declare v_reviewer_id as UUID
+      assert.match(
+        sql,
+        /v_reviewer_id UUID;/i,
+        "Internal variable v_reviewer_id must be declared as UUID",
+      );
+
+      // 4. Must assign reviewed_by = v_reviewer_id (UUID = UUID)
+      assert.match(
+        sql,
+        /reviewed_by = v_reviewer_id/i,
+        "Must update reviewed_by with UUID variable",
+      );
+
+      // 5. Must require auth.uid() non-null and prevent reviewer impersonation
+      assert.match(
+        sql,
+        /IF v_caller_id IS NULL THEN\s*RAISE EXCEPTION/i,
+        "Must reject unauthenticated caller (auth.uid() IS NULL)",
+      );
+      assert.match(
+        sql,
+        /p_reviewed_by <> v_caller_id/i,
+        "Must enforce reviewer identity matches auth.uid()",
+      );
+      assert.match(
+        sql,
+        /v_reviewer_id := v_caller_id;/i,
+        "Must assign reviewer id directly from auth.uid() without fallback",
+      );
+
+      // 6. Must revoke execute from PUBLIC and anon, and grant strictly to authenticated
+      assert.match(
+        sql,
+        /REVOKE EXECUTE ON FUNCTION public\.approve_gas_customer_application\([\s\S]*?\) FROM PUBLIC;/i,
+        "Must revoke execute from PUBLIC",
+      );
+      assert.match(
+        sql,
+        /REVOKE EXECUTE ON FUNCTION public\.approve_gas_customer_application\([\s\S]*?\) FROM anon;/i,
+        "Must revoke execute from anon",
+      );
+      assert.match(
+        sql,
+        /GRANT EXECUTE ON FUNCTION public\.approve_gas_customer_application\([\s\S]*?\) TO authenticated;/i,
+        "Must grant execute strictly to authenticated role",
+      );
+
+      // 7. Must avoid CASCADE to protect database integrity
+      assert.doesNotMatch(
+        sql,
+        /DROP\s+FUNCTION[\s\S]*?CASCADE/i,
+        "Must not use CASCADE when dropping functions",
+      );
+
+      // 8. Avoid manual schema_migrations insertion to prevent SQL Editor tracking conflicts
+      assert.doesNotMatch(
+        sql,
+        /INSERT INTO supabase_migrations\.schema_migrations/i,
+        "Must not contain manual schema_migrations inserts for SQL editor execution",
+      );
+
+      // 9. Must be transaction-wrapped and notify PostgREST schema cache
+      assert.match(
+        sql,
+        /^BEGIN;/m,
+        "Must start with BEGIN transaction block",
+      );
+      assert.match(
+        sql,
+        /NOTIFY\s+pgrst,\s*'reload\s+schema';/i,
+        "Must notify PostgREST to reload schema cache",
+      );
+      assert.match(
+        sql,
+        /COMMIT;$/m,
+        "Must end with COMMIT transaction block",
+      );
+    });
+
+    it("Recovery strategy strictly preserves UUID typing and never restores TEXT signatures", () => {
+      const migrationPath = path.resolve(
+        process.cwd(),
+        "supabase/migrations/00097_fix_application_reviewer_uuid.sql",
+      );
+      const sql = fs.readFileSync(migrationPath, "utf-8");
+
+      // Verify no TEXT assignment to reviewed_by column
+      assert.doesNotMatch(sql, /reviewed_by\s*=\s*v_reviewer(?!\w)/i);
+      assert.doesNotMatch(sql, /reviewed_by\s*=\s*p_reviewed_by(?!\w)/i);
+      assert.match(sql, /reviewed_by\s*=\s*v_reviewer_id/i);
+    });
   });
 });
 

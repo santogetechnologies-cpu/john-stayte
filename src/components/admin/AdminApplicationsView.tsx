@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Flame,
   Check,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -49,6 +52,11 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  resolvePricingBandDiscount,
+  resolvePricingBandDiscountSync,
+} from "@/lib/branch-pricing-service";
+import type { PricingBandDiscountResolution } from "@/types/pricing";
 import {
   getAllGasCustomerApplications,
   approveGasCustomerApplication,
@@ -76,6 +84,10 @@ export function AdminApplicationsView() {
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [pricingBand, setPricingBand] = useState("Standard Domestic");
   const [discountPercentage, setDiscountPercentage] = useState<number>(0);
+  const [discountResolution, setDiscountResolution] = useState<PricingBandDiscountResolution | null>(() =>
+    resolvePricingBandDiscountSync("Standard Domestic")
+  );
+  const [resolvingDiscount, setResolvingDiscount] = useState(false);
   const [creditApproved, setCreditApproved] = useState(false);
   const [creditLimit, setCreditLimit] = useState<number>(500);
 
@@ -167,19 +179,62 @@ export function AdminApplicationsView() {
     setRequestedInfoText(app.more_info_requested || "");
     const isBusiness =
       app.customer_type === "BUSINESS" || app.usage_type === "COMMERCIAL" || app.usage_type === "BULK";
-    setPricingBand(app.pricing_band || (isBusiness ? "Commercial Trade (Band B)" : "Standard Domestic"));
-    setDiscountPercentage(app.discount_percentage || (isBusiness ? 5 : 0));
+    const initialBand = app.pricing_band || (isBusiness ? "Commercial Trade (Band B)" : "Standard Domestic");
+    setPricingBand(initialBand);
+    const initialRes = resolvePricingBandDiscountSync(initialBand, app.previous_account_details || null);
+    setDiscountResolution(initialRes);
+    setDiscountPercentage(initialRes.discountPercentage);
     setCreditApproved(Boolean(app.credit_account_approved));
     setCreditLimit(app.credit_limit || (isBusiness ? 1000 : 500));
     setModalOpen(true);
   };
 
+  // Update discount percentage immediately whenever pricing band changes
+  useEffect(() => {
+    let isMounted = true;
+    async function updateDiscount() {
+      if (!pricingBand) return;
+      setResolvingDiscount(true);
+      try {
+        const res = await resolvePricingBandDiscount(
+          pricingBand,
+          selectedApp?.previous_account_details || null
+        );
+        if (isMounted) {
+          setDiscountResolution(res);
+          setDiscountPercentage(res.discountPercentage);
+        }
+      } catch {
+        if (isMounted) {
+          const fallback = resolvePricingBandDiscountSync(
+            pricingBand,
+            selectedApp?.previous_account_details || null
+          );
+          setDiscountResolution(fallback);
+          setDiscountPercentage(fallback.discountPercentage);
+        }
+      } finally {
+        if (isMounted) {
+          setResolvingDiscount(false);
+        }
+      }
+    }
+    updateDiscount();
+    return () => {
+      isMounted = false;
+    };
+  }, [pricingBand, selectedApp]);
+
   const handleConfirmApprove = async () => {
     if (!selectedApp) return;
     setUpdating(true);
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user;
+      if (!sessionUser) {
+        toast.error("Your session has expired or is invalid. Please sign in again.");
+        return;
+      }
 
       await approveGasCustomerApplication({
         applicationId: selectedApp.id,
@@ -189,7 +244,7 @@ export function AdminApplicationsView() {
         creditApproved,
         creditLimit: creditApproved ? Number(creditLimit) || 0 : 0,
         managerNotes: adminNotes.trim(),
-        reviewedBy: adminName,
+        reviewedBy: sessionUser.id,
       });
 
       toast.success(`Application for ${selectedApp.full_name} approved successfully!`);
@@ -209,8 +264,12 @@ export function AdminApplicationsView() {
     if (!selectedApp) return;
     setUpdating(true);
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user;
+      if (!sessionUser) {
+        toast.error("Your session has expired or is invalid. Please sign in again.");
+        return;
+      }
 
       const finalReason =
         rejectionReason.trim() || adminNotes.trim() || "Application details require verification.";
@@ -219,7 +278,7 @@ export function AdminApplicationsView() {
         applicationId: selectedApp.id,
         customerId: selectedApp.customer_id,
         reason: finalReason,
-        reviewedBy: adminName,
+        reviewedBy: sessionUser.id,
       });
 
       toast.success(`Application for ${selectedApp.full_name} declined.`);
@@ -243,14 +302,18 @@ export function AdminApplicationsView() {
     }
     setUpdating(true);
     try {
-      const { data: authData } = await supabase.auth.getUser();
-      const adminName = authData?.user?.user_metadata?.full_name || "Admin Staff";
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData?.session?.user;
+      if (!sessionUser) {
+        toast.error("Your session has expired or is invalid. Please sign in again.");
+        return;
+      }
 
       await requestMoreInfoGasCustomerApplication({
         applicationId: selectedApp.id,
         customerId: selectedApp.customer_id,
         requestedInfo: requestedInfoText.trim(),
-        reviewedBy: adminName,
+        reviewedBy: sessionUser.id,
       });
 
       toast.success(`More information requested for ${selectedApp.full_name}. Customer notified.`);
@@ -756,33 +819,159 @@ export function AdminApplicationsView() {
           </DialogHeader>
 
           <div className="space-y-3 text-xs">
-            <div className="space-y-1">
-              <Label className="font-bold text-slate-800">Pricing Band *</Label>
+            {/* Pricing Band Selection */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="font-bold text-slate-800">Pricing Band *</Label>
+                {resolvingDiscount && (
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
+                    <Loader2 className="h-3 w-3 animate-spin text-slate-500" />
+                    Checking pricing rules...
+                  </span>
+                )}
+              </div>
               <Select value={pricingBand} onValueChange={setPricingBand}>
                 <SelectTrigger className="h-9 text-xs rounded-xl bg-slate-50 border-slate-300 font-bold">
-                  <SelectValue />
+                  <SelectValue placeholder="Select pricing band" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Standard Domestic">Standard Domestic</SelectItem>
-                  <SelectItem value="High Volume Domestic (Band A)">High Volume Domestic (Band A)</SelectItem>
-                  <SelectItem value="Commercial Trade (Band B)">Commercial Trade (Band B)</SelectItem>
-                  <SelectItem value="Hospitality & Catering (Band C)">Hospitality &amp; Catering (Band C)</SelectItem>
-                  <SelectItem value="Industrial & Agricultural (Band D)">Industrial &amp; Agricultural (Band D)</SelectItem>
-                  <SelectItem value="Bulk LPG Propane (Band E)">Bulk LPG Propane (Band E)</SelectItem>
+                <SelectContent className="max-h-80">
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase font-black text-slate-400 px-2 py-1 tracking-wider">
+                      Documented Discount Tiers (Percentage Off)
+                    </SelectLabel>
+                    <SelectItem value="Band 89 - 17.5% Disc">
+                      Band 89 – 17.5% Discount Tier (Weston)
+                    </SelectItem>
+                    <SelectItem value="Band 90 - 20% Disc">
+                      Band 90 – 20.0% Discount Tier (Weston &amp; Special Accounts)
+                    </SelectItem>
+                    <SelectItem value="Band 97 - 22.5% Disc">
+                      Band 97 – 22.5% Discount Tier (Weston)
+                    </SelectItem>
+                    <SelectItem value="Band 98 - 25% Disc">
+                      Band 98 – 25.0% Discount Tier (Weston &amp; Special Accounts)
+                    </SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase font-black text-slate-400 px-2 py-1 tracking-wider">
+                      Standard Customer Tariffs (Fixed Rate)
+                    </SelectLabel>
+                    <SelectItem value="Standard Domestic">Standard Domestic (Band 20 Equivalent)</SelectItem>
+                    <SelectItem value="High Volume Domestic (Band A)">High Volume Domestic (Band A)</SelectItem>
+                    <SelectItem value="Commercial Trade (Band B)">Commercial Trade (Band B / Band 10 Equivalent)</SelectItem>
+                    <SelectItem value="Hospitality & Catering (Band C)">Hospitality &amp; Catering (Band C / Band 11)</SelectItem>
+                    <SelectItem value="Industrial & Agricultural (Band D)">Industrial &amp; Agricultural (Band D)</SelectItem>
+                    <SelectItem value="Bulk LPG Propane (Band E)">Bulk LPG Propane (Band E)</SelectItem>
+                  </SelectGroup>
+
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px] uppercase font-black text-slate-400 px-2 py-1 tracking-wider">
+                      Documented Branch Tariff Bands
+                    </SelectLabel>
+                    <SelectItem value="band-weston-memo-20">Band 20 – Retail Normal (Weston)</SelectItem>
+                    <SelectItem value="band-weston-memo-10">Band 10 – Business Normal (Weston)</SelectItem>
+                    <SelectItem value="band-weston-memo-12">Band 12 – Business Discounted (Weston Fixed Rates)</SelectItem>
+                    <SelectItem value="band-weston-memo-15">Band 15 – Business Astute (Weston)</SelectItem>
+                    <SelectItem value="band-weston-memo-31">Band 31 – Weston Astute Discounted</SelectItem>
+                    <SelectItem value="band-weston-memo-36">Band 36 – Fairground &amp; Travellers</SelectItem>
+                    <SelectItem value="band-east-20">Band 20 – Retail Normal (Eastington)</SelectItem>
+                    <SelectItem value="band-east-37">Band 37 – Retail Astute (Eastington)</SelectItem>
+                    <SelectItem value="band-east-48">Band 48 – Pub Normal (Eastington)</SelectItem>
+                  </SelectGroup>
+
+                  {/* Fallback to preserve custom existing band if already assigned */}
+                  {pricingBand &&
+                    ![
+                      "Band 89 - 17.5% Disc",
+                      "Band 90 - 20% Disc",
+                      "Band 97 - 22.5% Disc",
+                      "Band 98 - 25% Disc",
+                      "Standard Domestic",
+                      "High Volume Domestic (Band A)",
+                      "Commercial Trade (Band B)",
+                      "Hospitality & Catering (Band C)",
+                      "Industrial & Agricultural (Band D)",
+                      "Bulk LPG Propane (Band E)",
+                      "band-weston-memo-20",
+                      "band-weston-memo-10",
+                      "band-weston-memo-12",
+                      "band-weston-memo-15",
+                      "band-weston-memo-31",
+                      "band-weston-memo-36",
+                      "band-east-20",
+                      "band-east-37",
+                      "band-east-48",
+                    ].includes(pricingBand) && (
+                      <SelectItem value={pricingBand}>{pricingBand}</SelectItem>
+                    )}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label className="font-bold text-slate-800">Discount Percentage (%)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={50}
-                value={discountPercentage}
-                onChange={(e) => setDiscountPercentage(Number(e.target.value))}
-                className="h-9 text-xs bg-slate-50 border-slate-300 rounded-xl"
-              />
+            {/* Discount Percentage Field (Read-only, Automatically Populated) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="font-bold text-slate-800">Discount Percentage (%)</Label>
+                <span className="text-[10px] font-semibold text-slate-400">
+                  Read-Only (Auto-populated from Pricing Matrix)
+                </span>
+              </div>
+              <div className="relative">
+                <Input
+                  type="text"
+                  readOnly
+                  value={
+                    resolvingDiscount
+                      ? "Retrieving discount..."
+                      : `${discountPercentage}%`
+                  }
+                  className="h-9 text-xs font-bold rounded-xl bg-slate-100 border-slate-300 text-slate-900 cursor-not-allowed select-none"
+                />
+                {resolvingDiscount && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                  </div>
+                )}
+              </div>
+
+              {/* Status & Explanation */}
+              {resolvingDiscount ? (
+                <p className="text-[11px] text-slate-400 animate-pulse">
+                  Retrieving discount percentage from Gas Pricing Management...
+                </p>
+              ) : discountResolution?.isConfigured && discountResolution.hasPercentageDiscount ? (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] space-y-0.5">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    {discountResolution.discountPercentage}% Discount Configured
+                  </p>
+                  <p className="text-emerald-700 leading-snug">
+                    {discountResolution.statusMessage}
+                  </p>
+                </div>
+              ) : discountResolution?.isConfigured && !discountResolution.hasPercentageDiscount ? (
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-[11px]">
+                  <p className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Info className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    No percentage discount configured
+                  </p>
+                  <p className="text-slate-500 mt-0.5 leading-snug">
+                    Standard fixed-rate cylinder pricing applies for this band. No percentage deduction is applied at checkout.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    Configuration Missing or Ambiguous
+                  </p>
+                  <p className="text-amber-800 mt-0.5 leading-snug">
+                    {discountResolution?.statusMessage ||
+                      "Please select a valid pricing band from the Gas Pricing Management system before approving."}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
@@ -823,9 +1012,14 @@ export function AdminApplicationsView() {
             <Button
               type="button"
               size="sm"
-              disabled={updating}
+              disabled={
+                updating ||
+                resolvingDiscount ||
+                !discountResolution?.isConfigured ||
+                discountResolution?.isAmbiguous
+              }
               onClick={handleConfirmApprove}
-              className="rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 gap-1.5 cursor-pointer shadow-xs shadow-emerald-200"
+              className="rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4 gap-1.5 cursor-pointer shadow-xs shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {updating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Confirm Approval

@@ -74,24 +74,28 @@ export function BranchDailyReportView() {
       </div>
 
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-slate-900">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Daily Handover Report
             </h1>
-            <Badge
-              variant="outline"
-              className={`font-bold text-xs ${
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border shadow-2xs ${
                 isPending
-                  ? "bg-amber-50 text-amber-800 border-amber-300"
-                  : "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  ? "bg-[#FFF7E6] text-[#92400E] border-[#FDE68A]"
+                  : "bg-emerald-500/10 text-emerald-800 border-emerald-500/20"
               }`}
             >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isPending ? "bg-[#D97706] animate-pulse" : "bg-emerald-500"
+                }`}
+              />
               📍 {assignedBranch}
-            </Badge>
+            </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Real end-of-shift reconciliation summary for {todayFormatted}.
           </p>
         </div>
@@ -101,9 +105,9 @@ export function BranchDailyReportView() {
             size="sm"
             variant="outline"
             onClick={() => window.print()}
-            className="rounded-xl text-xs font-bold gap-1.5"
+            className="h-9.5 rounded-full text-xs font-bold gap-1.5 border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs px-4"
           >
-            <Printer className="h-3.5 w-3.5 text-slate-500" />
+            <Printer className="h-3.5 w-3.5 text-slate-400" />
             <span>Print Report</span>
           </Button>
           <Button
@@ -111,7 +115,7 @@ export function BranchDailyReportView() {
             onClick={() => {
               toast.success("Daily handover report exported.");
             }}
-            className="rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+            className="h-9.5 rounded-full text-xs font-black bg-[#374151] hover:bg-[#1f2937] text-white gap-1.5 shadow-sm px-4"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Export Report</span>
@@ -121,35 +125,35 @@ export function BranchDailyReportView() {
 
       {/* RECONCILIATION SUMMARY CARDS (REAL DATABASE DATA) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="surface-card rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
           <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Handovers Completed Today</p>
-          <p className="text-2xl font-black text-slate-900 mt-1">{completedToday.length}</p>
-          <p className="text-[11px] text-slate-500 font-medium mt-1">Based on database order timestamps</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{completedToday.length}</p>
+          <p className="text-[11px] text-slate-500 font-medium">Based on database order timestamps</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="surface-card rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
           <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Completed Order Total</p>
-          <p className="text-2xl font-black text-slate-900 mt-1">£{totalCompletedValue.toFixed(2)}</p>
-          <p className="text-[11px] text-emerald-600 font-bold mt-1">Verified against paid orders</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">£{totalCompletedValue.toFixed(2)}</p>
+          <p className="text-[11px] text-emerald-700 font-extrabold">Verified against paid orders</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="surface-card rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
           <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Awaiting Collection</p>
-          <p className="text-2xl font-black text-slate-900 mt-1">{pendingCollection.length}</p>
-          <p className="text-[11px] text-amber-600 font-bold mt-1">Ready for customer pickup</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{pendingCollection.length}</p>
+          <p className="text-[11px] text-[#92400E] font-extrabold">Ready for customer pickup</p>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+        <div className="surface-card rounded-[22px] border border-white/80 bg-white/70 backdrop-blur-xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-2">
           <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">Total Orders Logged</p>
-          <p className="text-2xl font-black text-slate-900 mt-1">{orders.length}</p>
-          <p className="text-[11px] text-slate-500 font-medium mt-1">Total active on branch queue</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{orders.length}</p>
+          <p className="text-[11px] text-slate-500 font-medium">Total active on branch queue</p>
         </div>
       </div>
 
       {/* SHIFT LOG SIGN-OFF */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+      <div className="surface-card rounded-[24px] border border-white/80 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] space-y-3">
         <h3 className="font-black text-sm text-slate-900">Shift Handover Sign-off</h3>
         <p className="text-xs text-slate-600">
-          Staff Account: <span className="font-bold text-slate-900">{user?.name || "Branch Staff"}</span> ({user?.email})
+          Staff Account: <span className="font-extrabold text-slate-900">{user?.name || "Branch Staff"}</span> ({user?.email})
         </p>
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
+        <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 text-xs text-slate-600 leading-relaxed">
           Operational records are synchronized directly from Supabase. No mock or sample handover figures are included.
         </div>
       </div>

@@ -25,36 +25,42 @@ export function BranchExchangeHistoryView() {
       </div>
 
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-slate-900">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Cylinder Exchange History
             </h1>
-            <Badge
-              variant="outline"
-              className={`font-bold text-xs ${
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border shadow-2xs ${
                 isPending
-                  ? "bg-amber-50 text-amber-800 border-amber-300"
-                  : "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  ? "bg-[#FFF7E6] text-[#92400E] border-[#FDE68A]"
+                  : "bg-emerald-500/10 text-emerald-800 border-emerald-500/20"
               }`}
             >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isPending ? "bg-[#D97706] animate-pulse" : "bg-emerald-500"
+                }`}
+              />
               📍 {assignedBranch}
-            </Badge>
+            </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Audit logs of returned cylinders, safety checks, valve inspections, and deposit refunds.
           </p>
         </div>
       </div>
 
       {/* AUDIT LOGS OR EMPTY STATE */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+      <div className="surface-card rounded-[24px] border border-white/80 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {exchangeLogs.length === 0 ? (
-          <div className="py-12 px-4 text-center space-y-2">
-            <Repeat className="mx-auto h-8 w-8 text-slate-300" />
-            <h3 className="text-sm font-bold text-slate-800">No cylinder exchanges recorded yet</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+          <div className="py-12 px-4 text-center space-y-2.5">
+            <div className="h-12 w-12 rounded-2xl bg-slate-100/80 text-slate-400 border border-slate-200/60 flex items-center justify-center mx-auto shadow-2xs">
+              <Repeat className="h-6 w-6" />
+            </div>
+            <h3 className="text-sm font-extrabold text-slate-900">No cylinder exchanges recorded yet</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
               When branch staff record customer empty bottle returns and safety inspections, the audit trail will appear here.
             </p>
           </div>
@@ -62,7 +68,7 @@ export function BranchExchangeHistoryView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px]">
+                <tr className="border-b border-slate-200/80 text-slate-400 font-extrabold uppercase text-[10px]">
                   <th className="py-3 px-3">Timestamp</th>
                   <th className="py-3 px-3">Customer</th>
                   <th className="py-3 px-3">Returned Bottle</th>
@@ -71,22 +77,22 @@ export function BranchExchangeHistoryView() {
                   <th className="py-3 px-3">Deposit / Exchange Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100/80">
                 {exchangeLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-3 font-medium text-slate-500 whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3.5 px-3 font-medium text-slate-500 whitespace-nowrap">
                       {log.timestamp}
                     </td>
-                    <td className="py-3 px-3 font-bold text-slate-900">
+                    <td className="py-3.5 px-3 font-bold text-slate-900">
                       {log.customer}
                     </td>
-                    <td className="py-3 px-3 text-slate-700 font-medium">
+                    <td className="py-3.5 px-3 text-slate-700 font-medium">
                       {log.cylinderReturned}
                     </td>
-                    <td className="py-3 px-3 text-slate-700 font-medium">
+                    <td className="py-3.5 px-3 text-slate-700 font-medium">
                       {log.cylinderIssued}
                     </td>
-                    <td className="py-3 px-3 font-medium text-slate-800">
+                    <td className="py-3.5 px-3 font-medium text-slate-800">
                       {log.depositAction}
                     </td>
                   </tr>

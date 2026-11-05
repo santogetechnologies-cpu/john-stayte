@@ -19,14 +19,19 @@ import { Route as BranchRouteImport } from './routes/branch'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
 import { Route as DeliveryRouteImport } from './routes/delivery'
+import { Route as FaqRouteImport } from './routes/faq'
 import { Route as FillingStationsRouteImport } from './routes/filling-stations'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ManagerRouteImport } from './routes/manager'
 import { Route as OffersRouteImport } from './routes/offers'
 import { Route as OrderGasRouteImport } from './routes/order-gas'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AccountIndexRouteImport } from './routes/account.index'
 import { Route as AccountAddressesRouteImport } from './routes/account.addresses'
 import { Route as AccountApplicationRouteImport } from './routes/account.application'
@@ -48,6 +53,7 @@ import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminAutoGasRouteImport } from './routes/admin.auto-gas'
 import { Route as AdminBannersRouteImport } from './routes/admin.banners'
 import { Route as AdminBlogRouteImport } from './routes/admin.blog'
+import { Route as AdminBranchStaffRouteImport } from './routes/admin.branch-staff'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminCmsRouteImport } from './routes/admin.cms'
 import { Route as AdminCustomersRouteImport } from './routes/admin.customers'
@@ -57,6 +63,7 @@ import { Route as AdminDeliveryAgentsRouteImport } from './routes/admin.delivery
 import { Route as AdminDeliverySlotsRouteImport } from './routes/admin.delivery-slots'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin.enquiries'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
+import { Route as AdminGasPricingRouteImport } from './routes/admin.gas-pricing'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
 import { Route as AdminInvoicesRouteImport } from './routes/admin.invoices'
 import { Route as AdminManagersRouteImport } from './routes/admin.managers'
@@ -98,6 +105,7 @@ import { Route as ManagerDeliveriesRouteImport } from './routes/manager.deliveri
 import { Route as ManagerDeliveryAgentsRouteImport } from './routes/manager.delivery-agents'
 import { Route as ManagerDeliveryAssignmentRouteImport } from './routes/manager.delivery-assignment'
 import { Route as ManagerEnquiriesRouteImport } from './routes/manager.enquiries'
+import { Route as ManagerGasPricingRouteImport } from './routes/manager.gas-pricing'
 import { Route as ManagerInventoryRouteImport } from './routes/manager.inventory'
 import { Route as ManagerNotificationsRouteImport } from './routes/manager.notifications'
 import { Route as ManagerOrdersRouteImport } from './routes/manager.orders'
@@ -165,9 +173,19 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CookiePolicyRoute = CookiePolicyRouteImport.update({
+  id: '/cookie-policy',
+  path: '/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DeliveryRoute = DeliveryRouteImport.update({
   id: '/delivery',
   path: '/delivery',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FillingStationsRoute = FillingStationsRouteImport.update({
@@ -195,6 +213,16 @@ const OrderGasRoute = OrderGasRouteImport.update({
   path: '/order-gas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ServicesRoute = ServicesRouteImport.update({
   id: '/services',
   path: '/services',
@@ -203,6 +231,11 @@ const ServicesRoute = ServicesRouteImport.update({
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountIndexRoute = AccountIndexRouteImport.update({
@@ -310,6 +343,11 @@ const AdminBlogRoute = AdminBlogRouteImport.update({
   path: '/blog',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminBranchStaffRoute = AdminBranchStaffRouteImport.update({
+  id: '/branch-staff',
+  path: '/branch-staff',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -353,6 +391,11 @@ const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
 const AdminFaqsRoute = AdminFaqsRouteImport.update({
   id: '/faqs',
   path: '/faqs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminGasPricingRoute = AdminGasPricingRouteImport.update({
+  id: '/gas-pricing',
+  path: '/gas-pricing',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminInventoryRoute = AdminInventoryRouteImport.update({
@@ -561,6 +604,11 @@ const ManagerEnquiriesRoute = ManagerEnquiriesRouteImport.update({
   path: '/enquiries',
   getParentRoute: () => ManagerRoute,
 } as any)
+const ManagerGasPricingRoute = ManagerGasPricingRouteImport.update({
+  id: '/gas-pricing',
+  path: '/gas-pricing',
+  getParentRoute: () => ManagerRoute,
+} as any)
 const ManagerInventoryRoute = ManagerInventoryRouteImport.update({
   id: '/inventory',
   path: '/inventory',
@@ -653,14 +701,19 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/cookie-policy': typeof CookiePolicyRoute
   '/delivery': typeof DeliveryRouteWithChildren
+  '/faq': typeof FaqRoute
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
   '/offers': typeof OffersRoute
   '/order-gas': typeof OrderGasRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/application': typeof AccountApplicationRoute
   '/account/cart': typeof AccountCartRoute
@@ -680,6 +733,7 @@ export interface FileRoutesByFullPath {
   '/admin/auto-gas': typeof AdminAutoGasRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/blog': typeof AdminBlogRoute
+  '/admin/branch-staff': typeof AdminBranchStaffRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -689,6 +743,7 @@ export interface FileRoutesByFullPath {
   '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
+  '/admin/gas-pricing': typeof AdminGasPricingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoices': typeof AdminInvoicesRoute
   '/admin/managers': typeof AdminManagersRoute
@@ -725,6 +780,7 @@ export interface FileRoutesByFullPath {
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
   '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
+  '/manager/gas-pricing': typeof ManagerGasPricingRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
   '/manager/orders': typeof ManagerOrdersRoute
@@ -756,12 +812,17 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/cookie-policy': typeof CookiePolicyRoute
+  '/faq': typeof FaqRoute
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/offers': typeof OffersRoute
   '/order-gas': typeof OrderGasRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/application': typeof AccountApplicationRoute
   '/account/cart': typeof AccountCartRoute
@@ -780,6 +841,7 @@ export interface FileRoutesByTo {
   '/admin/auto-gas': typeof AdminAutoGasRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/blog': typeof AdminBlogRoute
+  '/admin/branch-staff': typeof AdminBranchStaffRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -789,6 +851,7 @@ export interface FileRoutesByTo {
   '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
+  '/admin/gas-pricing': typeof AdminGasPricingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoices': typeof AdminInvoicesRoute
   '/admin/managers': typeof AdminManagersRoute
@@ -825,6 +888,7 @@ export interface FileRoutesByTo {
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
   '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
+  '/manager/gas-pricing': typeof ManagerGasPricingRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
   '/manager/orders': typeof ManagerOrdersRoute
@@ -861,14 +925,19 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/cookie-policy': typeof CookiePolicyRoute
   '/delivery': typeof DeliveryRouteWithChildren
+  '/faq': typeof FaqRoute
   '/filling-stations': typeof FillingStationsRoute
   '/login': typeof LoginRoute
   '/manager': typeof ManagerRouteWithChildren
   '/offers': typeof OffersRoute
   '/order-gas': typeof OrderGasRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/application': typeof AccountApplicationRoute
   '/account/cart': typeof AccountCartRoute
@@ -888,6 +957,7 @@ export interface FileRoutesById {
   '/admin/auto-gas': typeof AdminAutoGasRoute
   '/admin/banners': typeof AdminBannersRoute
   '/admin/blog': typeof AdminBlogRoute
+  '/admin/branch-staff': typeof AdminBranchStaffRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cms': typeof AdminCmsRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -897,6 +967,7 @@ export interface FileRoutesById {
   '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
+  '/admin/gas-pricing': typeof AdminGasPricingRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/invoices': typeof AdminInvoicesRoute
   '/admin/managers': typeof AdminManagersRoute
@@ -933,6 +1004,7 @@ export interface FileRoutesById {
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
   '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
+  '/manager/gas-pricing': typeof ManagerGasPricingRoute
   '/manager/inventory': typeof ManagerInventoryRoute
   '/manager/notifications': typeof ManagerNotificationsRoute
   '/manager/orders': typeof ManagerOrdersRoute
@@ -970,14 +1042,19 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/cookie-policy'
     | '/delivery'
+    | '/faq'
     | '/filling-stations'
     | '/login'
     | '/manager'
     | '/offers'
     | '/order-gas'
+    | '/privacy-policy'
+    | '/refund-policy'
     | '/services'
     | '/sitemap.xml'
+    | '/terms'
     | '/account/addresses'
     | '/account/application'
     | '/account/cart'
@@ -997,6 +1074,7 @@ export interface FileRouteTypes {
     | '/admin/auto-gas'
     | '/admin/banners'
     | '/admin/blog'
+    | '/admin/branch-staff'
     | '/admin/categories'
     | '/admin/cms'
     | '/admin/customers'
@@ -1006,6 +1084,7 @@ export interface FileRouteTypes {
     | '/admin/delivery-slots'
     | '/admin/enquiries'
     | '/admin/faqs'
+    | '/admin/gas-pricing'
     | '/admin/inventory'
     | '/admin/invoices'
     | '/admin/managers'
@@ -1042,6 +1121,7 @@ export interface FileRouteTypes {
     | '/manager/delivery-agents'
     | '/manager/delivery-assignment'
     | '/manager/enquiries'
+    | '/manager/gas-pricing'
     | '/manager/inventory'
     | '/manager/notifications'
     | '/manager/orders'
@@ -1073,12 +1153,17 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/cookie-policy'
+    | '/faq'
     | '/filling-stations'
     | '/login'
     | '/offers'
     | '/order-gas'
+    | '/privacy-policy'
+    | '/refund-policy'
     | '/services'
     | '/sitemap.xml'
+    | '/terms'
     | '/account/addresses'
     | '/account/application'
     | '/account/cart'
@@ -1097,6 +1182,7 @@ export interface FileRouteTypes {
     | '/admin/auto-gas'
     | '/admin/banners'
     | '/admin/blog'
+    | '/admin/branch-staff'
     | '/admin/categories'
     | '/admin/cms'
     | '/admin/customers'
@@ -1106,6 +1192,7 @@ export interface FileRouteTypes {
     | '/admin/delivery-slots'
     | '/admin/enquiries'
     | '/admin/faqs'
+    | '/admin/gas-pricing'
     | '/admin/inventory'
     | '/admin/invoices'
     | '/admin/managers'
@@ -1142,6 +1229,7 @@ export interface FileRouteTypes {
     | '/manager/delivery-agents'
     | '/manager/delivery-assignment'
     | '/manager/enquiries'
+    | '/manager/gas-pricing'
     | '/manager/inventory'
     | '/manager/notifications'
     | '/manager/orders'
@@ -1177,14 +1265,19 @@ export interface FileRouteTypes {
     | '/cart'
     | '/checkout'
     | '/contact'
+    | '/cookie-policy'
     | '/delivery'
+    | '/faq'
     | '/filling-stations'
     | '/login'
     | '/manager'
     | '/offers'
     | '/order-gas'
+    | '/privacy-policy'
+    | '/refund-policy'
     | '/services'
     | '/sitemap.xml'
+    | '/terms'
     | '/account/addresses'
     | '/account/application'
     | '/account/cart'
@@ -1204,6 +1297,7 @@ export interface FileRouteTypes {
     | '/admin/auto-gas'
     | '/admin/banners'
     | '/admin/blog'
+    | '/admin/branch-staff'
     | '/admin/categories'
     | '/admin/cms'
     | '/admin/customers'
@@ -1213,6 +1307,7 @@ export interface FileRouteTypes {
     | '/admin/delivery-slots'
     | '/admin/enquiries'
     | '/admin/faqs'
+    | '/admin/gas-pricing'
     | '/admin/inventory'
     | '/admin/invoices'
     | '/admin/managers'
@@ -1249,6 +1344,7 @@ export interface FileRouteTypes {
     | '/manager/delivery-agents'
     | '/manager/delivery-assignment'
     | '/manager/enquiries'
+    | '/manager/gas-pricing'
     | '/manager/inventory'
     | '/manager/notifications'
     | '/manager/orders'
@@ -1285,14 +1381,19 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
+  CookiePolicyRoute: typeof CookiePolicyRoute
   DeliveryRoute: typeof DeliveryRouteWithChildren
+  FaqRoute: typeof FaqRoute
   FillingStationsRoute: typeof FillingStationsRoute
   LoginRoute: typeof LoginRoute
   ManagerRoute: typeof ManagerRouteWithChildren
   OffersRoute: typeof OffersRoute
   OrderGasRoute: typeof OrderGasRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
   ServicesRoute: typeof ServicesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermsRoute: typeof TermsRoute
   CategoriesSlugRoute: typeof CategoriesSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   BrandsIndexRoute: typeof BrandsIndexRoute
@@ -1371,11 +1472,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cookie-policy': {
+      id: '/cookie-policy'
+      path: '/cookie-policy'
+      fullPath: '/cookie-policy'
+      preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/delivery': {
       id: '/delivery'
       path: '/delivery'
       fullPath: '/delivery'
       preLoaderRoute: typeof DeliveryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/filling-stations': {
@@ -1413,6 +1528,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrderGasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/services': {
       id: '/services'
       path: '/services'
@@ -1425,6 +1554,13 @@ declare module '@tanstack/react-router' {
       path: '/sitemap.xml'
       fullPath: '/sitemap.xml'
       preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account/': {
@@ -1574,6 +1710,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBlogRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/branch-staff': {
+      id: '/admin/branch-staff'
+      path: '/branch-staff'
+      fullPath: '/admin/branch-staff'
+      preLoaderRoute: typeof AdminBranchStaffRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/categories': {
       id: '/admin/categories'
       path: '/categories'
@@ -1635,6 +1778,13 @@ declare module '@tanstack/react-router' {
       path: '/faqs'
       fullPath: '/admin/faqs'
       preLoaderRoute: typeof AdminFaqsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/gas-pricing': {
+      id: '/admin/gas-pricing'
+      path: '/gas-pricing'
+      fullPath: '/admin/gas-pricing'
+      preLoaderRoute: typeof AdminGasPricingRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/inventory': {
@@ -1924,6 +2074,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ManagerEnquiriesRouteImport
       parentRoute: typeof ManagerRoute
     }
+    '/manager/gas-pricing': {
+      id: '/manager/gas-pricing'
+      path: '/gas-pricing'
+      fullPath: '/manager/gas-pricing'
+      preLoaderRoute: typeof ManagerGasPricingRouteImport
+      parentRoute: typeof ManagerRoute
+    }
     '/manager/inventory': {
       id: '/manager/inventory'
       path: '/inventory'
@@ -2097,6 +2254,7 @@ interface AdminRouteChildren {
   AdminAutoGasRoute: typeof AdminAutoGasRoute
   AdminBannersRoute: typeof AdminBannersRoute
   AdminBlogRoute: typeof AdminBlogRoute
+  AdminBranchStaffRoute: typeof AdminBranchStaffRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCmsRoute: typeof AdminCmsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
@@ -2106,6 +2264,7 @@ interface AdminRouteChildren {
   AdminDeliverySlotsRoute: typeof AdminDeliverySlotsRoute
   AdminEnquiriesRoute: typeof AdminEnquiriesRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
+  AdminGasPricingRoute: typeof AdminGasPricingRoute
   AdminInventoryRoute: typeof AdminInventoryRoute
   AdminInvoicesRoute: typeof AdminInvoicesRoute
   AdminManagersRoute: typeof AdminManagersRoute
@@ -2132,6 +2291,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAutoGasRoute: AdminAutoGasRoute,
   AdminBannersRoute: AdminBannersRoute,
   AdminBlogRoute: AdminBlogRoute,
+  AdminBranchStaffRoute: AdminBranchStaffRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCmsRoute: AdminCmsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
@@ -2141,6 +2301,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDeliverySlotsRoute: AdminDeliverySlotsRoute,
   AdminEnquiriesRoute: AdminEnquiriesRoute,
   AdminFaqsRoute: AdminFaqsRoute,
+  AdminGasPricingRoute: AdminGasPricingRoute,
   AdminInventoryRoute: AdminInventoryRoute,
   AdminInvoicesRoute: AdminInvoicesRoute,
   AdminManagersRoute: AdminManagersRoute,
@@ -2236,6 +2397,7 @@ interface ManagerRouteChildren {
   ManagerDeliveryAgentsRoute: typeof ManagerDeliveryAgentsRoute
   ManagerDeliveryAssignmentRoute: typeof ManagerDeliveryAssignmentRoute
   ManagerEnquiriesRoute: typeof ManagerEnquiriesRoute
+  ManagerGasPricingRoute: typeof ManagerGasPricingRoute
   ManagerInventoryRoute: typeof ManagerInventoryRoute
   ManagerNotificationsRoute: typeof ManagerNotificationsRoute
   ManagerOrdersRoute: typeof ManagerOrdersRoute
@@ -2254,6 +2416,7 @@ const ManagerRouteChildren: ManagerRouteChildren = {
   ManagerDeliveryAgentsRoute: ManagerDeliveryAgentsRoute,
   ManagerDeliveryAssignmentRoute: ManagerDeliveryAssignmentRoute,
   ManagerEnquiriesRoute: ManagerEnquiriesRoute,
+  ManagerGasPricingRoute: ManagerGasPricingRoute,
   ManagerInventoryRoute: ManagerInventoryRoute,
   ManagerNotificationsRoute: ManagerNotificationsRoute,
   ManagerOrdersRoute: ManagerOrdersRoute,
@@ -2279,14 +2442,19 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
+  CookiePolicyRoute: CookiePolicyRoute,
   DeliveryRoute: DeliveryRouteWithChildren,
+  FaqRoute: FaqRoute,
   FillingStationsRoute: FillingStationsRoute,
   LoginRoute: LoginRoute,
   ManagerRoute: ManagerRouteWithChildren,
   OffersRoute: OffersRoute,
   OrderGasRoute: OrderGasRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
   ServicesRoute: ServicesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermsRoute: TermsRoute,
   CategoriesSlugRoute: CategoriesSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   BrandsIndexRoute: BrandsIndexRoute,

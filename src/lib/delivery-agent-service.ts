@@ -1494,31 +1494,27 @@ export async function getOrCreateDeliveryOtp(
       };
     }
 
-    // If active unexpired OTP already exists, return current status
+    // If active unexpired OTP was already sent within the 60s cooldown window, return current active cooldown
     if (assignment?.otp_code && assignment.otp_expires_at) {
       const expTime = new Date(assignment.otp_expires_at).getTime();
       if (Date.now() < expTime) {
-        // Inspect if there is an active 60s cooldown from notes
-        let cooldownEndsAt: number | undefined;
-        let cooldownRemainingSec: number | undefined;
         const notes = assignment.notes || "";
         const rateMatch = notes.match(/\[LAST_SENT:(\d+)\]/);
         if (rateMatch && rateMatch[1]) {
           const lastSent = Number(rateMatch[1]);
           if (Date.now() - lastSent < 60 * 1000) {
-            cooldownEndsAt = lastSent + 60 * 1000;
-            cooldownRemainingSec = Math.ceil((cooldownEndsAt - Date.now()) / 1000);
+            const cooldownEndsAt = lastSent + 60 * 1000;
+            const cooldownRemainingSec = Math.ceil((cooldownEndsAt - Date.now()) / 1000);
+            return {
+              otpExists: true,
+              isVerified: false,
+              expiresAt: expTime,
+              attempts: Number(assignment.otp_attempts || 0),
+              cooldownEndsAt,
+              cooldownRemainingSec,
+            };
           }
         }
-
-        return {
-          otpExists: true,
-          isVerified: false,
-          expiresAt: expTime,
-          attempts: Number(assignment.otp_attempts || 0),
-          cooldownEndsAt,
-          cooldownRemainingSec,
-        };
       }
     }
 
@@ -1599,8 +1595,15 @@ export async function reissueDeliveryOtp(
       },
     });
 
-    if (!res.success && res.error) {
-      throw new Error(res.error);
+    if (!res.success) {
+      return {
+        success: false,
+        smsSent: false,
+        message: res.message || res.error || "Failed to reissue OTP",
+        error: res.error,
+        cooldownEndsAt: res.cooldownEndsAt,
+        cooldownRemainingSec: res.cooldownRemainingSec,
+      };
     }
 
     return {

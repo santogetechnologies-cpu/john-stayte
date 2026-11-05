@@ -66,6 +66,9 @@ CREATE INDEX IF NOT EXISTS idx_orders_assigned_depot ON public.orders(assigned_d
 
 -- 4. Synchronize any existing staff accounts in public.profiles (e.g. staff@jss.com)
 -- Matches station ID where possible; leaves Pending Confirmation unassigned.
+ALTER TABLE public.profiles DISABLE TRIGGER trg_protect_profile_approval_fields;
+ALTER TABLE public.profiles DISABLE TRIGGER trg_protect_profile_roles;
+
 UPDATE public.profiles p
 SET 
   role = 'branch_staff',
@@ -84,6 +87,9 @@ WHERE p.id = u.id
     OR p.notification_prefs->>'role' = 'branch_staff'
   )
   AND p.role != 'branch_staff';
+
+ALTER TABLE public.profiles ENABLE TRIGGER trg_protect_profile_approval_fields;
+ALTER TABLE public.profiles ENABLE TRIGGER trg_protect_profile_roles;
 
 -- 5. Trigger on public.profiles: Ensure non-admin users cannot alter their own role, assigned_branch, or assigned_branch_id
 CREATE OR REPLACE FUNCTION public.check_branch_staff_immutable_fields()

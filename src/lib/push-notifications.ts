@@ -31,33 +31,29 @@ export async function getAuthToken(supabaseClient?: any): Promise<string | null>
       }
       let session = sessionData?.session;
 
-      // Check if session is missing or near expiry (within 60 seconds)
-      const isExpiredOrNearExpiry =
-        !session ||
-        (session.expires_at && session.expires_at * 1000 - Date.now() < 60000);
+      // If no session exists at all (e.g. unauthenticated visitor or logged out),
+      // return null immediately without making unauthenticated calls to /auth/v1/user
+      if (!session) {
+        return null;
+      }
 
-      if (isExpiredOrNearExpiry) {
+      // Check if session is near expiry (within 60 seconds)
+      const isNearExpiry =
+        Boolean(session.expires_at && session.expires_at * 1000 - Date.now() < 60000);
+
+      if (isNearExpiry) {
         try {
           const { data: refreshData, error: refreshErr } = await client.auth.refreshSession();
           if (!refreshErr && refreshData?.session?.access_token) {
             session = refreshData.session;
           }
         } catch {
-          // Fallback to existing session or getUser()
+          // Fallback to existing session
         }
       }
 
       if (session?.access_token) {
         return session.access_token;
-      }
-
-      // Fallback check to getUser() to trigger internal session recovery if getSession returned empty
-      const { data: userData } = await client.auth.getUser();
-      if (userData?.user) {
-        const { data: rechecked } = await client.auth.getSession();
-        if (rechecked?.session?.access_token) {
-          return rechecked.session.access_token;
-        }
       }
     } catch (err: any) {
       console.warn("[Push Service] getAuthToken notice:", err?.message || err);
@@ -559,6 +555,7 @@ export async function triggerPaymentStatusPush(params: {
 export type OrderLifecycleStatus =
   | "Approved"
   | "Packed"
+  | "Ready"
   | "Out for Delivery"
   | "Delivered"
   | "Cancelled";
@@ -574,6 +571,7 @@ export async function triggerOrderStatusPush(params: {
   const authToken = await getAuthToken();
   let eventType: PushEventType = "ORDER_APPROVED";
   if (params.newStatus === "Packed") eventType = "ORDER_PACKED";
+  else if (params.newStatus === "Ready") eventType = "READY_FOR_COLLECTION";
   else if (params.newStatus === "Out for Delivery") eventType = "OUT_FOR_DELIVERY";
   else if (params.newStatus === "Delivered") eventType = "ORDER_DELIVERED";
   else if (params.newStatus === "Cancelled") eventType = "ORDER_CANCELLED";

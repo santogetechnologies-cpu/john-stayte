@@ -28,6 +28,7 @@ import {
   Layers,
   AlertOctagon,
   FileText,
+  Flame,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -147,6 +148,7 @@ const managerNavGroups: NavGroup[] = [
         icon: FileText,
         badgeKey: "pendingApplications",
       },
+      { title: "Gas Pricing", href: "/manager/gas-pricing", icon: Flame },
       { title: "Customers", href: "/manager/customers", icon: Users },
       { title: "All Enquiries", href: "/manager/enquiries", icon: HelpCircle },
       {

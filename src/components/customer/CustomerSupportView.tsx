@@ -426,6 +426,19 @@ export function CustomerSupportView() {
             </Button>
           </div>
         </form>
+
+        {/* Immediate Depot Contact Advice */}
+        <div className="pt-4 border-t border-slate-100 text-center space-y-1.5 text-xs text-slate-500">
+          <p className="font-bold text-slate-700">Need urgent assistance with an in-flight delivery?</p>
+          <p>
+            Call our order desk on <a href="tel:+441453822859" className="font-bold text-primary hover:underline">+44 (0)1453 822859</a> (Mon–Fri 8:00–17:00, Sat 8:30–12:30).
+          </p>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-[11px] text-slate-400">
+            <Link to="/faq" className="hover:text-primary underline">Frequently Asked Questions</Link>
+            <span>·</span>
+            <Link to="/refund-policy" className="hover:text-primary underline">Refund &amp; Cancellation Policy</Link>
+          </div>
+        </div>
       </div>
 
       {/* 3. REQUEST HISTORY MODAL DIALOG */}

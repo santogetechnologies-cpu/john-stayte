@@ -2411,6 +2411,16 @@ function OrderGasPage() {
                 </div>
               </div>
 
+              {/* Fulfilment Cylinder Reminder (Customer Flowchart Requirement) */}
+              {completedOrder.orderType === "REFILL_EXCHANGE" && (
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs sm:text-sm font-bold flex items-center gap-3 text-left animate-in fade-in">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                  <span>
+                    Please have your empty cylinders ready for exchange when your order is delivered.
+                  </span>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
                 <Link
                   to="/account/orders"

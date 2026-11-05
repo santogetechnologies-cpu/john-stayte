@@ -709,6 +709,8 @@ export async function executePushDispatch(
 
     if (target.userId) {
       tokenQuery = tokenQuery.eq("user_id", target.userId);
+    } else if (target.userIds && target.userIds.length > 0) {
+      tokenQuery = tokenQuery.in("user_id", target.userIds);
     } else if (target.roles && target.roles.length > 0) {
       tokenQuery = tokenQuery.in("role", target.roles);
     }
@@ -1056,46 +1058,152 @@ export async function triggerOrderPlacedPushInternal(params: {
   itemCount: number;
   totalFormatted: string;
   customerName?: string;
+  supabaseClient?: SupabaseClient<Database>;
 }): Promise<void> {
-  const { orderId, orderNumber, customerId, itemCount, totalFormatted, customerName } = params;
+  const { orderId, orderNumber, customerId, itemCount, totalFormatted, customerName, supabaseClient } = params;
+  const supabase = supabaseClient || getSupabaseServerClient();
 
-  await Promise.allSettled([
-    executePushDispatch({
-      eventType: "ORDER_PLACED",
-      idempotencyKey: `order_placed_cust_${orderId}`,
-      target: {
-        userId: customerId,
-        requireOrderOwnership: { orderId, customerId },
-      },
-      payload: {
-        title: `Order #${orderNumber} Confirmed`,
-        body: `Your order for ${itemCount} item(s) totalling ${totalFormatted} has been received.`,
-        category: "orders",
-        data: {
-          url: `/account/orders?orderId=${orderId}`,
-          orderId,
-          type: "ORDER_PLACED",
+  // 1. Authoritative check on order status - do not notify for failed or cancelled orders
+  const { data: orderRecord } = await (supabase.from("orders") as any)
+    .select("id, order_number, customer_id, assigned_branch_id, assigned_depot, delivery_address, status, payment_status, created_at")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (orderRecord && (orderRecord.status === "Cancelled" || orderRecord.payment_status === "Failed")) {
+    console.log(`[Push Service] Order ${orderId} is cancelled or payment failed. Suppressing notifications.`);
+    return;
+  }
+
+  const dispatches: Promise<any>[] = [
+    // A. Notify Customer
+    executePushDispatch(
+      {
+        eventType: "ORDER_PLACED",
+        idempotencyKey: `order_placed_cust_${orderId}`,
+        target: {
+          userId: customerId,
+          requireOrderOwnership: { orderId, customerId },
+        },
+        payload: {
+          title: `Order #${orderNumber} Confirmed`,
+          body: `Your order for ${itemCount} item(s) totalling ${totalFormatted} has been received.`,
+          category: "orders",
+          data: {
+            url: `/account/orders?orderId=${orderId}`,
+            orderId,
+            type: "ORDER_PLACED",
+          },
         },
       },
-    }),
-    executePushDispatch({
-      eventType: "ORDER_PLACED",
-      idempotencyKey: `order_placed_staff_${orderId}`,
-      target: {
-        roles: ["admin", "manager"],
-      },
-      payload: {
-        title: `New Order #${orderNumber}`,
-        body: `${customerName || "Customer"} placed order #${orderNumber} (${itemCount} items, ${totalFormatted}).`,
-        category: "orders",
-        data: {
-          url: `/manager/orders?orderId=${orderId}`,
-          orderId,
-          type: "ORDER_PLACED",
+      supabase
+    ),
+    // B. Broadcast to Operations Admins and Managers
+    executePushDispatch(
+      {
+        eventType: "ORDER_PLACED",
+        idempotencyKey: `order_placed_staff_${orderId}`,
+        target: {
+          roles: ["admin", "manager"],
+        },
+        payload: {
+          title: `New Order #${orderNumber}`,
+          body: `${customerName || "Customer"} placed order #${orderNumber} (${itemCount} items, ${totalFormatted}).`,
+          category: "orders",
+          data: {
+            url: `/manager/orders?orderId=${orderId}`,
+            orderId,
+            type: "ORDER_PLACED",
+          },
         },
       },
-    }),
-  ]);
+      supabase
+    ),
+  ];
+
+  // C. Click & Collect Forecourt Staff Notification
+  // Strictly identify collection forecourt and notify only staff assigned to that forecourt
+  const addr = (orderRecord?.delivery_address as Record<string, any>) || {};
+  const isCollection = addr.fulfilment_method === "collection" || (orderRecord?.assigned_depot && orderRecord.assigned_depot !== "Whitminster");
+  const branchId = orderRecord?.assigned_branch_id || addr.collection_branch_id || null;
+  const branchName = orderRecord?.assigned_depot || addr.collection_branch || "Forecourt";
+
+  if (isCollection && branchName !== "Whitminster") {
+    try {
+      // Query staff members assigned to this specific forecourt
+      const { data: branchStaff } = await (supabase.from("profiles") as any)
+        .select("id, full_name, email, role, assigned_branch, assigned_branch_id")
+        .eq("role", "branch_staff");
+
+      if (branchStaff && branchStaff.length > 0) {
+        const matchingStaff = branchStaff.filter((s: any) => {
+          if (!s.assigned_branch || s.assigned_branch.includes("Pending") || s.assigned_branch.includes("Unassigned")) {
+            return false;
+          }
+          if (branchId && s.assigned_branch_id && s.assigned_branch_id.toLowerCase() === branchId.toLowerCase()) {
+            return true;
+          }
+          const staffBranchLower = s.assigned_branch.toLowerCase();
+          const targetBranchLower = branchName.toLowerCase();
+          return (
+            staffBranchLower === targetBranchLower ||
+            targetBranchLower.includes(staffBranchLower) ||
+            staffBranchLower.includes(targetBranchLower)
+          );
+        });
+
+        if (matchingStaff.length > 0) {
+          const staffUserIds = matchingStaff.map((s: any) => s.id);
+          const orderTime = orderRecord?.created_at
+            ? new Date(orderRecord.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+          dispatches.push(
+            executePushDispatch(
+              {
+                eventType: "ORDER_PLACED",
+                idempotencyKey: `order_placed_branch_staff_${orderId}`,
+                target: {
+                  userIds: staffUserIds,
+                  roles: ["branch_staff"],
+                },
+                payload: {
+                  title: `New Forecourt Order #${orderNumber}`,
+                  body: `${customerName || "Customer"} placed collection order #${orderNumber} (${itemCount} items, ${totalFormatted}) at ${branchName} (${orderTime}).`,
+                  category: "orders",
+                  data: {
+                    url: `/branch/orders?status=new`,
+                    orderId,
+                    type: "ORDER_PLACED",
+                    branch: branchName,
+                  },
+                },
+              },
+              supabase
+            )
+          );
+
+          // Insert real persistent notification in public.notifications for each assigned staff member
+          for (const s of matchingStaff) {
+            await (supabase.from("notifications") as any).insert([
+              {
+                user_id: s.id,
+                title: `New Forecourt Order #${orderNumber}`,
+                message: `${customerName || "Customer"} placed collection order #${orderNumber} (${itemCount} items, ${totalFormatted}) for pickup at ${branchName} at ${orderTime}.`,
+                category: "Orders",
+                link: `/branch/orders?status=new`,
+                read: false,
+                is_read: false,
+              },
+            ]);
+          }
+        }
+      }
+    } catch (branchStaffErr) {
+      console.error("[Push Service] Error dispatching branch staff notification:", branchStaffErr);
+    }
+  }
+
+  await Promise.allSettled(dispatches);
 }
 
 export async function triggerPaymentStatusPushInternal(params: {
@@ -1229,7 +1337,7 @@ export async function triggerOrderStatusPushInternal(params: {
   orderId: string;
   orderNumber: string;
   customerId: string;
-  newStatus: "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled";
+  newStatus: "Approved" | "Packed" | "Ready" | "Out for Delivery" | "Delivered" | "Cancelled";
   reason?: string;
   driverName?: string;
   supabaseClient?: SupabaseClient<Database>;
@@ -1248,6 +1356,10 @@ export async function triggerOrderStatusPushInternal(params: {
     eventType = "ORDER_PACKED";
     title = `Order #${orderNumber} Packed`;
     body = `Your order has been packed and is ready for dispatch.`;
+  } else if (newStatus === "Ready") {
+    eventType = "READY_FOR_COLLECTION";
+    title = `Order #${orderNumber} Ready for Collection`;
+    body = `Your order #${orderNumber} is prepared and ready for collection at our forecourt. Please remember your empty cylinders if exchanging.`;
   } else if (newStatus === "Out for Delivery") {
     eventType = "OUT_FOR_DELIVERY";
     title = `Order #${orderNumber} Out for Delivery`;
@@ -1284,6 +1396,26 @@ export async function triggerOrderStatusPushInternal(params: {
     },
     supabaseClient
   );
+
+  // Insert customer in-app notification when ready for collection
+  if (newStatus === "Ready") {
+    try {
+      const supabase = supabaseClient || getSupabaseServerClient();
+      await (supabase.from("notifications") as any).insert([
+        {
+          user_id: customerId,
+          title: `Order #${orderNumber} Ready for Collection`,
+          message: `Your order #${orderNumber} is prepared and ready for collection at our forecourt. Please remember to bring your empty cylinders for exchange if applicable.`,
+          category: "Orders",
+          link: `/account/orders?orderId=${orderId}`,
+          read: false,
+          is_read: false,
+        },
+      ]);
+    } catch (custNotifErr) {
+      console.warn("[Push Service] Customer collection in-app notification insert notice:", custNotifErr);
+    }
+  }
 
   if (newStatus === "Cancelled") {
     await executePushDispatch(
@@ -1849,12 +1981,13 @@ export async function handleDispatchPushNotification(
 
     case "ORDER_APPROVED":
     case "ORDER_PACKED":
+    case "READY_FOR_COLLECTION":
     case "OUT_FOR_DELIVERY":
     case "ORDER_DELIVERED":
     case "DELIVERY_COMPLETED":
     case "ORDER_CANCELLED": {
-      if (!["admin", "manager", "delivery_agent"].includes(callerRole)) {
-        throw new Error("Unauthorized: only managers, admins, and assigned delivery agents can trigger order lifecycle updates");
+      if (!["admin", "manager", "delivery_agent", "branch_staff"].includes(callerRole)) {
+        throw new Error("Unauthorized: only managers, admins, branch staff, and assigned delivery agents can trigger order lifecycle updates");
       }
       if (callerRole === "delivery_agent" && callerUserId && data.orderId) {
         const { data: asgn } = await supabase
@@ -1867,15 +2000,39 @@ export async function handleDispatchPushNotification(
         }
       }
       if (!data.orderId) throw new Error("orderId is required");
-      const { data: ord } = await supabase
-        .from("orders")
-        .select("id, order_number, customer_id")
+      const { data: ord } = await (supabase.from("orders") as any)
+        .select("id, order_number, customer_id, assigned_branch_id, assigned_depot")
         .eq("id", data.orderId)
         .maybeSingle();
 
       if (!ord || !ord.customer_id) throw new Error("Order or customer not found");
-      let mappedStatus: "Approved" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled" = "Approved";
+
+      // For branch_staff callers, ensure the order belongs to their assigned branch
+      if (callerRole === "branch_staff" && callerUserId) {
+        const { data: staffProfile } = await (supabase.from("profiles") as any)
+          .select("id, assigned_branch, assigned_branch_id")
+          .eq("id", callerUserId)
+          .maybeSingle();
+
+        if (staffProfile) {
+          const staffBranchId = staffProfile.assigned_branch_id;
+          const staffBranch = (staffProfile.assigned_branch || "").toLowerCase();
+          const orderBranchId = ord.assigned_branch_id;
+          const orderDepot = (ord.assigned_depot || "").toLowerCase();
+
+          const isMatch =
+            (staffBranchId && orderBranchId && staffBranchId === orderBranchId) ||
+            (staffBranch && orderDepot && (orderDepot.includes(staffBranch) || staffBranch.includes(orderDepot)));
+
+          if (!isMatch) {
+            throw new Error("Unauthorized: branch staff can only update orders for their assigned branch");
+          }
+        }
+      }
+
+      let mappedStatus: "Approved" | "Packed" | "Ready" | "Out for Delivery" | "Delivered" | "Cancelled" = "Approved";
       if (data.eventType === "ORDER_PACKED") mappedStatus = "Packed";
+      else if (data.eventType === "READY_FOR_COLLECTION") mappedStatus = "Ready";
       else if (data.eventType === "OUT_FOR_DELIVERY") mappedStatus = "Out for Delivery";
       else if (data.eventType === "DELIVERY_COMPLETED" || data.eventType === "ORDER_DELIVERED") mappedStatus = "Delivered";
       else if (data.eventType === "ORDER_CANCELLED") mappedStatus = "Cancelled";

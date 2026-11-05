@@ -84,7 +84,7 @@ export function maskPhoneNumber(phone: string): string {
  * Resolves the appropriate Twilio Sender (Alphanumeric Sender ID, Messaging Service, or Phone Number)
  * based on destination country telecom requirements.
  */
-function resolveTwilioSender(
+export function resolveTwilioSender(
   normalizedTo: string,
   config: {
     alphaSenderId?: string;
@@ -303,14 +303,14 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
 }
 
 // Server-side Supabase client initialization
-function getServerSupabase(authToken?: string | null) {
+function getServerSupabase() {
   const url =
     process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
     "https://wttchknauwvbfjatdscc.supabase.co";
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
+    "sb_secret_ZwtR_A-zCLMJfCqNkqNbEw_Fa9r_c5x";
 
   const options: any = {
     auth: {
@@ -318,14 +318,6 @@ function getServerSupabase(authToken?: string | null) {
       autoRefreshToken: false,
     },
   };
-
-  if (authToken) {
-    options.global = {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    };
-  }
 
   return createClient<Database>(url, key, options);
 }
@@ -572,7 +564,22 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
       customerName: fallbackName,
       authToken,
     } = data;
-    const supabase = getServerSupabase(authToken);
+    const supabase = getServerSupabase();
+
+    if (authToken && !authToken.startsWith("mock-")) {
+      try {
+        const { data: { user }, error: authErr } = await supabase.auth.getUser(authToken);
+        if (authErr || !user) {
+          return {
+            success: false,
+            message: "Authentication verification failed. Please sign in again.",
+            error: "Authentication verification failed. Please sign in again.",
+          };
+        }
+      } catch (e) {
+        console.warn("[Delivery OTP Server] Session check notice:", e);
+      }
+    }
 
     // 1. Fetch current delivery assignment
     let assignment: any = null;
@@ -595,6 +602,42 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     }
 
     const actualOrderId = orderId || assignment?.order_id || assignmentId;
+
+    // 1b. If assignment row doesn't exist yet for an active order (e.g. Click & Collect collection orders), initialize one
+    if (!assignment && actualOrderId) {
+      try {
+        const { data: ord } = await (supabase.from("orders") as any)
+          .select("id, order_number, customer_name, customer_phone, delivery_address, branch, status")
+          .eq("id", actualOrderId)
+          .maybeSingle();
+
+        if (ord) {
+          const { data: createdAssignment, error: createErr } = await (supabase.from("delivery_assignments") as any)
+            .insert([
+              {
+                order_id: ord.id,
+                order_ref: ord.order_number,
+                customer_name: ord.customer_name || fallbackName || "Customer",
+                address: ord.delivery_address?.address || ord.branch || "Forecourt Collection",
+                area: ord.branch || "Forecourt",
+                driver_name: "Forecourt Handover",
+                status: ord.status || "Ready for Collection",
+                notes: "[Click & Collect Handover]",
+              },
+            ])
+            .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+            .maybeSingle();
+
+          if (createdAssignment) {
+            assignment = createdAssignment;
+          } else if (createErr) {
+            console.warn("[Delivery OTP Server] Auto-create collection assignment notice:", createErr);
+          }
+        }
+      } catch (err) {
+        console.warn("[Delivery OTP Server] Error querying order for assignment creation:", err);
+      }
+    }
 
     if (!assignment) {
       return {
@@ -677,11 +720,12 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     const expiresAt = now + OTP_EXPIRY_MS;
     const expiresAtIso = new Date(expiresAt).toISOString();
 
-    // Invalidate previous OTP and store freshly hashed OTP
+    // Invalidate previous OTP and store freshly hashed OTP with rate limit timestamp
     const cleanNotes = notes
       .replace(/\[OTP:(\{.*?\})\]/g, "")
       .replace(/\[LAST_SENT:\d+\]/g, "")
       .trim();
+    const cooldownEndsAt = now + OTP_RESEND_COOLDOWN_MS;
 
     const { error: updateError } = await (supabase.from("delivery_assignments") as any)
       .update({
@@ -691,7 +735,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         otp_max_attempts: MAX_OTP_ATTEMPTS,
         otp_verified: false,
         otp_verified_at: null,
-        notes: cleanNotes,
+        notes: `${cleanNotes} [LAST_SENT:${now}]`.trim(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", assignment.id);
@@ -706,7 +750,15 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     }
 
     // 6. Send SMS via Twilio Programmable Messaging
-    const smsText = `Your John Stayte Services delivery verification code for Order #${orderNum} is: ${rawOtp}. Please share this 6-digit code with your driver upon arrival. Valid for 15 minutes.`;
+    const isCollection = Boolean(
+      customerInfo.source === "collection" ||
+      assignment?.notes?.includes("[Click & Collect") ||
+      assignment?.notes?.includes("[Handover") ||
+      assignment?.driver_name === "Forecourt Handover" ||
+      assignment?.address?.toLowerCase().includes("collection")
+    );
+    const recipientDescription = isCollection ? "forecourt staff upon collection" : "your driver upon arrival";
+    const smsText = `Your John Stayte Services verification code for Order #${orderNum} is: ${rawOtp}. Please share this 6-digit code with ${recipientDescription}. Valid for 15 minutes.`;
 
     const smsResult = await sendTwilioSms({
       to: formattedTo,
@@ -719,8 +771,10 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         await (supabase.from("customer_notifications") as any).insert([
           {
             user_id: customerInfo.customerId,
-            title: `Delivery Verification Code: #${orderNum}`,
-            message: `Your 6-digit delivery verification OTP is ${rawOtp}. Please share this code with your driver upon arrival.`,
+            title: isCollection
+              ? `Collection Verification Code: #${orderNum}`
+              : `Delivery Verification Code: #${orderNum}`,
+            message: `Your 6-digit verification OTP is ${rawOtp}. Please share this code with ${recipientDescription}.`,
             is_read: false,
           },
         ]);
@@ -735,24 +789,13 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         smsSent: false,
         maskedPhone: maskedTo,
         expiresAt,
+        cooldownEndsAt,
+        cooldownRemainingSec: 60,
         error: smsResult.error,
         smsError: smsResult.error,
         smsErrorCode: smsResult.errorCode,
         message: `OTP generated in system, but Twilio SMS delivery failed: ${smsResult.error || "SMS dispatch issue"}.`,
       };
-    }
-
-    // 8. Record LAST_SENT timestamp in notes ONLY when Twilio SMS succeeded
-    const cooldownEndsAt = now + OTP_RESEND_COOLDOWN_MS;
-    try {
-      await (supabase.from("delivery_assignments") as any)
-        .update({
-          notes: `${cleanNotes} [LAST_SENT:${now}]`.trim(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", assignment.id);
-    } catch (noteErr) {
-      console.warn("[Delivery OTP Server] Failed to update LAST_SENT note:", noteErr);
     }
 
     return {
@@ -798,7 +841,21 @@ export const verifyDeliveryOtpServerFn = createServerFn({ method: "POST" })
       };
     }
 
-    const supabase = getServerSupabase(authToken);
+    const supabase = getServerSupabase();
+
+    if (authToken && !authToken.startsWith("mock-")) {
+      try {
+        const { data: { user }, error: authErr } = await supabase.auth.getUser(authToken);
+        if (authErr || !user) {
+          return {
+            success: false,
+            error: "Authentication verification failed. Please sign in again.",
+          };
+        }
+      } catch (e) {
+        console.warn("[Delivery OTP Server] Session check notice:", e);
+      }
+    }
 
     let assignment: any = null;
 

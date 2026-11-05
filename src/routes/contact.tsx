@@ -347,6 +347,16 @@ function Contact() {
                     </div>
                   </li>
                 </ul>
+
+                {/* Company Registration & Trust Details */}
+                <div className="mt-6 pt-5 border-t border-slate-100 text-xs text-slate-500 space-y-1.5 text-left">
+                  <p className="font-bold text-slate-800">John Stayte Services (WSM) Limited</p>
+                  <p>Registered in England &amp; Wales · No. 00303703</p>
+                  <p>VAT Registration: GB 207 610 984</p>
+                  <p className="pt-2 text-slate-400 text-[11px] leading-relaxed">
+                    Emergency advice: In the event of a suspected gas leak, turn off the cylinder valve immediately, open all doors and windows, extinguish naked flames, and contact Calor Emergency on 08457 444 999.
+                  </p>
+                </div>
               </div>
             </aside>
           </div>
@@ -354,11 +364,18 @@ function Contact() {
 
         {/* 7. FREQUENTLY ASKED QUESTIONS */}
         <div className="container-page pb-16 sm:pb-20">
-          <div className="mb-6 sm:mb-8">
-            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
-              Frequently asked questions
-            </h2>
-            <div className="h-1 w-12 bg-primary rounded-full mt-2" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
+                Frequently asked questions
+              </h2>
+              <div className="h-1 w-12 bg-primary rounded-full mt-2" />
+            </div>
+            <Button asChild variant="outline" size="sm" className="rounded-full text-xs font-bold gap-1.5 self-start sm:self-auto">
+              <a href="/faq">
+                View All Categories &amp; FAQs &rarr;
+              </a>
+            </Button>
           </div>
 
           <Accordion

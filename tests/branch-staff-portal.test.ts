@@ -7,6 +7,7 @@ import {
   fetchRealBranchOrders,
   fetchRealBranchKpiCounts,
   fetchRealBranchStock,
+  resolveCheckoutBranchAssignment,
   KNOWN_BRANCHES,
 } from "../src/lib/branch-service";
 
@@ -304,18 +305,58 @@ describe("Branch Staff Role & Dedicated Portal Architecture", () => {
   });
 
   describe("7. Click & Collect Order Assignment Logic", () => {
-    function resolveOrderDepot(fulfilmentMethod: string, selectedBranch?: string): string {
-      return fulfilmentMethod === "collection" && selectedBranch ? selectedBranch : "Whitminster";
-    }
-
-    it("should route Click & Collect to the selected station", () => {
-      const depot = resolveOrderDepot("collection", "John Stayte Services – Cirencester");
-      assert.equal(depot, "John Stayte Services – Cirencester");
+    it("should route Click & Collect for Cirencester with exact forecourt UUID", () => {
+      const res = resolveCheckoutBranchAssignment("collection", "John Stayte Services – Cirencester");
+      assert.equal(res.assignedBranchId, "a1111111-1111-4111-a111-111111111101");
+      assert.equal(res.collectionBranchId, "a1111111-1111-4111-a111-111111111101");
+      assert.equal(res.assignedDepot, "John Stayte Services – Cirencester");
+      assert.equal(res.collectionBranch, "John Stayte Services – Cirencester");
     });
 
-    it("should route Standard Delivery to Whitminster depot", () => {
-      const depot = resolveOrderDepot("delivery", "John Stayte Services – Cirencester");
-      assert.equal(depot, "Whitminster");
+    it("should route Click & Collect for Gloucester with exact forecourt UUID", () => {
+      const res = resolveCheckoutBranchAssignment("collection", "John Stayte Services – Gloucester");
+      assert.equal(res.assignedBranchId, "a1111111-1111-4111-a111-111111111102");
+      assert.equal(res.collectionBranchId, "a1111111-1111-4111-a111-111111111102");
+      assert.equal(res.assignedDepot, "John Stayte Services – Gloucester");
+      assert.equal(res.collectionBranch, "John Stayte Services – Gloucester");
+    });
+
+    it("should route Click & Collect for Stroud with exact forecourt UUID", () => {
+      const res = resolveCheckoutBranchAssignment("collection", "John Stayte Services – Stroud");
+      assert.equal(res.assignedBranchId, "a1111111-1111-4111-a111-111111111103");
+      assert.equal(res.collectionBranchId, "a1111111-1111-4111-a111-111111111103");
+      assert.equal(res.assignedDepot, "John Stayte Services – Stroud");
+      assert.equal(res.collectionBranch, "John Stayte Services – Stroud");
+    });
+
+    it("should route Click & Collect for Weston Super Mare with exact forecourt UUID", () => {
+      const res = resolveCheckoutBranchAssignment("collection", "John Stayte Services – Weston Super Mare");
+      assert.equal(res.assignedBranchId, "a1111111-1111-4111-a111-111111111104");
+      assert.equal(res.collectionBranchId, "a1111111-1111-4111-a111-111111111104");
+      assert.equal(res.assignedDepot, "John Stayte Services – Weston Super Mare");
+      assert.equal(res.collectionBranch, "John Stayte Services – Weston Super Mare");
+    });
+
+    it("should route Click & Collect for Whitminster Depot with null UUID column to avoid syntax error", () => {
+      const res = resolveCheckoutBranchAssignment("collection", "Whitminster Depot (Main Logistics)");
+      assert.equal(res.assignedBranchId, null);
+      assert.equal(res.collectionBranchId, null);
+      assert.equal(res.assignedDepot, "Whitminster Depot (Main Logistics)");
+      assert.equal(res.collectionBranch, "Whitminster Depot (Main Logistics)");
+    });
+
+    it("should route Standard Delivery to Whitminster depot with null branch IDs", () => {
+      const res = resolveCheckoutBranchAssignment("delivery", "John Stayte Services – Cirencester");
+      assert.equal(res.assignedBranchId, null);
+      assert.equal(res.collectionBranchId, null);
+      assert.equal(res.collectionBranch, null);
+      assert.equal(res.assignedDepot, "Whitminster");
+    });
+
+    it("should support town-level fuzzy matching for forecourts", () => {
+      const res = resolveCheckoutBranchAssignment("collection", "cirencester");
+      assert.equal(res.assignedBranchId, "a1111111-1111-4111-a111-111111111101");
+      assert.equal(res.collectionBranchId, "a1111111-1111-4111-a111-111111111101");
     });
   });
 });

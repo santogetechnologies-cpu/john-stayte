@@ -1068,7 +1068,10 @@ export function CustomerOrderDetailView() {
                     Empty Cylinder Required
                   </h3>
                   <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                    Please keep your empty cylinder ready for collection when your order is delivered. (Expected: {cylinderExchangeReq.expectedQuantity} bottle(s)).
+                    {(order?.delivery_address?.fulfilment_method === "collection" || (order?.notes || "").includes("[Click & Collect"))
+                      ? "Please remember to bring your empty cylinders when collecting your order."
+                      : "Please have your empty cylinders ready for exchange when your order is delivered."}
+                    {" "}(Expected: {cylinderExchangeReq.expectedQuantity} cylinder(s)).
                   </p>
                 </div>
               </div>

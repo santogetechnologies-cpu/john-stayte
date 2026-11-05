@@ -11,6 +11,14 @@ import {
   triggerGasApplicationMoreInfoPush,
   triggerGasApplicationInfoSubmittedPush,
 } from "@/lib/push-notifications";
+import { resolvePricingBandDiscountSync } from "@/lib/branch-pricing-service";
+
+export const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isValidUuid(val: unknown): val is string {
+  return typeof val === "string" && UUID_REGEX.test(val.trim());
+}
 
 export type ApplicationStatus =
   | "NOT_COMPLETED"
@@ -570,7 +578,7 @@ export async function approveGasCustomerApplication(params: {
   applicationId: string;
   customerId: string;
   pricingBand: string;
-  discountPercentage: number;
+  discountPercentage?: number;
   creditApproved?: boolean;
   creditLimit?: number;
   managerNotes?: string;
@@ -580,13 +588,74 @@ export async function approveGasCustomerApplication(params: {
     applicationId,
     customerId,
     pricingBand,
-    discountPercentage,
     creditApproved = false,
     creditLimit = 0,
     managerNotes = "",
-    reviewedBy = "Manager",
+    reviewedBy,
   } = params;
   const now = new Date().toISOString();
+
+  // Step 0: Strict Authentication & Role Pre-flight
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  const sessionUser = sessionData?.session?.user;
+
+  if (sessionErr || !sessionUser) {
+    throw new Error(
+      "Authentication required: Your session has expired or is invalid. Please sign in again as an Administrator or Manager.",
+    );
+  }
+
+  // Step 0.1: Authoritative Pricing Band & Discount Resolution
+  // Derives authoritative discount percentage directly from Gas Pricing Management
+  // to prevent client-side manipulation of discount values.
+  const bandResolution = resolvePricingBandDiscountSync(pricingBand);
+  if (!bandResolution.isConfigured || bandResolution.isAmbiguous) {
+    throw new Error(
+      `Cannot approve application: Pricing configuration is missing or ambiguous for pricing band "${pricingBand}". Please verify pricing bands in Gas Pricing Management.`,
+    );
+  }
+
+  // Use the verified authoritative values
+  const effectiveDiscountPercentage = bandResolution.discountPercentage;
+  const effectivePricingBand = bandResolution.pricingBandName || pricingBand;
+  const effectivePricingBandId = bandResolution.pricingBandId;
+
+  // Verify caller is an active manager or admin
+  const userMetadataRole = sessionUser.user_metadata?.role;
+  let isAuthorized = userMetadataRole === "admin" || userMetadataRole === "manager";
+
+  if (!isAuthorized) {
+    const { data: callerProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", sessionUser.id)
+      .maybeSingle();
+    const profileRole = callerProfile?.role;
+    isAuthorized = profileRole === "admin" || profileRole === "manager";
+  }
+
+  if (!isAuthorized) {
+    throw new Error(
+      "Unauthorized: Only verified Managers and Administrators can approve customer gas applications.",
+    );
+  }
+
+  // Resolve Reviewer UUID — MUST be a valid UUID, never a display name or email!
+  let resolvedReviewerUuid: string | null = null;
+  if (isValidUuid(reviewedBy)) {
+    resolvedReviewerUuid = reviewedBy;
+  } else if (isValidUuid(sessionUser.id)) {
+    resolvedReviewerUuid = sessionUser.id;
+  }
+
+  if (!resolvedReviewerUuid) {
+    throw new Error(
+      "Invalid reviewer identity: An authenticated user UUID is required to record application approval.",
+    );
+  }
+
+  const reviewerDisplayName =
+    sessionUser.user_metadata?.full_name || sessionUser.email || "Administrator";
 
   let isAlreadyApproved = false;
   let resolvedAppRef = `JSS-APP-${applicationId.slice(0, 8).toUpperCase()}`;
@@ -598,12 +667,12 @@ export async function approveGasCustomerApplication(params: {
       "approve_gas_customer_application",
       {
         p_application_id: applicationId,
-        p_pricing_band: pricingBand,
-        p_discount_percentage: discountPercentage,
+        p_pricing_band: effectivePricingBand,
+        p_discount_percentage: effectiveDiscountPercentage,
         p_credit_account_approved: creditApproved,
         p_credit_limit: creditLimit,
         p_admin_notes: managerNotes,
-        p_reviewed_by: reviewedBy,
+        p_reviewed_by: resolvedReviewerUuid,
       },
     );
 
@@ -614,28 +683,38 @@ export async function approveGasCustomerApplication(params: {
         resolvedAppRef = rpcRes.application_reference;
       }
     } else if (rpcErr) {
-      if (
-        rpcErr.message?.includes("Unauthorized") ||
-        rpcErr.message?.includes("Application not found")
-      ) {
-        throw new Error(rpcErr.message);
+      // Check if RPC is missing from the database (e.g. offline unit testing environment)
+      const isRpcMissing =
+        rpcErr.code === "PGRST202" ||
+        rpcErr.code === "42883" ||
+        rpcErr.message?.toLowerCase().includes("could not find the function") ||
+        (rpcErr.message?.toLowerCase().includes("function") &&
+          rpcErr.message?.toLowerCase().includes("does not exist"));
+
+      if (!isRpcMissing) {
+        // Real database error or authorization exception: DO NOT silently fall back to direct table update!
+        throw new Error(rpcErr.message || "Approval transaction failed in database RPC.");
       }
+
       console.warn(
-        "Database RPC approve_gas_customer_application unavailable or failed, applying fallback:",
-        rpcErr.message,
+        "Database RPC approve_gas_customer_application is not installed; falling back to authorized client-side flow for test environment.",
       );
+    } else if (rpcRes && !rpcRes.success) {
+      throw new Error(rpcRes.error || "Approval transaction failed in database RPC.");
     }
   } catch (err: any) {
+    // If the error was re-thrown above, keep throwing it
     if (
-      err.message?.includes("Unauthorized") ||
-      err.message?.includes("Application not found")
+      err.message &&
+      !err.message.includes("could not find the function") &&
+      !err.message.includes("does not exist")
     ) {
       throw err;
     }
     console.warn("RPC invocation warning:", err?.message);
   }
 
-  // 2. Client-side fallback if RPC is not deployed in local/mock testing environment
+  // 2. Client-side fallback ONLY if RPC is not deployed in local/mock testing environment
   if (!rpcSucceeded) {
     // 1. Fetch current application record
     const { data: currentApp, error: fetchErr } = await (supabase.from("gas_customer_applications") as any)
@@ -657,8 +736,8 @@ export async function approveGasCustomerApplication(params: {
     // Check duplicate approval idempotency
     if (
       currentApp.status === "APPROVED" &&
-      currentApp.pricing_band === pricingBand &&
-      Number(currentApp.discount_percentage) === Number(discountPercentage) &&
+      currentApp.pricing_band === effectivePricingBand &&
+      Number(currentApp.discount_percentage) === Number(effectiveDiscountPercentage) &&
       Boolean(currentApp.credit_account_approved) === Boolean(creditApproved) &&
       Number(currentApp.credit_limit) === Number(creditLimit)
     ) {
@@ -672,25 +751,28 @@ export async function approveGasCustomerApplication(params: {
     const historyEntry = {
       action: "APPROVE",
       status: "APPROVED",
-      pricing_band: pricingBand,
-      discount_percentage: discountPercentage,
+      pricing_band: effectivePricingBand,
+      pricing_band_id: effectivePricingBandId,
+      discount_percentage: effectiveDiscountPercentage,
       credit_account_approved: creditApproved,
       credit_limit: creditLimit,
       notes: managerNotes,
-      reviewed_by: reviewedBy,
+      reviewed_by: reviewerDisplayName,
+      reviewer_id: resolvedReviewerUuid,
       timestamp: now,
     };
 
-    // Update gas_customer_applications
+    // Update gas_customer_applications: reviewed_by MUST receive the UUID, never text!
     const { error: appUpdateErr } = await (supabase.from("gas_customer_applications") as any)
       .update({
         status: "APPROVED",
-        pricing_band: pricingBand,
-        discount_percentage: discountPercentage,
+        pricing_band: effectivePricingBand,
+        pricing_band_id: effectivePricingBandId,
+        discount_percentage: effectiveDiscountPercentage,
         credit_account_approved: creditApproved,
         credit_limit: creditLimit,
         admin_notes: managerNotes || "Application approved by manager.",
-        reviewed_by: reviewedBy,
+        reviewed_by: resolvedReviewerUuid,
         reviewed_at: now,
         decision_history: [...existingHistory, historyEntry],
         updated_at: now,
@@ -719,8 +801,9 @@ export async function approveGasCustomerApplication(params: {
           status: "active",
           account_approved: true,
           application_status: "APPROVED",
-          pricing_band: pricingBand,
-          discount_percentage: discountPercentage,
+          pricing_band: effectivePricingBand,
+          pricing_band_id: effectivePricingBandId,
+          discount_percentage: effectiveDiscountPercentage,
           credit_account_approved: creditApproved,
           credit_limit: creditLimit,
           notification_prefs: {
@@ -728,8 +811,9 @@ export async function approveGasCustomerApplication(params: {
             gas_application: {
               ...existingApp,
               status: "APPROVED",
-              pricing_band: pricingBand,
-              discount_percentage: discountPercentage,
+              pricing_band: effectivePricingBand,
+              pricing_band_id: effectivePricingBandId,
+              discount_percentage: effectiveDiscountPercentage,
               credit_account_approved: creditApproved,
               credit_limit: creditLimit,
               reviewed_by: reviewedBy,
@@ -772,8 +856,8 @@ export async function approveGasCustomerApplication(params: {
     return {
       success: true,
       status: "APPROVED",
-      pricingBand,
-      discountPercentage,
+      pricingBand: effectivePricingBand,
+      discountPercentage: effectiveDiscountPercentage,
       alreadyApproved: true,
     };
   }
@@ -784,7 +868,7 @@ export async function approveGasCustomerApplication(params: {
       {
         user_id: customerId,
         title: "Gas Application Approved",
-        message: `Your gas application has been approved! Assigned: ${pricingBand} with ${discountPercentage}% discount.${creditApproved ? ` Credit facility approved (£${Number(creditLimit || 0).toFixed(2)} limit).` : ""} You can now place gas orders.`,
+        message: `Your gas application has been approved! Assigned: ${effectivePricingBand}${effectiveDiscountPercentage > 0 ? ` with ${effectiveDiscountPercentage}% discount` : ""}.${creditApproved ? ` Credit facility approved (£${Number(creditLimit || 0).toFixed(2)} limit).` : ""} You can now place gas orders.`,
         category: "Account",
         is_read: false,
       },
@@ -799,14 +883,20 @@ export async function approveGasCustomerApplication(params: {
       applicationId,
       applicationReference: resolvedAppRef,
       customerId,
-      pricingBand,
-      discountPercentage,
+      pricingBand: effectivePricingBand,
+      discountPercentage: effectiveDiscountPercentage,
     });
   } catch (pushErr) {
     console.warn("Gas application approved push warning:", pushErr);
   }
 
-  return { success: true, status: "APPROVED", pricingBand, discountPercentage, alreadyApproved: false };
+  return {
+    success: true,
+    status: "APPROVED",
+    pricingBand: effectivePricingBand,
+    discountPercentage: effectiveDiscountPercentage,
+    alreadyApproved: false,
+  };
 }
 
 /**
@@ -818,8 +908,22 @@ export async function declineGasCustomerApplication(params: {
   reason: string;
   reviewedBy?: string;
 }) {
-  const { applicationId, customerId, reason, reviewedBy = "Manager" } = params;
+  const { applicationId, customerId, reason, reviewedBy } = params;
   const now = new Date().toISOString();
+
+  // Resolve Reviewer UUID — must be a valid UUID or null
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionUser = sessionData?.session?.user;
+
+  let resolvedReviewerUuid: string | null = null;
+  if (isValidUuid(reviewedBy)) {
+    resolvedReviewerUuid = reviewedBy;
+  } else if (isValidUuid(sessionUser?.id)) {
+    resolvedReviewerUuid = sessionUser.id;
+  }
+
+  const reviewerDisplayName =
+    sessionUser?.user_metadata?.full_name || sessionUser?.email || "Manager";
 
   const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
     .select("*")
@@ -835,7 +939,8 @@ export async function declineGasCustomerApplication(params: {
     action: "DECLINE",
     status: "DECLINED",
     reason,
-    reviewed_by: reviewedBy,
+    reviewed_by: reviewerDisplayName,
+    reviewer_id: resolvedReviewerUuid,
     timestamp: now,
   };
 
@@ -845,7 +950,7 @@ export async function declineGasCustomerApplication(params: {
       status: "DECLINED",
       rejection_reason: reason,
       admin_notes: reason,
-      reviewed_by: reviewedBy,
+      reviewed_by: resolvedReviewerUuid,
       reviewed_at: now,
       decision_history: [...existingHistory, historyEntry],
       updated_at: now,
@@ -923,8 +1028,22 @@ export async function requestMoreInfoGasCustomerApplication(params: {
   requestedInfo: string;
   reviewedBy?: string;
 }) {
-  const { applicationId, customerId, requestedInfo, reviewedBy = "Manager" } = params;
+  const { applicationId, customerId, requestedInfo, reviewedBy } = params;
   const now = new Date().toISOString();
+
+  // Resolve Reviewer UUID — must be a valid UUID or null
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionUser = sessionData?.session?.user;
+
+  let resolvedReviewerUuid: string | null = null;
+  if (isValidUuid(reviewedBy)) {
+    resolvedReviewerUuid = reviewedBy;
+  } else if (isValidUuid(sessionUser?.id)) {
+    resolvedReviewerUuid = sessionUser.id;
+  }
+
+  const reviewerDisplayName =
+    sessionUser?.user_metadata?.full_name || sessionUser?.email || "Manager";
 
   const { data: currentApp } = await (supabase.from("gas_customer_applications") as any)
     .select("*")
@@ -940,7 +1059,8 @@ export async function requestMoreInfoGasCustomerApplication(params: {
     action: "MORE_INFO_NEEDED",
     status: "MORE_INFO_NEEDED",
     requested_info: requestedInfo,
-    reviewed_by: reviewedBy,
+    reviewed_by: reviewerDisplayName,
+    reviewer_id: resolvedReviewerUuid,
     timestamp: now,
   };
 
@@ -950,7 +1070,7 @@ export async function requestMoreInfoGasCustomerApplication(params: {
       status: "MORE_INFO_NEEDED",
       more_info_requested: requestedInfo,
       admin_notes: requestedInfo,
-      reviewed_by: reviewedBy,
+      reviewed_by: resolvedReviewerUuid,
       reviewed_at: now,
       decision_history: [...existingHistory, historyEntry],
       updated_at: now,
@@ -1165,11 +1285,19 @@ export async function updateGasApplicationStatus(params: {
 
   // Update in dedicated gas_customer_applications table
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUser = sessionData?.session?.user;
+    const resolvedReviewerUuid = isValidUuid(reviewedBy)
+      ? reviewedBy
+      : isValidUuid(sessionUser?.id)
+        ? sessionUser.id
+        : null;
+
     await (supabase.from("gas_customer_applications") as any)
       .update({
         status,
         admin_notes: adminNotes,
-        reviewed_by: reviewedBy,
+        reviewed_by: resolvedReviewerUuid,
         reviewed_at: now,
         updated_at: now,
       })

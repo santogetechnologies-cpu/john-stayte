@@ -17,9 +17,24 @@ import {
   Store,
   MapPin,
 } from "lucide-react";
-import { KNOWN_BRANCHES } from "@/lib/branch-service";
+import { KNOWN_BRANCHES, resolveCheckoutBranchAssignment } from "@/lib/branch-service";
+import {
+  resolveCustomerGasPrice,
+  calculateCylinderExchange,
+  validateDeliveryPostcode,
+  evaluateCustomerDeliveryFee,
+  validateCustomerCreditAccount,
+  getActiveCollectionForecourts,
+  CLICK_AND_COLLECT_TIMELINE,
+  REMINDER_CLICK_AND_COLLECT,
+  REMINDER_DELIVERY,
+  getOrderCylinderReminder,
+  type CustomerPricingContext,
+  parseGasTypeAndSize,
+} from "@/lib/customer-order-pricing-service";
 import { SiteLayout, PageHero } from "@/components/site/SiteLayout";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -366,17 +381,96 @@ function Checkout() {
     }
   };
 
+  // Customer Pricing Context (Phase 1-4 Band Resolution & Special Customer Accounts)
+  const [customerPricing, setCustomerPricing] = useState<CustomerPricingContext>({
+    userId: user?.id,
+    userRole: user?.role,
+    pricingBand: null,
+    pricingBandId: null,
+    customerCode: null,
+    accountApproved: false,
+    creditAccountApproved: false,
+    creditLimit: 0,
+  });
+
+  useEffect(() => {
+    async function loadCustomerPricing() {
+      if (!user?.id) return;
+      try {
+        const { data: prof } = await (supabase.from("profiles") as any)
+          .select("id, role, pricing_band, pricing_band_id, customer_code, account_approved, credit_account_approved, credit_limit, notification_prefs")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const gasApp = (prof?.notification_prefs as any)?.gas_application;
+
+        setCustomerPricing({
+          userId: user.id,
+          userRole: user.role,
+          pricingBand: prof?.pricing_band || gasApp?.pricing_band || null,
+          pricingBandId: prof?.pricing_band_id || gasApp?.pricing_band_id || null,
+          customerCode: prof?.customer_code || gasApp?.customer_code || null,
+          accountApproved: Boolean(prof?.account_approved || gasApp?.status === "APPROVED"),
+          creditAccountApproved: Boolean(prof?.credit_account_approved || gasApp?.credit_account_approved),
+          creditLimit: Number(prof?.credit_limit ?? gasApp?.credit_limit ?? 0),
+        });
+      } catch (err) {
+        console.warn("Could not load customer pricing profile:", err);
+      }
+    }
+    loadCustomerPricing();
+  }, [user]);
+
   // Gas Cylinder Exchange Option
   const [cylinderExchangeType, setCylinderExchangeType] = useState<"refill" | "new">("refill");
+  const [returnedCylinderType, setReturnedCylinderType] = useState<string>("Calor Propane Cylinder");
+  const [returnedEmptyCount, setReturnedEmptyCount] = useState<number>(1);
 
   // Check if cart contains actual refillable/exchangeable gas cylinders
   const hasCylinderInCart = useMemo(() => {
     return lines.some((l) => isRefillableLpgCylinderProduct(l.product));
   }, [lines]);
 
-  // Payment Form Fields (Elavon Hosted Payments handles card data securely)
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | "cod">("card");
+  const totalCylinderQty = useMemo(() => {
+    return lines
+      .filter((l) => isRefillableLpgCylinderProduct(l.product))
+      .reduce((sum, l) => sum + l.qty, 0);
+  }, [lines]);
+
+  // Keep returnedEmptyCount bounded by totalCylinderQty
+  useEffect(() => {
+    if (totalCylinderQty > 0) {
+      setReturnedEmptyCount((prev) => Math.min(Math.max(1, prev), totalCylinderQty));
+    }
+  }, [totalCylinderQty]);
+
+  // Payment Form Fields (Elavon Hosted Payments, Cash, or Credit Account)
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | "cod" | "credit_account">("card");
   const [cardholderName, setCardholderName] = useState(user?.name || "");
+  const [creditFacilityStatus, setCreditFacilityStatus] = useState<{
+    checked: boolean;
+    approved: boolean;
+    availableCredit: number;
+    creditLimit: number;
+    withinTerms: boolean;
+    error?: string;
+  } | null>(null);
+
+  // Check credit facility whenever credit account is selected or total updates
+  useEffect(() => {
+    if (paymentMethod === "credit_account" && user?.id) {
+      validateCustomerCreditAccount(user.id, total).then((res) => {
+        setCreditFacilityStatus({
+          checked: true,
+          approved: res.approved,
+          availableCredit: res.availableCredit,
+          creditLimit: res.creditLimit,
+          withinTerms: res.withinTerms,
+          error: res.error,
+        });
+      });
+    }
+  }, [paymentMethod, user?.id, total]);
 
   // Automatically load and prefill customer's saved default address from Supabase
   useEffect(() => {
@@ -571,15 +665,38 @@ function Checkout() {
       const finalTotal = Math.max(0, finalSubtotal + shipping + vat);
       const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
 
+      const isCollection = fulfilmentMethod === "collection";
+      const branchAssignment = resolveCheckoutBranchAssignment(fulfilmentMethod, selectedBranch);
+
+      // Validate delivery coverage if delivery selected
+      if (!isCollection) {
+        const coverage = validateDeliveryPostcode(postcode);
+        if (!coverage.valid) {
+          throw new Error(coverage.message || "Entered postcode is outside our standard delivery fleet coverage.");
+        }
+      }
+
+      // Validate credit facility if Credit Account selected
+      if (paymentMethod === "credit_account") {
+        const creditVal = await validateCustomerCreditAccount(currentUserId, finalTotal);
+        if (!creditVal.withinTerms) {
+          throw new Error(creditVal.error || "Order total exceeds available commercial credit facility limit.");
+        }
+      }
+
       type OrderPaymentStatus = "Pending" | "Paid" | "Failed" | "Cancelled";
       const getInitialPaymentStatus = (): OrderPaymentStatus => "Pending";
       const finalPaymentStatus: OrderPaymentStatus = getInitialPaymentStatus();
       const finalPaymentMethod =
-        paymentMethod === "paypal"
-          ? "PayPal"
-          : paymentMethod === "card"
-            ? "Credit / Debit Card (Elavon)"
-            : "Pay on Delivery";
+        paymentMethod === "credit_account"
+          ? "Credit Account (30-Day Invoice)"
+          : paymentMethod === "paypal"
+            ? "PayPal"
+            : paymentMethod === "card"
+              ? "Credit / Debit Card (Elavon)"
+              : isCollection
+                ? "Pay upon Collection"
+                : "Pay on Delivery";
 
       const isEmptyRequired = hasCylinderInCart ? cylinderExchangeType === "refill" : false;
       const orderTypeTag = hasCylinderInCart
@@ -588,13 +705,7 @@ function Checkout() {
           : "NEW_CYLINDER"
         : "STANDARD";
 
-      const isCollection = fulfilmentMethod === "collection";
-      const selectedBranchObj = isCollection
-        ? KNOWN_BRANCHES.find(
-            (b) => b.name === selectedBranch || b.town.toLowerCase() === selectedBranch.toLowerCase(),
-          )
-        : null;
-      const targetDepot = isCollection ? selectedBranch : "Whitminster";
+      const cylinderReminder = getOrderCylinderReminder(fulfilmentMethod, hasCylinderInCart && isEmptyRequired);
 
       // 5. Create Initial Order Record in Supabase (with provisional values)
       const provisionalTotal = Math.max(
@@ -620,15 +731,16 @@ function Checkout() {
               empty_cylinder_required: isEmptyRequired,
               order_type: orderTypeTag,
               fulfilment_method: fulfilmentMethod,
-              collection_branch: isCollection ? selectedBranch : null,
-              collection_branch_id: isCollection ? selectedBranchObj?.id : null,
+              collection_branch: branchAssignment.collectionBranch,
+              collection_branch_id: branchAssignment.collectionBranchId,
             },
+            assigned_branch_id: branchAssignment.assignedBranchId,
             subtotal: finalSubtotal,
             shipping_fee: isCollection ? 0 : shipping,
             total: provisionalTotal,
             status: "Pending",
             fulfillment_status: "Pending",
-            assigned_depot: targetDepot,
+            assigned_depot: branchAssignment.assignedDepot,
             payment_status: finalPaymentStatus,
             notes: [
               `[Payment: ${finalPaymentMethod}]`,
@@ -735,9 +847,12 @@ function Checkout() {
           offer_code: verifiedOfferCode,
           notes: [
             `[Payment: ${finalPaymentMethod}]`,
+            isCollection ? `[Click & Collect: ${selectedBranch}]` : "[Standard Delivery]",
             verifiedDiscount > 0 ? `[Offer Applied: -${gbp(verifiedDiscount)}]` : "",
             hasCylinderInCart ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]` : "",
+            hasCylinderInCart && isEmptyRequired ? `[Returned: ${returnedCylinderType} x ${returnedEmptyCount}]` : "",
             hasCylinderInCart ? `[${orderTypeTag}]` : "",
+            cylinderReminder ? `[Reminder: ${cylinderReminder}]` : "",
           ]
             .filter(Boolean)
             .join(" | "),
@@ -869,7 +984,7 @@ function Checkout() {
           {
             user_id: currentUserId,
             title: `Order #${orderNumber} Confirmed`,
-            message: `Your order for ${verifiedItems.length} item(s) totalling ${gbp(finalTotal)} has been received.`,
+            message: `Your order for ${verifiedItems.length} item(s) totalling ${gbp(finalTotal)} has been received.${cylinderReminder ? ` ${cylinderReminder}` : ""}`,
             category: "Orders",
             is_read: false,
           },
@@ -949,7 +1064,10 @@ function Checkout() {
 
       // 13. Pay on Delivery / Offline path: Clear Cart & Complete
       clearCart();
-      toast.success(`Order #${orderNumber} placed successfully!`);
+      toast.success(`Order #${orderNumber} placed successfully!`, {
+        description: cylinderReminder || undefined,
+        duration: 8000,
+      });
       navigate({ to: `/account/orders/${newOrder.id}` as any });
     } catch (err: any) {
       // If parent order was created but downstream failed, attempt safe cleanup
@@ -1046,14 +1164,19 @@ function Checkout() {
             {/* Click & Collect Station Selector */}
             {fulfilmentMethod === "collection" && (
               <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200/90 space-y-3 animate-in fade-in">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
-                    Select Collection Branch:
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-amber-600" />
+                    <span className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                      Select Collection Forecourt Branch:
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-700 bg-amber-100/70 px-2.5 py-0.5 rounded-full">
+                    {CLICK_AND_COLLECT_TIMELINE}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {KNOWN_BRANCHES.map((b) => {
+                  {getActiveCollectionForecourts().map((b) => {
                     const isSelected = selectedBranch === b.name;
                     return (
                       <button
@@ -1073,6 +1196,7 @@ function Checkout() {
                         </div>
                         <div className="text-right shrink-0">
                           <span className="text-[10px] text-slate-500 block font-medium">{b.telephone}</span>
+                          <span className="text-[10px] text-emerald-700 font-bold block">In Stock • 2h Pickup</span>
                         </div>
                       </button>
                     );
@@ -1270,9 +1394,23 @@ function Checkout() {
               </div>
               {fulfilmentMethod === "delivery" && (
                 <div>
-                  <Label htmlFor="pc" className="text-xs font-bold text-slate-700">
-                    Postcode
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="pc" className="text-xs font-bold text-slate-700">
+                      Postcode
+                    </Label>
+                    {postcode.trim() && (
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full",
+                          validateDeliveryPostcode(postcode).valid
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-amber-100 text-amber-800",
+                        )}
+                      >
+                        {validateDeliveryPostcode(postcode).valid ? "✓ Delivery Covered" : "Outside Standard Area"}
+                      </span>
+                    )}
+                  </div>
                   <Input
                     id="pc"
                     required={fulfilmentMethod === "delivery"}
@@ -1282,6 +1420,17 @@ function Checkout() {
                     placeholder="GL2 7LZ"
                     className="mt-1.5 rounded-full text-xs font-medium"
                   />
+                  {postcode.trim() && (
+                    <p
+                      className={cn(
+                        "text-[11px] mt-1 font-medium",
+                        validateDeliveryPostcode(postcode).valid ? "text-emerald-700" : "text-amber-700",
+                      )}
+                    >
+                      {validateDeliveryPostcode(postcode).message}
+                      {validateDeliveryPostcode(postcode).valid && ` • ${validateDeliveryPostcode(postcode).estimatedTimeline}`}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1303,18 +1452,23 @@ function Checkout() {
             )}
           </section>
 
-          {/* Section 1.5: Gas Cylinder Exchange Option (shown only if gas cylinder in basket) */}
+          {/* Section 1.5: Gas Cylinder Exchange Option (Flowchart Step 3) */}
           {hasCylinderInCart && (
-            <section className="surface-card p-6 sm:p-7 space-y-3 bg-amber-50/40 border border-amber-200/90 rounded-3xl">
-              <div className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-red-600" />
-                <h3 className="text-base font-extrabold text-slate-900 font-display">
-                  LPG Cylinder Exchange Selection
-                </h3>
+            <section className="surface-card p-6 sm:p-7 space-y-4 bg-amber-50/40 border border-amber-200/90 rounded-3xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame className="h-5 w-5 text-red-600" />
+                  <h3 className="text-base font-extrabold text-slate-900 font-display">
+                    Empty Cylinder Exchange Check
+                  </h3>
+                </div>
+                <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full">
+                  Total Cylinders: {totalCylinderQty}
+                </span>
               </div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Please specify whether you are ordering a refill exchange with an existing empty
-                cylinder or purchasing a new gas bottle for the first time.
+                Returning eligible empty cylinders? Matched exchanges receive the customer refill price.
+                Any additional cylinders receive the full price (refill price + cylinder deposit).
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -1330,15 +1484,18 @@ function Checkout() {
                     type="radio"
                     name="cylinderExchange"
                     checked={cylinderExchangeType === "refill"}
-                    onChange={() => setCylinderExchangeType("refill")}
+                    onChange={() => {
+                      setCylinderExchangeType("refill");
+                      setReturnedEmptyCount(totalCylinderQty);
+                    }}
                     className="mt-1"
                   />
                   <div className="space-y-1 text-xs">
                     <span className="font-extrabold text-slate-900 block">
-                      Refill / Exchange (Have empty bottle)
+                      Yes — Returning Empty Cylinders
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
-                      Empty cylinder required for exchange collection upon delivery.
+                      Refill pricing applied to matched cylinder exchanges.
                     </span>
                   </div>
                 </label>
@@ -1355,19 +1512,78 @@ function Checkout() {
                     type="radio"
                     name="cylinderExchange"
                     checked={cylinderExchangeType === "new"}
-                    onChange={() => setCylinderExchangeType("new")}
+                    onChange={() => {
+                      setCylinderExchangeType("new");
+                      setReturnedEmptyCount(0);
+                    }}
                     className="mt-1"
                   />
                   <div className="space-y-1 text-xs">
                     <span className="font-extrabold text-slate-900 block">
-                      New Cylinder Purchase (First-time)
+                      No Empty Cylinders (Full Price)
                     </span>
                     <span className="text-[11px] text-slate-500 leading-tight block">
-                      First-time customer purchase — no empty cylinder required.
+                      Full cylinder price applied to all cylinders (adds refundable security deposit).
                     </span>
                   </div>
                 </label>
               </div>
+
+              {/* Returning empty cylinder details inputs */}
+              {cylinderExchangeType === "refill" && (
+                <div className="p-4 rounded-2xl bg-white border border-amber-200 space-y-3 mt-3 animate-in fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-bold text-slate-700">Returned Cylinder Type</Label>
+                      <select
+                        value={returnedCylinderType}
+                        onChange={(e) => setReturnedCylinderType(e.target.value)}
+                        className="w-full mt-1.5 p-2 rounded-xl border border-slate-300 text-xs font-medium bg-white"
+                      >
+                        <option value="Calor Propane Cylinder">Calor Propane Cylinder</option>
+                        <option value="Calor Butane Cylinder">Calor Butane Cylinder</option>
+                        <option value="Calor Patio Gas Cylinder">Calor Patio Gas Cylinder (Clip-On)</option>
+                        <option value="Calor FLT Automotive Cylinder">Calor FLT Forklift Cylinder</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <Label className="text-xs font-bold text-slate-700">
+                        Number of Empty Cylinders Returned (Max: {totalCylinderQty})
+                      </Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={totalCylinderQty}
+                        value={returnedEmptyCount}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10) || 1;
+                          setReturnedEmptyCount(Math.min(Math.max(1, val), totalCylinderQty));
+                        }}
+                        className="mt-1.5 rounded-xl text-xs font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Real-time exchange calculation breakdown */}
+                  <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-100 text-xs text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold">Exchange Breakdown: </span>
+                      <span className="text-emerald-700 font-extrabold">
+                        {Math.min(returnedEmptyCount, totalCylinderQty)} refill exchange(s)
+                      </span>
+                      {totalCylinderQty > returnedEmptyCount && (
+                        <span className="text-amber-800 font-extrabold ml-1.5">
+                          • {totalCylinderQty - returnedEmptyCount} additional full-price (+£39.99 deposit each)
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Flowchart Rule: Matched exchanges get refill price.
+                    </span>
+                  </div>
+                </div>
+              )}
             </section>
           )}
 
@@ -1381,8 +1597,8 @@ function Checkout() {
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Payment Method Selector (Card, PayPal, Cash, Credit Account) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <button
                 type="button"
                 onClick={() => setPaymentMethod("card")}
@@ -1419,7 +1635,7 @@ function Checkout() {
                   <span className="text-xs font-black text-slate-900 block">
                     Credit / Debit Card
                   </span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Visa, Mastercard, Amex</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Elavon 3DS2 Gateway</p>
                 </div>
               </button>
 
@@ -1494,11 +1710,109 @@ function Checkout() {
                   </div>
                 </div>
                 <div>
-                  <span className="text-xs font-black text-slate-900 block">Pay on Delivery</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Cash or card upon receipt</p>
+                  <span className="text-xs font-black text-slate-900 block">Cash</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Pay on delivery/collection</p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("credit_account")}
+                className={cn(
+                  "p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none",
+                  paymentMethod === "credit_account"
+                    ? "border-emerald-600 bg-emerald-50/30 ring-2 ring-emerald-600/20 shadow-xs"
+                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50",
+                )}
+              >
+                <div className="flex items-center justify-between w-full mb-2">
+                  <div
+                    className={cn(
+                      "h-8 w-8 rounded-xl flex items-center justify-center",
+                      paymentMethod === "credit_account"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-100 text-slate-600",
+                    )}
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                  </div>
+                  <div
+                    className={cn(
+                      "h-4 w-4 rounded-full border flex items-center justify-center",
+                      paymentMethod === "credit_account"
+                        ? "border-emerald-600 bg-emerald-600 text-white"
+                        : "border-slate-300 bg-white",
+                    )}
+                  >
+                    {paymentMethod === "credit_account" && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">Credit Account</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">30-day invoice terms</p>
                 </div>
               </button>
             </div>
+
+            {/* Credit Account Information Section */}
+            {paymentMethod === "credit_account" && (
+              <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-200 text-xs space-y-3 text-left">
+                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-emerald-700" />
+                    <span className="font-extrabold text-emerald-950 text-sm">
+                      Commercial Credit Facility Verification
+                    </span>
+                  </div>
+                  {creditFacilityStatus?.approved ? (
+                    <Badge className="bg-emerald-600 text-white font-bold text-[10px]">
+                      Account Approved
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="font-bold text-[10px]">
+                      Approval Required
+                    </Badge>
+                  )}
+                </div>
+
+                {creditFacilityStatus?.approved ? (
+                  <div className="space-y-2 text-slate-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <div className="p-2.5 bg-white rounded-xl border border-emerald-100">
+                        <span className="text-[10px] text-slate-500 block uppercase font-bold">Approved Limit</span>
+                        <span className="text-xs font-black text-slate-900">{gbp(creditFacilityStatus.creditLimit)}</span>
+                      </div>
+                      <div className="p-2.5 bg-white rounded-xl border border-emerald-100">
+                        <span className="text-[10px] text-slate-500 block uppercase font-bold">Available Credit</span>
+                        <span className="text-xs font-black text-emerald-700">{gbp(creditFacilityStatus.availableCredit)}</span>
+                      </div>
+                      <div className="p-2.5 bg-white rounded-xl border border-emerald-100 col-span-2 sm:col-span-1">
+                        <span className="text-[10px] text-slate-500 block uppercase font-bold">Terms Status</span>
+                        <span className={cn(
+                          "text-xs font-black",
+                          creditFacilityStatus.withinTerms ? "text-emerald-700" : "text-red-700"
+                        )}>
+                          {creditFacilityStatus.withinTerms ? "Within Credit Terms" : "Exceeds Limit"}
+                        </span>
+                      </div>
+                    </div>
+                    {!creditFacilityStatus.withinTerms && (
+                      <p className="text-red-700 font-bold text-[11px] bg-red-50 p-2 rounded-lg border border-red-200">
+                        {creditFacilityStatus.error || "Order total exceeds your available credit facility."}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs">
+                    <p className="font-bold">Credit Account Facility Required</p>
+                    <p className="text-[11px] text-amber-800 mt-1">
+                      Your account does not currently have an approved commercial credit facility.
+                      Please select <strong>Credit / Debit Card</strong> or <strong>Cash</strong>, or apply for credit terms with depot management.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Card Details if Card Selected */}
             {paymentMethod === "card" && (
@@ -1615,17 +1929,77 @@ function Checkout() {
           {cartLoading ? (
             <p className="text-xs text-muted-foreground">Verifying basket with database...</p>
           ) : (
-            <ul className="space-y-2 text-xs divide-y divide-slate-100">
-              {lines.map((l) => (
-                <li key={l.slug} className="flex justify-between gap-3 pt-2 first:pt-0">
-                  <span className="min-w-0 truncate text-slate-600 font-medium">
-                    {l.qty} × {l.product.name}
-                  </span>
-                  <span className="font-extrabold text-slate-900 shrink-0">
-                    {gbp(l.product.price * l.qty)}
-                  </span>
-                </li>
-              ))}
+            <ul className="space-y-3 text-xs divide-y divide-slate-100">
+              {lines.map((l) => {
+                const isCylinder = isRefillableLpgCylinderProduct(l.product);
+                const { gasType, cylinderSize } = parseGasTypeAndSize(l.product);
+                const resolved = resolveCustomerGasPrice(l.product, customerPricing);
+                const isReturning = cylinderExchangeType === "refill";
+                const matchedCount = isReturning ? Math.min(l.qty, returnedEmptyCount) : 0;
+                const fullCount = l.qty - matchedCount;
+
+                return (
+                  <li key={l.slug} className="pt-2 first:pt-0 space-y-1">
+                    <div className="flex justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="font-extrabold text-slate-900 block truncate">
+                          {l.qty} × {l.product.name}
+                        </span>
+                        {isCylinder && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold">
+                              {gasType} • {cylinderSize}
+                            </span>
+                            <span className="text-[10px] bg-red-50 text-red-700 px-1.5 py-0.5 rounded font-bold">
+                              Band {resolved.bandNumber}
+                            </span>
+                            {resolved.isSpecialPrice && (
+                              <span className="text-[10px] bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-bold">
+                                Special Account ({resolved.specialCustomerCode})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <span className="font-black text-slate-900 shrink-0 text-right">
+                        {gbp(
+                          isCylinder
+                            ? matchedCount * resolved.unitRefillPrice + fullCount * resolved.unitFullPrice
+                            : l.product.price * l.qty
+                        )}
+                      </span>
+                    </div>
+
+                    {isCylinder && (
+                      <div className="text-[11px] text-slate-500 space-y-0.5 pl-1 border-l-2 border-slate-200">
+                        <div className="flex justify-between">
+                          <span>Refill Units ({matchedCount}x):</span>
+                          <span className="font-semibold text-slate-700">
+                            {matchedCount > 0 ? gbp(matchedCount * resolved.unitRefillPrice) : "£0.00"}
+                          </span>
+                        </div>
+                        {fullCount > 0 && (
+                          <div className="flex justify-between text-amber-800">
+                            <span>Full-price Units ({fullCount}x + deposit):</span>
+                            <span className="font-semibold">
+                              {gbp(fullCount * resolved.unitFullPrice)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-[10px] text-slate-400">
+                          <span>VAT Treatment:</span>
+                          <span>{resolved.vatStatus.replace(/_/g, " ")}</span>
+                        </div>
+                        {resolved.requiresClientClarification && (
+                          <p className="text-[10px] text-amber-700 font-bold bg-amber-50 p-1 rounded">
+                            Weston 12KG Band 12: £38.25 Inc / £33.57 Exc (clarification preserved)
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
 
@@ -1643,7 +2017,14 @@ function Checkout() {
               </div>
             )}
             <div className="flex justify-between text-slate-600">
-              <dt>{settings?.deliveryTierName || "Delivery"}</dt>
+              <dt>
+                {fulfilmentMethod === "collection" ? "Click & Collect Fee" : (settings?.deliveryTierName || "Delivery")}
+                {customerPricing.pricingBand && !["10", "20"].includes(customerPricing.pricingBand) && (
+                  <span className="text-[10px] text-emerald-700 block font-bold">
+                    (Discounted Band — Fee Waived)
+                  </span>
+                )}
+              </dt>
               <dd className="font-bold text-slate-900">
                 {shipping === 0 ? (
                   <span className="text-emerald-700 font-bold">
@@ -1724,8 +2105,20 @@ function Checkout() {
 
           <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium text-center">
             <Lock className="h-3 w-3 text-emerald-600" />
-            <span>Guaranteed Safe & Secure Checkout</span>
+            <span>Guaranteed Safe & Secure Checkout · Encrypted TLS</span>
           </div>
+
+          <p className="text-[11px] text-slate-500 text-center leading-relaxed px-2">
+            By placing your order, you agree to John Stayte Services&apos;s{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-800 font-medium">
+              Terms &amp; Conditions
+            </a>{" "}
+            and{" "}
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-slate-800 font-medium">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </aside>
       </form>
 

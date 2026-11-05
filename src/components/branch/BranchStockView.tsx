@@ -57,24 +57,28 @@ export function BranchStockView() {
       </div>
 
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/60 pb-6">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-slate-900">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Branch Cylinder Stock
             </h1>
-            <Badge
-              variant="outline"
-              className={`font-bold text-xs ${
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border shadow-2xs ${
                 isPending
-                  ? "bg-amber-50 text-amber-800 border-amber-300"
-                  : "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  ? "bg-[#FFF7E6] text-[#92400E] border-[#FDE68A]"
+                  : "bg-emerald-500/10 text-emerald-800 border-emerald-500/20"
               }`}
             >
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  isPending ? "bg-[#D97706] animate-pulse" : "bg-emerald-500"
+                }`}
+              />
               📍 {assignedBranch}
-            </Badge>
+            </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
             Real-time branch inventory matrix of full cylinders and reorder thresholds.
           </p>
         </div>
@@ -84,7 +88,7 @@ export function BranchStockView() {
             size="sm"
             variant="outline"
             onClick={loadStock}
-            className="rounded-xl text-xs font-bold gap-1.5"
+            className="h-9.5 rounded-full text-xs font-bold gap-1.5 border-white/80 bg-white/70 backdrop-blur-md text-slate-700 hover:bg-white shadow-2xs px-4"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${loading ? "animate-spin" : ""}`} />
             <span>Refresh</span>
@@ -94,7 +98,7 @@ export function BranchStockView() {
             onClick={() => {
               toast.info("Restock transfer notification sent to Whitminster Logistics Depot.");
             }}
-            className="rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+            className="h-9.5 rounded-full text-xs font-black bg-[#374151] hover:bg-[#1f2937] text-white gap-1.5 shadow-sm px-4"
           >
             <Truck className="h-4 w-4" />
             <span>Request Depot Restock</span>
@@ -103,11 +107,13 @@ export function BranchStockView() {
       </div>
 
       {/* STOCK MATRIX TABLE OR REQUIRED UNAVAILABLE EMPTY STATE */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+      <div className="surface-card rounded-[24px] border border-white/80 bg-white/70 backdrop-blur-xl p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)]">
         {!stockAvailable || stockItems.length === 0 ? (
           <div className="py-12 px-4 text-center space-y-3">
-            <Layers className="mx-auto h-9 w-9 text-slate-300" />
-            <h3 className="text-base font-bold text-slate-900">Branch inventory data is not available.</h3>
+            <div className="h-12 w-12 rounded-2xl bg-slate-100/80 text-slate-400 border border-slate-200/60 flex items-center justify-center mx-auto shadow-2xs">
+              <Layers className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-extrabold text-slate-900">Branch inventory data is not available.</h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
               Forecourt-level cylinder inventory tracking has not yet been configured in the database for {assignedBranch}. Currently, the central logistics inventory table records stock at the Whitminster depot.
             </p>
@@ -116,7 +122,7 @@ export function BranchStockView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-extrabold uppercase text-[10px]">
+                <tr className="border-b border-slate-200/80 text-slate-400 font-extrabold uppercase text-[10px]">
                   <th className="py-3 px-3">Cylinder Name</th>
                   <th className="py-3 px-3">Category</th>
                   <th className="py-3 px-3">Full Cylinders</th>
@@ -125,11 +131,11 @@ export function BranchStockView() {
                   <th className="py-3 px-3 text-right">Depot Location</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100/80">
                 {stockItems.map((item) => {
                   const isLow = item.status === "low_stock";
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
                       <td className="py-3.5 px-3 font-extrabold text-slate-900">
                         {item.name}
                       </td>

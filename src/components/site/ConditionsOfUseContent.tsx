@@ -54,19 +54,19 @@ export function ConditionsOfUseContent() {
       <div className="space-y-2 pt-2">
         <h4 className="font-extrabold text-base text-slate-900 font-display">1. Information about us</h4>
         <p className="text-slate-600">
-          1.1 <a href="https://www.johnstayteservices.co.uk" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">www.johnstayteservices.co.uk</a> and <a href="https://www.cheapfishingbaits.co.uk" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">www.cheapfishingbaits.co.uk</a> are site&apos;s operated by John Stayte Services (WSM) Limited (&ldquo;JSS/us/we&rdquo;). We are registered in England and Wales under company number 00303703 and with our registered office at Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom. Our contact details in respect of Products ordered from our site are: Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom. Our e-mail address for general queries is{" "}
+          1.1 <a href="https://www.johnstayteservices.co.uk" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">www.johnstayteservices.co.uk</a> is a website operated by John Stayte Services (WSM) Limited (&ldquo;JSS/us/we&rdquo;). We are registered in England and Wales under company number 00303703 with our registered office at Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom. Our contact details in respect of Products ordered from our site are: Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom. Our e-mail address for general queries is{" "}
           <a href="mailto:info@johnstayteservices.co.uk" className="text-red-600 hover:underline font-semibold">
             info@johnstayteservices.co.uk
           </a>. Our VAT number is GB 207 610 984.
         </p>
-        <p className="text-slate-600">1.2 John Stayte Services is a principle dealer for Calor Gas plc</p>
+        <p className="text-slate-600">1.2 John Stayte Services is an authorised principal dealer for Calor Gas plc.</p>
       </div>
 
       {/* 2. Service availability */}
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <h4 className="font-extrabold text-base text-slate-900 font-display">2. Service availability</h4>
         <p className="text-slate-600">
-          Our gas delivery ordering site is only intended for use by people resident in Gloucestershire and some surrounding postcodes but we do sell other products for delivery in mainland Great Britain. Please contact us for details. We do not accept orders from individuals outside mainland Great Britain.
+          Our gas delivery ordering site is intended primarily for customers resident in Gloucestershire and immediate surrounding postcodes. Selected solid fuels, accessories, and appliances may be supplied for delivery across mainland Great Britain. We do not accept orders from individuals outside mainland Great Britain.
         </p>
       </div>
 
@@ -102,13 +102,10 @@ export function ConditionsOfUseContent() {
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <h4 className="font-extrabold text-base text-slate-900 font-display">4. Placing an order</h4>
         <p className="text-slate-600">
-          4.1 Placing an order could not be easier. Just browse our store and add any items that you wish to buy to the shopping cart. After you have finished your selection, click on &lsquo;Checkout&rsquo; and you will be asked to complete your personal details and method of payment.
+          4.1 Placing an order is straightforward. Browse our online store and add items to your basket, specifying cylinder exchange status where applicable. After completing your selection, proceed to &lsquo;Checkout&rsquo; where you will enter your delivery address or select a collection forecourt, and submit your secure payment.
         </p>
         <p className="text-slate-600">
-          4.2 Any delivery charges will be clearly marked on the page and added to your order. When the order is processed it will be encrypted and processed by PayPal. Information can be found at{" "}
-          <a href="https://www.paypal.com" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">
-            www.paypal.com
-          </a>
+          4.2 Any delivery charges will be clearly displayed before you confirm your order. Payment is processed securely via our encrypted, PCI-DSS compliant UK banking gateway.
         </p>
       </div>
 
@@ -116,7 +113,7 @@ export function ConditionsOfUseContent() {
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <h4 className="font-extrabold text-base text-slate-900 font-display">5. How the contract is formed between you and us</h4>
         <p className="text-slate-600">
-          After placing an order, you will receive an automatic e-mail from us acknowledging that we have received your order, and attaching a copy of the invoice. Although the contract between us (&ldquo;Contract&rdquo;) will be formed upon your receipt of this e-mail, we Contract will not by this time have checked for stock availability. Therefore, if, after checking stock availability for all Products in your order, we determine that we will be unable to fulfil any elements of the order. within timescale referred to in clause 9.3 , we will telephone you as soon as possible (and no more than 48 hours following receipt of your order, You will have the option of continuing with your order to with a longer delivery lead time, or cancelling all or part of your order. If you cancel all or part of your order, you will of course receive a full refund of any amounts that have been debited from your account that relate to the cancelled products.
+          After placing an order, you will receive an automatic email from us acknowledging receipt and attaching your invoice reference. Although the contract between us (&ldquo;Contract&rdquo;) is formed upon dispatch or confirmation that the goods are ready for collection, stock checks are finalized at the depot. If, after checking stock availability, we determine that any element of your order cannot be fulfilled within the estimated timescale, we will contact you promptly by telephone or email (no later than 48 hours following receipt of your order). You will have the option to proceed with a revised delivery schedule or cancel all or part of your order for an immediate full refund.
         </p>
       </div>
 
@@ -212,7 +209,7 @@ export function ConditionsOfUseContent() {
           9.4 Delivery will be made to the address specified by you when you place your order. This must be an address within Gloucestershire and some surrounding postcodes.
         </p>
         <p className="text-slate-600">
-          9.5 You must ensure that someone is available to take delivery of the Products (PLEASE SEE NOTE IN 9.3 ABOVE REGARDING THE FACT THAT THERE MAY BE MORE THAN ONE DELIVERY). You must also ensure that suitable access is available for the purpose of delivery of the Products. If you fail to take delivery of the Products or fail to ensure that suitable access is available for the purpose of their delivery then, without prejudice to any other right or remedy we may have, we may cancel a Contract or suspend any further deliveries to.
+          9.5 You must ensure that someone is available to take delivery of the Products. You must also ensure that suitable access is available for the purpose of delivery of the Products. If you fail to take delivery of the Products or fail to ensure that suitable access is available for their safe delivery then, without prejudice to any other right or remedy we may have, we may cancel the Contract or suspend any further deliveries to you.
         </p>
         <p className="text-slate-600">
           9.6 It is your responsibility to arrange inspection of the Products immediately upon delivery. You will be required to confirm receipt of the Products by signing a delivery note when taking delivery. However, your inspection of the Products and your confirmation of receipt does not affect any rights you may have if the Products are defective on delivery.
@@ -243,7 +240,7 @@ export function ConditionsOfUseContent() {
         </p>
         <p className="text-slate-600">11.6 We accept payment from all major credit and debit cards providers.</p>
         <p className="text-slate-600">
-          11.7 We use PayPal to protect your credit or debit card information and ensure your security. We only see the last four digits of your credit/debit card information.
+          11.7 We use a PCI-DSS certified UK banking payment gateway to protect your credit or debit card information and ensure your security. We never store complete credit or debit card numbers on our servers.
         </p>
       </div>
 
@@ -362,10 +359,10 @@ export function ConditionsOfUseContent() {
           </a>. We will not share your personal information for marketing purposes with companies outside the JSS group.
         </p>
         <p className="text-slate-600">
-          19.2 When you visit our website we issue a &ldquo;cookie&rdquo; that allows us to identify your computer. The cookie contains information that allows customers to navigate through the site. This information is removed from the cookie at the end of the checkout process. Navigational information may be used to monitor customer traffic patterns, website usage and help us develop the design and layout of our website.
+          19.2 When you visit our website we issue essential session cookies and local storage tokens that allow customers to navigate the store and preserve basket items during checkout. Navigational information may be used to monitor customer traffic patterns and improve website speed and layout. For comprehensive details on our cookie categories and to manage your preferences, please view our dedicated <a href="/cookie-policy" className="text-red-600 hover:underline font-semibold">Cookie Policy</a>.
         </p>
         <p className="text-slate-600">
-          For further information about cookies, visit <a href="https://www.aboutcookies.org" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">www.aboutcookies.org</a> or <a href="https://www.allaboutcookies.org" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">www.allaboutcookies.org</a>. You can set your browser not to accept cookies and the above websites tell you how to remove cookies from your browser. However, some of our website features may not function as a result.
+          For further external guidance about cookies, visit <a href="https://www.allaboutcookies.org" target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">www.allaboutcookies.org</a> or the Information Commissioner&apos;s Office (ICO). You can configure your browser not to accept cookies; however, certain interactive website features (including authentication and shopping cart persistence) will not function as a result.
         </p>
       </div>
 

@@ -5,7 +5,7 @@
 
 export type PushPlatform = "android" | "ios" | "web";
 
-export type PushRole = "customer" | "admin" | "manager" | "delivery_agent";
+export type PushRole = "customer" | "admin" | "manager" | "delivery_agent" | "branch_staff";
 
 export type PushEventType =
   | "ORDER_PLACED"
@@ -13,6 +13,7 @@ export type PushEventType =
   | "PAYMENT_FAILED"
   | "ORDER_APPROVED"
   | "ORDER_PACKED"
+  | "READY_FOR_COLLECTION"
   | "DELIVERY_ASSIGNED"
   | "OUT_FOR_DELIVERY"
   | "DELIVERY_COMPLETED"
@@ -41,6 +42,7 @@ export interface PushNotificationPayload {
 
 export interface PushDispatchTarget {
   userId?: string;
+  userIds?: string[];
   roles?: PushRole[];
   requireOrderOwnership?: {
     orderId: string;

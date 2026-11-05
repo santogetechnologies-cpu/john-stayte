@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { triggerOrderStatusPush } from "@/lib/push-notifications";
 
 export interface BranchDetails {
   id: string;
@@ -59,6 +60,24 @@ export const KNOWN_BRANCHES: BranchDetails[] = [
     isDepot: true,
   },
 ];
+
+/**
+ * Authoritative list of active forecourt branches available for customer collection.
+ * Strictly excludes Whitminster Depot (which is a central logistics depot, not a forecourt).
+ */
+export const ACTIVE_FORECOURT_BRANCHES: BranchDetails[] = KNOWN_BRANCHES.filter(
+  (b) => !b.isDepot,
+);
+
+/**
+ * Validates whether a given branch ID corresponds to one of the 4 active collection forecourts.
+ */
+export function isValidForecourtBranchId(id?: string | null): boolean {
+  if (!id) return false;
+  const cleanId = id.trim().toLowerCase();
+  return ACTIVE_FORECOURT_BRANCHES.some((b) => b.id.toLowerCase() === cleanId);
+}
+
 
 /**
  * Checks whether the staff account's branch assignment is unassigned or pending confirmation
@@ -141,6 +160,52 @@ export function resolveBranchInfo(
   return null;
 }
 
+export interface CheckoutBranchAssignment {
+  assignedDepot: string;
+  assignedBranchId: string | null;
+  collectionBranch: string | null;
+  collectionBranchId: string | null;
+}
+
+/**
+ * Resolves authoritative order fields for Click & Collect vs Standard Delivery.
+ * For forecourts, synchronizes assigned_branch_id and collection_branch_id with the forecourt UUID.
+ * For Whitminster Depot and delivery orders, assigned_branch_id and collection_branch_id remain null.
+ */
+export function resolveCheckoutBranchAssignment(
+  fulfilmentMethod?: string | null,
+  selectedBranchName?: string | null,
+): CheckoutBranchAssignment {
+  const isCollection = fulfilmentMethod === "collection";
+  if (!isCollection || !selectedBranchName) {
+    return {
+      assignedDepot: "Whitminster",
+      assignedBranchId: null,
+      collectionBranch: null,
+      collectionBranchId: null,
+    };
+  }
+
+  const raw = selectedBranchName.trim();
+  const branchObj = KNOWN_BRANCHES.find(
+    (b) =>
+      b.name.toLowerCase() === raw.toLowerCase() ||
+      b.town.toLowerCase() === raw.toLowerCase() ||
+      raw.toLowerCase().includes(b.town.toLowerCase()),
+  );
+
+  // Forecourts have valid UUIDs in auto_gas_stations; Whitminster Depot is a logistics depot (isDepot: true)
+  const isForecourt = branchObj && !branchObj.isDepot;
+  const forecourtUuid = isForecourt ? branchObj.id : null;
+
+  return {
+    assignedDepot: selectedBranchName,
+    assignedBranchId: forecourtUuid,
+    collectionBranch: selectedBranchName,
+    collectionBranchId: forecourtUuid,
+  };
+}
+
 export interface BranchKpiCounts {
   newOrders: number;
   preparing: number;
@@ -153,6 +218,7 @@ export interface BranchKpiCounts {
 export interface BranchOrderRecord {
   id: string;
   orderNumber: string;
+  assignedBranchId?: string | null;
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -163,6 +229,47 @@ export interface BranchOrderRecord {
   notes?: string;
   createdAt: string;
   collectionSlot?: string;
+  deliveryAddress?: Record<string, any> | null;
+  orderItems?: any[];
+}
+
+export interface CylinderExchangeDetails {
+  isExchange: boolean;
+  orderedGasQuantity: number;
+  expectedEmptyQuantity: number;
+  cylinderTypesSummary: string;
+}
+
+export function getCylinderExchangeDetails(ord: BranchOrderRecord): CylinderExchangeDetails {
+  const isExchange =
+    Boolean(ord.deliveryAddress?.empty_cylinder_required) ||
+    Boolean(ord.notes && ord.notes.includes("Empty Cylinder Required: Yes")) ||
+    Boolean(ord.notes && ord.notes.includes("REFILL_EXCHANGE"));
+
+  const items = ord.orderItems || [];
+  let orderedGasQuantity = 0;
+  const cylinderTypes: string[] = [];
+
+  if (items.length > 0) {
+    items.forEach((item: any) => {
+      const name = item.product_name || "Gas Cylinder";
+      const qty = Number(item.quantity) || 1;
+      orderedGasQuantity += qty;
+      cylinderTypes.push(`${qty}x ${name}`);
+    });
+  } else {
+    orderedGasQuantity = 1;
+    cylinderTypes.push(ord.itemsSummary || "Gas Cylinder");
+  }
+
+  const expectedEmptyQuantity = isExchange ? orderedGasQuantity : 0;
+
+  return {
+    isExchange,
+    orderedGasQuantity,
+    expectedEmptyQuantity,
+    cylinderTypesSummary: cylinderTypes.join(", "),
+  };
 }
 
 export interface RealBranchStockItem {
@@ -207,6 +314,7 @@ export async function fetchRealBranchKpiCounts(
   try {
     const matchConditions: string[] = [];
     if (target.branchId) {
+      matchConditions.push(`assigned_branch_id.eq.${target.branchId}`);
       matchConditions.push(`delivery_address->>collection_branch_id.eq.${target.branchId}`);
     }
     if (target.branchName) {
@@ -291,6 +399,7 @@ export async function fetchRealBranchOrders(
   try {
     const matchConditions: string[] = [];
     if (target.branchId) {
+      matchConditions.push(`assigned_branch_id.eq.${target.branchId}`);
       matchConditions.push(`delivery_address->>collection_branch_id.eq.${target.branchId}`);
     }
     if (target.branchName) {
@@ -312,6 +421,7 @@ export async function fetchRealBranchOrders(
         `
         id,
         order_number,
+        assigned_branch_id,
         customer_name,
         customer_email,
         customer_phone,
@@ -378,6 +488,7 @@ export async function fetchRealBranchOrders(
       return {
         id: o.id,
         orderNumber: o.order_number || `JSS-${o.id.slice(0, 8).toUpperCase()}`,
+        assignedBranchId: o.assigned_branch_id || null,
         customerName: custName,
         customerPhone: custPhone,
         customerEmail: custEmail,
@@ -388,6 +499,8 @@ export async function fetchRealBranchOrders(
         notes: o.notes || undefined,
         createdAt: o.created_at,
         collectionSlot: addr?.delivery_slot || addr?.time_slot || "Anytime during opening hours",
+        deliveryAddress: addr,
+        orderItems: items,
       };
     });
   } catch (err) {
@@ -434,6 +547,27 @@ export async function updateBranchOrderStatus({
     if (error) {
       console.error("Failed to update branch order status:", error.message);
       return { success: false, error: error.message };
+    }
+
+    // Trigger Ready for Collection notification when forecourt staff marks order Ready
+    if (status === "Ready") {
+      try {
+        const { data: ord } = await (supabase.from("orders") as any)
+          .select("id, order_number, customer_id")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (ord?.customer_id) {
+          triggerOrderStatusPush({
+            orderId: ord.id,
+            orderNumber: ord.order_number || ord.id.slice(0, 8),
+            customerId: ord.customer_id,
+            newStatus: "Ready",
+          }).catch((pushErr) => console.warn("[Branch Service] Ready for collection push notice:", pushErr));
+        }
+      } catch (pushErr) {
+        console.warn("[Branch Service] Push notification notice:", pushErr);
+      }
     }
 
     return { success: true };

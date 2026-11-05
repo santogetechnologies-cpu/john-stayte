@@ -89,6 +89,8 @@ const adminNavGroups: NavGroup[] = [
       },
       { title: "Deliveries", href: "/admin/deliveries", icon: Truck },
       { title: "Drivers", href: "/admin/delivery-agents", icon: UserCheck },
+      { title: "Branch Staff Management", href: "/admin/branch-staff", icon: Building2 },
+      { title: "Gas Pricing Management", href: "/admin/gas-pricing", icon: Flame },
       { title: "Delivery Slot Management", href: "/admin/delivery-slots", icon: CalendarClock },
       { title: "Applications", href: "/admin/applications", icon: FileText },
       {

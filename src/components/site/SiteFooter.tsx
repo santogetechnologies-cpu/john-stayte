@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from "lucide-react";
+import { Facebook, Instagram, Mail, MapPin, Phone, Youtube, Clock, ShieldCheck, Settings2 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { categories as defaultCategories } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
@@ -91,16 +91,23 @@ export function SiteFooter({ className }: { className?: string } = {}) {
   const routerState = useRouterState();
   const [categories, setCategories] = useState<any[]>(defaultCategories);
   const [footerCms, setFooterCms] = useState({
-    bio: "Family-run supplier of bottled gas, solid fuel, animal feed and outdoor living since 1972. Delivering across Gloucestershire.",
+    bio: "Family-run supplier of bottled Calor gas, solid fuel, animal feed and outdoor living since 1972. Delivering across Gloucestershire and surrounding areas.",
     companyPhone: "+44 (0)1453 822859",
     companyEmail: "info@johnstayteservices.co.uk",
     companyAddress: "Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom",
+    companyHours: "Mon–Fri 8:00–17:00 · Sat 8:30–12:30",
     copyrightText: "John Stayte Services. All rights reserved.",
-    vatNumber: "Registered in England · VAT GB 123 4567 89",
+    vatNumber: "John Stayte Services (WSM) Limited · Registered in England & Wales No. 00303703 · VAT GB 207 610 984",
     facebookUrl: "https://facebook.com",
     instagramUrl: "https://instagram.com",
     youtubeUrl: "https://youtube.com",
   });
+
+  const openCookieSettings = () => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("jss_open_cookie_settings"));
+    }
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -159,8 +166,9 @@ export function SiteFooter({ className }: { className?: string } = {}) {
     <div className={cn("w-full mt-16 sm:mt-20", className)}>
       {showRedWave && <RedWaveFooterBanner />}
       <footer className="bg-ink text-ink-foreground -mt-px">
-        <div className="container-page grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
-          <div>
+        <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
+          {/* 1. Brand & Heritage */}
+          <div className="lg:col-span-1">
             <div className="flex items-center gap-3">
               <img
                 src={logo}
@@ -170,9 +178,9 @@ export function SiteFooter({ className }: { className?: string } = {}) {
                 height={40}
                 loading="lazy"
               />
-              <span className="font-display text-lg font-extrabold">JOHN STAYTE SERVICES</span>
+              <span className="font-display text-lg font-extrabold tracking-tight">JOHN STAYTE SERVICES</span>
             </div>
-            <p className="mt-4 max-w-xs text-sm text-ink-foreground/70">
+            <p className="mt-4 max-w-xs text-xs sm:text-sm text-ink-foreground/75 leading-relaxed">
               {footerCms.bio}
             </p>
             <div className="mt-5 flex gap-2">
@@ -187,7 +195,8 @@ export function SiteFooter({ className }: { className?: string } = {}) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                  aria-label="Social Link"
                 >
                   <Icon className="h-4 w-4" />
                 </a>
@@ -195,66 +204,126 @@ export function SiteFooter({ className }: { className?: string } = {}) {
             </div>
           </div>
 
+          {/* 2. Shop Categories */}
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Shop</h4>
-            <ul className="mt-4 space-y-2 text-sm text-ink-foreground/75">
-              {categories.slice(0, 6).map((c) => (
+            <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Shop Online</h4>
+            <ul className="mt-4 space-y-2 text-xs sm:text-sm text-ink-foreground/75">
+              <li>
+                <Link to="/order-gas" className="hover:text-primary transition-colors">
+                  Bottled Calor Gas
+                </Link>
+              </li>
+              {categories.slice(0, 5).map((c) => (
                 <li key={typeof c.slug === "string" ? c.slug : String(c.id || Math.random())}>
                   <Link
                     to="/products"
                     search={{ category: typeof c.slug === "string" ? c.slug : "" }}
-                    className="hover:text-primary"
+                    className="hover:text-primary transition-colors"
                   >
                     {typeof c.name === "string" ? c.name : ""}
                   </Link>
                 </li>
               ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Information</h4>
-            <ul className="mt-4 space-y-2 text-sm text-ink-foreground/75">
               <li>
-                <Link to="/brands" className="hover:text-primary">
-                  Shop by Brand
-                </Link>
-              </li>
-              <li>
-                <Link to="/about" className="hover:text-primary">
-                  About us
-                </Link>
-              </li>
-              <li>
-                <Link to="/services" className="hover:text-primary">
-                  Services
-                </Link>
-              </li>
-              <li>
-                <Link to="/filling-stations" className="hover:text-primary">
-                  Filling stations
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className="hover:text-primary">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="hover:text-primary">
-                  Contact & FAQ
+                <Link to="/offers" className="hover:text-primary transition-colors text-red-400 font-medium">
+                  Promotions &amp; Offers
                 </Link>
               </li>
             </ul>
           </div>
 
+          {/* 3. Company & Facilities */}
           <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Newsletter</h4>
-            <p className="mt-4 text-sm text-ink-foreground/75">
-              Seasonal offers and fuel price updates.
+            <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Information</h4>
+            <ul className="mt-4 space-y-2 text-xs sm:text-sm text-ink-foreground/75">
+              <li>
+                <Link to="/about" className="hover:text-primary transition-colors">
+                  About John Stayte Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/services" className="hover:text-primary transition-colors">
+                  Our Services
+                </Link>
+              </li>
+              <li>
+                <Link to="/filling-stations" className="hover:text-primary transition-colors">
+                  Filling Stations &amp; Forecourts
+                </Link>
+              </li>
+              <li>
+                <Link to="/auto-gas" className="hover:text-primary transition-colors">
+                  Auto Gas LPG Refuelling
+                </Link>
+              </li>
+              <li>
+                <Link to="/brands" className="hover:text-primary transition-colors">
+                  Partner Brands
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="hover:text-primary transition-colors">
+                  Knowledge Centre &amp; Guides
+                </Link>
+              </li>
+              <li>
+                <Link to="/contact" className="hover:text-primary transition-colors">
+                  Contact Us
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* 4. Essential Legal & Trust */}
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Legal &amp; Trust</h4>
+            <ul className="mt-4 space-y-2 text-xs sm:text-sm text-ink-foreground/75">
+              <li>
+                <Link to="/privacy-policy" className="hover:text-primary transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms" className="hover:text-primary transition-colors">
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+              <li>
+                <Link to="/cookie-policy" className="hover:text-primary transition-colors">
+                  Cookie Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/refund-policy" className="hover:text-primary transition-colors">
+                  Refund &amp; Cancellation Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/faq" className="hover:text-primary transition-colors font-medium text-white">
+                  Frequently Asked Questions (FAQ)
+                </Link>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={openCookieSettings}
+                  className="hover:text-primary transition-colors flex items-center gap-1.5 text-xs text-slate-300 pt-1"
+                >
+                  <Settings2 className="h-3.5 w-3.5 text-primary" />
+                  <span>Cookie Settings</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* 5. Newsletter & Verified Contact */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-primary">Stay Informed</h4>
+            <p className="mt-4 text-xs text-ink-foreground/75">
+              Seasonal fuel price updates and delivery schedules.
             </p>
             <form
-              className="mt-4 flex gap-2"
+              className="mt-3 flex gap-2"
               onSubmit={async (e) => {
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
@@ -270,7 +339,7 @@ export function SiteFooter({ className }: { className?: string } = {}) {
                   if (error && error.code !== "23505") {
                     throw error;
                   }
-                  toast.success("You're subscribed to JSS updates!");
+                  toast.success("You're subscribed to John Stayte Services updates!");
                   form.reset();
                 } catch (err: any) {
                   console.error("Newsletter subscription error:", err);
@@ -282,29 +351,69 @@ export function SiteFooter({ className }: { className?: string } = {}) {
                 required
                 type="email"
                 placeholder="Email address"
-                className="h-11 rounded-full border-white/15 bg-white/10 text-ink-foreground placeholder:text-ink-foreground/50"
+                className="h-10 text-xs rounded-full border-white/15 bg-white/10 text-ink-foreground placeholder:text-ink-foreground/50"
               />
-              <Button type="submit" className="h-11 rounded-full px-5">
+              <Button type="submit" size="sm" className="h-10 rounded-full px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-white">
                 Join
               </Button>
             </form>
-            <ul className="mt-6 space-y-2 text-sm text-ink-foreground/75">
+            <ul className="mt-5 space-y-2.5 text-xs text-ink-foreground/75">
               <li className="flex gap-2">
-                <MapPin className="h-4 w-4 shrink-0 text-primary" /> {footerCms.companyAddress}
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
+                <span>{footerCms.companyAddress}</span>
               </li>
               <li className="flex gap-2">
-                <Phone className="h-4 w-4 shrink-0 text-primary" /> {footerCms.companyPhone}
+                <Phone className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
+                <a href={`tel:${footerCms.companyPhone.replace(/[^\d+]/g, "")}`} className="hover:text-white">
+                  {footerCms.companyPhone}
+                </a>
               </li>
               <li className="flex gap-2">
-                <Mail className="h-4 w-4 shrink-0 text-primary" /> {footerCms.companyEmail}
+                <Mail className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
+                <a href={`mailto:${footerCms.companyEmail}`} className="hover:text-white">
+                  {footerCms.companyEmail}
+                </a>
+              </li>
+              <li className="flex gap-2">
+                <Clock className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
+                <span>{footerCms.companyHours}</span>
               </li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-white/10">
-          <div className="container-page flex flex-col gap-2 py-5 text-xs text-ink-foreground/60 sm:flex-row sm:items-center sm:justify-between">
-            <p>© {new Date().getFullYear()} {footerCms.copyrightText}</p>
-            <p>{footerCms.vatNumber}</p>
+
+        {/* Bottom Bar with Dynamic Year and Full Legal Metadata */}
+        <div className="border-t border-white/10 bg-black/20">
+          <div className="container-page flex flex-col gap-3 py-6 text-xs text-ink-foreground/60 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1 text-left">
+              <p>© {new Date().getFullYear()} John Stayte Services. All rights reserved.</p>
+              <p className="text-[11px] text-ink-foreground/50">{footerCms.vatNumber}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-ink-foreground/70">
+              <Link to="/privacy-policy" className="hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <span>·</span>
+              <Link to="/terms" className="hover:text-white transition-colors">
+                Terms &amp; Conditions
+              </Link>
+              <span>·</span>
+              <Link to="/cookie-policy" className="hover:text-white transition-colors">
+                Cookie Policy
+              </Link>
+              <span>·</span>
+              <Link to="/refund-policy" className="hover:text-white transition-colors">
+                Refund Policy
+              </Link>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={openCookieSettings}
+                className="hover:text-white transition-colors underline-offset-2 hover:underline"
+              >
+                Cookie Settings
+              </button>
+            </div>
           </div>
         </div>
       </footer>
