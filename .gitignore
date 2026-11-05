@@ -60,3 +60,7 @@ Thumbs.db
 
 # 7. Local Supabase State
 .supabase/
+
+# 8. Local Asset & Migration Backups
+.backups/
+
