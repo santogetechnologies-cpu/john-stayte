@@ -309,32 +309,36 @@ function getServerSupabase(authToken?: string | null) {
     process.env.SUPABASE_URL ||
     "https://wttchknauwvbfjatdscc.supabase.co";
 
-  const rawKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  // If rawKey is not set, or is a management key rather than a valid supabase JWT, fallback to anon key
-  const isKeyUnregistered = rawKey && rawKey.startsWith("sb_secret_");
-  const key =
-    !isKeyUnregistered && rawKey
-      ? rawKey
-      : process.env.VITE_SUPABASE_ANON_KEY ||
-        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
+  const anonKey =
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
 
-  const options: any = {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  };
-
-  if (authToken && !authToken.startsWith("mock-")) {
-    options.global = {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    };
+  // 1. If caller provides authenticated user session token, execute in user security context
+  if (authToken) {
+    return createClient<Database>(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: authToken.startsWith("mock-")
+        ? undefined
+        : {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          },
+    });
   }
 
-  return createClient<Database>(url, key, options);
+  // 2. For privileged server operations without user context, SUPABASE_SERVICE_ROLE_KEY is required
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey) {
+    return createClient<Database>(url, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+
+  throw new Error(
+    "[Supabase Security] Server operation requires either a valid user authToken or server-side SUPABASE_SERVICE_ROLE_KEY. Fallback to unauthenticated public client is blocked.",
+  );
 }
 
 const OTP_EXPIRY_MS = 15 * 60 * 1000; // 15 Minutes
@@ -621,36 +625,66 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     // 1b. If assignment row doesn't exist yet for an active order (e.g. Click & Collect collection orders), initialize one
     if (!assignment && actualOrderId) {
       try {
-        const { data: ord } = await (supabase.from("orders") as any)
-          .select("id, order_number, customer_name, customer_phone, delivery_address, branch, status")
-          .eq("id", actualOrderId)
-          .maybeSingle();
+        let query = (supabase.from("orders") as any)
+          .select("id, order_number, customer_id, customer_name, customer_phone, delivery_address, assigned_depot, assigned_branch_id, status");
+
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(actualOrderId);
+        if (isUuid) {
+          query = query.eq("id", actualOrderId);
+        } else {
+          query = query.eq("order_number", actualOrderId);
+        }
+
+        const { data: ord, error: ordErr } = await query.maybeSingle();
+
+        if (ordErr) {
+          console.error("[Delivery OTP Server] Error fetching order for assignment auto-link:", ordErr);
+        }
 
         if (ord) {
-          const { data: createdAssignment, error: createErr } = await (supabase.from("delivery_assignments") as any)
-            .insert([
-              {
-                order_id: ord.id,
-                order_ref: ord.order_number,
-                customer_name: ord.customer_name || fallbackName || "Customer",
-                address: ord.delivery_address?.address || ord.branch || "Forecourt Collection",
-                area: ord.branch || "Forecourt",
-                driver_name: "Forecourt Handover",
-                status: ord.status || "Ready for Collection",
-                notes: "[Click & Collect Handover]",
-              },
-            ])
+          // Resolve branch or forecourt info from assigned_branch_id, assigned_depot, or delivery_address
+          const deliveryAddr = ord.delivery_address || {};
+          const branchName =
+            deliveryAddr.collection_branch ||
+            (ord.assigned_depot && ord.assigned_depot !== "Whitminster" ? ord.assigned_depot : "") ||
+            "Forecourt Collection";
+          const customerName = ord.customer_name || fallbackName || "Customer";
+
+          // Idempotency check: verify once more whether an assignment was just created
+          const { data: existingDa } = await (supabase.from("delivery_assignments") as any)
             .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+            .eq("order_id", ord.id)
             .maybeSingle();
 
-          if (createdAssignment) {
-            assignment = createdAssignment;
-          } else if (createErr) {
-            console.warn("[Delivery OTP Server] Auto-create collection assignment notice:", createErr);
+          if (existingDa) {
+            assignment = existingDa;
+          } else {
+            const { data: createdAssignment, error: createErr } = await (supabase.from("delivery_assignments") as any)
+              .insert([
+                {
+                  order_id: ord.id,
+                  order_ref: ord.order_number,
+                  customer_id: ord.customer_id || null,
+                  customer_name: customerName,
+                  address: deliveryAddr.address || branchName,
+                  area: branchName,
+                  driver_name: "Forecourt Handover",
+                  status: "Pending",
+                  notes: `[Click & Collect Handover] | Branch: ${branchName}`,
+                },
+              ])
+              .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+              .maybeSingle();
+
+            if (createdAssignment) {
+              assignment = createdAssignment;
+            } else if (createErr) {
+              console.error("[Delivery OTP Server] Auto-create collection assignment failed:", createErr);
+            }
           }
         }
       } catch (err) {
-        console.warn("[Delivery OTP Server] Error querying order for assignment creation:", err);
+        console.error("[Delivery OTP Server] Error querying order for assignment creation:", err);
       }
     }
 

@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 export function CustomerProfileView() {
   const { user } = useStore();
@@ -46,6 +47,7 @@ export function CustomerProfileView() {
   const [phone, setPhone] = useState("");
   const [role, setRole] = useState("customer");
   const [status, setStatus] = useState("Active");
+  const [customerAccountNumber, setCustomerAccountNumber] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState(true);
@@ -120,6 +122,12 @@ export function CustomerProfileView() {
         setPhone(profile.phone || "");
         setRole(profile.role || "customer");
         setStatus(profile.status || "Active");
+        setCustomerAccountNumber(
+          (profile as any).customer_code ||
+          (profile as any).account_number ||
+          (profile.notification_prefs as any)?.gas_application?.customer_code ||
+          null
+        );
 
         const prefs =
           typeof profile.notification_prefs === "object" &&
@@ -423,6 +431,15 @@ export function CustomerProfileView() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* PROMINENT JOHN STAYTE ACCOUNT NUMBER BADGE */}
+          {customerAccountNumber && (
+            <CustomerAccountNumberBadge
+              accountNumber={customerAccountNumber}
+              variant="card"
+              sublabel="Permanent John Stayte account reference number. Use this for depot collections and telephone ordering."
+            />
+          )}
+
           {/* 2. TWO-COLUMN DESKTOP GRID LAYOUT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* LEFT OVERVIEW CARD */}

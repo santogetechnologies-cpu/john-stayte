@@ -45,6 +45,11 @@ import {
   verifyApplicationEmailOtp,
   GasCustomerApplication,
 } from "@/lib/application-service";
+import {
+  normalizeAccountNumber,
+  isValidAccountNumberFormat,
+} from "@/lib/account-number-service";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 interface GasCustomerApplicationFormProps {
   initialUsage?: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
@@ -92,8 +97,25 @@ export function GasCustomerApplicationForm({
   const [customerType, setCustomerType] = useState<"HOME" | "BUSINESS">(
     initialUsage === "COMMERCIAL" || initialUsage === "BULK" ? "BUSINESS" : "HOME",
   );
-  const [hasPreviousPurchases, setHasPreviousPurchases] = useState(false);
-  const [previousAccountDetails, setPreviousAccountDetails] = useState("");
+  const [hasPreviousPurchases, setHasPreviousPurchases] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("jss_is_existing_customer") === "true";
+    }
+    return false;
+  });
+  const [previousAccountDetails, setPreviousAccountDetails] = useState(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("jss_customer_account_number") || "";
+    }
+    return "";
+  });
+  const [knowsAccountNumber, setKnowsAccountNumber] = useState<boolean | null>(() => {
+    if (typeof window !== "undefined") {
+      if (sessionStorage.getItem("jss_customer_account_number")) return true;
+      if (sessionStorage.getItem("jss_account_lookup_requested") === "true") return false;
+    }
+    return null;
+  });
 
   const [selectedUsages, setSelectedUsages] = useState<Array<"DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS">>([
     initialUsage || "DOMESTIC",
@@ -694,6 +716,16 @@ export function GasCustomerApplicationForm({
         customerType,
         hasPreviousPurchases,
         previousAccountDetails: hasPreviousPurchases ? previousAccountDetails.trim() : undefined,
+        customerCode:
+          hasPreviousPurchases && knowsAccountNumber && previousAccountDetails.trim()
+            ? normalizeAccountNumber(previousAccountDetails)
+            : undefined,
+        accountNumber:
+          hasPreviousPurchases && knowsAccountNumber && previousAccountDetails.trim()
+            ? normalizeAccountNumber(previousAccountDetails)
+            : undefined,
+        isExistingCustomer: hasPreviousPurchases,
+        accountLookupRequested: hasPreviousPurchases && !knowsAccountNumber,
         businessName: businessName.trim() || undefined,
         businessType: businessType.trim() || undefined,
         businessAddress: businessAddress.trim() || undefined,
@@ -1122,19 +1154,81 @@ export function GasCustomerApplicationForm({
           </div>
 
           {hasPreviousPurchases && (
-            <div className="pt-2 space-y-1.5 animate-in fade-in-50 duration-200">
-              <Label className="text-xs font-bold text-slate-800">
-                Previous Account Details or Historical Depot Reference
-              </Label>
-              <Input
-                value={previousAccountDetails}
-                onChange={(e) => setPreviousAccountDetails(e.target.value)}
-                placeholder="Enter previous customer account number, registered business name, or historical address"
-                className="h-10 text-xs bg-white border-slate-300"
-              />
-              <p className="text-[10px] text-slate-500">
-                Our manager will cross-reference your historical records to link your existing terms or cylinder agreements.
-              </p>
+            <div className="pt-3 border-t border-slate-200/70 space-y-3 animate-in fade-in-50 duration-200">
+              <div>
+                <Label className="text-xs font-bold text-slate-800 block mb-1.5">
+                  Do you know your John Stayte account number?
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setKnowsAccountNumber(true)}
+                    className={cn(
+                      "py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center",
+                      knowsAccountNumber === true
+                        ? "border-primary bg-primary text-white shadow-xs"
+                        : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700",
+                    )}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setKnowsAccountNumber(false);
+                      setPreviousAccountDetails("");
+                    }}
+                    className={cn(
+                      "py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center",
+                      knowsAccountNumber === false
+                        ? "border-primary bg-primary text-white shadow-xs"
+                        : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700",
+                    )}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+
+              {knowsAccountNumber === true && (
+                <div className="space-y-1.5 pt-1 animate-in fade-in-50 duration-200">
+                  <Label className="text-xs font-bold text-slate-800">
+                    John Stayte Account Number (e.g. RTAY16, CHNO03)
+                  </Label>
+                  <Input
+                    value={previousAccountDetails}
+                    onChange={(e) =>
+                      setPreviousAccountDetails(normalizeAccountNumber(e.target.value))
+                    }
+                    placeholder="Enter account number (e.g. RTAY16, CHNO03)"
+                    className="h-10 text-xs font-mono font-bold uppercase bg-white border-slate-300 tracking-wider"
+                  />
+                  <p className="text-[10px] text-slate-500">
+                    Found on your paper delivery ticket, invoice, or monthly statement.
+                  </p>
+
+                  {previousAccountDetails && isValidAccountNumberFormat(previousAccountDetails) && (
+                    <div className="pt-1.5">
+                      <CustomerAccountNumberBadge
+                        accountNumber={previousAccountDetails}
+                        variant="compact"
+                        showCopy={false}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {knowsAccountNumber === false && (
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs leading-relaxed animate-in fade-in-50">
+                  <p className="font-extrabold text-[11px] uppercase tracking-wide">
+                    Existing Customer Account Lookup
+                  </p>
+                  <p className="text-[11px] text-blue-800 mt-0.5">
+                    No problem! Upon submission, our depot manager will cross-reference your name, delivery address, and historical invoice records to link your existing account number, cylinder agreements, and preferential pricing terms.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

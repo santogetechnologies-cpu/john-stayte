@@ -9,5 +9,6 @@
     "javascriptreact": "javascriptreact",
     "typescript": "typescript",
     "typescriptreact": "typescriptreact"
-  }
+  },
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

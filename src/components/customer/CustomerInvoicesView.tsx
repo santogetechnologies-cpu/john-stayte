@@ -37,6 +37,7 @@ import {
 import { gbp, useStore, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 export function CustomerInvoicesView() {
   const { user } = useStore();
@@ -139,6 +140,13 @@ export function CustomerInvoicesView() {
         addressObj = order.delivery_address;
       }
 
+      const accountNumber =
+        order.customer_account_number ||
+        addressObj.account_number ||
+        user?.account_number ||
+        user?.customer_code ||
+        "";
+
       const itemsList = order.order_items || [];
 
       const subtotal = Number(order.subtotal || order.total || 0);
@@ -193,7 +201,7 @@ export function CustomerInvoicesView() {
       <div>
         <h2 class="inv-title">VAT TAX INVOICE</h2>
         <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 700; text-align: right; color: #475569;">${invoiceNo}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">Order Ref: #${order.order_number}</p>
+        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">${accountNumber ? `Account: <strong>${accountNumber}</strong> &bull; ` : ""}Order Ref: #${order.order_number}</p>
         <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">Date: ${orderDate}</p>
       </div>
     </div>
@@ -205,6 +213,16 @@ export function CustomerInvoicesView() {
         <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.street || "Delivery Address On File"}</p>
         <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.postcode || ""}</p>
         <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Email: ${order.customer_email || user?.email || ""}</p>
+        ${
+          accountNumber
+            ? `
+        <div style="margin-top: 10px; display: inline-block; background-color: #e31b23; color: #000000; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-family: monospace; font-size: 13px; letter-spacing: 0.5px; border: 1px solid #b91c1c;">
+          <div style="font-size: 8px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; color: #000000; opacity: 0.9; margin-bottom: 2px;">JOHN STAYTE ACCOUNT NUMBER</div>
+          <div style="font-size: 14px; font-weight: 900; color: #000000;">${accountNumber}</div>
+        </div>
+        `
+            : ""
+        }
       </div>
       <div style="text-align: right;">
         <div class="section-title">Payment & Status</div>
@@ -720,6 +738,22 @@ export function CustomerInvoicesView() {
                   <p className="text-slate-500">
                     {selectedInvoiceOrder.customer_phone || "Phone on file"}
                   </p>
+                  {(selectedInvoiceOrder.customer_account_number ||
+                    selectedInvoiceOrder.delivery_address?.account_number ||
+                    user?.account_number ||
+                    user?.customer_code) && (
+                    <div className="mt-3">
+                      <CustomerAccountNumberBadge
+                        accountNumber={
+                          selectedInvoiceOrder.customer_account_number ||
+                          selectedInvoiceOrder.delivery_address?.account_number ||
+                          user?.account_number ||
+                          user?.customer_code
+                        }
+                        variant="invoice"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div>

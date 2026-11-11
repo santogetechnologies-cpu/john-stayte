@@ -166,7 +166,8 @@ export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
 
 /**
  * Creates a server-side Supabase client.
- * Uses SUPABASE_SERVICE_ROLE_KEY if available for privileged backend queries.
+ * For user-authenticated requests, scopes to the user's JWT.
+ * For privileged server dispatch, requires SUPABASE_SERVICE_ROLE_KEY.
  */
 function getSupabaseServerClient(userToken?: string | null): SupabaseClient<Database> {
   const supabaseUrl =
@@ -174,22 +175,36 @@ function getSupabaseServerClient(userToken?: string | null): SupabaseClient<Data
     process.env.SUPABASE_URL ||
     "https://wttchknauwvbfjatdscc.supabase.co";
 
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  const anonKey =
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
 
-  return createClient<Database>(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: userToken
-      ? {
-          headers: {
-            Authorization: `Bearer ${userToken}`,
+  // 1. If caller provides authenticated user session token, execute in user security context
+  if (userToken) {
+    return createClient<Database>(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: userToken.startsWith("mock-")
+        ? undefined
+        : {
+            headers: {
+              Authorization: `Bearer ${userToken}`,
+            },
           },
-        }
-      : undefined,
-  });
+    });
+  }
+
+  // 2. For privileged backend push notification dispatch, SUPABASE_SERVICE_ROLE_KEY is required
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey) {
+    return createClient<Database>(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+
+  throw new Error(
+    "[Push Notification Server] Privileged backend push dispatch requires SUPABASE_SERVICE_ROLE_KEY to be configured on the server. Fallback to unauthenticated public client is blocked.",
+  );
 }
 
 function base64UrlEncode(str: string | Buffer): string {
@@ -1899,7 +1914,7 @@ export async function handleDispatchPushNotification(
   data: DispatchPushNotificationInput,
   supabaseClient?: SupabaseClient<Database>
 ): Promise<{ success: boolean; message?: string; result?: any }> {
-  const supabase = supabaseClient || getSupabaseServerClient();
+  const supabase = supabaseClient || getSupabaseServerClient(data.authToken);
 
   // 1. Authenticate caller if authToken is provided
   let callerUserId: string | null = null;
@@ -1910,22 +1925,29 @@ export async function handleDispatchPushNotification(
       const { data: authData } = await supabase.auth.getUser(data.authToken);
       callerUserId = authData?.user?.id || null;
       if (callerUserId) {
-        const { data: prof } = await supabase
-          .from("profiles")
-          .select("role")
+        const { data: prof } = await (supabase.from("profiles") as any)
+          .select("role, assigned_branch, assigned_branch_id")
           .eq("id", callerUserId)
           .maybeSingle();
-        if (prof?.role) callerRole = prof.role;
-        const { data: da } = await supabase
-          .from("delivery_agents")
+
+        if (prof?.role && prof.role !== "customer") {
+          callerRole = prof.role;
+        } else if (authData?.user?.user_metadata?.staff_role) {
+          callerRole = authData.user.user_metadata.staff_role;
+        } else if (authData?.user?.user_metadata?.role) {
+          callerRole = authData.user.user_metadata.role;
+        } else if (prof?.role) {
+          callerRole = prof.role;
+        }
+
+        const { data: da } = await (supabase.from("delivery_agents") as any)
           .select("id, status")
           .eq("id", callerUserId)
           .maybeSingle();
         if (da && ["Active", "On Delivery", "Busy"].includes(da.status)) {
           callerRole = "delivery_agent";
         } else if (!da && authData?.user?.email) {
-          const { data: daEmail } = await supabase
-            .from("delivery_agents")
+          const { data: daEmail } = await (supabase.from("delivery_agents") as any)
             .select("id, status")
             .ilike("email", authData.user.email.trim())
             .maybeSingle();
@@ -2001,7 +2023,7 @@ export async function handleDispatchPushNotification(
       }
       if (!data.orderId) throw new Error("orderId is required");
       const { data: ord } = await (supabase.from("orders") as any)
-        .select("id, order_number, customer_id, assigned_branch_id, assigned_depot")
+        .select("id, order_number, customer_id, assigned_branch_id, assigned_depot, delivery_address")
         .eq("id", data.orderId)
         .maybeSingle();
 
@@ -2017,8 +2039,14 @@ export async function handleDispatchPushNotification(
         if (staffProfile) {
           const staffBranchId = staffProfile.assigned_branch_id;
           const staffBranch = (staffProfile.assigned_branch || "").toLowerCase();
-          const orderBranchId = ord.assigned_branch_id;
-          const orderDepot = (ord.assigned_depot || "").toLowerCase();
+          const deliveryAddr = ord.delivery_address || {};
+          const orderBranchId = ord.assigned_branch_id || deliveryAddr.collection_branch_id || deliveryAddr.collectionBranchId;
+          const orderDepot = (
+            ord.assigned_depot ||
+            deliveryAddr.collection_branch ||
+            deliveryAddr.branch ||
+            ""
+          ).toLowerCase();
 
           const isMatch =
             (staffBranchId && orderBranchId && staffBranchId === orderBranchId) ||

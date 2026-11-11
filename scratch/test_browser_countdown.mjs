@@ -14,7 +14,7 @@ const sb = createClient(
 );
 const sbAdmin = createClient(
   "https://wttchknauwvbfjatdscc.supabase.co",
-  "sb_secret_ZwtR_A-zCLMJfCqNkqNbEw_Fa9r_c5x"
+  process.env.SUPABASE_SERVICE_ROLE_KEY || "mock-service-role-key"
 );
 
 async function sleep(ms) {

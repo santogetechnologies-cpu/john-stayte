@@ -17,6 +17,10 @@ import {
   Flame,
   Check,
   Info,
+  Hash,
+  Wand2,
+  Receipt,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -58,6 +62,13 @@ import {
 } from "@/lib/branch-pricing-service";
 import type { PricingBandDiscountResolution } from "@/types/pricing";
 import {
+  normalizeAccountNumber,
+  isValidAccountNumberFormat,
+  generateCustomerAccountNumber,
+  requestAuthoritativeAccountNumber,
+} from "@/lib/account-number-service";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import {
   getAllGasCustomerApplications,
   approveGasCustomerApplication,
   declineGasCustomerApplication,
@@ -90,6 +101,9 @@ export function AdminApplicationsView() {
   const [resolvingDiscount, setResolvingDiscount] = useState(false);
   const [creditApproved, setCreditApproved] = useState(false);
   const [creditLimit, setCreditLimit] = useState<number>(500);
+  const [assignAccountNumber, setAssignAccountNumber] = useState("");
+  const [historicalOrders, setHistoricalOrders] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -163,7 +177,11 @@ export function AdminApplicationsView() {
         (app.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (app.phone || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (app.business_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (app.postcode || "").toLowerCase().includes(searchQuery.toLowerCase());
+        (app.postcode || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((app as any).customer_code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((app as any).account_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((app as any).previous_account_details || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (app.application_reference || app.id || "").toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === "ALL" || app.status === statusFilter;
       const matchesUsage = usageFilter === "ALL" || app.usage_type === usageFilter;
@@ -181,12 +199,43 @@ export function AdminApplicationsView() {
       app.customer_type === "BUSINESS" || app.usage_type === "COMMERCIAL" || app.usage_type === "BULK";
     const initialBand = app.pricing_band || (isBusiness ? "Commercial Trade (Band B)" : "Standard Domestic");
     setPricingBand(initialBand);
-    const initialRes = resolvePricingBandDiscountSync(initialBand, app.previous_account_details || null);
+    const initialCode =
+      (app as any).customer_code ||
+      (app as any).account_number ||
+      app.previous_account_details ||
+      "";
+    setAssignAccountNumber(initialCode);
+
+    const initialRes = resolvePricingBandDiscountSync(initialBand, initialCode || null);
     setDiscountResolution(initialRes);
     setDiscountPercentage(initialRes.discountPercentage);
     setCreditApproved(Boolean(app.credit_account_approved));
     setCreditLimit(app.credit_limit || (isBusiness ? 1000 : 500));
     setModalOpen(true);
+
+    // Fetch past customer orders & invoices
+    setLoadingHistory(true);
+    (async () => {
+      try {
+        let q = supabase
+          .from("orders")
+          .select("id, order_number, total, created_at, status, payment_status, notes")
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        if (app.customer_id) {
+          q = q.or(`customer_id.eq.${app.customer_id},customer_email.eq.${app.email}`);
+        } else if (app.email) {
+          q = q.eq("customer_email", app.email);
+        }
+        const { data: pastOrders } = await q;
+        setHistoricalOrders(pastOrders || []);
+      } catch {
+        setHistoricalOrders([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    })();
   };
 
   // Update discount percentage immediately whenever pricing band changes
@@ -245,6 +294,8 @@ export function AdminApplicationsView() {
         creditLimit: creditApproved ? Number(creditLimit) || 0 : 0,
         managerNotes: adminNotes.trim(),
         reviewedBy: sessionUser.id,
+        customerCode: assignAccountNumber.trim().toUpperCase() || undefined,
+        accountNumber: assignAccountNumber.trim().toUpperCase() || undefined,
       });
 
       toast.success(`Application for ${selectedApp.full_name} approved successfully!`);
@@ -499,9 +550,22 @@ export function AdminApplicationsView() {
                       <span className="font-black text-xs text-slate-900 block">
                         {app.full_name}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        UID: {app.customer_id.slice(0, 8)}...
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {(app as any).customer_code || (app as any).account_number || app.previous_account_details ? (
+                          <CustomerAccountNumberBadge
+                            accountNumber={(app as any).customer_code || (app as any).account_number || app.previous_account_details}
+                            variant="table"
+                          />
+                        ) : app.has_previous_purchases ? (
+                          <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[9px] font-bold">
+                            Lookup Req.
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            UID: {app.customer_id.slice(0, 8)}...
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
 
                     <TableCell className="text-xs">
@@ -819,6 +883,44 @@ export function AdminApplicationsView() {
           </DialogHeader>
 
           <div className="space-y-3 text-xs">
+            {/* Customer Account Number Assignment */}
+            <div className="space-y-1.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center justify-between">
+                <Label className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                  <Hash className="h-3.5 w-3.5 text-primary" /> John Stayte Customer Account Number
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (selectedApp) {
+                      const generated = await requestAuthoritativeAccountNumber(selectedApp.full_name);
+                      setAssignAccountNumber(generated);
+                    }
+                  }}
+                  className="text-[11px] font-bold text-primary hover:text-primary/90 hover:bg-primary/10 h-7 px-2 gap-1 cursor-pointer"
+                >
+                  <Wand2 className="h-3 w-3" /> Generate Account No
+                </Button>
+              </div>
+              <Input
+                value={assignAccountNumber}
+                onChange={(e) => setAssignAccountNumber(normalizeAccountNumber(e.target.value))}
+                placeholder="e.g. RTAY16, CHNO03, CHEM02"
+                className="font-mono font-black text-xs uppercase h-9 tracking-widest bg-white border-slate-300 focus-visible:border-primary"
+              />
+              {assignAccountNumber && isValidAccountNumberFormat(assignAccountNumber) && (
+                <div className="pt-1">
+                  <CustomerAccountNumberBadge
+                    accountNumber={assignAccountNumber}
+                    variant="compact"
+                    showCopy={false}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Pricing Band Selection */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

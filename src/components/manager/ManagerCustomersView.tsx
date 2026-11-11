@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Users, Search, UserPlus, Eye, ShoppingBag, RotateCcw, Calendar } from "lucide-react";
+import { Users, Search, UserPlus, Eye, ShoppingBag, RotateCcw, Calendar, Hash, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import {
+  assignCustomerAccountNumber,
+  generateCustomerAccountNumber,
+  isValidAccountNumberFormat,
+  normalizeAccountNumber,
+} from "@/lib/account-number-service";
 
 export function ManagerCustomersView() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -93,7 +100,9 @@ export function ManagerCustomersView() {
     let result = customers.filter((c) => {
       const nameMatch = (c.full_name || "").toLowerCase().includes(searchQuery.toLowerCase());
       const emailMatch = (c.email || "").toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesSearch = nameMatch || emailMatch;
+      const codeMatch = (c.customer_code || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const phoneMatch = (c.phone || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = nameMatch || emailMatch || codeMatch || phoneMatch;
 
       const status = c.status || "Active";
       const matchesStatus =
@@ -289,6 +298,7 @@ export function ManagerCustomersView() {
               <TableHeader className="bg-slate-50/50 border-slate-100">
                 <TableRow>
                   <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Customer</TableHead>
+                  <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Account No</TableHead>
                   <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Email</TableHead>
                   <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Joined Date</TableHead>
                   <TableHead className="font-extrabold text-[11px] uppercase tracking-wider text-slate-400">Status</TableHead>
@@ -314,6 +324,16 @@ export function ManagerCustomersView() {
                           </p>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {c.customer_code ? (
+                        <CustomerAccountNumberBadge
+                          accountNumber={c.customer_code}
+                          variant="table"
+                        />
+                      ) : (
+                        <span className="text-[11px] text-slate-400 font-medium">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs font-semibold text-slate-700">{c.email}</TableCell>
                     <TableCell className="text-xs text-slate-500 font-medium">
@@ -362,6 +382,22 @@ export function ManagerCustomersView() {
                   </div>
                 </div>
               </SheetHeader>
+
+              {selectedCustomer.customer_code ? (
+                <CustomerAccountNumberBadge
+                  accountNumber={selectedCustomer.customer_code}
+                  variant="card"
+                />
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-slate-800">No Account Number Assigned</p>
+                    <p className="text-[11px] text-slate-500">
+                      Assigned upon Gas Customer Application approval.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-2">
                 <p className="font-bold text-slate-900">Contact Information</p>

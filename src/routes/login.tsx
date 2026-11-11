@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  ArrowLeft,
   Loader2,
   Info,
   Calendar,
@@ -21,6 +22,10 @@ import {
   ChevronDown,
   X,
   Search,
+  Hash,
+  HelpCircle,
+  Building2,
+  UserPlus,
 } from "lucide-react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { toast } from "sonner";
@@ -50,6 +55,12 @@ import { speakLoginError, speakLoginSuccess } from "@/lib/auth-voice";
 import { cn } from "@/lib/utils";
 import { sendPasswordResetEmailServerFn } from "@/lib/password-reset-server-fn";
 import { validateDob, MONTHS, getBirthYears } from "@/lib/dob-validator";
+import {
+  normalizeAccountNumber,
+  isValidAccountNumberFormat,
+  verifyCustomerAccountNumber,
+} from "@/lib/account-number-service";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -96,6 +107,17 @@ function LoginPage() {
   const [regPassword, setRegPassword] = useState("");
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Existing John Stayte Customer Onboarding Questions
+  const [isExistingCustomer, setIsExistingCustomer] = useState<boolean | null>(null);
+  const [knowsAccountNumber, setKnowsAccountNumber] = useState<boolean | null>(null);
+  const [accountNumberInput, setAccountNumberInput] = useState("");
+  const [accountVerifying, setAccountVerifying] = useState(false);
+  const [accountVerifiedSuccess, setAccountVerifiedSuccess] = useState<string | null>(null);
+  const [verifyFeedback, setVerifyFeedback] = useState<{
+    type: "error" | "info" | "success";
+    message: string;
+  } | null>(null);
 
   // Date of Birth (DOB) Age Verification State
   const [dobModalOpen, setDobModalOpen] = useState(false);
@@ -312,6 +334,52 @@ function LoginPage() {
     }
   };
 
+  // Handle Account Number Verification in Step 2
+  const handleVerifyAccountNumber = async () => {
+    const clean = normalizeAccountNumber(accountNumberInput);
+    if (!clean) {
+      setVerifyFeedback({ type: "error", message: "Please enter your John Stayte Account Number." });
+      return;
+    }
+    if (!isValidAccountNumberFormat(clean)) {
+      setVerifyFeedback({
+        type: "error",
+        message:
+          "Invalid format. John Stayte account numbers are 4-10 alphanumeric characters (e.g. RTAY16, CHNO03).",
+      });
+      return;
+    }
+
+    setAccountVerifying(true);
+    setVerifyFeedback(null);
+    try {
+      const res = await verifyCustomerAccountNumber(clean, {
+        fullName: regName.trim() || undefined,
+        email: regEmail.trim() || undefined,
+        phone: regPhone.trim() || undefined,
+      });
+
+      if (res.valid) {
+        setAccountVerifiedSuccess(clean);
+        setVerifyFeedback({
+          type: "success",
+          message: res.message || "Account number verified successfully!",
+        });
+        toast.success(`Account number ${clean} verified!`);
+      } else {
+        setVerifyFeedback({ type: "error", message: res.message });
+        toast.error(res.message);
+      }
+    } catch (err: any) {
+      setVerifyFeedback({
+        type: "error",
+        message: err?.message || "Verification check failed. Please try again.",
+      });
+    } finally {
+      setAccountVerifying(false);
+    }
+  };
+
   // Execute Real Supabase Registration after Age Verification
   const executeAccountCreation = async () => {
     if (!isAgeVerified) {
@@ -319,6 +387,26 @@ function LoginPage() {
       return;
     }
     if (loading) return;
+
+    // Verify existing account number if applicable
+    let matchedAccountData: any = null;
+    if (isExistingCustomer && knowsAccountNumber) {
+      setAccountVerifying(true);
+      const verifyRes = await verifyCustomerAccountNumber(accountNumberInput, {
+        email: regEmail.trim(),
+        phone: regPhone.trim(),
+        fullName: regName.trim(),
+      });
+      setAccountVerifying(false);
+
+      if (!verifyRes.valid) {
+        setFormError(verifyRes.message);
+        toast.error(verifyRes.message);
+        return;
+      }
+      matchedAccountData = verifyRes.matchedAccount;
+      setAccountVerifiedSuccess(matchedAccountData?.accountNumber || null);
+    }
 
     setLoading(true);
     setFormError(null);
@@ -341,6 +429,27 @@ function LoginPage() {
         setFormError(res.error || "Unable to create your account. Please try again.");
         setTimeout(() => setAuthStatus("idle"), 1500);
         return;
+      }
+
+      // Store onboarding state in session for Gas Customer Application form pre-population
+      // Official account number linking and pricing assignment is performed atomically
+      // upon Depot Manager review via approve_gas_customer_application
+      if (typeof window !== "undefined") {
+        if (isExistingCustomer) {
+          sessionStorage.setItem("jss_is_existing_customer", "true");
+          if (knowsAccountNumber && (matchedAccountData?.accountNumber || accountNumberInput)) {
+            sessionStorage.setItem(
+              "jss_customer_account_number",
+              matchedAccountData?.accountNumber || normalizeAccountNumber(accountNumberInput)
+            );
+          } else {
+            sessionStorage.setItem("jss_account_lookup_requested", "true");
+          }
+        } else {
+          sessionStorage.removeItem("jss_is_existing_customer");
+          sessionStorage.removeItem("jss_customer_account_number");
+          sessionStorage.removeItem("jss_account_lookup_requested");
+        }
       }
 
       // If Supabase Auth requires email confirmation (session is null)
@@ -371,6 +480,18 @@ function LoginPage() {
     e.preventDefault();
     setFormError(null);
     setAuthStatus("idle");
+
+    if (isExistingCustomer && knowsAccountNumber) {
+      const clean = normalizeAccountNumber(accountNumberInput);
+      if (!clean) {
+        return setFormError("Please enter your John Stayte Account Number (e.g. RTAY16).");
+      }
+      if (!isValidAccountNumberFormat(clean)) {
+        return setFormError(
+          "Invalid account number format. John Stayte account numbers are 4-10 alphanumeric characters (e.g. RTAY16, CHNO03)."
+        );
+      }
+    }
 
     if (regName.trim().length < 2) {
       return setFormError("Please enter your full name.");
@@ -774,9 +895,13 @@ function LoginPage() {
             {/* 3. RIGHT COLUMN: TALLER & SPACIOUS REFINED AUTH CARD (5 cols) */}
             {/* ======================================================== */}
             <div
-              className={`lg:col-span-5 w-full max-w-[460px] mx-auto lg:ml-auto transition-all duration-500 ease-out ${
+              className={cn(
+                "w-full mx-auto transition-all duration-500 ease-out",
+                tab === "register" && isExistingCustomer === null
+                  ? "lg:col-span-5 max-w-[400px] lg:mx-auto"
+                  : "lg:col-span-5 max-w-[460px] lg:ml-auto",
                 authStatus === "error" ? "animate-shake" : ""
-              }`}
+              )}
               style={{
                 transform: `translate(${mouseOffset.x * 3}px, ${mouseOffset.y * 3}px) ${
                   authStatus === "success"
@@ -791,17 +916,24 @@ function LoginPage() {
               <div className="relative group">
                 {/* Red ambient backlight behind card */}
                 <div
-                  className={`absolute -inset-2 rounded-[34px] blur-2xl opacity-60 transition-all duration-500 -z-10 pointer-events-none ${
+                  className={`absolute -inset-1.5 rounded-[36px] blur-xl transition-all duration-700 -z-10 pointer-events-none ${
                     authStatus === "success"
                       ? "bg-emerald-500/20 opacity-90"
                       : authStatus === "error"
                         ? "bg-red-600/30 opacity-90"
-                        : "bg-gradient-to-r from-red-500/18 via-red-600/12 to-red-400/18"
+                        : "bg-red-500/20 opacity-60 animate-pulse"
                   }`}
                 />
 
-                {/* Frosted Glass Sign In / Register Card (More Vertical Height & Spaciousness) */}
-                <div className="p-7 sm:p-9 lg:p-9.5 rounded-[30px] bg-white/95 sm:bg-white/90 backdrop-blur-2xl border border-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] space-y-6">
+                {/* Frosted Glass Sign In / Register Card */}
+                <div
+                  className={cn(
+                    "rounded-[32px] backdrop-blur-2xl transition-all duration-300",
+                    tab === "register" && isExistingCustomer === null
+                      ? "p-6 sm:p-7 bg-gradient-to-b from-white/95 via-rose-50/30 to-white/95 border border-red-200/80 shadow-[0_0_25px_rgba(235,30,45,0.12),0_10px_30px_rgba(0,0,0,0.05)] space-y-4"
+                      : "p-7 sm:p-9 bg-white/95 sm:bg-white/90 border border-white/95 shadow-[0_20px_50px_rgba(0,0,0,0.06),0_1px_3px_rgba(0,0,0,0.02)] space-y-6"
+                  )}
+                >
                   {pendingEmailConfirmation ? (
                     <div className="space-y-6 text-center animate-in fade-in zoom-in-95 duration-200">
                       <div className="mx-auto w-16 h-16 rounded-full bg-red-50 border border-red-200/80 flex items-center justify-center text-[#e31b23] shadow-md shadow-red-500/10">
@@ -881,19 +1013,21 @@ function LoginPage() {
                     <>
                       {/* CARD HEADER */}
                       <div className="space-y-4">
-                        <div>
-                          <h2 className="text-2xl font-display font-black tracking-tight text-slate-900">
-                            {tab === "signin" ? "Sign In" : "Create an Account"}
-                          </h2>
-                          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                            {tab === "signin"
-                              ? "Access your John Stayte Services account."
-                              : "Fill in your details to create a secure account."}
-                          </p>
-                        </div>
+                        {!(tab === "register" && isExistingCustomer === null) && (
+                          <div>
+                            <h2 className="text-2xl font-display font-black tracking-tight text-slate-900">
+                              {tab === "signin" ? "Sign In" : "Create an Account"}
+                            </h2>
+                            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                              {tab === "signin"
+                                ? "Access your John Stayte Services account."
+                                : "Fill in your details to create a secure account."}
+                            </p>
+                          </div>
+                        )}
 
-                        {/* Segmented Switch */}
-                        <div className="p-1 rounded-2xl bg-slate-100/90 border border-slate-200/60 grid grid-cols-2 gap-1.5">
+                        {/* Segmented Switch (Sign In / Register Tabs) */}
+                        <div className="p-1 rounded-full bg-slate-100/90 border border-slate-200/60 grid grid-cols-2 gap-1.5">
                           <button
                             type="button"
                             onClick={() => {
@@ -902,11 +1036,12 @@ function LoginPage() {
                               setAuthStatus("idle");
                               setUnconfirmedLoginEmail(null);
                             }}
-                            className={`py-2.5 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                            className={cn(
+                              "h-10 sm:h-11 py-2 px-4 text-xs sm:text-sm font-bold rounded-full transition-all duration-200 cursor-pointer text-center flex items-center justify-center",
                               tab === "signin"
-                                ? "bg-[#e31b23] text-white shadow-md shadow-red-500/25 scale-[1.01]"
-                                : "text-slate-600 hover:text-slate-900"
-                            }`}
+                                ? "bg-gradient-to-r from-[#d9121c] to-[#eb212d] text-white shadow-[0_3px_12px_rgba(227,27,35,0.35)]"
+                                : "bg-white/95 text-slate-800 shadow-xs hover:bg-white"
+                            )}
                           >
                             Sign In
                           </button>
@@ -918,12 +1053,18 @@ function LoginPage() {
                               setFormError(null);
                               setAuthStatus("idle");
                               setUnconfirmedLoginEmail(null);
+                              setIsExistingCustomer(null);
+                              setKnowsAccountNumber(null);
+                              setAccountNumberInput("");
+                              setAccountVerifiedSuccess(null);
+                              setVerifyFeedback(null);
                             }}
-                            className={`py-2.5 text-xs font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                            className={cn(
+                              "h-10 sm:h-11 py-2 px-4 text-xs sm:text-sm font-extrabold rounded-full transition-all duration-200 cursor-pointer text-center flex items-center justify-center",
                               tab === "register"
-                                ? "bg-[#e31b23] text-white shadow-md shadow-red-500/25 scale-[1.01]"
-                                : "text-slate-600 hover:text-slate-900"
-                            }`}
+                                ? "bg-gradient-to-r from-[#d9121c] to-[#eb212d] text-white shadow-[0_3px_12px_rgba(227,27,35,0.35)]"
+                                : "bg-white/95 text-slate-800 shadow-xs hover:bg-white"
+                            )}
                           >
                             Register
                           </button>
@@ -1060,11 +1201,250 @@ function LoginPage() {
                         </form>
                       )}
 
-                      {/* TAB 2: REGISTER FORM (Completely empty default fields) */}
+                      {/* TAB 2: REGISTER */}
                       {tab === "register" && (
-                        <form onSubmit={handleRegister} className="space-y-4 text-xs font-medium">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="reg-name" className="font-bold text-slate-800 text-xs">
+                        <div className="space-y-3.5">
+                          {/* INITIAL REGISTER SCREEN: EXACT MATCH TO REFERENCE SCREENSHOT */}
+                          {isExistingCustomer === null && (
+                            <div className="pt-0.5 pb-1 space-y-4 text-center animate-in fade-in-50 slide-in-from-bottom-1 duration-200">
+                              {/* Thin red accent bar */}
+                              <div className="w-10 h-0.5 bg-[#e31b23] rounded-full mx-auto" />
+
+                              {/* Customer Icon with circular layers and soft red glow */}
+                              <div className="flex justify-center pt-0.5">
+                                <div className="relative group">
+                                  {/* Soft pulsing glow behind icon */}
+                                  <div className="absolute -inset-2 rounded-full bg-red-400/15 blur-sm animate-pulse pointer-events-none" />
+
+                                  {/* Outer circular translucent ring */}
+                                  <div className="w-14 h-14 rounded-full bg-gradient-to-b from-rose-100/70 to-rose-50/30 border border-red-200/50 flex items-center justify-center shadow-inner">
+                                    {/* Inner squircle button with subtle hover animation */}
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-red-100/90 shadow-[0_2px_8px_rgba(227,27,35,0.1)] flex items-center justify-center transition-transform hover:-translate-y-0.5 duration-200">
+                                      <UserPlus className="h-5 w-5 text-[#e31b23] stroke-[2.2]" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Main Question (Font size ~22px, bold, dark navy, centered) */}
+                              <div className="px-2">
+                                <h2 className="text-[20px] sm:text-[22px] font-bold text-[#0a192f] tracking-tight leading-snug">
+                                  Are you an existing<br />John Stayte customer?
+                                </h2>
+                              </div>
+
+                              {/* Yes / No Buttons: EXACT same dimensions, height, padding, font as the tabs */}
+                              <div className="grid grid-cols-2 gap-1.5 pt-1">
+                                {/* YES button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsExistingCustomer(true);
+                                    setKnowsAccountNumber(null);
+                                  }}
+                                  className="h-10 sm:h-11 py-2 px-4 rounded-full bg-gradient-to-r from-[#d9121c] to-[#eb212d] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-[0_3px_12px_rgba(227,27,35,0.35)] hover:shadow-[0_5px_16px_rgba(227,27,35,0.45)] hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] active:translate-y-0 transition-all cursor-pointer"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-white stroke-[2.4]" />
+                                  <span>Yes</span>
+                                </button>
+
+                                {/* NO button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsExistingCustomer(false);
+                                    setKnowsAccountNumber(null);
+                                  }}
+                                  className="h-10 sm:h-11 py-2 px-4 rounded-full bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-slate-200/80 shadow-xs hover:shadow-sm hover:scale-[1.01] hover:-translate-y-0.5 active:scale-[0.99] active:translate-y-0 transition-all cursor-pointer"
+                                >
+                                  <User className="h-4 w-4 text-slate-700 stroke-[2.4]" />
+                                  <span>No</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* SUBSEQUENT REGISTRATION STEPS (After Selecting Yes or No) */}
+                          {isExistingCustomer !== null && (
+                            <div className="space-y-4 animate-in fade-in-50 duration-200">
+                              {/* Back Navigation Bar */}
+                              <div className="flex items-center justify-between pb-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsExistingCustomer(null);
+                                    setKnowsAccountNumber(null);
+                                    setAccountNumberInput("");
+                                    setAccountVerifiedSuccess(null);
+                                    setVerifyFeedback(null);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#e31b23] transition-colors cursor-pointer"
+                                >
+                                  <ArrowLeft className="h-3.5 w-3.5" />
+                                  Back to selection
+                                </button>
+
+                                {isExistingCustomer ? (
+                                  knowsAccountNumber && (accountVerifiedSuccess || accountNumberInput) ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-bold text-slate-400">Account:</span>
+                                      <CustomerAccountNumberBadge
+                                        accountNumber={accountVerifiedSuccess || accountNumberInput}
+                                        variant="compact"
+                                        showCopy={false}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                                      Existing Customer
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                                    New Customer
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* If Existing Customer: Follow-up question about account number */}
+                              {isExistingCustomer === true && (
+                                <div className="p-3.5 rounded-2xl border border-slate-200/90 bg-slate-50/70 space-y-2.5">
+                                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <span className="font-bold text-xs text-slate-800">
+                                      Do you know your John Stayte account number?
+                                    </span>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setKnowsAccountNumber(true);
+                                          setVerifyFeedback(null);
+                                        }}
+                                        className={cn(
+                                          "h-8 px-4 text-xs font-bold rounded-xl cursor-pointer transition-all",
+                                          knowsAccountNumber === true
+                                            ? "bg-[#e31b23] hover:bg-[#c9151c] text-white border-[#e31b23] shadow-xs"
+                                            : "bg-white hover:bg-slate-100 text-slate-700 border-slate-200"
+                                        )}
+                                      >
+                                        Yes
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => {
+                                          setKnowsAccountNumber(false);
+                                          setAccountNumberInput("");
+                                          setAccountVerifiedSuccess(null);
+                                          setVerifyFeedback(null);
+                                        }}
+                                        className={cn(
+                                          "h-8 px-4 text-xs font-bold rounded-xl cursor-pointer transition-all",
+                                          knowsAccountNumber === false
+                                            ? "bg-[#e31b23] hover:bg-[#c9151c] text-white border-[#e31b23] shadow-xs"
+                                            : "bg-white hover:bg-slate-100 text-slate-700 border-slate-200"
+                                        )}
+                                      >
+                                        No
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  {/* If Yes: Input field and Verify button */}
+                                  {knowsAccountNumber === true && (
+                                    <div className="space-y-1.5 pt-1 animate-in fade-in-50 duration-150">
+                                      <Label
+                                        htmlFor="reg-account-number"
+                                        className="font-bold text-xs text-slate-800"
+                                      >
+                                        Account Number
+                                      </Label>
+                                      <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                          <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                          <Input
+                                            id="reg-account-number"
+                                            value={accountNumberInput}
+                                            onChange={(e) => {
+                                              setAccountNumberInput(normalizeAccountNumber(e.target.value));
+                                              setAccountVerifiedSuccess(null);
+                                              if (verifyFeedback) setVerifyFeedback(null);
+                                            }}
+                                            placeholder="e.g. RTAY16"
+                                            className="pl-9 font-mono font-bold uppercase text-xs h-10 bg-white border-slate-300 tracking-wider focus-visible:border-[#e31b23]"
+                                          />
+                                        </div>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          disabled={accountVerifying || !accountNumberInput.trim()}
+                                          onClick={handleVerifyAccountNumber}
+                                          className="h-10 px-4 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-xl cursor-pointer shrink-0"
+                                        >
+                                          {accountVerifying ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            "Verify"
+                                          )}
+                                        </Button>
+                                      </div>
+                                      <p className="text-[11px] text-slate-500 font-medium">
+                                        Found at the top of your previous invoices or delivery notes.
+                                      </p>
+
+                                      {/* Verification feedback */}
+                                      {verifyFeedback && (
+                                        <div
+                                          className={cn(
+                                            "p-2.5 rounded-xl text-xs flex items-center gap-2",
+                                            verifyFeedback.type === "success"
+                                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                              : "bg-red-50 text-red-700 border border-red-200"
+                                          )}
+                                        >
+                                          {verifyFeedback.type === "success" ? (
+                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                                          ) : (
+                                            <AlertCircle className="h-4 w-4 text-[#e31b23] shrink-0" />
+                                          )}
+                                          <span className="font-semibold">{verifyFeedback.message}</span>
+                                        </div>
+                                      )}
+
+                                      {accountVerifiedSuccess && (
+                                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200">
+                                          <span className="text-xs text-slate-700 font-bold">Verified Account:</span>
+                                          <CustomerAccountNumberBadge
+                                            accountNumber={accountVerifiedSuccess}
+                                            variant="compact"
+                                            showCopy={false}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* If No: Account lookup notice */}
+                                  {knowsAccountNumber === false && (
+                                    <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-xs animate-in fade-in-50 duration-150">
+                                      <p className="font-bold">Account Lookup Request</p>
+                                      <p className="text-[11px] text-blue-800 mt-0.5">
+                                        Our depot manager will look up your historical account and link your existing pricing band and cylinder agreements upon review.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Form Fields: shown for new customer OR existing customer who answered the account number question */}
+                              {(isExistingCustomer === false ||
+                                (isExistingCustomer === true && knowsAccountNumber !== null)) && (
+                                <form onSubmit={handleRegister} className="space-y-4 text-xs font-medium animate-in fade-in-50 duration-150">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="reg-name" className="font-bold text-slate-800 text-xs">
                               Full Name
                             </Label>
                             <div className="relative">
@@ -1288,18 +1668,24 @@ function LoginPage() {
                               </>
                             )}
                           </Button>
-                        </form>
+                                </form>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </>
                   )}
 
                   {/* TRUST / SECURITY FOOTER */}
-                  <div className="pt-3 border-t border-slate-100 text-center">
-                    <p className="text-[11px] text-slate-400 font-medium inline-flex items-center justify-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                      Protected by 256-bit secure authentication.
-                    </p>
-                  </div>
+                  {!(tab === "register" && isExistingCustomer === null) && (
+                    <div className="pt-3 border-t border-slate-100 text-center">
+                      <p className="text-[11px] text-slate-400 font-medium inline-flex items-center justify-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                        Protected by 256-bit secure authentication.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

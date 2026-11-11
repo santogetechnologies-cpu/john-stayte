@@ -49,6 +49,7 @@ import {
 import { gbp, useCartTotals, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 import { isRefillableLpgCylinderProduct } from "@/lib/cylinder-exchange-service";
 import {
   getCustomerGasApplication,
@@ -735,6 +736,7 @@ function Checkout() {
               collection_branch_id: branchAssignment.collectionBranchId,
             },
             assigned_branch_id: branchAssignment.assignedBranchId,
+            customer_account_number: customerPricing.customerCode || undefined,
             subtotal: finalSubtotal,
             shipping_fee: isCollection ? 0 : shipping,
             total: provisionalTotal,
@@ -745,6 +747,7 @@ function Checkout() {
             notes: [
               `[Payment: ${finalPaymentMethod}]`,
               isCollection ? `[Click & Collect: ${selectedBranch}]` : "[Standard Delivery]",
+              customerPricing.customerCode ? `[Account: ${customerPricing.customerCode}]` : "",
               hasCylinderInCart
                 ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]`
                 : "",
@@ -1925,7 +1928,16 @@ function Checkout() {
 
         {/* Aside: Order Summary */}
         <aside className="surface-card h-fit p-6 lg:sticky lg:top-32 space-y-4 text-left">
-          <h2 className="text-base font-black text-slate-900 font-display">Order Summary</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-black text-slate-900 font-display">Order Summary</h2>
+            {customerPricing.customerCode && (
+              <CustomerAccountNumberBadge
+                accountNumber={customerPricing.customerCode}
+                variant="compact"
+                showCopy={false}
+              />
+            )}
+          </div>
           {cartLoading ? (
             <p className="text-xs text-muted-foreground">Verifying basket with database...</p>
           ) : (

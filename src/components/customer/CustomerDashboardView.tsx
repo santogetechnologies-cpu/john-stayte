@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore, gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 import { cleanImageUrl, cn } from "@/lib/utils";
 
 interface CustomerOrder {
@@ -60,6 +61,7 @@ export function CustomerDashboardView() {
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [ticketCount, setTicketCount] = useState<number>(0);
   const [customerApp, setCustomerApp] = useState<GasCustomerApplication | null>(null);
+  const [accountNumber, setAccountNumber] = useState<string | null>(null);
   const [products, setProducts] = useState<ShopProduct[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
@@ -73,10 +75,29 @@ export function CustomerDashboardView() {
         const currentEmail = authUser?.user?.email || user?.email;
         const currentUid = authUser?.user?.id || user?.id;
 
-        // Fetch application status
+        // Fetch application status and customer profile account number
         if (currentUid) {
-          const app = await getCustomerGasApplication(currentUid);
-          setCustomerApp(app);
+          try {
+            const [{ data: prof }, app] = await Promise.all([
+              (supabase.from("profiles") as any)
+                .select("customer_code, account_number")
+                .eq("id", currentUid)
+                .maybeSingle(),
+              getCustomerGasApplication(currentUid),
+            ]);
+            setCustomerApp(app);
+            const resolvedCode =
+              prof?.account_number ||
+              prof?.customer_code ||
+              (app as any)?.account_number ||
+              (app as any)?.customer_code ||
+              (user as any)?.account_number ||
+              user?.customer_code ||
+              null;
+            setAccountNumber(resolvedCode);
+          } catch (e) {
+            console.warn("Notice loading customer profile:", e);
+          }
         }
 
         // 1. Query Orders belonging to authenticated customer
@@ -190,6 +211,14 @@ export function CustomerDashboardView() {
     [activeOrders],
   );
 
+  const effectiveAccountNumber =
+    accountNumber ||
+    (user as any)?.account_number ||
+    user?.customer_code ||
+    (customerApp as any)?.account_number ||
+    (customerApp as any)?.customer_code ||
+    null;
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Good morning";
@@ -284,36 +313,45 @@ export function CustomerDashboardView() {
       {/* ============================================================ */}
       {/* 1. WELCOME / HERO HEADER                                    */}
       {/* ============================================================ */}
-      <div className="relative bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-7 shadow-xs overflow-hidden">
+      <div className="relative bg-white rounded-3xl border border-rose-100/90 p-6 sm:p-7 md:p-8 shadow-xs overflow-hidden animate-in fade-in duration-500">
+        {/* Background Layer with User-Provided Abstract White & Blush-Pink Background */}
+        <div
+          className="absolute inset-0 pointer-events-none select-none transition-opacity duration-700"
+          style={{
+            backgroundImage: "url('/a_clean_abstract_background_similar_to_the_provide.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+          }}
+        />
+
         {/* Subtle decorative background glow */}
-        <div className="absolute right-0 top-0 w-72 h-72 bg-gradient-to-bl from-primary/5 via-primary/2 to-transparent rounded-full blur-2xl pointer-events-none -mr-16 -mt-16" />
+        <div className="absolute right-0 top-0 w-80 h-80 bg-gradient-to-bl from-rose-200/20 via-primary/5 to-transparent rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-primary bg-primary/8 border border-primary/15">
-                <Sparkles className="h-3 w-3" />
-                Customer Account
-              </span>
-              <span className="text-[11px] font-medium text-slate-400">
-                Gloucestershire Delivery Zone
-              </span>
-            </div>
-
-            <h1 className="text-2xl sm:text-3xl font-display font-black tracking-tight text-slate-900 leading-tight">
-              {getGreeting()}, {customerName.split(" ")[0]}
-            </h1>
-
-            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
-              Welcome to your John Stayte Services portal. Manage scheduled deliveries, download VAT
-              invoices, and reorder bottled gas directly.
-            </p>
+        <div className="relative z-10 space-y-3.5 max-w-2xl">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider text-[#e31b23] bg-rose-100/70 border border-rose-200/60 shadow-2xs">
+              <Sparkles className="h-3 w-3" />
+              CUSTOMER ACCOUNT
+            </span>
+            <span className="text-xs font-medium text-slate-500">
+              Gloucestershire Delivery Zone
+            </span>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <h1 className="text-2xl sm:text-3xl md:text-[32px] font-display font-black tracking-tight text-slate-900 leading-tight">
+            {getGreeting()}, {customerName.split(" ")[0]} 👋
+          </h1>
+
+          <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+            Welcome to your John Stayte Services portal. Manage scheduled deliveries, download VAT
+            invoices, and reorder bottled gas directly.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Button
               asChild
-              className="rounded-xl font-extrabold text-xs shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-10 px-5 gap-2 transition-all hover:scale-[1.01]"
+              className="rounded-full font-extrabold text-xs shadow-sm bg-[#e31b23] hover:bg-[#c9141b] text-white h-11 px-6 gap-2 transition-all hover:scale-[1.01] cursor-pointer"
             >
               <Link to="/order-gas">
                 <Flame className="h-4 w-4" /> Order Gas & Cylinders
@@ -322,7 +360,7 @@ export function CustomerDashboardView() {
             <Button
               asChild
               variant="outline"
-              className="rounded-xl font-bold text-xs border-slate-200 text-slate-700 hover:bg-slate-50 h-10 px-4"
+              className="rounded-full font-bold text-xs bg-white hover:bg-slate-50 border-slate-200 text-slate-700 h-11 px-5 gap-2 shadow-2xs hover:scale-[1.01] transition-all cursor-pointer"
             >
               <Link to="/account/application">
                 <FileText className="h-3.5 w-3.5 mr-1 text-slate-500" /> Gas Application
@@ -331,6 +369,15 @@ export function CustomerDashboardView() {
           </div>
         </div>
       </div>
+
+      {/* 2. PROMINENT JOHN STAYTE CUSTOMER ACCOUNT NUMBER BADGE */}
+      {effectiveAccountNumber && (
+        <CustomerAccountNumberBadge
+          accountNumber={effectiveAccountNumber}
+          variant="card"
+          sublabel="Your permanent customer reference for orders and invoices."
+        />
+      )}
 
       {/* GAS CUSTOMER APPLICATION STATUS BANNER (COMPACT PREMIUM ALERT CARD) */}
       {!customerApp || customerApp.status === "NOT_COMPLETED" ? (

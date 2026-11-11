@@ -46,6 +46,10 @@ export interface GasCustomerApplication {
   customer_type?: "HOME" | "BUSINESS";
   has_previous_purchases?: boolean;
   previous_account_details?: string | null;
+  customer_code?: string | null;
+  account_number?: string | null;
+  is_existing_customer?: boolean;
+  account_lookup_requested?: boolean;
   application_reference?: string;
   pricing_band?: string | null;
   discount_percentage?: number | null;
@@ -93,7 +97,19 @@ export interface ApplicationSubmitPayload {
   customerType?: "HOME" | "BUSINESS";
   hasPreviousPurchases?: boolean;
   previousAccountDetails?: string;
+  customerCode?: string;
+  accountNumber?: string;
+  isExistingCustomer?: boolean;
+  accountLookupRequested?: boolean;
   applicationReference?: string;
+  pricing_band?: string;
+  pricingBand?: string;
+  discount_percentage?: number;
+  discountPercentage?: number;
+  credit_account_approved?: boolean;
+  creditApproved?: boolean;
+  credit_limit?: number;
+  creditLimit?: number;
   businessName?: string;
   businessType?: string;
   businessAddress?: string;
@@ -350,6 +366,10 @@ export async function submitGasCustomerApplication(
         customer_type: resolvedCustomerType,
         has_previous_purchases: hasPrevious,
         previous_account_details: previousDetails,
+        customer_code: payload.customerCode || payload.accountNumber ? (payload.customerCode || payload.accountNumber)!.trim().toUpperCase() : null,
+        account_number: payload.customerCode || payload.accountNumber ? (payload.customerCode || payload.accountNumber)!.trim().toUpperCase() : null,
+        is_existing_customer: Boolean(payload.isExistingCustomer ?? hasPrevious),
+        account_lookup_requested: Boolean(payload.accountLookupRequested ?? (!payload.customerCode && !payload.accountNumber && hasPrevious)),
         application_reference: rawRef,
         business_name: businessName?.trim() || null,
         business_type: businessType?.trim() || null,
@@ -583,6 +603,8 @@ export async function approveGasCustomerApplication(params: {
   creditLimit?: number;
   managerNotes?: string;
   reviewedBy?: string;
+  customerCode?: string;
+  accountNumber?: string;
 }) {
   const {
     applicationId,
@@ -592,8 +614,11 @@ export async function approveGasCustomerApplication(params: {
     creditLimit = 0,
     managerNotes = "",
     reviewedBy,
+    customerCode,
+    accountNumber,
   } = params;
   const now = new Date().toISOString();
+  const resolvedCustomerCode = (customerCode || accountNumber || "").trim().toUpperCase() || null;
 
   // Step 0: Strict Authentication & Role Pre-flight
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
@@ -663,18 +688,57 @@ export async function approveGasCustomerApplication(params: {
   // 1. Transactional Atomic Execution via Supabase RPC approve_gas_customer_application
   let rpcSucceeded = false;
   try {
-    const { data: rpcRes, error: rpcErr } = await (supabase.rpc as any)(
-      "approve_gas_customer_application",
-      {
-        p_application_id: applicationId,
-        p_pricing_band: effectivePricingBand,
-        p_discount_percentage: effectiveDiscountPercentage,
-        p_credit_account_approved: creditApproved,
-        p_credit_limit: creditLimit,
-        p_admin_notes: managerNotes,
-        p_reviewed_by: resolvedReviewerUuid,
-      },
-    );
+    let rpcRes: any = null;
+    let rpcErr: any = null;
+
+    if (resolvedCustomerCode) {
+      const callWithCode = await (supabase.rpc as any)(
+        "approve_gas_customer_application",
+        {
+          p_application_id: applicationId,
+          p_pricing_band: effectivePricingBand,
+          p_discount_percentage: effectiveDiscountPercentage,
+          p_credit_account_approved: creditApproved,
+          p_credit_limit: creditLimit,
+          p_admin_notes: managerNotes,
+          p_reviewed_by: resolvedReviewerUuid,
+          p_customer_code: resolvedCustomerCode,
+        },
+      );
+      rpcRes = callWithCode.data;
+      rpcErr = callWithCode.error;
+    }
+
+    if (!rpcRes && (!resolvedCustomerCode || (rpcErr && (rpcErr.code === "PGRST202" || rpcErr.message?.includes("function"))))) {
+      const fallbackCall = await (supabase.rpc as any)(
+        "approve_gas_customer_application",
+        {
+          p_application_id: applicationId,
+          p_pricing_band: effectivePricingBand,
+          p_discount_percentage: effectiveDiscountPercentage,
+          p_credit_account_approved: creditApproved,
+          p_credit_limit: creditLimit,
+          p_admin_notes: managerNotes,
+          p_reviewed_by: resolvedReviewerUuid,
+        },
+      );
+      rpcRes = fallbackCall.data;
+      rpcErr = fallbackCall.error;
+
+      // If 7-param succeeded, update customer_code on profile separately
+      if (rpcRes?.success && resolvedCustomerCode) {
+        try {
+          await (supabase.from("profiles") as any)
+            .update({ customer_code: resolvedCustomerCode, account_number: resolvedCustomerCode })
+            .eq("id", customerId);
+          await (supabase.from("gas_customer_applications") as any)
+            .update({ customer_code: resolvedCustomerCode, account_number: resolvedCustomerCode })
+            .eq("id", applicationId);
+        } catch (e) {
+          console.warn("Notice updating profile account number:", e);
+        }
+      }
+    }
 
     if (!rpcErr && rpcRes && rpcRes.success) {
       rpcSucceeded = true;
@@ -774,6 +838,8 @@ export async function approveGasCustomerApplication(params: {
         admin_notes: managerNotes || "Application approved by manager.",
         reviewed_by: resolvedReviewerUuid,
         reviewed_at: now,
+        customer_code: resolvedCustomerCode || undefined,
+        account_number: resolvedCustomerCode || undefined,
         decision_history: [...existingHistory, historyEntry],
         updated_at: now,
       })
@@ -806,6 +872,8 @@ export async function approveGasCustomerApplication(params: {
           discount_percentage: effectiveDiscountPercentage,
           credit_account_approved: creditApproved,
           credit_limit: creditLimit,
+          customer_code: resolvedCustomerCode || undefined,
+          account_number: resolvedCustomerCode || undefined,
           notification_prefs: {
             ...existingPrefs,
             gas_application: {

@@ -27,6 +27,8 @@ export type User = {
   avatar?: string;
   assignedBranch?: string;
   assignedBranchId?: string;
+  customer_code?: string;
+  account_number?: string;
 };
 
 export type CartLine = { slug: string; qty: number };
@@ -430,6 +432,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             avatar: userAvatar,
             assignedBranch: assignedBranch || (resolvedRole === "branch_staff" ? "Pending Confirmation" : undefined),
             assignedBranchId,
+            customer_code: (profile as any)?.customer_code || (profile as any)?.account_number || session.user.user_metadata?.customer_code,
+            account_number: (profile as any)?.account_number || (profile as any)?.customer_code || session.user.user_metadata?.account_number,
           };
           setUser(u);
         } catch {
@@ -456,6 +460,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             role: resolvedRole,
             assignedBranch: assignedBranch || (resolvedRole === "branch_staff" ? "Pending Confirmation" : undefined),
             assignedBranchId,
+            customer_code: session.user.user_metadata?.customer_code || session.user.user_metadata?.account_number,
+            account_number: session.user.user_metadata?.account_number || session.user.user_metadata?.customer_code,
           };
           setUser(u);
         }
@@ -585,6 +591,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           avatar: userAvatar,
           assignedBranch: assignedBranch || (resolvedRole === "branch_staff" ? "Pending Confirmation" : undefined),
           assignedBranchId,
+          customer_code: (profile as any)?.customer_code || (profile as any)?.account_number || authRes.data.user.user_metadata?.customer_code,
+          account_number: (profile as any)?.account_number || (profile as any)?.customer_code || authRes.data.user.user_metadata?.account_number,
         };
 
         setUser(u);

@@ -36,6 +36,7 @@ import { normalizeReviewRecord } from "@/lib/review-service";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl, cn } from "@/lib/utils";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 const STATUS_STEPS = ["Pending", "Approved", "Packed", "Out for Delivery", "Delivered"];
 
@@ -462,6 +463,20 @@ export function CustomerOrdersView() {
                     <span className="font-mono font-extrabold text-foreground">
                       ORDER #{o.order_number || o.id.slice(0, 8)}
                     </span>
+                    {(o.customer_account_number ||
+                      o.delivery_address?.account_number ||
+                      user?.account_number ||
+                      user?.customer_code) && (
+                      <CustomerAccountNumberBadge
+                        accountNumber={
+                          o.customer_account_number ||
+                          o.delivery_address?.account_number ||
+                          user?.account_number ||
+                          user?.customer_code
+                        }
+                        variant="compact"
+                      />
+                    )}
                     {isNewCylinder && (
                       <Badge className="bg-blue-600 text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full">
                         NEW CYLINDER

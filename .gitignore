@@ -30,6 +30,7 @@ dist-ssr/
 .wrangler/
 
 # 5. Logs & Temporary Files
+scratch/
 logs/
 *.log
 npm-debug.log*

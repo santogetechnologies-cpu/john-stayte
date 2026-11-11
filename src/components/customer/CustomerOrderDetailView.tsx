@@ -45,6 +45,7 @@ import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-ser
 import { gbp, useStore, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl, cn } from "@/lib/utils";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 const TRACKING_STEPS = [
   { key: "Pending", label: "Order Placed", desc: "Order submitted via website" },
@@ -325,6 +326,13 @@ export function CustomerOrderDetailView() {
           ? JSON.parse(order.delivery_address)
           : order.delivery_address || {};
 
+      const accountNumber =
+        order.customer_account_number ||
+        addressObj.account_number ||
+        user?.account_number ||
+        user?.customer_code ||
+        "";
+
       const subtotal = Number(order.subtotal || 0);
       const shippingFee = Number(order.shipping_fee || 0);
       const vatAmount = subtotal * 0.2;
@@ -377,7 +385,7 @@ export function CustomerOrderDetailView() {
       <div>
         <h2 class="inv-title">VAT TAX INVOICE</h2>
         <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 700; text-align: right; color: #475569;">${invoiceNo}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">Order Ref: #${order.order_number}</p>
+        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">${accountNumber ? `Account: <strong>${accountNumber}</strong> &bull; ` : ""}Order Ref: #${order.order_number}</p>
         <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">Date: ${orderDate}</p>
       </div>
     </div>
@@ -389,6 +397,16 @@ export function CustomerOrderDetailView() {
         <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.street || "Delivery Address On File"}</p>
         <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.postcode || ""}</p>
         <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Email: ${order.customer_email || user?.email || ""}</p>
+        ${
+          accountNumber
+            ? `
+        <div style="margin-top: 10px; display: inline-block; background-color: #e31b23; color: #000000; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-family: monospace; font-size: 13px; letter-spacing: 0.5px; border: 1px solid #b91c1c;">
+          <div style="font-size: 8px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; color: #000000; opacity: 0.9; margin-bottom: 2px;">JOHN STAYTE ACCOUNT NUMBER</div>
+          <div style="font-size: 14px; font-weight: 900; color: #000000;">${accountNumber}</div>
+        </div>
+        `
+            : ""
+        }
       </div>
       <div style="text-align: right;">
         <div class="section-title">Payment & Status</div>
@@ -642,6 +660,20 @@ export function CustomerOrderDetailView() {
                 Order #{order.order_number || order.id.slice(0, 8)}
               </h1>
               {getStatusBadge(order.status)}
+              {(order.customer_account_number ||
+                deliveryAddress?.account_number ||
+                user?.account_number ||
+                user?.customer_code) && (
+                <CustomerAccountNumberBadge
+                  accountNumber={
+                    order.customer_account_number ||
+                    deliveryAddress?.account_number ||
+                    user?.account_number ||
+                    user?.customer_code
+                  }
+                  variant="compact"
+                />
+              )}
             </div>
 
             <p className="text-xs sm:text-sm text-slate-500 font-medium">
@@ -998,6 +1030,22 @@ export function CustomerOrderDetailView() {
                   <p className="text-slate-500 flex items-center gap-1 pt-1">
                     <Phone className="h-3 w-3 text-slate-400" /> {deliveryAddress.phone}
                   </p>
+                )}
+                {(order.customer_account_number ||
+                  deliveryAddress?.account_number ||
+                  user?.account_number ||
+                  user?.customer_code) && (
+                  <div className="pt-2">
+                    <CustomerAccountNumberBadge
+                      accountNumber={
+                        order.customer_account_number ||
+                        deliveryAddress?.account_number ||
+                        user?.account_number ||
+                        user?.customer_code
+                      }
+                      variant="invoice"
+                    />
+                  </div>
                 )}
               </div>
 

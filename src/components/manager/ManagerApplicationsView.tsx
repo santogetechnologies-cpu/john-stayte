@@ -29,6 +29,10 @@ import {
   Package,
   Home,
   Info,
+  Hash,
+  Wand2,
+  Receipt,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -70,6 +74,13 @@ import {
 } from "@/lib/branch-pricing-service";
 import type { PricingBandDiscountResolution } from "@/types/pricing";
 import {
+  normalizeAccountNumber,
+  isValidAccountNumberFormat,
+  generateCustomerAccountNumber,
+  requestAuthoritativeAccountNumber,
+} from "@/lib/account-number-service";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import {
   getAllGasCustomerApplications,
   approveGasCustomerApplication,
   declineGasCustomerApplication,
@@ -99,6 +110,9 @@ export function ManagerApplicationsView() {
   const [creditApproved, setCreditApproved] = useState(false);
   const [creditLimit, setCreditLimit] = useState<number>(500);
   const [managerApprovalNotes, setManagerApprovalNotes] = useState("");
+  const [assignAccountNumber, setAssignAccountNumber] = useState("");
+  const [historicalOrders, setHistoricalOrders] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const [declineModalOpen, setDeclineModalOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -173,6 +187,9 @@ export function ManagerApplicationsView() {
         (app.phone || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (app.business_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         (app.postcode || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((app as any).customer_code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((app as any).account_number || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ((app as any).previous_account_details || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
         ref.toLowerCase().includes(searchQuery.toLowerCase());
 
       const appStatus = app.status;
@@ -203,7 +220,14 @@ export function ManagerApplicationsView() {
       app.customer_type === "BUSINESS" || app.usage_type === "COMMERCIAL" || app.usage_type === "BULK";
     const initialBand = app.pricing_band || (isBusiness ? "Commercial Trade (Band B)" : "Standard Domestic");
     setPricingBand(initialBand);
-    const initialRes = resolvePricingBandDiscountSync(initialBand, app.previous_account_details || null);
+    const initialCode =
+      (app as any).customer_code ||
+      (app as any).account_number ||
+      app.previous_account_details ||
+      "";
+    setAssignAccountNumber(initialCode);
+
+    const initialRes = resolvePricingBandDiscountSync(initialBand, initialCode || null);
     setDiscountResolution(initialRes);
     setDiscountPercentage(initialRes.discountPercentage);
     setCreditApproved(Boolean(app.credit_account_approved));
@@ -212,6 +236,30 @@ export function ManagerApplicationsView() {
     setDeclineReason(app.rejection_reason || "");
     setRequestedInfoText(app.more_info_requested || "");
     setDetailsModalOpen(true);
+
+    // Fetch customer's past orders and invoices as evidence
+    setLoadingHistory(true);
+    (async () => {
+      try {
+        let q = supabase
+          .from("orders")
+          .select("id, order_number, total, created_at, status, payment_status, notes")
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        if (app.customer_id) {
+          q = q.or(`customer_id.eq.${app.customer_id},customer_email.eq.${app.email}`);
+        } else if (app.email) {
+          q = q.eq("customer_email", app.email);
+        }
+        const { data: pastOrders } = await q;
+        setHistoricalOrders(pastOrders || []);
+      } catch {
+        setHistoricalOrders([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    })();
   };
 
   // Update discount percentage immediately whenever pricing band changes
@@ -271,6 +319,8 @@ export function ManagerApplicationsView() {
         creditLimit: creditApproved ? Number(creditLimit) || 0 : 0,
         managerNotes: managerApprovalNotes.trim(),
         reviewedBy: sessionUser.id,
+        customerCode: assignAccountNumber.trim().toUpperCase() || undefined,
+        accountNumber: assignAccountNumber.trim().toUpperCase() || undefined,
       });
 
       toast.success(
@@ -608,10 +658,22 @@ export function ManagerApplicationsView() {
                     </TableCell>
 
                     <TableCell className="text-xs">
-                      {app.has_previous_purchases ? (
-                        <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-[10px] font-bold">
-                          Yes: {app.previous_account_details ? app.previous_account_details.slice(0, 16) : "Known Depot"}
-                        </Badge>
+                      {(app as any).customer_code || (app as any).account_number ? (
+                        <CustomerAccountNumberBadge
+                          accountNumber={(app as any).customer_code || (app as any).account_number}
+                          variant="table"
+                        />
+                      ) : app.has_previous_purchases ? (
+                        app.previous_account_details ? (
+                          <CustomerAccountNumberBadge
+                            accountNumber={app.previous_account_details}
+                            variant="table"
+                          />
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-bold">
+                            Lookup Req.
+                          </Badge>
+                        )
                       ) : (
                         <span className="text-[11px] text-slate-400 font-medium">New Customer</span>
                       )}
@@ -772,19 +834,81 @@ export function ManagerApplicationsView() {
 
                 {/* Previous Customer Status */}
                 <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-2 sm:col-span-2">
-                  <h4 className="font-black text-amber-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5 text-amber-600" /> Previous John Stayte Customer Check
-                  </h4>
-                  <p>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-amber-950 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-amber-600" /> Previous John Stayte Customer Status
+                    </h4>
+                    {selectedApp.has_previous_purchases ? (
+                      <Badge className="bg-amber-600 text-white font-black text-[10px]">
+                        Existing Customer Record
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-slate-300 text-slate-600 font-bold text-[10px]">
+                        New Customer
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs">
                     <span className="text-amber-800 font-medium">Purchased previously from John Stayte:</span>{" "}
                     <strong className="text-slate-900">
-                      {selectedApp.has_previous_purchases ? "YES (Existing Account Record)" : "NO (New Customer)"}
+                      {selectedApp.has_previous_purchases ? "YES" : "NO"}
                     </strong>
                   </p>
-                  {selectedApp.previous_account_details && (
-                    <p className="text-[11px] text-amber-900">
-                      <span className="font-bold">Provided Account Details:</span> {selectedApp.previous_account_details}
+                  {(selectedApp as any).customer_code || selectedApp.previous_account_details ? (
+                    <div className="pt-1 flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-amber-900">Account Number:</span>
+                      <CustomerAccountNumberBadge
+                        accountNumber={(selectedApp as any).customer_code || selectedApp.previous_account_details}
+                        variant="compact"
+                      />
+                    </div>
+                  ) : selectedApp.has_previous_purchases ? (
+                    <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs">
+                      <p className="font-bold">Account Lookup Requested</p>
+                      <p className="text-[11px] text-blue-700 mt-0.5">
+                        Customer indicated they are an existing customer but did not know their account number. Review historical invoices below or generate a new unique account number upon approval.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Historical Invoices & Purchasing History */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 sm:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-black text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <Receipt className="h-3.5 w-3.5 text-primary" /> Historical Purchases & Invoices Evidence
+                    </h4>
+                    {loadingHistory && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
+                  </div>
+
+                  {historicalOrders.length === 0 ? (
+                    <p className="text-[11px] text-slate-500 italic">
+                      No past online orders found for this customer. Use customer details above to search depot invoices.
                     </p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {historicalOrders.map((ord) => (
+                        <div
+                          key={ord.id}
+                          className="p-2.5 rounded-xl bg-white border border-slate-200/80 flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <p className="font-extrabold text-slate-900">
+                              Order #{ord.order_number || ord.id.slice(0, 8)}
+                            </p>
+                            <p className="text-[10px] text-slate-500">
+                              {new Date(ord.created_at).toLocaleDateString("en-GB")} • {ord.status}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-black text-slate-900">£{Number(ord.total).toFixed(2)}</p>
+                            <Badge className="text-[9px] bg-slate-100 text-slate-700 font-bold">
+                              {ord.payment_status || "Paid"}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -861,6 +985,47 @@ export function ManagerApplicationsView() {
           </DialogHeader>
 
           <div className="space-y-4 text-xs">
+            {/* Customer Account Number Assignment */}
+            <div className="space-y-1.5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center justify-between">
+                <Label className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                  <Hash className="h-3.5 w-3.5 text-primary" /> John Stayte Customer Account Number
+                </Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (selectedApp) {
+                      const generated = await requestAuthoritativeAccountNumber(selectedApp.full_name);
+                      setAssignAccountNumber(generated);
+                    }
+                  }}
+                  className="text-[11px] font-bold text-primary hover:text-primary/90 hover:bg-primary/10 h-7 px-2 gap-1 cursor-pointer"
+                >
+                  <Wand2 className="h-3 w-3" /> Generate Account No
+                </Button>
+              </div>
+              <Input
+                value={assignAccountNumber}
+                onChange={(e) => setAssignAccountNumber(normalizeAccountNumber(e.target.value))}
+                placeholder="e.g. RTAY16, CHNO03, CHEM02"
+                className="font-mono font-black text-xs uppercase h-10 tracking-widest bg-white border-slate-300 focus-visible:border-primary"
+              />
+              <p className="text-[10px] text-slate-500">
+                Permanent customer reference number. Link an existing account or assign a unique 4-10 alphanumeric identifier.
+              </p>
+              {assignAccountNumber && isValidAccountNumberFormat(assignAccountNumber) && (
+                <div className="pt-1">
+                  <CustomerAccountNumberBadge
+                    accountNumber={assignAccountNumber}
+                    variant="compact"
+                    showCopy={false}
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Pricing Band Selection */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

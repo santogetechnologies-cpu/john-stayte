@@ -15,6 +15,8 @@ import {
   Calendar,
   ShieldAlert,
   CheckCircle2,
+  Hash,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,13 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 import { deleteCustomerAccount } from "@/lib/customer-service";
+import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import {
+  assignCustomerAccountNumber,
+  generateCustomerAccountNumber,
+  isValidAccountNumberFormat,
+  normalizeAccountNumber,
+} from "@/lib/account-number-service";
 
 export function AdminCustomersView() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -92,7 +101,9 @@ export function AdminCustomersView() {
     return (
       (c.full_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.phone || "").toLowerCase().includes(searchQuery.toLowerCase())
+      (c.phone || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.customer_code || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.id || "").toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
 
@@ -204,6 +215,7 @@ export function AdminCustomersView() {
             <TableHeader className="bg-slate-50/80">
               <TableRow>
                 <TableHead className="font-bold text-xs">Customer</TableHead>
+                <TableHead className="font-bold text-xs">Account No</TableHead>
                 <TableHead className="font-bold text-xs">Email</TableHead>
                 <TableHead className="font-bold text-xs">Phone</TableHead>
                 <TableHead className="font-bold text-xs">Joined Date</TableHead>
@@ -228,6 +240,16 @@ export function AdminCustomersView() {
                         </p>
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {c.customer_code ? (
+                      <CustomerAccountNumberBadge
+                        accountNumber={c.customer_code}
+                        variant="table"
+                      />
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs font-semibold text-foreground">{c.email}</TableCell>
                   <TableCell className="text-xs text-muted-foreground font-medium">

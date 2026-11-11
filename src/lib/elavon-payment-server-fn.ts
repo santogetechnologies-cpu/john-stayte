@@ -51,19 +51,12 @@ function getServerSupabase() {
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceRoleKey) {
-    console.warn(
-      "[Supabase Configuration] SUPABASE_SERVICE_ROLE_KEY is not configured in the server environment. " +
-        "Falling back to public/anon key. Database writes to protected tables (e.g. public.payments, orders) may be restricted by Row Level Security.",
+    throw new Error(
+      "[Payment Gateway ServerFn] SUPABASE_SERVICE_ROLE_KEY is not configured in the server environment. Privileged payment status reconciliation requires server credentials. Public fallback prohibited.",
     );
   }
 
-  const supabaseKey =
-    serviceRoleKey ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
-
-  return createClient<any>(supabaseUrl, supabaseKey, {
+  return createClient<any>(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
 }
