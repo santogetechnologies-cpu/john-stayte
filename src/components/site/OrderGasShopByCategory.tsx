@@ -70,7 +70,7 @@ export const PRODUCT_CATEGORIES_METADATA: Array<{
       id: "campingaz",
       name: "Camping Gas & Stoves",
       icon: Tent,
-      image: "/service_domestic_supply.jpg",
+      image: "/campingaz-outdoor-camping.jpg",
       description: "Refillable 907/904 cylinders, gas cartridges, party grills and portable camping cookers.",
       matchSlugs: ["campingaz", "camping"],
     },

@@ -1711,7 +1711,7 @@ function BlogKnowledgeCentrePage() {
             <ScrollRevealCard delay={150} className="w-full h-full">
               <img
                 src={blogHeroCylinders}
-                alt="John Stayte Services Calor Gas LPG cylinders connected to regulator in modern residential home setting"
+                alt="John Stayte Services Calor Gas LPG cylinders safely stored in secure outdoor ventilated storage cage"
                 className="w-full h-full object-cover object-left"
                 loading="eager"
               />
@@ -1856,7 +1856,7 @@ function BlogKnowledgeCentrePage() {
                 {/* Exact Propane Cylinders Image */}
                 <img
                   src={blogHeroCylinders}
-                  alt="John Stayte Services Calor Gas LPG cylinders connected to regulator in modern residential home setting"
+                  alt="John Stayte Services Calor Gas LPG cylinders safely stored in secure outdoor ventilated storage cage"
                   className="w-full h-full object-cover object-center"
                   loading="eager"
                 />

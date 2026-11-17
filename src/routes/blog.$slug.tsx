@@ -683,7 +683,7 @@ function BlogPostPage() {
                 <div className="relative w-full aspect-[4/3] sm:aspect-[16/10] lg:aspect-[16/11] overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm">
                   <img
                     src={gasCylinderSafetyPhoto}
-                    alt="UK Calor gas cylinder safety equipment in home setting"
+                    alt="UK Calor gas cylinders safely stored in secure outdoor ventilated storage cage beside stone wall"
                     className="w-full h-full object-cover object-center"
                     loading="eager"
                   />
