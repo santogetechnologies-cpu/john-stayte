@@ -62,9 +62,11 @@ import {
 import { deleteOrder } from "@/lib/order-service";
 import { triggerOrderStatusPush } from "@/lib/push-notifications";
 import { cn } from "@/lib/utils";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
 
 export function AdminOrdersView() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [customerProfiles, setCustomerProfiles] = useState<Record<string, { account_number?: string }>>({});
   const [agents, setAgents] = useState<DeliveryAgentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingAgents, setLoadingAgents] = useState(false);
@@ -138,13 +140,25 @@ export function AdminOrdersView() {
   const loadOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, order_items(*), delivery_assignments(*)")
-        .order("created_at", { ascending: false });
+      const [ordersRes, profilesRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*, order_items(*), delivery_assignments(*)")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id, account_number, customer_code"),
+      ]);
 
-      if (error) throw error;
-      setOrders(data || []);
+      if (ordersRes.error) throw ordersRes.error;
+
+      const profMap: Record<string, { account_number?: string }> = {};
+      (profilesRes.data || []).forEach((p: any) => {
+        const acc = p.account_number || p.customer_code;
+        if (acc) profMap[p.id] = { account_number: acc };
+      });
+      setCustomerProfiles(profMap);
+      setOrders(ordersRes.data || []);
     } catch (err: any) {
       toast.error("Failed to load orders: " + err.message);
     } finally {
@@ -382,11 +396,17 @@ export function AdminOrdersView() {
     const matchesTab = activeTab === "ALL" || type === activeTab;
     const matchesUsage = usageFilter === "ALL" || usage === usageFilter;
 
+    const custId = o.customer_id || "";
+    const acctNum =
+      o.customer_account_number || customerProfiles[o.customer_id]?.account_number || "";
+
     const matchesSearch =
       (o.order_number || o.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       getCustomerName(o).toLowerCase().includes(searchQuery.toLowerCase()) ||
       getCustomerPhone(o).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      formatAddress(o).toLowerCase().includes(searchQuery.toLowerCase());
+      formatAddress(o).toLowerCase().includes(searchQuery.toLowerCase()) ||
+      custId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      acctNum.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || o.status === statusFilter;
     return matchesTab && matchesUsage && matchesSearch && matchesStatus;
@@ -749,12 +769,17 @@ export function AdminOrdersView() {
 
                       {/* Customer Info */}
                       <TableCell className="text-xs">
-                        <div className="font-bold text-foreground">
-                          {getCustomerName(o)}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <span>{getCustomerPhone(o)}</span>
-                        </div>
+                        <CustomerIdentityCell
+                          name={getCustomerName(o)}
+                          customerId={o.customer_id}
+                          accountNumber={
+                            o.customer_account_number ||
+                            customerProfiles[o.customer_id]?.account_number
+                          }
+                          phone={getCustomerPhone(o)}
+                          avatar
+                          layout="table"
+                        />
                       </TableCell>
 
                       {/* Items / Cylinder */}
@@ -914,12 +939,16 @@ export function AdminOrdersView() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/70">
                 <div className="sm:pr-4">
                   <span className="text-xs text-slate-400 font-medium block mb-1">Customer</span>
-                  <p className="font-bold text-slate-900 text-sm truncate">
-                    {orderToAssign.shipping_name || orderToAssign.customer_name || "Customer"}
-                  </p>
-                  <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
-                    {orderToAssign.shipping_phone || orderToAssign.customer_phone || "No phone"}
-                  </p>
+                  <CustomerIdentityCell
+                    name={orderToAssign.shipping_name || orderToAssign.customer_name || "Customer"}
+                    customerId={orderToAssign.customer_id}
+                    accountNumber={
+                      orderToAssign.customer_account_number ||
+                      customerProfiles[orderToAssign.customer_id]?.account_number
+                    }
+                    phone={orderToAssign.shipping_phone || orderToAssign.customer_phone}
+                    layout="table"
+                  />
                 </div>
 
                 <div className="sm:px-4 pt-3 sm:pt-0">
@@ -1275,14 +1304,18 @@ export function AdminOrdersView() {
                 </div>
               )}
 
-              <div className="space-y-1.5 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="font-bold text-slate-400 block">Customer Information</span>
-                <p className="text-sm font-extrabold text-slate-900">
-                  {getCustomerName(selectedOrder)}
-                </p>
-                <p className="text-slate-600">
-                  {getCustomerPhone(selectedOrder)}
-                </p>
+              <CustomerIdentityCell
+                name={getCustomerName(selectedOrder)}
+                customerId={selectedOrder.customer_id}
+                accountNumber={
+                  selectedOrder.customer_account_number ||
+                  customerProfiles[selectedOrder.customer_id]?.account_number
+                }
+                phone={getCustomerPhone(selectedOrder)}
+                layout="detail"
+              />
+              <div className="space-y-1.5 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+                <span className="font-bold text-slate-400 block">Delivery Address</span>
                 <p className="text-slate-600">
                   {formatAddress(selectedOrder)}
                 </p>
@@ -1474,11 +1507,17 @@ export function AdminOrdersView() {
                   #{orderToDelete.order_number || orderToDelete.id.slice(0, 8)}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center gap-2">
                 <span className="text-slate-500 font-medium">Customer:</span>
-                <span className="font-bold text-slate-900">
-                  {orderToDelete.shipping_name || orderToDelete.customer_name || "Guest Customer"}
-                </span>
+                <CustomerIdentityCell
+                  name={orderToDelete.shipping_name || orderToDelete.customer_name || "Guest Customer"}
+                  customerId={orderToDelete.customer_id}
+                  accountNumber={
+                    orderToDelete.customer_account_number ||
+                    customerProfiles[orderToDelete.customer_id]?.account_number
+                  }
+                  layout="inline"
+                />
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500 font-medium">Total:</span>

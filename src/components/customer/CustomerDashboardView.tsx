@@ -6,6 +6,7 @@ import {
   MapPin,
   HelpCircle,
   ArrowRight,
+  ChevronRight,
   Bell,
   Package,
   CheckCircle2,
@@ -27,6 +28,15 @@ import { supabase } from "@/lib/supabase";
 import { getCustomerGasApplication, GasCustomerApplication } from "@/lib/application-service";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 import { cleanImageUrl, cn } from "@/lib/utils";
+
+import ordersImg from "@/assets/quick-actions/orders.png";
+import wishlistImg from "@/assets/quick-actions/wishlist.png";
+import addressesImg from "@/assets/quick-actions/addresses.png";
+import supportImg from "@/assets/quick-actions/support.png";
+import invoicesImg from "@/assets/quick-actions/invoices.png";
+import profileImg from "@/assets/quick-actions/profile.png";
+import notificationsImg from "@/assets/quick-actions/notifications.png";
+import cartImg from "@/assets/quick-actions/cart.png";
 
 interface CustomerOrder {
   id: string;
@@ -276,35 +286,51 @@ export function CustomerDashboardView() {
   const quickActions = [
     {
       label: "My Orders",
-      description: "Track deliveries & invoices",
-      icon: Package,
+      description: "Track deliveries & invoices.",
+      image: ordersImg,
       href: "/account/orders",
-      iconCls: "text-blue-600",
-      bgCls: "bg-blue-50/80 group-hover:bg-blue-100 border border-blue-100",
     },
     {
       label: "Wishlist",
-      description: "Fast reorder saved fuels & gas",
-      icon: Heart,
+      description: "Your saved products.",
+      image: wishlistImg,
       href: "/account/wishlist",
-      iconCls: "text-rose-600",
-      bgCls: "bg-rose-50/80 group-hover:bg-rose-100 border border-rose-100",
     },
     {
       label: "Addresses",
-      description: "Delivery drop-off locations",
-      icon: MapPin,
+      description: "Manage delivery locations.",
+      image: addressesImg,
       href: "/account/addresses",
-      iconCls: "text-emerald-600",
-      bgCls: "bg-emerald-50/80 group-hover:bg-emerald-100 border border-emerald-100",
     },
     {
       label: "Help & Support",
-      description: "Contact Gloucestershire depot",
-      icon: HelpCircle,
+      description: "Get assistance & replies.",
+      image: supportImg,
       href: "/account/support",
-      iconCls: "text-violet-600",
-      bgCls: "bg-violet-50/80 group-hover:bg-violet-100 border border-violet-100",
+    },
+    {
+      label: "Invoices",
+      description: "View & download invoices.",
+      image: invoicesImg,
+      href: "/account/invoices",
+    },
+    {
+      label: "Profile",
+      description: "View & update your details.",
+      image: profileImg,
+      href: "/account/profile",
+    },
+    {
+      label: "Notifications",
+      description: "Stay updated with alerts.",
+      image: notificationsImg,
+      href: "/account/notifications",
+    },
+    {
+      label: "Cart",
+      description: "Review items & checkout.",
+      image: cartImg,
+      href: "/account/cart",
     },
   ];
 
@@ -475,7 +501,62 @@ export function CustomerDashboardView() {
       )}
 
       {/* ============================================================ */}
-      {/* 2. KPI / ACCOUNT STATS                                      */}
+      {/* 3. QUICK ACTIONS (3D REFERENCE DESIGN MATCH)                 */}
+      {/* ============================================================ */}
+      <section className="relative bg-gradient-to-br from-[#fff7f9] via-[#fff5f8] to-[#fdeef2] rounded-3xl sm:rounded-[34px] border border-rose-100/70 p-3.5 sm:p-6 md:p-8 shadow-[0_4px_24px_rgba(244,63,94,0.03)] space-y-4 sm:space-y-6 overflow-hidden">
+        {/* Subtle decorative glow */}
+        <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-bl from-rose-200/30 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-72 h-72 bg-gradient-to-tr from-pink-200/20 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 px-0.5">
+          <h2 className="text-xl sm:text-2xl font-display font-black text-slate-900 tracking-tight">
+            Quick Actions
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+            Instant shortcuts to manage your account, orders, and preferences.
+          </p>
+        </div>
+
+        {/* 2-Column Grid on Mobile, 4-Column Grid on Desktop */}
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
+          {quickActions.map((act) => (
+            <Link
+              key={act.label}
+              to={act.href as never}
+              className="group relative bg-white rounded-[22px] sm:rounded-[28px] border border-rose-100/60 p-3 sm:p-4.5 lg:p-5 min-h-[245px] sm:min-h-[275px] lg:min-h-[295px] flex flex-col justify-between shadow-[0_8px_24px_rgba(244,63,94,0.04),0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_42px_-6px_rgba(225,29,72,0.13)] hover:border-rose-200/90 hover:-translate-y-1.5 transition-all duration-300 ease-out cursor-pointer overflow-hidden motion-reduce:transform-none"
+            >
+              {/* 3D Illustration - Prominent Centered Display (Enlarged by ~18-20%) */}
+              <div className="w-full flex-1 flex items-center justify-center py-1 sm:py-2">
+                <img
+                  src={act.image}
+                  alt={act.label}
+                  className="h-[138px] sm:h-[158px] lg:h-[174px] xl:h-[182px] w-auto max-w-full object-contain pointer-events-none select-none transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 motion-reduce:transform-none"
+                  loading="lazy"
+                />
+              </div>
+
+              {/* Card Footer: Title, Subtitle, and Circular Arrow Button */}
+              <div className="flex items-end justify-between gap-1.5 sm:gap-2.5 pt-2 border-t border-slate-50/80">
+                <div className="min-w-0 pr-0.5 sm:pr-1 flex-1">
+                  <h3 className="font-extrabold font-display text-slate-900 text-sm sm:text-base lg:text-lg tracking-tight group-hover:text-primary transition-colors leading-tight truncate">
+                    {act.label}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] lg:text-xs text-slate-500 font-medium mt-0.5 sm:mt-1 leading-snug line-clamp-1">
+                    {act.description}
+                  </p>
+                </div>
+
+                <div className="h-7 w-7 sm:h-8 sm:w-8 lg:h-8.5 lg:w-8.5 rounded-full bg-[#fcebee] border border-rose-100/80 flex items-center justify-center text-rose-500 shrink-0 group-hover:bg-primary group-hover:text-white group-hover:border-primary group-hover:shadow-md group-hover:shadow-rose-500/25 transition-all duration-300 ease-out">
+                  <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5] transition-transform duration-300 group-hover:translate-x-0.5 motion-reduce:transform-none" />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* 4. KPI / ACCOUNT STATS (DASHBOARD STATISTICS)                */}
       {/* ============================================================ */}
       <div className="grid gap-3.5 sm:gap-4 grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((card) => (
@@ -511,71 +592,6 @@ export function CustomerDashboardView() {
             )}
           </Link>
         ))}
-      </div>
-
-      {/* ============================================================ */}
-      {/* 3. QUICK ACTIONS                                            */}
-      {/* ============================================================ */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between px-0.5">
-          <div>
-            <h2 className="text-base sm:text-lg font-display font-extrabold text-slate-900 tracking-tight">
-              Quick Actions
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Instant shortcuts to manage your orders, saved items, and delivery locations
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
-          {quickActions.map((act) => (
-            <Link
-              key={act.label}
-              to={act.href as never}
-              className="group bg-white p-4 sm:p-5 rounded-[18px] border border-slate-200/90 shadow-xs hover:border-slate-300 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex sm:flex-col items-center sm:items-stretch justify-between gap-3 sm:gap-4"
-            >
-              {/* Top row (Desktop) / Left side (Mobile) */}
-              <div className="flex items-center sm:items-start sm:justify-between gap-3.5 min-w-0 flex-1 sm:flex-initial">
-                <div
-                  className={`p-2.5 sm:p-3 rounded-xl sm:rounded-2xl ${act.bgCls} shrink-0 transition-transform duration-200 group-hover:scale-105`}
-                >
-                  <act.icon className={`h-5 w-5 ${act.iconCls}`} />
-                </div>
-
-                {/* Middle on mobile */}
-                <div className="min-w-0 flex-1 sm:hidden">
-                  <h3 className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors leading-snug truncate">
-                    {act.label}
-                  </h3>
-                  <p className="text-xs text-slate-500 font-medium mt-0.5 leading-normal truncate">
-                    {act.description}
-                  </p>
-                </div>
-
-                {/* Circular Arrow Button (Desktop Top-Right) */}
-                <div className="hidden sm:flex h-7 w-7 rounded-full bg-slate-50 border border-slate-200/70 items-center justify-center text-slate-400 group-hover:text-primary group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors shrink-0">
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </div>
-              </div>
-
-              {/* Desktop Bottom Text Block */}
-              <div className="hidden sm:block">
-                <h3 className="text-sm font-bold text-slate-900 group-hover:text-primary transition-colors leading-snug">
-                  {act.label}
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-normal">
-                  {act.description}
-                </p>
-              </div>
-
-              {/* Circular Arrow Button (Mobile Right) */}
-              <div className="sm:hidden h-8 w-8 rounded-full bg-slate-50 border border-slate-200/70 flex items-center justify-center text-slate-400 group-hover:text-primary group-hover:bg-primary/10 group-hover:border-primary/20 transition-colors shrink-0">
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            </Link>
-          ))}
-        </div>
       </div>
 
       {/* ============================================================ */}

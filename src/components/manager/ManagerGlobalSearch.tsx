@@ -48,7 +48,7 @@ export function ManagerGlobalSearch({
           await Promise.all([
             supabase
               .from("orders")
-              .select("id, order_number, customer_name, total, status")
+              .select("id, order_number, customer_id, customer_name, total, status")
               .ilike("order_number", `%${q}%`)
               .limit(5),
             supabase
@@ -167,8 +167,12 @@ export function ManagerGlobalSearch({
                           <p className="text-xs font-black text-slate-900">
                             #{o.order_number || o.id.slice(0, 8)}
                           </p>
-                          <p className="text-[11px] text-slate-500 font-medium">
-                            {o.customer_name} · £{Number(o.total).toFixed(2)}
+                          <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
+                            <span>{o.customer_name}</span>
+                            {o.customer_id && (
+                              <span className="font-mono text-[10px] text-slate-400">ID: {o.customer_id.slice(0, 8)}…</span>
+                            )}
+                            <span>· £{Number(o.total).toFixed(2)}</span>
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -193,7 +197,10 @@ export function ManagerGlobalSearch({
                         className="w-full flex items-center justify-between p-2.5 rounded-2xl border border-slate-200/80 bg-white hover:bg-slate-50 hover:border-red-500/30 text-left transition-all shadow-2xs cursor-pointer"
                       >
                         <div>
-                          <p className="text-xs font-black text-slate-900">{c.full_name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-black text-slate-900">{c.full_name}</p>
+                            <span className="font-mono text-[10px] text-slate-400">ID: {c.id.slice(0, 8)}…</span>
+                          </div>
                           <p className="text-[11px] text-slate-500 font-medium">{c.email}</p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-slate-400" />

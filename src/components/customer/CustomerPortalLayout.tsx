@@ -38,6 +38,7 @@ import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { CustomerGlobalSearch } from "./CustomerGlobalSearch";
 import { CustomerNotificationsPopover } from "./CustomerNotificationsPopover";
+import { CustomerAccountNumberBadge } from "./CustomerAccountNumberBadge";
 
 import type { LucideIcon } from "lucide-react";
 
@@ -56,6 +57,7 @@ type NavGroup = {
 export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   const { user, authLoading, logout, wishlist, cart } = useStore();
   const cartCount = (cart || []).reduce((acc, l) => acc + l.qty, 0);
+  const wishlistCount = (wishlist || []).length;
   const navigate = useNavigate();
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
@@ -64,6 +66,82 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeDeliveriesCount, setActiveDeliveriesCount] = useState<number>(0);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
+
+  const isHomePage = currentPath === "/account" || currentPath === "/account/";
+  const [accountNumber, setAccountNumber] = useState<string | null>(
+    (user as any)?.account_number || user?.customer_code || null
+  );
+  const [isAccountApproved, setIsAccountApproved] = useState<boolean>(true);
+
+  // Live real-time Supabase query for customer's permanent John Stayte account number & verification status
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchCustomerAccountData() {
+      try {
+        const { data: authUser } = await supabase.auth.getUser();
+        const currentUid = authUser?.user?.id || user?.id;
+        if (!currentUid) return;
+
+        const [{ data: prof }, { data: app }] = await Promise.all([
+          (supabase.from("profiles") as any)
+            .select("account_number, customer_code, account_approved")
+            .eq("id", currentUid)
+            .maybeSingle(),
+          (supabase.from("gas_customer_applications") as any)
+            .select("account_number, customer_code, status")
+            .eq("customer_id", currentUid)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        if (!isMounted) return;
+
+        const resolvedNumber =
+          prof?.account_number ||
+          prof?.customer_code ||
+          app?.account_number ||
+          app?.customer_code ||
+          (user as any)?.account_number ||
+          user?.customer_code ||
+          null;
+
+        const approved = Boolean(
+          prof?.account_approved === true ||
+          app?.status === "APPROVED" ||
+          (resolvedNumber && prof?.account_approved !== false)
+        );
+
+        setAccountNumber(resolvedNumber);
+        setIsAccountApproved(approved);
+      } catch (e) {
+        console.warn("Notice loading customer account number in layout:", e);
+      }
+    }
+
+    fetchCustomerAccountData();
+
+    const channelName = `customer_account_num_${Math.random().toString(36).substring(2, 9)}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => fetchCustomerAccountData()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gas_customer_applications" },
+        () => fetchCustomerAccountData()
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   // Strict role guard: if user is not authenticated or not a customer, redirect appropriately
   useEffect(() => {
@@ -508,6 +586,24 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
             <Search className="h-4 w-4 text-slate-500" />
           </Button>
 
+          {/* Live Wishlist Button */}
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="rounded-lg text-[12px] font-semibold gap-1.5 border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary hover:border-primary/30 h-8 px-2.5 sm:px-3 relative transition-colors"
+          >
+            <Link to="/account/wishlist" aria-label={`View Wishlist, ${wishlistCount} items`}>
+              <Heart className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="hidden sm:inline font-bold">Wishlist</span>
+              {wishlistCount > 0 && (
+                <span className="rounded-full bg-primary text-white px-1.5 py-0.2 text-[10px] font-black leading-tight min-w-[17px] text-center shadow-xs">
+                  {wishlistCount}
+                </span>
+              )}
+            </Link>
+          </Button>
+
           {/* Live Cart Button */}
           <Button
             asChild
@@ -632,7 +728,17 @@ export function CustomerPortalLayout({ children }: { children: ReactNode }) {
 
         {/* MAIN CONTENT AREA */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:px-6 lg:py-6">
-          <div className="w-full max-w-7xl mx-auto space-y-6 animate-rise">{children}</div>
+          <div className="w-full max-w-7xl mx-auto space-y-6 animate-rise">
+            {/* COMPACT JOHN STAYTE ACCOUNT NUMBER BANNER (For all modules except Home dashboard) */}
+            {!isHomePage && (accountNumber || isAccountApproved === false) && (
+              <CustomerAccountNumberBadge
+                accountNumber={accountNumber}
+                variant="banner"
+                isVerified={isAccountApproved}
+              />
+            )}
+            {children}
+          </div>
         </main>
       </div>
     </div>

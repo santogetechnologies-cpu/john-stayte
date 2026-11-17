@@ -30,6 +30,11 @@ import {
   Trash2,
   RefreshCw,
   Image as ImageIcon,
+  ArrowRight,
+  ArrowLeft,
+  SlidersHorizontal,
+  Users,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,19 +42,177 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import {
   submitGasCustomerApplication,
+  getCustomerGasApplication,
   sendApplicationEmailOtp,
   verifyApplicationEmailOtp,
   GasCustomerApplication,
 } from "@/lib/application-service";
 import {
+  saveLocalDraft,
+  saveBackendDraft,
+  loadLatestDraft,
+  clearAllDrafts,
+  GasApplicationDraft,
+} from "@/lib/application-draft-service";
+import {
   normalizeAccountNumber,
   isValidAccountNumberFormat,
 } from "@/lib/account-number-service";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import { ConditionsOfUseContent } from "@/components/site/ConditionsOfUseContent";
+
+// ============================================================================
+// SECTION 4 DEFINITIONS: GAS TYPES & CYLINDER MAPPINGS
+// ============================================================================
+const GAS_TYPES_LIST = [
+  {
+    id: "Propane LPG (Red Bottles - 37mbar POL)",
+    label: "Propane Gas (LPG)",
+    badge: "Red Bottles",
+    detail: "Red Bottles • 37mbar POL • Home Heating, Cooking & Outdoor",
+    accent: "border-red-200/80 bg-red-50/40 text-red-950",
+  },
+  {
+    id: "Butane Gas (Blue Bottles - 28mbar 21mm)",
+    label: "Butane Gas",
+    badge: "Blue Bottles",
+    detail: "Blue Bottles • 28mbar Clip • Indoor Portable Heaters & Caravans",
+    accent: "border-blue-200/80 bg-blue-50/40 text-blue-950",
+  },
+  {
+    id: "Patio Gas (Green Bottles - 27mm Clip-on)",
+    label: "Patio Gas / BBQ",
+    badge: "Green Bottles",
+    detail: "Green Bottles • 27mm Clip • Patio Heaters, BBQs & Pizza Ovens",
+    accent: "border-emerald-200/80 bg-emerald-50/40 text-emerald-950",
+  },
+  {
+    id: "Forklift FLT Gas (Liquid Offtake)",
+    label: "Forklift Gas (FLT)",
+    badge: "Red Cylinders",
+    detail: "Red Cylinders • Liquid Offtake • Warehouse & Industrial Forklifts",
+    accent: "border-amber-200/80 bg-amber-50/40 text-amber-950",
+  },
+  {
+    id: "Cellar & Beverage Dispense Gas (CO2 / Mixed)",
+    label: "Cellar & Dispense Gas",
+    badge: "Air Liquide CO2",
+    detail: "Air Liquide CO2 & Mixed Gas • Pub Draught Line Dispense",
+    accent: "border-purple-200/80 bg-purple-50/40 text-purple-950",
+  },
+  {
+    id: "Autogas (Vehicle LPG Refuelling)",
+    label: "Automotive Autogas",
+    badge: "Road LPG",
+    detail: "Road LPG Fuel • Vehicle Refuelling & Adapters",
+    accent: "border-sky-200/80 bg-sky-50/40 text-sky-950",
+  },
+  {
+    id: "Solid Fuel & Kiln Dried Logs",
+    label: "Solid Fuel & Firewood",
+    badge: "Hardwood & Coal",
+    detail: "Kiln Dried Hardwood Logs, Smokeless Coal & Kindling",
+    accent: "border-stone-200/80 bg-stone-50/40 text-stone-950",
+  },
+];
+
+const ALL_CYLINDER_SIZES = [
+  {
+    id: "47kg Propane (Heavy Commercial)",
+    label: "47kg Propane",
+    desc: "Heavy Heating / 2-4 Bank",
+    category: "Propane LPG",
+    gasTypeIds: ["Propane LPG (Red Bottles - 37mbar POL)"],
+  },
+  {
+    id: "19kg Propane (Catering/Trade)",
+    label: "19kg Propane",
+    desc: "Catering & Roofing",
+    category: "Propane LPG",
+    gasTypeIds: ["Propane LPG (Red Bottles - 37mbar POL)"],
+  },
+  {
+    id: "13kg Propane (Domestic Heating & Cooking)",
+    label: "13kg Propane",
+    desc: "Domestic Ranges",
+    category: "Propane LPG",
+    gasTypeIds: ["Propane LPG (Red Bottles - 37mbar POL)"],
+  },
+  {
+    id: "6kg / 3.9kg Propane (Caravans)",
+    label: "6kg Propane",
+    desc: "Caravans & Boats",
+    category: "Propane LPG",
+    gasTypeIds: ["Propane LPG (Red Bottles - 37mbar POL)"],
+  },
+  {
+    id: "18kg FLT (Forklift Offtake)",
+    label: "18kg FLT",
+    desc: "Forklift Trucks",
+    category: "Forklift Gas",
+    gasTypeIds: ["Forklift FLT Gas (Liquid Offtake)"],
+  },
+  {
+    id: "15kg Butane (Indoor Heaters)",
+    label: "15kg Butane",
+    desc: "Indoor Portable",
+    category: "Butane Gas",
+    gasTypeIds: ["Butane Gas (Blue Bottles - 28mbar 21mm)"],
+  },
+  {
+    id: "7kg Butane (Caravans)",
+    label: "7kg Butane",
+    desc: "Compact Indoor",
+    category: "Butane Gas",
+    gasTypeIds: ["Butane Gas (Blue Bottles - 28mbar 21mm)"],
+  },
+  {
+    id: "13kg Patio Gas (BBQ & Patio Heaters)",
+    label: "13kg Patio",
+    desc: "Large BBQ / Heaters",
+    category: "Patio Gas",
+    gasTypeIds: ["Patio Gas (Green Bottles - 27mm Clip-on)"],
+  },
+  {
+    id: "5kg Patio Gas (Compact BBQ)",
+    label: "5kg Patio",
+    desc: "Compact BBQ",
+    category: "Patio Gas",
+    gasTypeIds: ["Patio Gas (Green Bottles - 27mm Clip-on)"],
+  },
+  {
+    id: "Bulk Propane / Autogas",
+    label: "Bulk / Autogas",
+    desc: "Bulk Road Delivery",
+    category: "Bulk / Road LPG",
+    gasTypeIds: [
+      "Autogas (Vehicle LPG Refuelling)",
+      "Propane LPG (Red Bottles - 37mbar POL)",
+      "Cellar & Beverage Dispense Gas (CO2 / Mixed)",
+      "Solid Fuel & Kiln Dried Logs",
+    ],
+  },
+];
+
+function getAvailableCylinderSizes(selectedGas: string[]) {
+  if (!selectedGas || selectedGas.length === 0) return ALL_CYLINDER_SIZES;
+  const filtered = ALL_CYLINDER_SIZES.filter((sz) =>
+    sz.gasTypeIds.some((gid) => selectedGas.includes(gid)),
+  );
+  return filtered.length > 0 ? filtered : ALL_CYLINDER_SIZES;
+}
 
 interface GasCustomerApplicationFormProps {
   initialUsage?: "DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS";
@@ -65,6 +228,11 @@ export function GasCustomerApplicationForm({
   embedded = false,
 }: GasCustomerApplicationFormProps) {
   const { user } = useStore();
+  const [activeCustomerId, setActiveCustomerId] = useState<string>(user?.id || "");
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const hasRestoredDraftRef = useRef(false);
+  const isRestoringRef = useRef(false);
 
   // =========================================================================
   // SECTION 1: CUSTOMER PERSONAL DETAILS
@@ -138,14 +306,10 @@ export function GasCustomerApplicationForm({
   // =========================================================================
   // SECTION 4: GAS & CYLINDER REQUIREMENTS (MULTI-SELECT)
   // =========================================================================
-  const [selectedGasTypes, setSelectedGasTypes] = useState<string[]>([
-    "Propane LPG (Red Bottles - 37mbar POL)",
-    "Patio Gas (Green Bottles - 27mm Clip-on)",
-  ]);
-  const [selectedCylinderSizes, setSelectedCylinderSizes] = useState<string[]>([
-    "13kg Propane (Domestic Heating & Cooking)",
-    "13kg Patio Gas (BBQ & Patio Heaters)",
-  ]);
+  const [selectedGasTypes, setSelectedGasTypes] = useState<string[]>([]);
+  const [selectedCylinderSizes, setSelectedCylinderSizes] = useState<string[]>([]);
+  const [isCylinderModalOpen, setIsCylinderModalOpen] = useState(false);
+  const [hasConfirmedCylinderSizes, setHasConfirmedCylinderSizes] = useState(false);
   const [existingCylinderStatus, setExistingCylinderStatus] = useState(
     "New Customer (No Existing Cylinders)",
   );
@@ -162,6 +326,7 @@ export function GasCustomerApplicationForm({
   // =========================================================================
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
   const [storageConfirmed, setStorageConfirmed] = useState(false);
+  const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
 
   // =========================================================================
   // SECTION 6: EMAIL VERIFICATION (DIRECTLY ABOVE SIGNATURE)
@@ -205,6 +370,283 @@ export function GasCustomerApplicationForm({
       hasInitializedUserRef.current = true;
     }
   }, [user]);
+
+  // Resolve active authenticated customer ID
+  useEffect(() => {
+    if (user?.id) {
+      setActiveCustomerId(user.id);
+      return;
+    }
+    let mounted = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (mounted && data?.user?.id) {
+        setActiveCustomerId(data.user.id);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
+
+  // Restore latest application draft (or detect already-submitted application)
+  useEffect(() => {
+    if (!activeCustomerId || hasRestoredDraftRef.current) return;
+
+    let isCancelled = false;
+
+    async function restoreDraft() {
+      isRestoringRef.current = true;
+      try {
+        // If the customer already has an active, submitted application, do not show draft
+        const existingApp = await getCustomerGasApplication(activeCustomerId).catch(() => null);
+        if (
+          existingApp &&
+          existingApp.status &&
+          existingApp.status !== "NOT_COMPLETED" &&
+          !onCancel
+        ) {
+          await clearAllDrafts(activeCustomerId).catch(() => {});
+          if (!isCancelled && onSuccess) {
+            onSuccess(existingApp);
+            return;
+          }
+        }
+
+        const draft = await loadLatestDraft(activeCustomerId);
+        if (draft && !isCancelled) {
+          // Section 1: Personal Details
+          if (draft.title !== undefined) setTitle(draft.title);
+          if (draft.fullName !== undefined) setFullName(draft.fullName);
+          if (draft.dateOfBirth !== undefined) setDateOfBirth(draft.dateOfBirth);
+          if (draft.phone !== undefined) setPhone(draft.phone);
+          if (draft.altPhone !== undefined) setAltPhone(draft.altPhone);
+          if (draft.email !== undefined) setEmail(draft.email);
+          if (draft.preferredContactMethod !== undefined)
+            setPreferredContactMethod(draft.preferredContactMethod);
+
+          // Section 2: Delivery & Site Information
+          if (draft.houseNumberOrName !== undefined)
+            setHouseNumberOrName(draft.houseNumberOrName);
+          if (draft.streetAddress !== undefined) setStreetAddress(draft.streetAddress);
+          if (draft.city !== undefined) setCity(draft.city);
+          if (draft.county !== undefined) setCounty(draft.county);
+          if (draft.postcode !== undefined) setPostcode(draft.postcode);
+          if (draft.deliveryNotes !== undefined) setDeliveryNotes(draft.deliveryNotes);
+          if (draft.hasDifferentDelivery !== undefined)
+            setHasDifferentDelivery(draft.hasDifferentDelivery);
+          if (draft.deliveryAddress !== undefined) setDeliveryAddress(draft.deliveryAddress);
+          if (draft.hasDifferentBilling !== undefined)
+            setHasDifferentBilling(draft.hasDifferentBilling);
+          if (draft.billingAddress !== undefined) setBillingAddress(draft.billingAddress);
+
+          // Section 3: Gas Usage & Customer Classification
+          if (draft.customerType !== undefined) setCustomerType(draft.customerType);
+          if (draft.hasPreviousPurchases !== undefined)
+            setHasPreviousPurchases(draft.hasPreviousPurchases);
+          if (draft.previousAccountDetails !== undefined)
+            setPreviousAccountDetails(draft.previousAccountDetails);
+          if (draft.knowsAccountNumber !== undefined)
+            setKnowsAccountNumber(draft.knowsAccountNumber);
+          if (draft.selectedUsages !== undefined && Array.isArray(draft.selectedUsages))
+            setSelectedUsages(draft.selectedUsages);
+          if (draft.estimatedConsumption !== undefined)
+            setEstimatedConsumption(draft.estimatedConsumption);
+          if (draft.primaryAppliances !== undefined && Array.isArray(draft.primaryAppliances))
+            setPrimaryAppliances(draft.primaryAppliances);
+          if (draft.businessName !== undefined) setBusinessName(draft.businessName);
+          if (draft.tradingName !== undefined) setTradingName(draft.tradingName);
+          if (draft.companyRegOrVat !== undefined) setCompanyRegOrVat(draft.companyRegOrVat);
+          if (draft.businessType !== undefined) setBusinessType(draft.businessType);
+          if (draft.businessAddress !== undefined) setBusinessAddress(draft.businessAddress);
+          if (draft.businessContact !== undefined) setBusinessContact(draft.businessContact);
+
+          // Section 4: Gas & Cylinder Requirements
+          if (draft.selectedGasTypes !== undefined && Array.isArray(draft.selectedGasTypes))
+            setSelectedGasTypes(draft.selectedGasTypes);
+          if (
+            draft.selectedCylinderSizes !== undefined &&
+            Array.isArray(draft.selectedCylinderSizes)
+          )
+            setSelectedCylinderSizes(draft.selectedCylinderSizes);
+          if (draft.hasConfirmedCylinderSizes !== undefined)
+            setHasConfirmedCylinderSizes(draft.hasConfirmedCylinderSizes);
+          if (draft.existingCylinderStatus !== undefined)
+            setExistingCylinderStatus(draft.existingCylinderStatus);
+          if (draft.initialQuantity !== undefined)
+            setInitialQuantity(draft.initialQuantity);
+          if (draft.storageLocation !== undefined)
+            setStorageLocation(draft.storageLocation);
+          if (draft.regulatorType !== undefined) setRegulatorType(draft.regulatorType);
+
+          // Section 5: Safety Compliance & Agreement
+          if (draft.declarationAccepted !== undefined)
+            setDeclarationAccepted(draft.declarationAccepted);
+          if (draft.storageConfirmed !== undefined)
+            setStorageConfirmed(draft.storageConfirmed);
+
+          // Section 6: Verified Email (Safely restore if verified email matches current email)
+          if (
+            draft.verifiedEmail &&
+            draft.email &&
+            draft.verifiedEmail.trim().toLowerCase() === draft.email.trim().toLowerCase()
+          ) {
+            setVerifiedEmail(draft.verifiedEmail);
+            setVerificationStep("VERIFIED");
+            setOtpSentTo(draft.verifiedEmail);
+          }
+
+          setDraftStatus("saved");
+          if (draft.updatedAt) {
+            try {
+              const d = new Date(draft.updatedAt);
+              setLastSavedTime(
+                d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              );
+            } catch {
+              setLastSavedTime(null);
+            }
+          }
+        }
+      } finally {
+        if (!isCancelled) {
+          hasRestoredDraftRef.current = true;
+          isRestoringRef.current = false;
+        }
+      }
+    }
+
+    restoreDraft();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeCustomerId, onCancel, onSuccess]);
+
+  // Automatic Draft Saving: Persists locally immediately & debounces backend sync
+  useEffect(() => {
+    if (!activeCustomerId || !hasRestoredDraftRef.current || isRestoringRef.current) {
+      return;
+    }
+
+    const draftData: GasApplicationDraft = {
+      customerId: activeCustomerId,
+      updatedAt: new Date().toISOString(),
+      // Section 1
+      title,
+      fullName,
+      dateOfBirth,
+      phone,
+      altPhone,
+      email,
+      preferredContactMethod,
+      // Section 2
+      houseNumberOrName,
+      streetAddress,
+      city,
+      county,
+      postcode,
+      deliveryNotes,
+      hasDifferentDelivery,
+      deliveryAddress,
+      hasDifferentBilling,
+      billingAddress,
+      // Section 3
+      customerType,
+      hasPreviousPurchases,
+      previousAccountDetails,
+      knowsAccountNumber,
+      selectedUsages,
+      estimatedConsumption,
+      primaryAppliances,
+      businessName,
+      tradingName,
+      companyRegOrVat,
+      businessType,
+      businessAddress,
+      businessContact,
+      // Section 4
+      selectedGasTypes,
+      selectedCylinderSizes,
+      hasConfirmedCylinderSizes,
+      existingCylinderStatus,
+      initialQuantity,
+      storageLocation,
+      regulatorType,
+      // Section 5
+      declarationAccepted,
+      storageConfirmed,
+      // Section 6 (only store verifiedEmail if verifiedEmail matches current email)
+      verifiedEmail:
+        verifiedEmail && verifiedEmail.trim().toLowerCase() === email.trim().toLowerCase()
+          ? verifiedEmail
+          : null,
+    };
+
+    // Save immediately to isolated local storage
+    saveLocalDraft(activeCustomerId, draftData);
+    setDraftStatus("saving");
+
+    // Debounce save to Supabase backend (800ms)
+    const timer = setTimeout(async () => {
+      try {
+        await saveBackendDraft(activeCustomerId, draftData);
+      } catch (err) {
+        console.warn("Backend draft save failed, local draft remains intact:", err);
+      } finally {
+        setDraftStatus("saved");
+        const now = new Date();
+        setLastSavedTime(
+          now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        );
+      }
+    }, 800);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    activeCustomerId,
+    title,
+    fullName,
+    dateOfBirth,
+    phone,
+    altPhone,
+    email,
+    preferredContactMethod,
+    houseNumberOrName,
+    streetAddress,
+    city,
+    county,
+    postcode,
+    deliveryNotes,
+    hasDifferentDelivery,
+    deliveryAddress,
+    hasDifferentBilling,
+    billingAddress,
+    customerType,
+    hasPreviousPurchases,
+    previousAccountDetails,
+    knowsAccountNumber,
+    selectedUsages,
+    estimatedConsumption,
+    primaryAppliances,
+    businessName,
+    tradingName,
+    companyRegOrVat,
+    businessType,
+    businessAddress,
+    businessContact,
+    selectedGasTypes,
+    selectedCylinderSizes,
+    hasConfirmedCylinderSizes,
+    existingCylinderStatus,
+    initialQuantity,
+    storageLocation,
+    regulatorType,
+    declarationAccepted,
+    storageConfirmed,
+    verifiedEmail,
+  ]);
 
   // Countdown timer for resending OTP
   useEffect(() => {
@@ -322,23 +764,33 @@ export function GasCustomerApplicationForm({
 
   const toggleGasType = (gasName: string) => {
     setSelectedGasTypes((prev) =>
-      prev.includes(gasName)
-        ? prev.length > 1
-          ? prev.filter((g) => g !== gasName)
-          : (toast.info("Select at least one gas type requirement."), prev)
-        : [...prev, gasName],
+      prev.includes(gasName) ? prev.filter((g) => g !== gasName) : [...prev, gasName],
     );
   };
 
   const toggleCylinderSize = (sizeName: string) => {
     setSelectedCylinderSizes((prev) =>
-      prev.includes(sizeName)
-        ? prev.length > 1
-          ? prev.filter((s) => s !== sizeName)
-          : (toast.info("Select at least one cylinder size."), prev)
-        : [...prev, sizeName],
+      prev.includes(sizeName) ? prev.filter((s) => s !== sizeName) : [...prev, sizeName],
     );
   };
+
+  // Synchronize available cylinder sizes when gas type selection changes
+  useEffect(() => {
+    if (selectedGasTypes.length === 0) {
+      setSelectedCylinderSizes([]);
+      setHasConfirmedCylinderSizes(false);
+      return;
+    }
+    const available = getAvailableCylinderSizes(selectedGasTypes);
+    const availableIds = new Set(available.map((a) => a.id));
+    setSelectedCylinderSizes((prev) => {
+      const valid = prev.filter((id) => availableIds.has(id));
+      if (valid.length === 0 && prev.length > 0) {
+        setHasConfirmedCylinderSizes(false);
+      }
+      return valid;
+    });
+  }, [selectedGasTypes]);
 
   const toggleAppliance = (applianceName: string) => {
     setPrimaryAppliances((prev) =>
@@ -610,6 +1062,15 @@ export function GasCustomerApplicationForm({
       return toast.error("Please enter your registered business name for commercial onboarding.");
     }
 
+    if (selectedGasTypes.length === 0) {
+      return toast.error("Please select at least one gas type requirement in Section 4.");
+    }
+
+    if (selectedCylinderSizes.length === 0) {
+      setIsCylinderModalOpen(true);
+      return toast.error("Please select your cylinder size requirements in Section 4.");
+    }
+
     if (!declarationAccepted || !storageConfirmed) {
       return toast.error("Please review and accept both safety declaration checkboxes before proceeding.");
     }
@@ -738,6 +1199,12 @@ export function GasCustomerApplicationForm({
         signatureData,
       });
 
+      const targetDraftId = activeCustomerId || user.id;
+      if (targetDraftId) {
+        await clearAllDrafts(targetDraftId).catch(() => {});
+      }
+      setDraftStatus("idle");
+
       toast.success("Gas Customer Application submitted successfully! Status: Pending Approval.");
       if (onSuccess) {
         onSuccess(savedApp);
@@ -759,9 +1226,41 @@ export function GasCustomerApplicationForm({
     >
       {/* Header Banner */}
       <div className="space-y-2 border-b border-slate-100 pb-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-red-600">
-          <Flame className="h-3.5 w-3.5 text-primary" />
-          <span>Official Calor Gas Distributor • Customer Onboarding Application</span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3.5 py-1 text-[11px] font-extrabold uppercase tracking-wider text-red-600">
+            <Flame className="h-3.5 w-3.5 text-primary" />
+            <span>Official Calor Gas Distributor • Customer Onboarding Application</span>
+          </div>
+
+          {/* Draft Auto-Save Status Indicator */}
+          {draftStatus !== "idle" && (
+            <div
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-300",
+                draftStatus === "saving"
+                  ? "bg-amber-50 text-amber-700 border border-amber-200"
+                  : "bg-emerald-50 text-emerald-700 border border-emerald-200",
+              )}
+              title={lastSavedTime ? `Last saved at ${lastSavedTime}` : undefined}
+            >
+              {draftStatus === "saving" ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-600" />
+                  <span>Saving…</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Draft saved</span>
+                  {lastSavedTime && (
+                    <span className="text-[11px] font-normal text-emerald-600/80 hidden sm:inline">
+                      ({lastSavedTime})
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-display">
           Gas Customer Application &amp; Account Registration
@@ -871,8 +1370,20 @@ export function GasCustomerApplicationForm({
             />
           </div>
 
-          <div className="space-y-1 sm:col-span-2 lg:col-span-4">
-            <Label className="text-xs font-bold text-slate-700">Preferred Contact Method</Label>
+          <div className="sm:col-span-2 lg:col-span-4 p-3.5 rounded-2xl bg-gradient-to-r from-amber-50/70 via-amber-50/30 to-transparent border border-amber-200/80 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200/60">
+                <Phone className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Preferred Contact Method
+                </Label>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  Select your primary communication channel for order dispatches and delivery updates
+                </p>
+              </div>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {[
                 { id: "Phone", label: "Telephone Call" },
@@ -886,8 +1397,8 @@ export function GasCustomerApplicationForm({
                   className={cn(
                     "h-10 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                     preferredContactMethod === m.id
-                      ? "border-primary bg-red-50 text-primary ring-1 ring-primary"
-                      : "border-slate-200 bg-slate-50/50 text-slate-700 hover:bg-slate-100",
+                      ? "border-amber-600 bg-amber-500 text-white shadow-xs font-black"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
                   )}
                 >
                   {m.label}
@@ -978,25 +1489,39 @@ export function GasCustomerApplicationForm({
           </div>
 
           {/* Delivery & Billing Toggles */}
-          <div className="sm:col-span-2 lg:col-span-4 space-y-3 pt-1 border-t border-slate-100">
+          <div className="sm:col-span-2 lg:col-span-4 p-4 rounded-2xl bg-gradient-to-r from-sky-50/70 via-sky-50/30 to-transparent border border-sky-200/80 space-y-3">
+            <div className="flex items-center gap-2 pb-1 border-b border-sky-200/60">
+              <div className="h-6 w-6 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0 border border-sky-200/60">
+                <Truck className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Alternative Delivery &amp; Billing Arrangements
+                </p>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  Configure secondary delivery drop-offs or head office billing addresses
+                </p>
+              </div>
+            </div>
+
             <label className="flex items-center gap-2.5 cursor-pointer text-xs font-bold text-slate-700">
               <input
                 type="checkbox"
                 checked={hasDifferentDelivery}
                 onChange={(e) => setHasDifferentDelivery(e.target.checked)}
-                className="h-4 w-4 rounded text-primary focus:ring-primary"
+                className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
               />
               <span>Delivery drop-off address is different from primary premises address</span>
             </label>
 
             {hasDifferentDelivery && (
-              <div className="space-y-1 pl-6 pt-1">
+              <div className="space-y-1 pl-6 pt-1 animate-in fade-in-50 duration-200">
                 <Label className="text-xs font-bold text-slate-700">Dedicated Drop-Off Address *</Label>
                 <Input
                   value={deliveryAddress}
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                   placeholder="e.g. Rear Yard / Farm Barn Access, Whitminster Lane, GL10 3RA"
-                  className="rounded-xl h-11 text-xs"
+                  className="rounded-xl h-11 text-xs bg-white"
                 />
               </div>
             )}
@@ -1006,20 +1531,20 @@ export function GasCustomerApplicationForm({
                 type="checkbox"
                 checked={hasDifferentBilling}
                 onChange={(e) => setHasDifferentBilling(e.target.checked)}
-                className="h-4 w-4 rounded text-primary focus:ring-primary"
+                className="h-4 w-4 rounded text-sky-600 focus:ring-sky-500"
               />
               <span>Billing address is different from delivery address (e.g. Accounts Dept / Head Office)</span>
             </label>
 
             {hasDifferentBilling && (
-              <div className="space-y-1 pl-6 pt-1">
+              <div className="space-y-1 pl-6 pt-1 animate-in fade-in-50 duration-200">
                 <Label className="text-xs font-bold text-slate-700">Billing Address &amp; Postcode *</Label>
                 <Textarea
                   rows={2}
                   value={billingAddress}
                   onChange={(e) => setBillingAddress(e.target.value)}
                   placeholder="Full legal billing address for invoices..."
-                  className="rounded-xl text-xs"
+                  className="rounded-xl text-xs bg-white"
                 />
               </div>
             )}
@@ -1049,10 +1574,25 @@ export function GasCustomerApplicationForm({
         </div>
 
         {/* 3.A CUSTOMER TYPE SELECTION: HOME VS BUSINESS */}
-        <div className="space-y-2">
-          <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
-            Customer Type <span className="text-primary">*</span>
-          </Label>
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-rose-50/80 via-rose-50/30 to-transparent border border-rose-200/80">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center shrink-0 border border-rose-200/60">
+                <Users className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Customer Account Classification <span className="text-primary">*</span>
+                </Label>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  Select your primary account category for household or business gas supply
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-rose-100 text-rose-800 border border-rose-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full hidden sm:inline-flex">
+              {customerType === "HOME" ? "Home Account" : "Business Account"}
+            </Badge>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
@@ -1117,14 +1657,19 @@ export function GasCustomerApplicationForm({
         </div>
 
         {/* 3.B PREVIOUS CUSTOMER CHECK */}
-        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
-          <div className="space-y-0.5">
-            <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
-              Have you previously purchased from John Stayte Services? <span className="text-primary">*</span>
-            </Label>
-            <p className="text-[11px] text-slate-500">
-              Let us know if you already have an existing paper depot account or previous purchase record.
-            </p>
+        <div className="space-y-3 rounded-2xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/70 via-indigo-50/30 to-transparent p-4 sm:p-5">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-indigo-200/60">
+            <div className="h-6 w-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 border border-indigo-200/60">
+              <History className="h-3.5 w-3.5" />
+            </div>
+            <div>
+              <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Previous Supply History &amp; Account Lookup <span className="text-primary">*</span>
+              </Label>
+              <p className="text-[10px] text-slate-500 font-medium">
+                Check if you already have an existing John Stayte paper depot account or purchase record
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -1233,7 +1778,28 @@ export function GasCustomerApplicationForm({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* 3.C GAS USAGE CATEGORIES */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-amber-50/80 via-amber-50/30 to-transparent border border-amber-200/80">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200/60">
+                <Flame className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <Label className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Gas Usage Categories (Select All That Apply)
+                </Label>
+                <p className="text-[10px] text-slate-500 font-medium">
+                  Identify your intended fuel usage for tailored pricing and cylinder allocation
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-amber-100 text-amber-800 border border-amber-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full hidden sm:inline-flex">
+              {selectedUsages.length} Active
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             {
               type: "DOMESTIC" as const,
@@ -1293,6 +1859,7 @@ export function GasCustomerApplicationForm({
             );
           })}
         </div>
+      </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div className="space-y-1">
@@ -1357,10 +1924,20 @@ export function GasCustomerApplicationForm({
 
         {/* Dynamic Business Information for Commercial / Bulk */}
         {isCommercialOrBulk && (
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-5 space-y-4 animate-in fade-in-50 duration-200">
-            <p className="text-xs font-black text-blue-900 flex items-center gap-1.5 uppercase tracking-wider">
-              <Building2 className="h-4 w-4 text-blue-600" /> Commercial Business &amp; Trade Information
-            </p>
+          <div className="rounded-2xl border border-blue-200/90 bg-gradient-to-br from-blue-50/80 via-blue-50/40 to-transparent p-5 space-y-4 animate-in fade-in-50 duration-200 shadow-2xs">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-blue-200/70">
+              <div className="h-6 w-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200/60">
+                <Building2 className="h-3.5 w-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-blue-950 uppercase tracking-wider">
+                  Commercial Business &amp; Trade Information
+                </p>
+                <p className="text-[10px] text-blue-700 font-medium">
+                  Company registration, industry sector, and trade billing contacts
+                </p>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-1">
@@ -1439,7 +2016,7 @@ export function GasCustomerApplicationForm({
       {/* SECTION 4: GAS & CYLINDER REQUIREMENTS (MULTI-SELECT) */}
       {/* ========================================================================= */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
               <span className="flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-primary text-xs font-black">
@@ -1447,70 +2024,50 @@ export function GasCustomerApplicationForm({
               </span>
               <Package className="h-4 w-4 text-primary" /> Gas &amp; Cylinder Requirements
             </h3>
-            <p className="text-[11px] text-slate-500 font-medium">
-              Multi-Select: Choose any gas types and cylinder sizes you require. You can purchase any
-              catalogue items anytime.
+            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+              Two-Step Selection: First select your gas requirements, then configure the relevant cylinder sizes.
             </p>
           </div>
         </div>
 
-        {/* 4A: Gas Types / Products Required (Multi-Select) */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span>Gas Types / Products Required (Multi-Select)</span>
-              <Badge variant="secondary" className="text-[10px] font-bold">
-                {selectedGasTypes.length} Selected
-              </Badge>
-            </Label>
-            <span className="text-[10px] text-slate-400 font-medium">Click to select multiple</span>
+        {/* ========================================================================= */}
+        {/* DIVISION 1: GAS TYPES / PRODUCTS REQUIRED (STEP 1) */}
+        {/* ========================================================================= */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-red-50/80 via-red-50/30 to-transparent border border-red-200/80">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-lg bg-red-100 text-primary flex items-center justify-center shrink-0 border border-red-200/70">
+                <Flame className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Gas Types / Products Required (Multi-Select)
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors",
+                      selectedGasTypes.length > 0
+                        ? "bg-primary text-white border border-primary/20"
+                        : "bg-white text-slate-600 border border-slate-200",
+                    )}
+                  >
+                    {selectedGasTypes.length > 0 ? `${selectedGasTypes.length} Selected` : "Step 1"}
+                  </Badge>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                  Step 1: Choose the gas types or fuels required for your appliances and site.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] text-slate-500 font-semibold bg-white/80 border border-slate-200/80 px-2.5 py-1 rounded-full shrink-0 self-start sm:self-auto shadow-2xs">
+              Click to select multiple
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {[
-              {
-                id: "Propane LPG (Red Bottles - 37mbar POL)",
-                label: "Propane Gas (LPG)",
-                detail: "Red Bottles • 37mbar POL • Home Heating, Cooking & Outdoor",
-                color: "border-red-300 bg-red-50/40 text-red-950",
-              },
-              {
-                id: "Butane Gas (Blue Bottles - 28mbar 21mm)",
-                label: "Butane Gas",
-                detail: "Blue Bottles • 28mbar Clip • Indoor Portable Heaters & Caravans",
-                color: "border-blue-300 bg-blue-50/40 text-blue-950",
-              },
-              {
-                id: "Patio Gas (Green Bottles - 27mm Clip-on)",
-                label: "Patio Gas / BBQ",
-                detail: "Green Bottles • 27mm Clip • Patio Heaters, BBQs & Pizza Ovens",
-                color: "border-emerald-300 bg-emerald-50/40 text-emerald-950",
-              },
-              {
-                id: "Forklift FLT Gas (Liquid Offtake)",
-                label: "Forklift Gas (FLT)",
-                detail: "Red Cylinders • Liquid Offtake • Warehouse & Industrial Forklifts",
-                color: "border-amber-300 bg-amber-50/40 text-amber-950",
-              },
-              {
-                id: "Cellar & Beverage Dispense Gas (CO2 / Mixed)",
-                label: "Cellar & Dispense Gas",
-                detail: "Air Liquide CO2 & Mixed Gas • Pub Draught Line Dispense",
-                color: "border-purple-300 bg-purple-50/40 text-purple-950",
-              },
-              {
-                id: "Autogas (Vehicle LPG Refuelling)",
-                label: "Automotive Autogas",
-                detail: "Road LPG Fuel • Vehicle Refuelling & Adapters",
-                color: "border-sky-300 bg-sky-50/40 text-sky-950",
-              },
-              {
-                id: "Solid Fuel & Kiln Dried Logs",
-                label: "Solid Fuel & Firewood",
-                detail: "Kiln Dried Hardwood Logs, Smokeless Coal & Kindling",
-                color: "border-stone-300 bg-stone-50/40 text-stone-950",
-              },
-            ].map((g) => {
+            {GAS_TYPES_LIST.map((g) => {
               const isChecked = selectedGasTypes.includes(g.id);
               return (
                 <button
@@ -1518,22 +2075,29 @@ export function GasCustomerApplicationForm({
                   type="button"
                   onClick={() => toggleGasType(g.id)}
                   className={cn(
-                    "p-3 rounded-xl border text-left transition-all cursor-pointer flex items-start justify-between gap-2",
+                    "p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-start justify-between gap-2.5 group",
                     isChecked
-                      ? cn("ring-2 ring-primary/20", g.color)
-                      : "border-slate-200 bg-white hover:border-slate-300 text-slate-600",
+                      ? "border-primary/50 bg-gradient-to-br from-red-50/60 via-white to-red-50/20 ring-1 ring-primary/30 shadow-xs"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 shadow-xs text-slate-600",
                   )}
                 >
-                  <div className="space-y-0.5">
-                    <p className="font-extrabold text-xs text-slate-900">{g.label}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-extrabold text-xs text-slate-900 group-hover:text-primary transition-colors">
+                        {g.label}
+                      </p>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100/90 text-slate-600 border border-slate-200/60">
+                        {g.badge}
+                      </span>
+                    </div>
                     <p className="text-[10px] text-slate-500 leading-tight">{g.detail}</p>
                   </div>
                   <div
                     className={cn(
-                      "h-5 w-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+                      "h-5 w-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
                       isChecked
-                        ? "bg-primary border-primary text-white"
-                        : "border-slate-300 bg-white",
+                        ? "bg-primary border-primary text-white shadow-xs"
+                        : "border-slate-300 bg-white group-hover:border-slate-400",
                     )}
                   >
                     {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
@@ -1542,68 +2106,278 @@ export function GasCustomerApplicationForm({
               );
             })}
           </div>
+
+          {/* Action Callout Bar to Step 2 */}
+          {selectedGasTypes.length > 0 ? (
+            <div className="p-3.5 sm:p-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-red-50/70 via-white to-red-50/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="space-y-0.5 text-left">
+                <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                  <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  <span>Step 2: Cylinder Size Selection</span>
+                  <Badge className="bg-primary text-white text-[10px] font-bold px-2 py-0.2 rounded-full">
+                    {selectedCylinderSizes.length > 0
+                      ? `${selectedCylinderSizes.length} Selected`
+                      : "Required"}
+                  </Badge>
+                </p>
+                <p className="text-[11px] text-slate-600 font-medium">
+                  {selectedCylinderSizes.length > 0
+                    ? `Cylinder sizes configured for your ${selectedGasTypes.length} gas requirement(s). Click to review or update.`
+                    : `${selectedGasTypes.length} gas type(s) selected. Click to select your matching cylinder sizes.`}
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => setIsCylinderModalOpen(true)}
+                className="w-full sm:w-auto h-10 px-5 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-xs hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                <Package className="h-4 w-4" />
+                <span>
+                  {hasConfirmedCylinderSizes && selectedCylinderSizes.length > 0
+                    ? "Change Cylinder Sizes"
+                    : "Select Cylinder Sizes"}
+                </span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl border border-dashed border-slate-200 bg-slate-50/60 text-center text-xs text-slate-500 font-medium">
+              Select at least one gas type above to choose cylinder size requirements.
+            </div>
+          )}
         </div>
 
-        {/* 4B: Cylinder Sizes Required (Multi-Select) */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <span>Cylinder Sizes Required (Multi-Select)</span>
-              <Badge variant="secondary" className="text-[10px] font-bold">
-                {selectedCylinderSizes.length} Selected
-              </Badge>
-            </Label>
-            <span className="text-[10px] text-slate-400 font-medium">Click to select multiple</span>
-          </div>
+        {/* ========================================================================= */}
+        {/* DIVISION 2: CYLINDER SIZES REQUIRED (STEP 2 - SHOWN ONLY AFTER CONFIRMATION) */}
+        {/* ========================================================================= */}
+        {hasConfirmedCylinderSizes && selectedCylinderSizes.length > 0 && (
+          <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-gradient-to-br from-slate-50/80 via-white to-emerald-50/20 shadow-xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-50/80 via-emerald-50/30 to-transparent border border-emerald-200/80">
+              <div className="flex items-center gap-2.5">
+                <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200/70">
+                  <Package className="h-3.5 w-3.5 text-emerald-700" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                      Cylinder Sizes Required (Multi-Select)
+                    </span>
+                    <Badge className="bg-emerald-600 text-white border border-emerald-600 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      {selectedCylinderSizes.length} Selected
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                    Step 2: Configured cylinder capacities matched to your active fuel requirements
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsCylinderModalOpen(true)}
+                className="rounded-xl border-emerald-300 text-emerald-800 hover:bg-emerald-100/70 text-xs font-bold h-8 px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs self-start sm:self-auto bg-white"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-700" />
+                <span>Change Sizes</span>
+              </Button>
+            </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-            {[
-              { id: "47kg Propane (Heavy Commercial)", label: "47kg Propane", desc: "Heavy Heating / 2-4 Bank" },
-              { id: "19kg Propane (Catering/Trade)", label: "19kg Propane", desc: "Catering & Roofing" },
-              { id: "13kg Propane (Domestic Heating & Cooking)", label: "13kg Propane", desc: "Domestic Ranges" },
-              { id: "6kg / 3.9kg Propane (Caravans)", label: "6kg Propane", desc: "Caravans & Boats" },
-              { id: "18kg FLT (Forklift Offtake)", label: "18kg FLT", desc: "Forklift Trucks" },
-              { id: "15kg Butane (Indoor Heaters)", label: "15kg Butane", desc: "Indoor Portable" },
-              { id: "7kg Butane (Caravans)", label: "7kg Butane", desc: "Compact Indoor" },
-              { id: "13kg Patio Gas (BBQ & Patio Heaters)", label: "13kg Patio", desc: "Large BBQ / Heaters" },
-              { id: "5kg Patio Gas (Compact BBQ)", label: "5kg Patio", desc: "Compact BBQ" },
-              { id: "Bulk Propane / Autogas", label: "Bulk / Autogas", desc: "Bulk Road Delivery" },
-            ].map((sz) => {
-              const isChecked = selectedCylinderSizes.includes(sz.id);
-              return (
-                <button
-                  key={sz.id}
-                  type="button"
-                  onClick={() => toggleCylinderSize(sz.id)}
-                  className={cn(
-                    "p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between h-20",
-                    isChecked
-                      ? "border-primary bg-red-50/50 ring-1 ring-primary text-slate-900"
-                      : "border-slate-200 bg-white hover:border-slate-300 text-slate-600",
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black text-slate-900">{sz.label}</span>
-                    <div
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {selectedCylinderSizes.map((id) => {
+                const item = ALL_CYLINDER_SIZES.find((sz) => sz.id === id);
+                return (
+                  <div
+                    key={id}
+                    className="p-3 rounded-xl border border-primary/30 bg-white shadow-2xs flex flex-col justify-between h-20 text-left"
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-xs font-black text-slate-900 leading-snug">
+                        {item?.label || id}
+                      </span>
+                      <div className="h-4 w-4 rounded-full bg-primary text-white flex items-center justify-center shrink-0">
+                        <Check className="h-2.5 w-2.5 stroke-[3]" />
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-medium truncate">
+                      {item?.desc || item?.category || ""}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* POPUP / MODAL: STEP 2 CYLINDER SIZE SELECTION */}
+        {/* ========================================================================= */}
+        <Dialog open={isCylinderModalOpen} onOpenChange={setIsCylinderModalOpen}>
+          <DialogContent className="max-w-2xl w-[94vw] max-h-[88vh] p-0 gap-0 rounded-3xl bg-white border border-slate-100 shadow-2xl overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-red-50/70 via-white to-slate-50/50">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-red-100/80 text-primary flex items-center justify-center shrink-0 border border-red-200/60 mt-0.5">
+                    <Package className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                      <span>Cylinder Sizes Required</span>
+                      <Badge
+                        variant="secondary"
+                        className="bg-primary/10 text-primary border border-primary/20 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                      >
+                        {selectedCylinderSizes.length} Selected
+                      </Badge>
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-slate-500 font-medium mt-0.5">
+                      Step 2: Choose one or more cylinder sizes for your selected gas requirements.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Selected Gas Type Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 mt-3 pt-3 border-t border-slate-200/60">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Active Gas Types:
+                </span>
+                {selectedGasTypes.map((gid) => {
+                  const gas = GAS_TYPES_LIST.find((g) => g.id === gid);
+                  return (
+                    <span
+                      key={gid}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-0.5 shadow-2xs"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      {gas?.label || gid}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto max-h-[50vh] space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-700">
+                  Relevant Cylinder Capacities (
+                  {getAvailableCylinderSizes(selectedGasTypes).length})
+                </p>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Click to select multiple
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {getAvailableCylinderSizes(selectedGasTypes).map((sz) => {
+                  const isChecked = selectedCylinderSizes.includes(sz.id);
+                  return (
+                    <button
+                      key={sz.id}
+                      type="button"
+                      onClick={() => toggleCylinderSize(sz.id)}
                       className={cn(
-                        "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                        "p-3 rounded-2xl border text-left transition-all duration-150 cursor-pointer flex items-start justify-between gap-3 group",
                         isChecked
-                          ? "bg-primary border-primary text-white"
-                          : "border-slate-300 bg-white",
+                          ? "border-primary/50 bg-red-50/50 ring-1 ring-primary/30 shadow-2xs"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60 shadow-2xs",
                       )}
                     >
-                      {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                    </div>
-                  </div>
-                  <span className="text-[9px] text-slate-500 font-medium leading-tight">{sz.desc}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-slate-900 group-hover:text-primary transition-colors">
+                            {sz.label}
+                          </span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60">
+                            {sz.category}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                          {sz.desc}
+                        </p>
+                      </div>
+                      <div
+                        className={cn(
+                          "h-5 w-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all",
+                          isChecked
+                            ? "bg-primary border-primary text-white shadow-2xs"
+                            : "border-slate-300 bg-white group-hover:border-slate-400",
+                        )}
+                      >
+                        {isChecked && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* 4C: Quantity & Setup Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1 text-xs">
+            {/* Modal Sticky Footer */}
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCylinderModalOpen(false)}
+                className="rounded-xl border-slate-300 text-slate-700 hover:bg-white text-xs font-bold h-10 px-4 flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Back</span>
+              </Button>
+              <div className="flex items-center gap-2.5">
+                <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                  {selectedCylinderSizes.length} size{selectedCylinderSizes.length !== 1 ? "s" : ""} selected
+                </span>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (selectedCylinderSizes.length === 0) {
+                      toast.info("Please select at least one cylinder size.");
+                      return;
+                    }
+                    setHasConfirmedCylinderSizes(true);
+                    setIsCylinderModalOpen(false);
+                    toast.success(
+                      `${selectedCylinderSizes.length} cylinder size${selectedCylinderSizes.length > 1 ? "s" : ""} confirmed.`,
+                    );
+                  }}
+                  className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs h-10 px-5 shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Continue</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========================================================================= */}
+        {/* DIVISION 3: CYLINDER BANK & CONNECTION SPECIFICATIONS */}
+        {/* ========================================================================= */}
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-amber-50/80 via-amber-50/30 to-transparent border border-amber-200/80">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/70">
+                <Wrench className="h-3.5 w-3.5 text-amber-700" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Cylinder Bank &amp; Connection Setup
+                  </span>
+                  <Badge className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Setup &amp; Safety
+                  </Badge>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                  Specify your exchange cylinder status, quantity bank setup, regulator type, and storage location.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-700">Existing Cylinder Status</Label>
             <select
@@ -1696,6 +2470,7 @@ export function GasCustomerApplicationForm({
           </div>
         </div>
       </div>
+    </div>
 
       {/* ========================================================================= */}
       {/* SECTION 5: SAFETY DECLARATION & TERMS */}
@@ -1715,33 +2490,125 @@ export function GasCustomerApplicationForm({
           Under the <strong>UK Pressure Systems Safety Regulations 2000</strong> and <strong>UK Gas Safety (Installation and Use) Regulations 1998</strong>, all LPG cylinder customers must adhere to strict handling, ventilation, and connection protocols.
         </p>
 
-        <div className="space-y-2.5 pt-1">
-          <label className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-slate-200 cursor-pointer shadow-2xs hover:border-slate-300 transition-colors">
-            <input
-              type="checkbox"
-              required
-              checked={storageConfirmed}
-              onChange={(e) => setStorageConfirmed(e.target.checked)}
-              className="h-4 w-4 rounded text-primary focus:ring-primary mt-0.5"
-            />
-            <span className="font-bold text-slate-900 text-xs leading-snug">
-              I confirm that all gas cylinders will be stored upright in well-ventilated outdoor areas, away from drains, cellar openings, heat sources, and combustible materials. *
-            </span>
-          </label>
+        <div className="space-y-3 pt-1">
+          {/* Subheading 1: Safe Storage & Ventilation Compliance */}
+          <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-r from-emerald-50/60 via-white to-transparent p-3.5 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 border border-emerald-200/70">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-700" />
+                </div>
+                <div>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider block">
+                    Safe Storage &amp; Ventilation Compliance
+                  </span>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                    UK Pressure Systems Safety Regulations 2000 &amp; Gas Safety Regulations 1998
+                  </p>
+                </div>
+              </div>
+              <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                UK Safety Mandate
+              </Badge>
+            </div>
+            <label className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-emerald-200/70 cursor-pointer shadow-2xs hover:border-emerald-300 transition-colors">
+              <input
+                type="checkbox"
+                required
+                checked={storageConfirmed}
+                onChange={(e) => setStorageConfirmed(e.target.checked)}
+                className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 mt-0.5 cursor-pointer"
+              />
+              <span className="font-bold text-slate-900 text-xs leading-snug">
+                I confirm that all gas cylinders will be stored upright in well-ventilated outdoor areas, away from drains, cellar openings, heat sources, and combustible materials. *
+              </span>
+            </label>
+          </div>
 
-          <label className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-slate-200 cursor-pointer shadow-2xs hover:border-slate-300 transition-colors">
-            <input
-              type="checkbox"
-              required
-              checked={declarationAccepted}
-              onChange={(e) => setDeclarationAccepted(e.target.checked)}
-              className="h-4 w-4 rounded text-primary focus:ring-primary mt-0.5"
-            />
-            <span className="font-bold text-slate-900 text-xs leading-snug">
-              I agree to John Stayte Services terms of gas supply, cylinder refill exchange rules, and cylinder rental conditions. I confirm that all details provided in this application are true and accurate. *
-            </span>
-          </label>
+          {/* Subheading 2: Gas Supply Terms & Legal Declaration */}
+          <div className="rounded-2xl border border-purple-200/80 bg-gradient-to-r from-purple-50/60 via-white to-transparent p-3.5 shadow-2xs space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="h-6 w-6 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center shrink-0 border border-purple-200/70">
+                  <FileText className="h-3.5 w-3.5 text-purple-700" />
+                </div>
+                <div>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider block">
+                    Gas Supply Terms &amp; Legal Declaration
+                  </span>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                    Standard Conditions of Supply, cylinder ownership, and legal usage declaration
+                  </p>
+                </div>
+              </div>
+              <Badge className="bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                Supply Agreement
+              </Badge>
+            </div>
+            <label className="flex items-start gap-3 p-3.5 bg-white rounded-xl border border-purple-200/70 cursor-pointer shadow-2xs hover:border-purple-300 transition-colors">
+              <input
+                type="checkbox"
+                required
+                checked={declarationAccepted}
+                onChange={(e) => setDeclarationAccepted(e.target.checked)}
+                className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500 mt-0.5 cursor-pointer"
+              />
+              <span className="font-bold text-slate-900 text-xs leading-snug">
+                I agree to John Stayte Services{" "}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsTermsModalOpen(true);
+                  }}
+                  className="text-primary underline hover:text-red-700 font-extrabold cursor-pointer inline-flex items-center gap-0.5 transition-colors"
+                >
+                  Read Terms &amp; Conditions
+                </button>
+                . I confirm that all details provided are true and accurate. *
+              </span>
+            </label>
+          </div>
         </div>
+
+        {/* Terms & Conditions Modal */}
+        <Dialog open={isTermsModalOpen} onOpenChange={setIsTermsModalOpen}>
+          <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] p-0 gap-0 rounded-3xl bg-white border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-gradient-to-r from-red-50/70 via-white to-slate-50/50 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-red-100/80 text-primary flex items-center justify-center shrink-0 border border-red-200/60">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                    Terms &amp; Conditions of Gas Supply
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500 font-medium mt-0.5">
+                    Gas supply rules, cylinder refill &amp; exchange policies, and safety compliance.
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-7 overflow-y-auto max-h-[62vh]">
+              <ConditionsOfUseContent />
+            </div>
+
+            <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
+              <p className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                Please review all terms before ticking the agreement checkbox.
+              </p>
+              <Button
+                type="button"
+                onClick={() => setIsTermsModalOpen(false)}
+                className="w-full sm:w-auto ml-auto rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs h-10 px-6 shadow-xs cursor-pointer"
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* ========================================================================= */}
@@ -1779,11 +2646,23 @@ export function GasCustomerApplicationForm({
         {/* STEP 1: ENTER EMAIL & SEND CODE */}
         {verificationStep === "ENTER_EMAIL" && (
           <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-black">
-                A
-              </span>
-              <span>Verify your application email address by requesting a 6-digit security code:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-blue-50/80 via-blue-50/30 to-transparent border border-blue-200/80">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-[11px] font-black shadow-2xs">
+                  A
+                </span>
+                <div>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider block">
+                    Step A: Application Email Authentication
+                  </span>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                    Request a 6-digit security verification code to authenticate your contact email.
+                  </p>
+                </div>
+              </div>
+              <Badge className="bg-blue-100 text-blue-800 border border-blue-200 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
+                Step 1 of 2
+              </Badge>
             </div>
             <div className="flex flex-col sm:flex-row gap-2.5">
               <Input
@@ -1828,22 +2707,34 @@ export function GasCustomerApplicationForm({
 
         {/* STEP 2: ENTER OTP CODE */}
         {verificationStep === "ENTER_OTP" && (
-          <div className="space-y-4 bg-white p-5 rounded-xl border-2 border-primary/20 shadow-sm animate-in fade-in-50 duration-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-900">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black">
+          <div className="space-y-4 bg-white p-4 sm:p-5 rounded-2xl border-2 border-amber-300/80 shadow-sm animate-in fade-in-50 duration-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-gradient-to-r from-amber-50/80 via-amber-50/30 to-transparent border border-amber-200/80">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-600 text-white text-[11px] font-black shadow-2xs">
                   B
                 </span>
-                <KeyRound className="h-4 w-4 text-primary" />
-                <span>Verification Code</span>
+                <KeyRound className="h-4 w-4 text-amber-700" />
+                <div>
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider block">
+                    Step B: 6-Digit Security Code Verification
+                  </span>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                    Enter the code sent to your email to complete verification.
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={handleChangeEmailClick}
-                className="text-xs font-bold text-slate-500 hover:text-slate-900 hover:underline cursor-pointer flex items-center gap-1 self-start sm:self-auto"
-              >
-                Change Email
-              </button>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <Badge className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  Step 2 of 2
+                </Badge>
+                <button
+                  type="button"
+                  onClick={handleChangeEmailClick}
+                  className="text-xs font-bold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+                >
+                  Change Email
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1 text-xs">
@@ -1925,17 +2816,22 @@ export function GasCustomerApplicationForm({
 
         {/* STEP 3: VERIFIED STATE */}
         {verificationStep === "VERIFIED" && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 animate-in fade-in-50 duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-emerald-50/50 to-transparent border border-emerald-300 animate-in fade-in-50 duration-200 shadow-2xs">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <div className="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <CheckCircle2 className="h-5 w-5" />
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                  ✓ Email verified
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs sm:text-sm font-black text-emerald-950 uppercase tracking-wider">
+                    Email Identity Authenticated
+                  </p>
+                  <Badge className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.2 rounded-full">
+                    Verified
+                  </Badge>
+                </div>
                 <p className="text-xs text-emerald-800">
-                  Authenticated: <span className="font-mono font-bold text-emerald-900">{verifiedEmail}</span>
+                  Application authenticated for: <span className="font-mono font-bold text-emerald-950">{verifiedEmail}</span>
                 </p>
               </div>
             </div>
@@ -1944,7 +2840,7 @@ export function GasCustomerApplicationForm({
               variant="outline"
               size="sm"
               onClick={handleChangeEmailClick}
-              className="text-xs text-emerald-800 hover:text-emerald-950 hover:bg-emerald-100 border-emerald-300 h-9 px-4 rounded-xl font-bold self-start sm:self-auto cursor-pointer"
+              className="text-xs text-emerald-800 hover:text-emerald-950 hover:bg-emerald-100 border-emerald-300 h-9 px-4 rounded-xl font-bold self-start sm:self-auto cursor-pointer bg-white"
             >
               Change Email
             </Button>
@@ -1970,52 +2866,74 @@ export function GasCustomerApplicationForm({
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs text-slate-600">
-              {signatureMode === "draw"
-                ? "Please sign below using your finger, stylus, mouse, or trackpad. This digital signature serves as legal confirmation for your official Calor Gas customer account."
-                : "Upload an image of your signature (PNG, JPG, or JPEG up to 2 MB). This digital signature serves as legal confirmation for your official Calor Gas customer account."}
-            </p>
-            <p className="text-[11px] text-slate-400 font-medium">
-              Signatory: <span className="font-bold text-slate-700">{fullName || "Applicant"}</span> • Date: <span className="font-mono text-slate-700">{new Date().toLocaleDateString("en-GB")}</span>
-            </p>
+        {/* DIVISION: SIGNATURE CAPTURE METHOD */}
+        <div className="rounded-2xl border border-red-200/80 bg-gradient-to-r from-red-50/70 via-red-50/20 to-transparent p-3 sm:p-3.5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="h-6 w-6 rounded-lg bg-red-100 text-primary flex items-center justify-center shrink-0 border border-red-200/70">
+                <PenTool className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-black text-slate-900 uppercase tracking-wider">
+                    Signature Input Method
+                  </span>
+                  <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {signatureMode === "draw" ? "Touch / Mouse Canvas" : "Image File Upload"}
+                  </Badge>
+                </div>
+                <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
+                  Select your preferred input method and sign below to legally execute your application.
+                </p>
+              </div>
+            </div>
+
+            {/* Segmented Mode Selector: Draw vs Upload */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white border border-slate-200 shadow-2xs w-fit shrink-0 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setSignatureMode("draw")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  signatureMode === "draw"
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                )}
+              >
+                <PenTool className="h-3.5 w-3.5" />
+                <span>Draw Signature</span>
+                {hasSigned && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Drawn signature saved" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSignatureMode("upload")}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                  signatureMode === "upload"
+                    ? "bg-primary text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                )}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span>Upload Signature</span>
+                {uploadedSignatureData && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Uploaded signature saved" />
+                )}
+              </button>
+            </div>
           </div>
 
-          {/* Segmented Mode Selector: Draw vs Upload */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80 w-fit shrink-0 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setSignatureMode("draw")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                signatureMode === "draw"
-                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                  : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              <PenTool className="h-3.5 w-3.5 text-primary" />
-              <span>Draw Signature</span>
-              {hasSigned && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Drawn signature saved" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSignatureMode("upload")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
-                signatureMode === "upload"
-                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/60"
-                  : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              <Upload className="h-3.5 w-3.5 text-primary" />
-              <span>Upload Signature</span>
-              {uploadedSignatureData && (
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Uploaded signature saved" />
-              )}
-            </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-600 pt-1.5 border-t border-red-100/80 gap-1.5">
+            <p className="text-[11px]">
+              {signatureMode === "draw"
+                ? "Sign inside the box using your finger, stylus, mouse, or trackpad."
+                : "Upload an image of your physical signature (PNG, JPG, or JPEG up to 2 MB)."}
+            </p>
+            <p className="text-[11px] text-slate-500 font-medium shrink-0">
+              Signatory: <span className="font-bold text-slate-800">{fullName || "Applicant"}</span> • Date: <span className="font-mono text-slate-800">{new Date().toLocaleDateString("en-GB")}</span>
+            </p>
           </div>
         </div>
 

@@ -672,7 +672,7 @@ export const DEFAULT_FOOTER_CMS: FooterCmsData = {
   youtubeUrl: "https://youtube.com/@johnstayteservices",
   copyrightText: "© 1972 – 2026 John Stayte Services Limited. All rights reserved.",
   legalNotice:
-    "Registered in England & Wales. Official Calor Gas Authorised Distributor. VAT Reg No: GB 275 8891 23.",
+    "Niza Forecourt Ltd · Registered in England & Wales No. 09859890 · VAT 232837507 · Registered Office: 15 The Gallop, Sutton, England, SM2 5RU",
 };
 
 // ============================================================================

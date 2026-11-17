@@ -193,47 +193,145 @@ function LoginPage() {
     [navigate],
   );
 
-  // Check for email confirmation redirect or error params in URL on mount
+  // Check for email confirmation redirect, PKCE code, or error params in URL on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    try {
-      const searchParams = new URLSearchParams(window.location.search);
-      const hash = window.location.hash.startsWith("#")
-        ? window.location.hash.slice(1)
-        : window.location.hash;
-      const hashParams = new URLSearchParams(hash);
+    let isMounted = true;
 
-      const isConfirmed =
-        searchParams.get("confirmed") === "true" || hashParams.get("type") === "signup";
-      const isRecovery =
-        hashParams.get("type") === "recovery" || searchParams.get("type") === "recovery";
+    async function handleAuthRedirect() {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const rawHash = window.location.hash.startsWith("#")
+          ? window.location.hash.slice(1)
+          : window.location.hash;
+        const hashParams = new URLSearchParams(rawHash);
 
-      if (isRecovery) {
-        setIsRecoveryMode(true);
+        // Check password recovery mode
+        const isRecovery =
+          hashParams.get("type") === "recovery" || searchParams.get("type") === "recovery";
+        if (isRecovery && isMounted) {
+          setIsRecoveryMode(true);
+        }
+
+        // 1. Check for error parameters (expired token, access denied, etc.)
+        const errorDesc =
+          searchParams.get("error_description") ||
+          hashParams.get("error_description") ||
+          (searchParams.get("error") ? "Email link is invalid or has expired." : null);
+
+        if (errorDesc) {
+          const decoded = decodeURIComponent(errorDesc.replace(/\+/g, " "));
+          const isExpired =
+            decoded.toLowerCase().includes("expired") ||
+            searchParams.get("error_code") === "otp_expired" ||
+            hashParams.get("error_code") === "otp_expired";
+
+          const userFriendlyMessage = isExpired
+            ? "Your verification link has expired or has already been used. Please request a new confirmation email below or sign in."
+            : decoded;
+
+          if (isMounted) {
+            setFormError(userFriendlyMessage);
+            toast.error(userFriendlyMessage);
+
+            const emailInUrl = searchParams.get("email") || hashParams.get("email");
+            if (emailInUrl) {
+              setUnconfirmedLoginEmail(emailInUrl);
+            }
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // 2. PKCE Flow: Supabase redirected with auth `code`
+        const code = searchParams.get("code");
+        if (code) {
+          try {
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+            if (!isMounted) return;
+
+            if (!error && data?.session) {
+              setConfirmedSuccessBanner(true);
+              toast.success("Email verified successfully! You are now signed in.");
+            } else if (error) {
+              // Check if detectSessionInUrl already processed this session concurrently
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (sessionData?.session) {
+                setConfirmedSuccessBanner(true);
+                toast.success("Email verified successfully!");
+              } else {
+                const isExpired =
+                  error.message?.toLowerCase().includes("expired") ||
+                  (error as any)?.code === "otp_expired" ||
+                  error.message?.toLowerCase().includes("invalid");
+                const msg = isExpired
+                  ? "This verification link has expired or has already been used. Please request a new confirmation email below."
+                  : (error.message || "Failed to verify email link.");
+                setFormError(msg);
+                toast.error(msg);
+              }
+            }
+          } catch (err: any) {
+            console.warn("[Auth] Code exchange error:", err);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // 3. Token Hash Flow: Supabase verifyOtp link
+        const tokenHash = searchParams.get("token_hash");
+        const otpType = (searchParams.get("type") || "signup") as any;
+        if (tokenHash) {
+          try {
+            const { data, error } = await supabase.auth.verifyOtp({
+              token_hash: tokenHash,
+              type: otpType,
+            });
+            if (!isMounted) return;
+
+            if (!error && (data?.session || data?.user)) {
+              setConfirmedSuccessBanner(true);
+              toast.success("Email verified successfully! You can now sign in.");
+            } else if (error) {
+              const isExpired = error.message?.toLowerCase().includes("expired");
+              const msg = isExpired
+                ? "This verification link has expired or has already been used. Please request a new confirmation email below."
+                : (error.message || "Failed to verify confirmation link.");
+              setFormError(msg);
+              toast.error(msg);
+            }
+          } catch (err: any) {
+            console.warn("[Auth] Token OTP verify error:", err);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+
+        // 4. Standard confirmation indicator or hash signup type
+        const isConfirmed =
+          searchParams.get("confirmed") === "true" || hashParams.get("type") === "signup";
+
+        if (isConfirmed && isMounted) {
+          setConfirmedSuccessBanner(true);
+          toast.success("Email verified successfully! You can now sign in to your account.");
+          // Delay cleanup so Supabase's detectSessionInUrl has settled
+          setTimeout(() => {
+            if (typeof window !== "undefined") {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }, 300);
+        }
+      } catch {
+        // Non-blocking fallback
       }
-
-      const errorDesc =
-        searchParams.get("error_description") ||
-        hashParams.get("error_description") ||
-        (searchParams.get("error") ? "Email link is invalid or has expired." : null);
-
-      if (errorDesc) {
-        const decoded = decodeURIComponent(errorDesc.replace(/\+/g, " "));
-        setFormError(decoded);
-        toast.error(decoded);
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return;
-      }
-
-      if (isConfirmed) {
-        setConfirmedSuccessBanner(true);
-        toast.success("Email verified successfully! You can now sign in to your account.");
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    } catch {
-      // Non-blocking URL parse
     }
+
+    handleAuthRedirect();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Listen for Supabase password recovery event
@@ -320,7 +418,8 @@ function LoginPage() {
 
       // Real Authentication Success Animation & Role-Aware Voice Feedback
       setAuthStatus("success");
-      speakLoginSuccess(res.user.role);
+      const voiceAllowed = res.user?.role !== "customer" || res.user?.ai_voice_welcome !== false;
+      speakLoginSuccess(res.user.role, voiceAllowed);
       toast.success(`Welcome back, ${res.user.name}`);
       setTimeout(() => {
         redirectByRole(res.user!.role);

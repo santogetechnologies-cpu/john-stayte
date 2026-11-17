@@ -43,6 +43,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { gbp, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { getDeliveryAgents, type DeliveryAgentRecord } from "@/lib/delivery-agent-service";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 import { triggerOrderStatusPush } from "@/lib/push-notifications";
 
 export function ManagerDashboardView() {
@@ -221,11 +222,11 @@ export function ManagerDashboardView() {
     if (orders.length === 0) {
       return toast.error("No manager dispatch data available to export.");
     }
-    const headers = "Order Number,Customer Name,Customer Email,Status,Total,Date\n";
+    const headers = "Order Number,Customer Name,Customer ID,Customer Email,Status,Total,Date\n";
     const rows = orders
       .map(
         (o) =>
-          `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_email || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"`,
+          `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_id || ""}","${o.customer_email || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"`,
       )
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
@@ -484,7 +485,14 @@ export function ManagerDashboardView() {
                         <TableCell className="font-mono font-black text-xs text-slate-900">
                           #{o.order_number || o.id.slice(0, 8)}
                         </TableCell>
-                        <TableCell className="text-xs font-semibold text-slate-700">{o.customer_name}</TableCell>
+                        <TableCell className="text-xs">
+                          <CustomerIdentityCell
+                            name={o.customer_name}
+                            customerId={o.customer_id}
+                            accountNumber={o.customer_account_number}
+                            layout="table"
+                          />
+                        </TableCell>
                         <TableCell className="font-bold text-xs text-slate-900">{gbp(Number(o.total))}</TableCell>
                         <TableCell>
                           <span
@@ -700,14 +708,20 @@ export function ManagerDashboardView() {
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border border-white/80 bg-white/60 space-y-1">
-                <p className="font-bold text-slate-900">Customer Details</p>
-                <p className="text-slate-600 font-medium">{selectedOrder.customer_name}</p>
-                <p className="text-slate-500">{selectedOrder.customer_email}</p>
-                {selectedOrder.shipping_address && (
-                  <p className="text-slate-500">{selectedOrder.shipping_address}</p>
-                )}
-              </div>
+              <CustomerIdentityCell
+                name={selectedOrder.customer_name}
+                customerId={selectedOrder.customer_id}
+                accountNumber={selectedOrder.customer_account_number}
+                email={selectedOrder.customer_email}
+                layout="detail"
+              />
+
+              {selectedOrder.shipping_address && (
+                <div className="p-4 rounded-2xl border border-white/80 bg-white/60 space-y-1 text-xs">
+                  <p className="font-bold text-slate-900">Delivery Address</p>
+                  <p className="text-slate-600">{selectedOrder.shipping_address}</p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <p className="font-bold text-slate-900">Items Ordered</p>

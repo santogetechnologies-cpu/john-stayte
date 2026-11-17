@@ -55,6 +55,7 @@ import {
 import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 import { gbp } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 
 export function ManagerDeliveryAssignmentView() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
@@ -414,9 +415,14 @@ export function ManagerDeliveryAssignmentView() {
                         <p className="font-mono font-black text-slate-900">
                           #{o.order_number || d.order_ref || d.id.slice(0, 8)}
                         </p>
-                        <p className="font-bold text-slate-900 mt-0.5">
-                          {o.customer_name || d.customer_name || "Customer"}
-                        </p>
+                        <div className="mt-1">
+                          <CustomerIdentityCell
+                            name={o.customer_name || d.customer_name || "Customer"}
+                            customerId={o.customer_id}
+                            accountNumber={o.customer_account_number}
+                            layout="table"
+                          />
+                        </div>
                         <p className="text-[11px] text-slate-500 font-medium">
                           Total: {gbp(Number(o.total || 0))} &bull;{" "}
                           {new Date(d.created_at || o.created_at).toLocaleDateString("en-GB")}
@@ -558,10 +564,13 @@ export function ManagerDeliveryAssignmentView() {
                   </span>
                 </div>
 
-                <div className="space-y-0.5">
-                  <p className="font-black text-slate-900">
-                    {selectedDelivery.orders?.customer_name || selectedDelivery.customer_name}
-                  </p>
+                <div className="space-y-1">
+                  <CustomerIdentityCell
+                    name={selectedDelivery.orders?.customer_name || selectedDelivery.customer_name}
+                    customerId={selectedDelivery.orders?.customer_id}
+                    accountNumber={selectedDelivery.orders?.customer_account_number}
+                    layout="table"
+                  />
                   <p className="text-[11px] text-slate-500 font-medium flex items-start gap-1">
                     <MapPin className="h-3 w-3 text-slate-400 mt-0.5 shrink-0" />
                     <span>

@@ -266,14 +266,42 @@ export function speakLoginError(errorMessage?: string, email?: string): void {
 }
 
 /**
- * Handle role-aware voice feedback for successful login
+ * Helper to check whether customer AI voice welcome is enabled.
+ * Defaults to true for all customers if unconfigured.
  */
-export function speakLoginSuccess(role?: string): void {
+export function isCustomerVoiceWelcomeEnabled(userPrefs?: Record<string, unknown> | null): boolean {
+  if (userPrefs) {
+    if (userPrefs.aiVoiceWelcome === false || userPrefs.ai_voice_welcome === false) {
+      return false;
+    }
+    if (userPrefs.aiVoiceWelcome === true || userPrefs.ai_voice_welcome === true) {
+      return true;
+    }
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("jss.ai_voice_welcome");
+      if (stored === "false") return false;
+    } catch {}
+  }
+  return true; // Default enabled
+}
+
+/**
+ * Handle role-aware voice feedback for successful login.
+ * Respects customer's AI Voice Welcome preference (enabled by default).
+ * Admin and staff greetings remain unaffected.
+ */
+export function speakLoginSuccess(role?: string, allowVoiceWelcome = true): void {
   if (role === "admin") {
     speakVoiceFeedback("Welcome, Admin! Have a great day!");
   } else if (role === "branch_staff") {
     speakVoiceFeedback("Welcome to Branch Operations! Have a productive shift.");
   } else {
-    speakVoiceFeedback("hello! Welcome to John Stayte Services. Great to have you back!");
+    // Customer login greeting: check if enabled
+    if (allowVoiceWelcome === false) {
+      return;
+    }
+    speakVoiceFeedback("Yay! Welcome to John Stayte Services. Great to have you back!");
   }
 }

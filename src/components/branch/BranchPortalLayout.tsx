@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   QrCode,
   Flame,
+  Fuel,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,12 @@ const branchNavGroups: NavGroup[] = [
     items: [
       { title: "Branch Stock", href: "/branch/stock", icon: Layers },
       { title: "Cylinder Exchange History", href: "/branch/exchange-history", icon: Repeat },
+    ],
+  },
+  {
+    groupLabel: "FORECOURT INCIDENTS",
+    items: [
+      { title: "Drive-Offs", href: "/branch/drive-offs", icon: Fuel },
     ],
   },
   {

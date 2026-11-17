@@ -30,6 +30,13 @@ import {
 } from "@/components/ui/table";
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
+import {
+  downloadTaxInvoice,
+  printTaxInvoice,
+  prepareInvoiceData,
+  INVOICE_COMPANY_CONFIG,
+} from "@/lib/invoice-service";
 
 export function AdminInvoicesView() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -116,117 +123,20 @@ export function AdminInvoicesView() {
     return invoiceRecords.filter((r) => r.invoiceStatus === "Paid").length;
   }, [invoiceRecords]);
 
-  const handleDownloadInvoice = (order: any) => {
+  const handleDownloadInvoice = async (order: any) => {
     try {
-      const grandTotal = Number(order.total || 0);
-      const shippingFee = Number(order.shipping_fee || 0);
-      const subtotalNet = Number(order.subtotal || (grandTotal - shippingFee) / 1.2);
-      const vatAmount = grandTotal - subtotalNet - shippingFee;
-
-      const itemsHtml = (order.order_items || [])
-        .map(
-          (it: any) => `
-          <tr>
-            <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 13px;">${it.product_name || "LPG Product"}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; font-size: 13px;">${it.quantity || 1}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px;">${gbp(Number(it.unit_price || 0))}</td>
-            <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-size: 13px; font-weight: 700;">${gbp(Number(it.total_price || it.unit_price * it.quantity || 0))}</td>
-          </tr>
-        `,
-        )
-        .join("");
-
-      const invoiceHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>VAT Invoice ${order.invoiceNumber || order.order_number}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 40px; }
-    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
-    .company-info { font-size: 12px; color: #475569; }
-    .invoice-title { font-size: 24px; font-weight: 900; color: #dc2626; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th { text-align: left; background: #f8fafc; padding: 10px; font-size: 12px; font-weight: 700; border-bottom: 2px solid #cbd5e1; }
-    .totals { margin-top: 20px; width: 300px; margin-left: auto; }
-    .grand-total { font-size: 16px; font-weight: 900; border-top: 2px solid #0f172a; padding-top: 8px; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <div class="invoice-title">JOHN STAYTE SERVICES</div>
-      <div class="company-info" style="margin-top: 6px;">
-        Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom<br>
-        VAT Reg No: GB 275 8841 02 &bull; Phone: +44 (0)1453 822859
-      </div>
-    </div>
-    <div style="text-align: right;">
-      <h2 style="margin: 0; font-size: 20px;">TAX INVOICE</h2>
-      <div style="font-size: 13px; margin-top: 6px; font-weight: 700;">#${order.invoiceNumber}</div>
-      <div style="font-size: 12px; color: #64748b;">Order: #${order.order_number}</div>
-      <div style="font-size: 12px; color: #64748b;">Date: ${new Date(order.created_at).toLocaleDateString("en-GB")}</div>
-    </div>
-  </div>
-
-  <div style="margin-top: 20px; font-size: 13px;">
-    <strong>Billed To:</strong><br>
-    ${order.customer_name || "Customer"}<br>
-    ${order.customer_email || ""}<br>
-    ${order.delivery_address?.street || ""}, ${order.delivery_address?.postcode || ""}
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>Description</th>
-        <th style="text-align: center;">Qty</th>
-        <th style="text-align: right;">Unit Price (Inc VAT)</th>
-        <th style="text-align: right;">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsHtml || '<tr><td colspan="4" style="padding:10px;">LPG Supply and Services</td></tr>'}
-    </tbody>
-  </table>
-
-  <table class="totals">
-    <tr>
-      <td style="color: #64748b; font-size: 12px;">Subtotal (Ex VAT):</td>
-      <td style="text-align: right; font-weight: 700; font-size: 12px;">${gbp(subtotalNet)}</td>
-    </tr>
-    <tr>
-      <td style="color: #64748b; font-size: 12px;">VAT (Standard 20%):</td>
-      <td style="text-align: right; font-weight: 700; font-size: 12px;">${gbp(vatAmount)}</td>
-    </tr>
-    <tr>
-      <td style="color: #64748b; font-size: 12px;">Delivery:</td>
-      <td style="text-align: right; font-weight: 700; font-size: 12px;">${shippingFee === 0 ? "FREE" : gbp(shippingFee)}</td>
-    </tr>
-    <tr class="grand-total">
-      <td>Total Paid:</td>
-      <td style="text-align: right;">${gbp(grandTotal)}</td>
-    </tr>
-  </table>
-
-  <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 11px; color: #64748b; text-align: center;">
-    John Stayte Services Ltd &bull; Registered in England & Wales &bull; Thank you for your business!
-  </div>
-</body>
-</html>
-      `.trim();
-
-      const blob = new Blob([invoiceHtml], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `VAT_Invoice_${order.invoiceNumber}.html`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`Invoice #${order.invoiceNumber} downloaded!`);
+      await downloadTaxInvoice(order, { accountNumber: order.customer_account_number });
+      toast.success(`Tax Invoice #${order.invoiceNumber || order.order_number} PDF downloaded!`);
     } catch (err: any) {
       toast.error("Download failed: " + err.message);
+    }
+  };
+
+  const handlePrintInvoice = (order: any) => {
+    try {
+      printTaxInvoice(order, { accountNumber: order.customer_account_number });
+    } catch (err: any) {
+      toast.error("Print failed: " + err.message);
     }
   };
 
@@ -379,8 +289,13 @@ export function AdminInvoicesView() {
                     </Link>
                   </TableCell>
                   <TableCell className="text-xs">
-                    <div className="font-bold text-slate-900">{r.customer_name || "Customer"}</div>
-                    <div className="text-[11px] text-slate-400">{r.customer_email}</div>
+                    <CustomerIdentityCell
+                      name={r.customer_name || "Customer"}
+                      customerId={r.customer_id}
+                      accountNumber={r.customer_account_number}
+                      layout="table"
+                    />
+                    <div className="text-[11px] text-slate-400 mt-0.5">{r.customer_email}</div>
                   </TableCell>
                   <TableCell className="text-xs text-slate-500 font-medium">
                     {new Date(r.created_at).toLocaleDateString("en-GB", {
@@ -433,9 +348,18 @@ export function AdminInvoicesView() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handlePrintInvoice(r)}
+                        className="h-8 w-8 p-0 rounded-lg text-slate-600 hover:text-slate-900"
+                        title="Print official Tax Invoice"
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDownloadInvoice(r)}
                         className="h-8 w-8 p-0 rounded-lg text-primary hover:text-primary hover:bg-primary/10"
-                        title="Download official VAT Invoice"
+                        title="Download official Tax Invoice"
                       >
                         <Download className="h-3.5 w-3.5" />
                       </Button>
@@ -476,10 +400,15 @@ export function AdminInvoicesView() {
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block font-bold text-[10px] uppercase">
+                  <span className="text-slate-400 block font-bold text-[10px] uppercase mb-0.5">
                     Customer
                   </span>
-                  <span className="font-semibold text-slate-700">{previewOrder.customer_name}</span>
+                  <CustomerIdentityCell
+                    name={previewOrder.customer_name}
+                    customerId={previewOrder.customer_id}
+                    accountNumber={previewOrder.customer_account_number}
+                    layout="inline"
+                  />
                 </div>
                 <div>
                   <span className="text-slate-400 block font-bold text-[10px] uppercase">
@@ -514,6 +443,14 @@ export function AdminInvoicesView() {
                   className="rounded-xl"
                 >
                   Close
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePrintInvoice(previewOrder)}
+                  className="rounded-xl gap-2 font-bold"
+                >
+                  <Printer className="h-3.5 w-3.5" /> Print Invoice
                 </Button>
                 <Button
                   size="sm"

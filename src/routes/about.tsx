@@ -612,7 +612,7 @@ function AboutPage() {
                 <h2 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[45px] font-black text-slate-900 tracking-tight leading-[1.12] font-display">
                   Rooted in Whitminster.
                   <br />
-                  Built for <span className="text-primary">Gloucestershire.</span>
+                  Built for <span className="text-primary">EASTINGTON.</span>
                 </h2>
                 {/* Short Red Divider Line */}
                 <div className="w-12 h-1 bg-primary rounded-full mt-4 mb-5" />

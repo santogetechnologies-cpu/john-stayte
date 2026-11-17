@@ -61,6 +61,7 @@ import { Route as AdminCylinderDepositsRouteImport } from './routes/admin.cylind
 import { Route as AdminDeliveriesRouteImport } from './routes/admin.deliveries'
 import { Route as AdminDeliveryAgentsRouteImport } from './routes/admin.delivery-agents'
 import { Route as AdminDeliverySlotsRouteImport } from './routes/admin.delivery-slots'
+import { Route as AdminDriveOffsRouteImport } from './routes/admin.drive-offs'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin.enquiries'
 import { Route as AdminFaqsRouteImport } from './routes/admin.faqs'
 import { Route as AdminGasPricingRouteImport } from './routes/admin.gas-pricing'
@@ -81,6 +82,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BranchIndexRouteImport } from './routes/branch.index'
 import { Route as BranchCollectionHistoryRouteImport } from './routes/branch.collection-history'
 import { Route as BranchDailyReportRouteImport } from './routes/branch.daily-report'
+import { Route as BranchDriveOffsRouteImport } from './routes/branch.drive-offs'
 import { Route as BranchExchangeHistoryRouteImport } from './routes/branch.exchange-history'
 import { Route as BranchNotificationsRouteImport } from './routes/branch.notifications'
 import { Route as BranchOrdersRouteImport } from './routes/branch.orders'
@@ -104,6 +106,7 @@ import { Route as ManagerCustomersRouteImport } from './routes/manager.customers
 import { Route as ManagerDeliveriesRouteImport } from './routes/manager.deliveries'
 import { Route as ManagerDeliveryAgentsRouteImport } from './routes/manager.delivery-agents'
 import { Route as ManagerDeliveryAssignmentRouteImport } from './routes/manager.delivery-assignment'
+import { Route as ManagerDriveOffsRouteImport } from './routes/manager.drive-offs'
 import { Route as ManagerEnquiriesRouteImport } from './routes/manager.enquiries'
 import { Route as ManagerGasPricingRouteImport } from './routes/manager.gas-pricing'
 import { Route as ManagerInventoryRouteImport } from './routes/manager.inventory'
@@ -383,6 +386,11 @@ const AdminDeliverySlotsRoute = AdminDeliverySlotsRouteImport.update({
   path: '/delivery-slots',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminDriveOffsRoute = AdminDriveOffsRouteImport.update({
+  id: '/drive-offs',
+  path: '/drive-offs',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminEnquiriesRoute = AdminEnquiriesRouteImport.update({
   id: '/enquiries',
   path: '/enquiries',
@@ -481,6 +489,11 @@ const BranchCollectionHistoryRoute = BranchCollectionHistoryRouteImport.update({
 const BranchDailyReportRoute = BranchDailyReportRouteImport.update({
   id: '/daily-report',
   path: '/daily-report',
+  getParentRoute: () => BranchRoute,
+} as any)
+const BranchDriveOffsRoute = BranchDriveOffsRouteImport.update({
+  id: '/drive-offs',
+  path: '/drive-offs',
   getParentRoute: () => BranchRoute,
 } as any)
 const BranchExchangeHistoryRoute = BranchExchangeHistoryRouteImport.update({
@@ -599,6 +612,11 @@ const ManagerDeliveryAssignmentRoute =
     path: '/delivery-assignment',
     getParentRoute: () => ManagerRoute,
   } as any)
+const ManagerDriveOffsRoute = ManagerDriveOffsRouteImport.update({
+  id: '/drive-offs',
+  path: '/drive-offs',
+  getParentRoute: () => ManagerRoute,
+} as any)
 const ManagerEnquiriesRoute = ManagerEnquiriesRouteImport.update({
   id: '/enquiries',
   path: '/enquiries',
@@ -741,6 +759,7 @@ export interface FileRoutesByFullPath {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
+  '/admin/drive-offs': typeof AdminDriveOffsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gas-pricing': typeof AdminGasPricingRoute
@@ -759,6 +778,7 @@ export interface FileRoutesByFullPath {
   '/blog/$slug': typeof BlogSlugRoute
   '/branch/collection-history': typeof BranchCollectionHistoryRoute
   '/branch/daily-report': typeof BranchDailyReportRoute
+  '/branch/drive-offs': typeof BranchDriveOffsRoute
   '/branch/exchange-history': typeof BranchExchangeHistoryRoute
   '/branch/notifications': typeof BranchNotificationsRoute
   '/branch/orders': typeof BranchOrdersRoute
@@ -779,6 +799,7 @@ export interface FileRoutesByFullPath {
   '/manager/deliveries': typeof ManagerDeliveriesRoute
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
   '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
+  '/manager/drive-offs': typeof ManagerDriveOffsRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/gas-pricing': typeof ManagerGasPricingRoute
   '/manager/inventory': typeof ManagerInventoryRoute
@@ -849,6 +870,7 @@ export interface FileRoutesByTo {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
+  '/admin/drive-offs': typeof AdminDriveOffsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gas-pricing': typeof AdminGasPricingRoute
@@ -867,6 +889,7 @@ export interface FileRoutesByTo {
   '/blog/$slug': typeof BlogSlugRoute
   '/branch/collection-history': typeof BranchCollectionHistoryRoute
   '/branch/daily-report': typeof BranchDailyReportRoute
+  '/branch/drive-offs': typeof BranchDriveOffsRoute
   '/branch/exchange-history': typeof BranchExchangeHistoryRoute
   '/branch/notifications': typeof BranchNotificationsRoute
   '/branch/orders': typeof BranchOrdersRoute
@@ -887,6 +910,7 @@ export interface FileRoutesByTo {
   '/manager/deliveries': typeof ManagerDeliveriesRoute
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
   '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
+  '/manager/drive-offs': typeof ManagerDriveOffsRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/gas-pricing': typeof ManagerGasPricingRoute
   '/manager/inventory': typeof ManagerInventoryRoute
@@ -965,6 +989,7 @@ export interface FileRoutesById {
   '/admin/deliveries': typeof AdminDeliveriesRoute
   '/admin/delivery-agents': typeof AdminDeliveryAgentsRoute
   '/admin/delivery-slots': typeof AdminDeliverySlotsRoute
+  '/admin/drive-offs': typeof AdminDriveOffsRoute
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/faqs': typeof AdminFaqsRoute
   '/admin/gas-pricing': typeof AdminGasPricingRoute
@@ -983,6 +1008,7 @@ export interface FileRoutesById {
   '/blog/$slug': typeof BlogSlugRoute
   '/branch/collection-history': typeof BranchCollectionHistoryRoute
   '/branch/daily-report': typeof BranchDailyReportRoute
+  '/branch/drive-offs': typeof BranchDriveOffsRoute
   '/branch/exchange-history': typeof BranchExchangeHistoryRoute
   '/branch/notifications': typeof BranchNotificationsRoute
   '/branch/orders': typeof BranchOrdersRoute
@@ -1003,6 +1029,7 @@ export interface FileRoutesById {
   '/manager/deliveries': typeof ManagerDeliveriesRoute
   '/manager/delivery-agents': typeof ManagerDeliveryAgentsRoute
   '/manager/delivery-assignment': typeof ManagerDeliveryAssignmentRoute
+  '/manager/drive-offs': typeof ManagerDriveOffsRoute
   '/manager/enquiries': typeof ManagerEnquiriesRoute
   '/manager/gas-pricing': typeof ManagerGasPricingRoute
   '/manager/inventory': typeof ManagerInventoryRoute
@@ -1082,6 +1109,7 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/delivery-agents'
     | '/admin/delivery-slots'
+    | '/admin/drive-offs'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/gas-pricing'
@@ -1100,6 +1128,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/branch/collection-history'
     | '/branch/daily-report'
+    | '/branch/drive-offs'
     | '/branch/exchange-history'
     | '/branch/notifications'
     | '/branch/orders'
@@ -1120,6 +1149,7 @@ export interface FileRouteTypes {
     | '/manager/deliveries'
     | '/manager/delivery-agents'
     | '/manager/delivery-assignment'
+    | '/manager/drive-offs'
     | '/manager/enquiries'
     | '/manager/gas-pricing'
     | '/manager/inventory'
@@ -1190,6 +1220,7 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/delivery-agents'
     | '/admin/delivery-slots'
+    | '/admin/drive-offs'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/gas-pricing'
@@ -1208,6 +1239,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/branch/collection-history'
     | '/branch/daily-report'
+    | '/branch/drive-offs'
     | '/branch/exchange-history'
     | '/branch/notifications'
     | '/branch/orders'
@@ -1228,6 +1260,7 @@ export interface FileRouteTypes {
     | '/manager/deliveries'
     | '/manager/delivery-agents'
     | '/manager/delivery-assignment'
+    | '/manager/drive-offs'
     | '/manager/enquiries'
     | '/manager/gas-pricing'
     | '/manager/inventory'
@@ -1305,6 +1338,7 @@ export interface FileRouteTypes {
     | '/admin/deliveries'
     | '/admin/delivery-agents'
     | '/admin/delivery-slots'
+    | '/admin/drive-offs'
     | '/admin/enquiries'
     | '/admin/faqs'
     | '/admin/gas-pricing'
@@ -1323,6 +1357,7 @@ export interface FileRouteTypes {
     | '/blog/$slug'
     | '/branch/collection-history'
     | '/branch/daily-report'
+    | '/branch/drive-offs'
     | '/branch/exchange-history'
     | '/branch/notifications'
     | '/branch/orders'
@@ -1343,6 +1378,7 @@ export interface FileRouteTypes {
     | '/manager/deliveries'
     | '/manager/delivery-agents'
     | '/manager/delivery-assignment'
+    | '/manager/drive-offs'
     | '/manager/enquiries'
     | '/manager/gas-pricing'
     | '/manager/inventory'
@@ -1766,6 +1802,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDeliverySlotsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/drive-offs': {
+      id: '/admin/drive-offs'
+      path: '/drive-offs'
+      fullPath: '/admin/drive-offs'
+      preLoaderRoute: typeof AdminDriveOffsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/enquiries': {
       id: '/admin/enquiries'
       path: '/enquiries'
@@ -1904,6 +1947,13 @@ declare module '@tanstack/react-router' {
       path: '/daily-report'
       fullPath: '/branch/daily-report'
       preLoaderRoute: typeof BranchDailyReportRouteImport
+      parentRoute: typeof BranchRoute
+    }
+    '/branch/drive-offs': {
+      id: '/branch/drive-offs'
+      path: '/drive-offs'
+      fullPath: '/branch/drive-offs'
+      preLoaderRoute: typeof BranchDriveOffsRouteImport
       parentRoute: typeof BranchRoute
     }
     '/branch/exchange-history': {
@@ -2065,6 +2115,13 @@ declare module '@tanstack/react-router' {
       path: '/delivery-assignment'
       fullPath: '/manager/delivery-assignment'
       preLoaderRoute: typeof ManagerDeliveryAssignmentRouteImport
+      parentRoute: typeof ManagerRoute
+    }
+    '/manager/drive-offs': {
+      id: '/manager/drive-offs'
+      path: '/drive-offs'
+      fullPath: '/manager/drive-offs'
+      preLoaderRoute: typeof ManagerDriveOffsRouteImport
       parentRoute: typeof ManagerRoute
     }
     '/manager/enquiries': {
@@ -2262,6 +2319,7 @@ interface AdminRouteChildren {
   AdminDeliveriesRoute: typeof AdminDeliveriesRoute
   AdminDeliveryAgentsRoute: typeof AdminDeliveryAgentsRoute
   AdminDeliverySlotsRoute: typeof AdminDeliverySlotsRoute
+  AdminDriveOffsRoute: typeof AdminDriveOffsRoute
   AdminEnquiriesRoute: typeof AdminEnquiriesRoute
   AdminFaqsRoute: typeof AdminFaqsRoute
   AdminGasPricingRoute: typeof AdminGasPricingRoute
@@ -2299,6 +2357,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDeliveriesRoute: AdminDeliveriesRoute,
   AdminDeliveryAgentsRoute: AdminDeliveryAgentsRoute,
   AdminDeliverySlotsRoute: AdminDeliverySlotsRoute,
+  AdminDriveOffsRoute: AdminDriveOffsRoute,
   AdminEnquiriesRoute: AdminEnquiriesRoute,
   AdminFaqsRoute: AdminFaqsRoute,
   AdminGasPricingRoute: AdminGasPricingRoute,
@@ -2338,6 +2397,7 @@ const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 interface BranchRouteChildren {
   BranchCollectionHistoryRoute: typeof BranchCollectionHistoryRoute
   BranchDailyReportRoute: typeof BranchDailyReportRoute
+  BranchDriveOffsRoute: typeof BranchDriveOffsRoute
   BranchExchangeHistoryRoute: typeof BranchExchangeHistoryRoute
   BranchNotificationsRoute: typeof BranchNotificationsRoute
   BranchOrdersRoute: typeof BranchOrdersRoute
@@ -2349,6 +2409,7 @@ interface BranchRouteChildren {
 const BranchRouteChildren: BranchRouteChildren = {
   BranchCollectionHistoryRoute: BranchCollectionHistoryRoute,
   BranchDailyReportRoute: BranchDailyReportRoute,
+  BranchDriveOffsRoute: BranchDriveOffsRoute,
   BranchExchangeHistoryRoute: BranchExchangeHistoryRoute,
   BranchNotificationsRoute: BranchNotificationsRoute,
   BranchOrdersRoute: BranchOrdersRoute,
@@ -2396,6 +2457,7 @@ interface ManagerRouteChildren {
   ManagerDeliveriesRoute: typeof ManagerDeliveriesRoute
   ManagerDeliveryAgentsRoute: typeof ManagerDeliveryAgentsRoute
   ManagerDeliveryAssignmentRoute: typeof ManagerDeliveryAssignmentRoute
+  ManagerDriveOffsRoute: typeof ManagerDriveOffsRoute
   ManagerEnquiriesRoute: typeof ManagerEnquiriesRoute
   ManagerGasPricingRoute: typeof ManagerGasPricingRoute
   ManagerInventoryRoute: typeof ManagerInventoryRoute
@@ -2415,6 +2477,7 @@ const ManagerRouteChildren: ManagerRouteChildren = {
   ManagerDeliveriesRoute: ManagerDeliveriesRoute,
   ManagerDeliveryAgentsRoute: ManagerDeliveryAgentsRoute,
   ManagerDeliveryAssignmentRoute: ManagerDeliveryAssignmentRoute,
+  ManagerDriveOffsRoute: ManagerDriveOffsRoute,
   ManagerEnquiriesRoute: ManagerEnquiriesRoute,
   ManagerGasPricingRoute: ManagerGasPricingRoute,
   ManagerInventoryRoute: ManagerInventoryRoute,

@@ -70,6 +70,7 @@ import {
   type SlotAvailabilityResult,
   type ConfirmedBookingRecord,
 } from "@/lib/delivery-slot-service";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
 
 const DAYS_OF_WEEK = [
   { index: 1, label: "Mon", full: "Monday" },
@@ -1139,7 +1140,14 @@ export function AdminDeliverySlotsView() {
                         </Badge>
                       </div>
 
-                      <p className="font-bold text-slate-800">{b.customer_name}</p>
+                      <div className="my-1">
+                        <CustomerIdentityCell
+                          name={b.customer_name}
+                          customerId={b.customer_id}
+                          accountNumber={b.customer_account_number}
+                          layout="inline"
+                        />
+                      </div>
 
                       <div className="flex items-center gap-3 text-[11px] text-slate-500">
                         {b.customer_phone && (

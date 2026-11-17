@@ -80,6 +80,7 @@ import {
   requestAuthoritativeAccountNumber,
 } from "@/lib/account-number-service";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 import {
   getAllGasCustomerApplications,
   approveGasCustomerApplication,
@@ -632,20 +633,16 @@ export function ManagerApplicationsView() {
                     </TableCell>
 
                     <TableCell>
-                      <div className="space-y-0.5">
-                        <p className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
-                          {isHome ? (
-                            <Home className="h-3.5 w-3.5 text-slate-500" />
-                          ) : (
-                            <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                          )}
-                          <span>{app.full_name}</span>
+                      <CustomerIdentityCell
+                        name={app.full_name}
+                        customerId={app.customer_id}
+                        layout="table"
+                      />
+                      {app.business_name && (
+                        <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                          {app.business_name}
                         </p>
-                        <p className="text-[11px] text-slate-500">
-                          {app.business_name ? `${app.business_name} • ` : ""}
-                          {app.email}
-                        </p>
-                      </div>
+                      )}
                     </TableCell>
 
                     <TableCell className="text-xs text-slate-700">
@@ -781,6 +778,7 @@ export function ManagerApplicationsView() {
                     <User className="h-3.5 w-3.5 text-primary" /> Customer Contact Details
                   </h4>
                   <p><span className="text-slate-500">Full Name:</span> <strong className="text-slate-900">{selectedApp.full_name}</strong></p>
+                  <p><span className="text-slate-500">Customer ID:</span> <code className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-slate-800 select-all">{selectedApp.customer_id}</code></p>
                   <p><span className="text-slate-500">Email:</span> <strong className="text-slate-900">{selectedApp.email}</strong></p>
                   <p><span className="text-slate-500">Telephone:</span> <strong className="text-slate-900">{selectedApp.phone}</strong></p>
                   <p><span className="text-slate-500">Preferred Contact:</span> <strong className="text-slate-900">{selectedApp.preferred_contact_method || "Phone"}</strong></p>

@@ -39,7 +39,7 @@ import { supabase } from "@/lib/supabase";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 export function CustomerProfileView() {
-  const { user } = useStore();
+  const { user, updateUserName } = useStore();
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
@@ -302,25 +302,43 @@ export function CustomerProfileView() {
     setSaving(true);
     try {
       const { data: authUser } = await supabase.auth.getUser();
-      if (!authUser?.user) throw new Error("Authentication session expired.");
+      const currentUid = authUser?.user?.id || user?.id;
+      const currentEmail = authUser?.user?.email || user?.email;
+
+      if (!currentUid && !currentEmail) throw new Error("Authentication session expired.");
 
       const cleanName = name.trim();
       const cleanPhone = phone.trim();
 
-      const { error: updateErr } = await supabase
+      // 1. Update customer profile in database
+      let updateQuery = supabase
         .from("profiles")
         .update({
           full_name: cleanName,
           phone: cleanPhone,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", authUser.user.id);
+        });
 
+      if (currentUid) {
+        updateQuery = updateQuery.eq("id", currentUid);
+      } else if (currentEmail) {
+        updateQuery = updateQuery.eq("email", currentEmail);
+      }
+
+      const { error: updateErr } = await updateQuery;
       if (updateErr) throw updateErr;
 
-      if (user) {
-        user.name = cleanName;
+      // 2. Sync full_name in Supabase Auth user metadata so session refresh has it
+      try {
+        await supabase.auth.updateUser({
+          data: { full_name: cleanName },
+        });
+      } catch (authMetaErr) {
+        console.warn("Could not sync auth metadata full_name:", authMetaErr);
       }
+
+      // 3. Immediately update shared store user state so all components re-render instantly
+      updateUserName(cleanName);
 
       toast.success("Saved successfully");
       window.dispatchEvent(new Event("user_profile_updated"));
@@ -431,15 +449,6 @@ export function CustomerProfileView() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* PROMINENT JOHN STAYTE ACCOUNT NUMBER BADGE */}
-          {customerAccountNumber && (
-            <CustomerAccountNumberBadge
-              accountNumber={customerAccountNumber}
-              variant="card"
-              sublabel="Permanent John Stayte account reference number. Use this for depot collections and telephone ordering."
-            />
-          )}
-
           {/* 2. TWO-COLUMN DESKTOP GRID LAYOUT */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* LEFT OVERVIEW CARD */}

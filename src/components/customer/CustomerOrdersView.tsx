@@ -474,7 +474,7 @@ export function CustomerOrdersView() {
                           user?.account_number ||
                           user?.customer_code
                         }
-                        variant="compact"
+                        variant="order-pill"
                       />
                     )}
                     {isNewCylinder && (

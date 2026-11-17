@@ -38,6 +38,12 @@ import { gbp, useStore, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import {
+  downloadTaxInvoice,
+  printTaxInvoice,
+  prepareInvoiceData,
+  INVOICE_COMPANY_CONFIG,
+} from "@/lib/invoice-service";
 
 export function CustomerInvoicesView() {
   const { user } = useStore();
@@ -126,165 +132,32 @@ export function CustomerInvoicesView() {
   };
 
   // Generate & Download Real HTML/Printable VAT Invoice
-  const handleDownloadVATInvoice = (order: any) => {
+  const handleDownloadVATInvoice = async (order: any) => {
     try {
-      const invoiceNo = `INV-${order.order_number}`;
-      const orderDate = new Date(order.created_at).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-
-      let addressObj: any = {};
-      if (typeof order.delivery_address === "object" && order.delivery_address !== null) {
-        addressObj = order.delivery_address;
-      }
-
       const accountNumber =
         order.customer_account_number ||
-        addressObj.account_number ||
+        (typeof order.delivery_address === "object" ? order.delivery_address?.account_number : undefined) ||
         user?.account_number ||
         user?.customer_code ||
-        "";
-
-      const itemsList = order.order_items || [];
-
-      const subtotal = Number(order.subtotal || order.total || 0);
-      const shippingFee = Number(order.shipping_fee || 0);
-      const vatAmount = subtotal * 0.2;
-      const grandTotal = Number(order.total || subtotal + vatAmount + shippingFee);
-
-      const itemsHtml = itemsList
-        .map(
-          (item: any) => `
-        <tr>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${item.product_name}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.quantity}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">${gbp(item.unit_price)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">${gbp(item.unit_price * 0.2 * item.quantity)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700;">${gbp(item.total_price)}</td>
-        </tr>
-      `,
-        )
-        .join("");
-
-      const invoiceHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>VAT Tax Invoice #${invoiceNo}</title>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px; color: #0f172a; }
-    .invoice-card { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
-    .header-flex { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #dc2626; padding-bottom: 20px; margin-bottom: 30px; }
-    .company-title { font-size: 24px; font-weight: 900; color: #dc2626; margin: 0; }
-    .inv-title { font-size: 28px; font-weight: 900; text-align: right; color: #0f172a; margin: 0; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-    th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; }
-    .totals-table { width: 300px; margin-left: auto; border: none; }
-    .totals-table td { padding: 6px 10px; }
-    .grand-total { font-size: 18px; font-weight: 900; color: #dc2626; border-top: 2px solid #e2e8f0; }
-    .footer-note { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="invoice-card">
-    <div class="header-flex">
-      <div>
-        <h1 class="company-title">JOHN STAYTE SERVICES</h1>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: +44 (0)1453 822859</p>
-      </div>
-      <div>
-        <h2 class="inv-title">VAT TAX INVOICE</h2>
-        <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 700; text-align: right; color: #475569;">${invoiceNo}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">${accountNumber ? `Account: <strong>${accountNumber}</strong> &bull; ` : ""}Order Ref: #${order.order_number}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">Date: ${orderDate}</p>
-      </div>
-    </div>
-
-    <div class="info-grid">
-      <div>
-        <div class="section-title">Billed & Delivered To</div>
-        <p style="margin: 0; font-weight: 800; font-size: 14px;">${order.customer_name || user?.name || "Valued Customer"}</p>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.street || "Delivery Address On File"}</p>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.postcode || ""}</p>
-        <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Email: ${order.customer_email || user?.email || ""}</p>
-        ${
-          accountNumber
-            ? `
-        <div style="margin-top: 10px; display: inline-block; background-color: #e31b23; color: #000000; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-family: monospace; font-size: 13px; letter-spacing: 0.5px; border: 1px solid #b91c1c;">
-          <div style="font-size: 8px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; color: #000000; opacity: 0.9; margin-bottom: 2px;">JOHN STAYTE ACCOUNT NUMBER</div>
-          <div style="font-size: 14px; font-weight: 900; color: #000000;">${accountNumber}</div>
-        </div>
-        `
-            : ""
-        }
-      </div>
-      <div style="text-align: right;">
-        <div class="section-title">Payment & Status</div>
-        <p style="margin: 0; font-weight: 800; font-size: 13px; color: #059669;">Status: Paid & Issued</p>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">Fulfillment: ${order.status}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">Currency: GBP (£)</p>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th style="text-align: center;">Qty</th>
-          <th style="text-align: right;">Unit Price (ex. VAT)</th>
-          <th style="text-align: right;">VAT (20%)</th>
-          <th style="text-align: right;">Total Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemsHtml}
-      </tbody>
-    </table>
-
-    <table class="totals-table">
-      <tr>
-        <td style="color: #64748b; font-size: 12px;">Subtotal (excl. VAT):</td>
-        <td style="text-align: right; font-weight: 700; font-size: 12px;">${gbp(subtotal)}</td>
-      </tr>
-      <tr>
-        <td style="color: #64748b; font-size: 12px;">VAT (Standard 20%):</td>
-        <td style="text-align: right; font-weight: 700; font-size: 12px;">${gbp(vatAmount)}</td>
-      </tr>
-      <tr>
-        <td style="color: #64748b; font-size: 12px;">Delivery Charge:</td>
-        <td style="text-align: right; font-weight: 700; font-size: 12px;">${shippingFee === 0 ? "FREE" : gbp(shippingFee)}</td>
-      </tr>
-      <tr class="grand-total">
-        <td>Total Paid:</td>
-        <td style="text-align: right;">${gbp(grandTotal)}</td>
-      </tr>
-    </table>
-
-    <div class="footer-note">
-      <p style="margin: 0;">John Stayte Services Ltd &bull; Registered in England & Wales &bull; Thank you for your business!</p>
-    </div>
-  </div>
-</body>
-</html>
-      `.trim();
-
-      const blob = new Blob([invoiceHtml], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `VAT_Invoice_${order.order_number}.html`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      toast.success(`VAT Invoice #${order.order_number} downloaded successfully!`);
+        undefined;
+      await downloadTaxInvoice(order, { accountNumber });
+      toast.success(`Tax Invoice #${order.order_number} PDF downloaded successfully!`);
     } catch (err: any) {
       toast.error("Failed to generate VAT invoice: " + err.message);
+    }
+  };
+
+  const handlePrintVATInvoice = (order: any) => {
+    try {
+      const accountNumber =
+        order.customer_account_number ||
+        (typeof order.delivery_address === "object" ? order.delivery_address?.account_number : undefined) ||
+        user?.account_number ||
+        user?.customer_code ||
+        undefined;
+      printTaxInvoice(order, { accountNumber });
+    } catch (err: any) {
+      toast.error("Failed to print invoice: " + err.message);
     }
   };
 
@@ -573,9 +446,20 @@ export function CustomerInvoicesView() {
                           </Button>
 
                           <Button
+                            onClick={() => handlePrintVATInvoice(order)}
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl text-xs font-bold gap-1 border-slate-200 text-slate-700 hover:bg-slate-50 h-8 px-2.5 transition-colors"
+                            title="Print Tax Invoice"
+                          >
+                            <Printer className="h-3.5 w-3.5 text-slate-500" />
+                          </Button>
+
+                          <Button
                             onClick={() => handleDownloadVATInvoice(order)}
                             size="sm"
                             className="rounded-xl text-xs font-extrabold gap-1 shadow-xs bg-primary hover:bg-primary/90 text-white h-8 px-3 transition-all"
+                            title="Download Tax Invoice"
                           >
                             <Download className="h-3.5 w-3.5" /> Download
                           </Button>
@@ -688,186 +572,188 @@ export function CustomerInvoicesView() {
             </DialogTitle>
           </DialogHeader>
 
-          {selectedInvoiceOrder && (
-            <div className="space-y-6 pt-2 text-xs">
-              {/* Document Header */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="font-black text-base text-primary">JOHN STAYTE SERVICES</h2>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Whitminster Depot, Gloucestershire, GL2 7NY
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                    VAT Reg No: GB 123 4567 89
-                  </p>
-                </div>
+          {selectedInvoiceOrder && (() => {
+            const modalInv = prepareInvoiceData(selectedInvoiceOrder, {
+              accountNumber:
+                selectedInvoiceOrder.customer_account_number ||
+                selectedInvoiceOrder.delivery_address?.account_number ||
+                user?.account_number ||
+                user?.customer_code,
+            });
 
-                <div className="sm:text-right">
-                  <Badge
-                    variant="outline"
-                    className="bg-emerald-50 text-emerald-800 border-emerald-200 font-extrabold mb-1"
-                  >
-                    Official Tax Invoice
-                  </Badge>
-                  <p className="font-mono font-black text-sm text-slate-900">
-                    Ref: #{selectedInvoiceOrder.order_number}
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    Date:{" "}
-                    {new Date(selectedInvoiceOrder.created_at).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
+            return (
+              <div className="space-y-5 pt-2 text-xs">
+                {/* Document Header */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-red-50/70 via-white to-slate-50 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-bold text-red-600">{INVOICE_COMPANY_CONFIG.tradingAs}</p>
+                    <h2 className="font-serif font-black text-xl text-primary leading-tight">
+                      {INVOICE_COMPANY_CONFIG.companyName}
+                    </h2>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      {INVOICE_COMPANY_CONFIG.addressLine1}, {INVOICE_COMPANY_CONFIG.townCity}, {INVOICE_COMPANY_CONFIG.postcode}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                      Tel: {INVOICE_COMPANY_CONFIG.phone} • {INVOICE_COMPANY_CONFIG.email}
+                    </p>
+                    <p className="text-[11px] font-black text-slate-900 mt-1">
+                      VAT No. {INVOICE_COMPANY_CONFIG.vatNumber}
+                    </p>
+                  </div>
 
-              {/* Billed To Address */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border border-slate-200/80 bg-white">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                    Customer Information
-                  </p>
-                  <p className="font-black text-sm text-slate-900 mt-1">
-                    {selectedInvoiceOrder.customer_name || user?.name}
-                  </p>
-                  <p className="text-slate-500">
-                    {selectedInvoiceOrder.customer_email || user?.email}
-                  </p>
-                  <p className="text-slate-500">
-                    {selectedInvoiceOrder.customer_phone || "Phone on file"}
-                  </p>
-                  {(selectedInvoiceOrder.customer_account_number ||
-                    selectedInvoiceOrder.delivery_address?.account_number ||
-                    user?.account_number ||
-                    user?.customer_code) && (
-                    <div className="mt-3">
-                      <CustomerAccountNumberBadge
-                        accountNumber={
-                          selectedInvoiceOrder.customer_account_number ||
-                          selectedInvoiceOrder.delivery_address?.account_number ||
-                          user?.account_number ||
-                          user?.customer_code
-                        }
-                        variant="invoice"
-                      />
+                  <div className="sm:text-right bg-white p-3 rounded-xl border border-slate-200 shadow-2xs">
+                    <div className="bg-slate-200/80 text-slate-900 text-xs font-black px-3 py-1 rounded text-center mb-1.5">
+                      Invoice {modalInv.invoiceNumber}
                     </div>
-                  )}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-left sm:text-right text-[11px]">
+                      <span className="text-slate-500 font-bold">Tax Point/Date:</span>
+                      <span className="font-bold text-slate-900">{modalInv.taxPointDate}</span>
+                      <span className="text-slate-500 font-bold">Our Order Ref:</span>
+                      <span className="font-bold text-slate-900">{modalInv.customerOrderRef}</span>
+                      <span className="text-slate-500 font-bold">Due Date:</span>
+                      <span className="font-bold text-slate-900">{modalInv.dueDate}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
-                    Delivery & Billing Address
-                  </p>
-                  <p className="font-semibold text-slate-800 mt-1">
-                    {typeof selectedInvoiceOrder.delivery_address === "object" &&
-                    selectedInvoiceOrder.delivery_address !== null
-                      ? `${selectedInvoiceOrder.delivery_address.street || ""}, ${selectedInvoiceOrder.delivery_address.postcode || ""}`
-                      : selectedInvoiceOrder.delivery_address || "Gloucestershire Delivery Address"}
-                  </p>
-                  <p
-                    className={cn(
-                      "text-[11px] font-bold mt-1",
-                      selectedInvoiceOrder.payment_status === "Paid"
-                        ? "text-emerald-700"
-                        : "text-amber-700",
+                {/* Customer Information Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl border border-slate-200/80 bg-white">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                      Invoice To : <span className="text-slate-900 font-mono font-black">{modalInv.customerAccountNumber}</span>
+                    </p>
+                    <p className="font-black text-sm text-slate-900 mt-1 uppercase">
+                      {modalInv.customerName}
+                    </p>
+                    <div className="text-slate-600 mt-0.5 space-y-0.5 font-medium">
+                      {modalInv.billingAddressLines.map((l, i) => (
+                        <div key={i}>{l}</div>
+                      ))}
+                    </div>
+                    {modalInv.customerEmail && (
+                      <p className="text-slate-500 text-[11px] mt-1.5">Email: {modalInv.customerEmail}</p>
                     )}
-                  >
-                    Payment Status:{" "}
-                    {selectedInvoiceOrder.payment_status === "Paid"
-                      ? "Paid in Full"
-                      : "Payment Due on Delivery"}{" "}
-                    ({getOrderPaymentMethod(selectedInvoiceOrder)})
-                  </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                      Supplied to : <span className="text-slate-900 font-mono font-black">{modalInv.customerAccountNumber}</span>
+                    </p>
+                    <p className="font-black text-sm text-slate-900 mt-1 uppercase">
+                      {modalInv.customerName}
+                    </p>
+                    <div className="text-slate-600 mt-0.5 space-y-0.5 font-medium">
+                      {modalInv.deliveryAddressLines.map((l, i) => (
+                        <div key={i}>{l}</div>
+                      ))}
+                    </div>
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                      <span>{modalInv.paymentStatus} ({modalInv.paymentMethod})</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Items Breakdown Table */}
-              <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="font-bold text-xs">Description</TableHead>
-                      <TableHead className="font-bold text-xs text-center">Qty</TableHead>
-                      <TableHead className="font-bold text-xs text-right">Unit Price</TableHead>
-                      <TableHead className="font-bold text-xs text-right">VAT (20%)</TableHead>
-                      <TableHead className="font-bold text-xs text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(selectedInvoiceOrder.order_items || []).map((item: any) => {
-                      const uPrice = Number(item.unit_price || 0);
-                      const qty = Number(item.quantity || 1);
-                      const itemVat = uPrice * 0.2 * qty;
-                      const itemTotal = Number(item.total_price || uPrice * qty);
-
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-bold text-xs text-slate-900">
-                            {item.product_name}
+                {/* Products Table */}
+                <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-100">
+                      <TableRow>
+                        <TableHead className="font-black text-[11px] text-slate-800">Product</TableHead>
+                        <TableHead className="font-black text-[11px] text-slate-800">Description</TableHead>
+                        <TableHead className="font-black text-[11px] text-slate-800 text-center">Qty</TableHead>
+                        <TableHead className="font-black text-[11px] text-slate-800 text-center">Empties</TableHead>
+                        <TableHead className="font-black text-[11px] text-slate-800 text-right">Price Inc</TableHead>
+                        <TableHead className="font-black text-[11px] text-slate-800 text-right">Value</TableHead>
+                        <TableHead className="font-black text-[11px] text-slate-800 text-right">Vat %</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {modalInv.items.map((item, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-mono font-bold text-xs text-slate-900">
+                            {item.productCode}
                           </TableCell>
-                          <TableCell className="text-center font-bold">{qty}</TableCell>
-                          <TableCell className="text-right">{gbp(uPrice)}</TableCell>
-                          <TableCell className="text-right text-slate-500">
-                            {gbp(itemVat)}
+                          <TableCell className="font-semibold text-xs text-slate-800">
+                            {item.description}
                           </TableCell>
-                          <TableCell className="text-right font-black text-slate-900">
-                            {gbp(itemTotal)}
+                          <TableCell className="text-center font-bold text-xs">{item.quantity}</TableCell>
+                          <TableCell className="text-center text-xs">{item.empties || "—"}</TableCell>
+                          <TableCell className="text-right text-xs">{item.unitPriceIncVat.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-black text-xs text-slate-900">
+                            {item.totalValue.toFixed(2)}
                           </TableCell>
+                          <TableCell className="text-right text-xs font-mono">{item.vatPercentStr}</TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
 
-              {/* Financial Totals Breakdown */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-1.5 max-w-xs ml-auto text-right">
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Subtotal (excl. VAT):</span>
-                  <span className="font-bold text-slate-900">
-                    {gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-medium">VAT (Standard 20%):</span>
-                  <span className="font-bold text-slate-900">
-                    {gbp(Number(selectedInvoiceOrder.subtotal || selectedInvoiceOrder.total) * 0.2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-medium">Carriage / Delivery:</span>
-                  <span className="font-bold text-slate-900">
-                    {selectedInvoiceOrder.shipping_fee === 0
-                      ? "FREE"
-                      : gbp(Number(selectedInvoiceOrder.shipping_fee || 0))}
-                  </span>
-                </div>
-                <div className="flex justify-between text-base font-black text-primary border-t border-slate-200 pt-1.5 mt-1">
-                  <span>Total Paid:</span>
-                  <span>{gbp(Number(selectedInvoiceOrder.total))}</span>
-                </div>
-              </div>
+                {/* Bottom Row: BACS Payment Details & Reconciled Totals */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start pt-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs space-y-1">
+                    <p className="font-black text-slate-900 uppercase tracking-wide text-[10px]">
+                      BACS Payment Details
+                    </p>
+                    <p className="text-slate-700 font-mono text-xs">
+                      Sort Code: <strong>{INVOICE_COMPANY_CONFIG.bacsSortCode}</strong><br />
+                      Account Number: <strong>{INVOICE_COMPANY_CONFIG.bacsAccountNumber}</strong><br />
+                      Bank: <strong>{INVOICE_COMPANY_CONFIG.bacsBankName}</strong> ({INVOICE_COMPANY_CONFIG.bacsAccountName})
+                    </p>
+                    <p className="text-[10px] text-slate-500 pt-1">
+                      Please quote customer account number <strong className="text-slate-800">{modalInv.customerAccountNumber}</strong> with BACS remittance.
+                    </p>
+                  </div>
 
-              {/* Actions Footer */}
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                <Button
-                  variant="ghost"
-                  onClick={() => setViewInvoiceModalOpen(false)}
-                  className="rounded-xl text-xs font-bold"
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => handleDownloadVATInvoice(selectedInvoiceOrder)}
-                  className="rounded-xl text-xs font-extrabold gap-1.5 shadow-sm bg-primary hover:bg-primary/90 text-white h-9 px-4"
-                >
-                  <Download className="h-4 w-4" /> Download VAT Document
-                </Button>
+                  <div className="p-3.5 rounded-2xl border border-slate-900 bg-white space-y-1.5 text-right">
+                    <div className="flex justify-between text-xs font-bold text-slate-700">
+                      <span>Total Net:</span>
+                      <span>{gbp(modalInv.totalNet)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold text-slate-700">
+                      <span>Total VAT:</span>
+                      <span>{gbp(modalInv.totalVat)}</span>
+                    </div>
+                    {modalInv.deliveryCharges > 0 && (
+                      <div className="flex justify-between text-xs font-bold text-slate-700">
+                        <span>Delivery Charges:</span>
+                        <span>{gbp(modalInv.deliveryCharges)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-200 pt-1.5 mt-1">
+                      <span>Total Gross:</span>
+                      <span>{gbp(modalInv.totalGross)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Footer */}
+                <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setViewInvoiceModalOpen(false)}
+                    className="rounded-xl text-xs font-bold"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePrintVATInvoice(selectedInvoiceOrder)}
+                    className="rounded-xl text-xs font-bold gap-1.5 border-slate-300 text-slate-700 hover:bg-slate-100 h-9 px-4"
+                  >
+                    <Printer className="h-4 w-4" /> Print Invoice
+                  </Button>
+                  <Button
+                    onClick={() => handleDownloadVATInvoice(selectedInvoiceOrder)}
+                    className="rounded-xl text-xs font-extrabold gap-1.5 shadow-sm bg-primary hover:bg-primary/90 text-white h-9 px-4"
+                  >
+                    <Download className="h-4 w-4" /> Download Official Tax Invoice
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

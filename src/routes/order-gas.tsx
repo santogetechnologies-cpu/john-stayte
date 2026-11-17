@@ -721,7 +721,8 @@ function OrderGasPage() {
           speakLoginError(res.error, authEmail);
           throw new Error(res.error || "Invalid credentials.");
         }
-        speakLoginSuccess(res.user?.role);
+        const voiceAllowed = res.user?.role !== "customer" || res.user?.ai_voice_welcome !== false;
+        speakLoginSuccess(res.user?.role, voiceAllowed);
         toast.success("Signed in successfully!");
         setAuthModalOpen(false);
 

@@ -11,6 +11,7 @@ import { type Product } from "@/data/catalog";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl } from "@/lib/utils";
 import { INITIAL_ACTIVE_AGENTS } from "@/lib/delivery-agent-service";
+import { resolveUserName } from "@/lib/user-profile-service";
 import { type Offer, evaluateOfferForCart } from "@/lib/offer-service";
 import {
   initializePushNotifications,
@@ -29,6 +30,7 @@ export type User = {
   assignedBranchId?: string;
   customer_code?: string;
   account_number?: string;
+  ai_voice_welcome?: boolean;
 };
 
 export type CartLine = { slug: string; qty: number };
@@ -70,6 +72,8 @@ type Store = {
   clearCart: () => void;
   wishlist: string[];
   toggleWishlist: (slug: string) => void;
+  updateUserName: (name: string) => void;
+  refreshUser: () => Promise<void>;
 };
 
 const StoreContext = createContext<Store | null>(null);
@@ -224,26 +228,8 @@ function resolveUserRole(
   return "customer";
 }
 
-function resolveUserName(
-  email?: string | null,
-  metadataName?: string | null,
-  profileName?: string | null,
-): string {
-  const normEmail = (email || "").trim().toLowerCase();
-  const matchedAgent = INITIAL_ACTIVE_AGENTS.find(
-    (ag) => ag.email?.toLowerCase() === normEmail,
-  );
-  if (matchedAgent?.full_name) {
-    return matchedAgent.full_name;
-  }
-  if (metadataName && metadataName.trim()) {
-    return metadataName.trim();
-  }
-  if (profileName && profileName.trim() && profileName !== email) {
-    return profileName.trim();
-  }
-  return email ? email.split("@")[0] : "User";
-}
+export { resolveUserName };
+export { getAppOrigin } from "./auth-origin-service";
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -363,9 +349,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Listen to Supabase Auth State Changes
-  useEffect(() => {
-    const fetchSessionUser = async (session: any) => {
+  // Reusable session user fetcher that reads authoritative profile data
+  const fetchSessionUser = useCallback(
+    async (session: any) => {
       try {
         if (!session?.user?.id) {
           setUser(null);
@@ -380,7 +366,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("*")
-            .eq("id", currentUid)
+            .or(`id.eq.${currentUid},email.ilike.${session.user.email || ""}`)
             .maybeSingle();
 
           const userPrefs =
@@ -420,6 +406,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             profile,
           );
 
+          const aiVoiceWelcome =
+            userPrefs?.aiVoiceWelcome !== false &&
+            (userPrefs as any)?.ai_voice_welcome !== false;
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("jss.ai_voice_welcome", String(aiVoiceWelcome));
+            } catch {}
+          }
+
           const u: User = {
             id: currentUid,
             name: resolveUserName(
@@ -434,6 +429,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             assignedBranchId,
             customer_code: (profile as any)?.customer_code || (profile as any)?.account_number || session.user.user_metadata?.customer_code,
             account_number: (profile as any)?.account_number || (profile as any)?.customer_code || session.user.user_metadata?.account_number,
+            ai_voice_welcome: aiVoiceWelcome,
           };
           setUser(u);
         } catch {
@@ -478,8 +474,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } finally {
         setAuthLoading(false);
       }
-    };
+    },
+    [syncWishlistWithDb],
+  );
 
+  // Synchronously update the shared user's name across all portal components
+  const updateUserName = useCallback((newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    setUser((prev) => (prev ? { ...prev, name: trimmed } : null));
+  }, []);
+
+  // Re-fetch fresh user and profile details from Supabase
+  const refreshUser = useCallback(async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        await fetchSessionUser(session);
+      }
+    } catch (err) {
+      console.warn("Notice refreshing user in store:", err);
+    }
+  }, [fetchSessionUser]);
+
+  // Listen to Supabase Auth State Changes and Profile Updates
+  useEffect(() => {
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
       fetchSessionUser(session);
@@ -501,7 +522,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       authListener?.subscription.unsubscribe();
       window.removeEventListener("user_profile_updated", handleProfileUpdated);
     };
-  }, [syncWishlistWithDb]);
+  }, [fetchSessionUser]);
 
   const login: Store["login"] = useCallback(
     async (email, password) => {
@@ -579,6 +600,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           profile,
         );
 
+        const aiVoiceWelcome =
+          userPrefs?.aiVoiceWelcome !== false &&
+          (userPrefs as any)?.ai_voice_welcome !== false;
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("jss.ai_voice_welcome", String(aiVoiceWelcome));
+          } catch {}
+        }
+
         const u: User = {
           id: uid,
           name: resolveUserName(
@@ -593,6 +623,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           assignedBranchId,
           customer_code: (profile as any)?.customer_code || (profile as any)?.account_number || authRes.data.user.user_metadata?.customer_code,
           account_number: (profile as any)?.account_number || (profile as any)?.customer_code || authRes.data.user.user_metadata?.account_number,
+          ai_voice_welcome: aiVoiceWelcome,
         };
 
         setUser(u);
@@ -609,8 +640,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (name, email, password, role = "customer", is18Confirmed = true) => {
       try {
         const cleanEmail = email.trim();
-        const origin =
-          typeof window !== "undefined" ? window.location.origin : "https://johnstayte.co.uk";
+        const origin = getAppOrigin();
         const emailRedirectTo = `${origin}/login?confirmed=true`;
 
         // Store ONLY minimal eligibility verification boolean and audit timestamp
@@ -681,8 +711,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const origin =
-          typeof window !== "undefined" ? window.location.origin : "https://johnstayte.co.uk";
+        const origin = getAppOrigin();
         const emailRedirectTo = `${origin}/login?confirmed=true`;
 
         const { error } = await supabase.auth.resend({
@@ -860,8 +889,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       clearCart: () => setCart([]),
       wishlist,
       toggleWishlist,
+      updateUserName,
+      refreshUser,
     }),
-    [user, authLoading, cart, wishlist, login, register, resendConfirmationEmail, logout, setCart, toggleWishlist],
+    [
+      user,
+      authLoading,
+      cart,
+      wishlist,
+      login,
+      register,
+      resendConfirmationEmail,
+      logout,
+      setCart,
+      toggleWishlist,
+      updateUserName,
+      refreshUser,
+    ],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

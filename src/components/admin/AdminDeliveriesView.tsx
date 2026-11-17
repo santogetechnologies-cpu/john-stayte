@@ -56,6 +56,7 @@ import { deleteDeliveryAssignment } from "@/lib/order-service";
 import { getOrderCylinderExchangeRequirement } from "@/lib/cylinder-exchange-service";
 import { cn } from "@/lib/utils";
 import { DEFAULT_SLOTS, SlotConfig } from "@/lib/cylinder-service";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
 
 export function AdminDeliveriesView() {
   const [deliveries, setDeliveries] = useState<any[]>([]);
@@ -714,12 +715,19 @@ export function AdminDeliveriesView() {
                     Current: {selectedDeliveryToAssign.driver_name || "Unassigned"}
                   </Badge>
                 </div>
-                <p className="font-bold text-slate-900">
-                  {selectedDeliveryToAssign.orders?.shipping_name ||
-                    selectedDeliveryToAssign.orders?.customer_name ||
-                    selectedDeliveryToAssign.customer_name ||
-                    "Customer Delivery"}
-                </p>
+                <div className="mt-1">
+                  <CustomerIdentityCell
+                    name={
+                      selectedDeliveryToAssign.orders?.shipping_name ||
+                      selectedDeliveryToAssign.orders?.customer_name ||
+                      selectedDeliveryToAssign.customer_name ||
+                      "Customer Delivery"
+                    }
+                    customerId={selectedDeliveryToAssign.orders?.customer_id}
+                    accountNumber={selectedDeliveryToAssign.orders?.customer_account_number}
+                    layout="table"
+                  />
+                </div>
                 <p className="text-[11px] text-slate-500 truncate">
                   Area: {selectedDeliveryToAssign.route_area || "Gloucestershire"} &bull;{" "}
                   {selectedDeliveryToAssign.time_slot || "Morning Window"}

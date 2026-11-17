@@ -24,6 +24,7 @@ import {
   ShieldAlert,
   Sparkles,
   ExternalLink,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,18 @@ export function CustomerSettingsView() {
   const [smsNotifs, setSmsNotifs] = useState(true);
   const [pushNotifs, setPushNotifs] = useState(false);
 
+  // AI Voice Welcome preference (enabled by default)
+  const [aiVoiceWelcome, setAiVoiceWelcome] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("jss.ai_voice_welcome");
+        if (stored === "false") return false;
+        if (stored === "true") return true;
+      } catch {}
+    }
+    return true;
+  });
+
   const handlePushToggle = async (checked: boolean) => {
     setPushNotifs(checked);
     if (checked && isNativePushSupported()) {
@@ -72,6 +85,51 @@ export function CustomerSettingsView() {
     } else if (!checked && isNativePushSupported()) {
       await unregisterPushNotifications();
       toast.info("Push notifications disabled for this device.");
+    }
+  };
+
+  const handleVoiceToggle = async (checked: boolean) => {
+    setAiVoiceWelcome(checked);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("jss.ai_voice_welcome", String(checked));
+      } catch {}
+    }
+
+    try {
+      const { data: authUser } = await supabase.auth.getUser();
+      const currentUserId = authUser?.user?.id || user?.id;
+      if (currentUserId) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("notification_prefs")
+          .eq("id", currentUserId)
+          .maybeSingle();
+
+        const currentPrefs =
+          data?.notification_prefs && typeof data.notification_prefs === "object"
+            ? (data.notification_prefs as Record<string, unknown>)
+            : {};
+
+        await supabase
+          .from("profiles")
+          .update({
+            notification_prefs: {
+              ...currentPrefs,
+              aiVoiceWelcome: checked,
+              ai_voice_welcome: checked,
+            },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", currentUserId);
+      }
+      toast.success(
+        checked
+          ? "AI Voice Welcome enabled! You'll hear a friendly greeting on sign in."
+          : "AI Voice Welcome disabled.",
+      );
+    } catch (err) {
+      console.warn("Could not auto-save voice preference to profile:", err);
     }
   };
 
@@ -100,7 +158,7 @@ export function CustomerSettingsView() {
         }
 
         if (data?.notification_prefs && typeof data.notification_prefs === "object") {
-          const prefs = data.notification_prefs as Record<string, boolean>;
+          const prefs = data.notification_prefs as Record<string, any>;
           if (typeof prefs.orderUpdates === "boolean") setOrderUpdates(prefs.orderUpdates);
           if (typeof prefs.deliveryUpdates === "boolean") setDeliveryUpdates(prefs.deliveryUpdates);
           if (typeof prefs.serviceUpdates === "boolean") setServiceUpdates(prefs.serviceUpdates);
@@ -113,6 +171,15 @@ export function CustomerSettingsView() {
               requestPushPermissionsAndRegister(false).catch((err) => {
                 console.warn("[Customer Settings] Push auto-registration notice:", err);
               });
+            }
+          }
+          const voicePref = prefs.aiVoiceWelcome ?? prefs.ai_voice_welcome;
+          if (typeof voicePref === "boolean") {
+            setAiVoiceWelcome(voicePref);
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem("jss.ai_voice_welcome", String(voicePref));
+              } catch {}
             }
           }
         }
@@ -157,6 +224,8 @@ export function CustomerSettingsView() {
         emailNotifs,
         smsNotifs,
         pushNotifs,
+        aiVoiceWelcome,
+        ai_voice_welcome: aiVoiceWelcome,
       };
 
       const { error } = await supabase
@@ -168,6 +237,11 @@ export function CustomerSettingsView() {
         .eq("id", currentUserId);
 
       if (error) throw error;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("jss.ai_voice_welcome", String(aiVoiceWelcome));
+        } catch {}
+      }
       toast.success("Account preferences saved successfully to database!");
     } catch (err: any) {
       console.error("Failed to save customer settings:", err);
@@ -348,6 +422,48 @@ export function CustomerSettingsView() {
                 <Switch
                   checked={promotions}
                   onCheckedChange={setPromotions}
+                  className="data-[state=checked]:bg-primary shrink-0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 2: PREFERENCES */}
+          <div id="preferences" className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-purple-50 text-purple-600 shrink-0 border border-purple-100">
+                <Volume2 className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-display font-extrabold text-slate-900 leading-snug">
+                  Preferences
+                </h2>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Portal experience and interactive greeting preferences.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs divide-y divide-slate-100">
+              {/* AI Voice Welcome */}
+              <div className="flex items-center justify-between gap-4 pt-0">
+                <div className="space-y-0.5 min-w-0 pr-2">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-slate-900 text-xs sm:text-sm">AI Voice Welcome</p>
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] font-semibold bg-purple-50 text-purple-700 border-purple-200"
+                    >
+                      Greeting
+                    </Badge>
+                  </div>
+                  <p className="text-slate-500 text-xs font-medium">
+                    Play a friendly voice greeting when you sign in to your account.
+                  </p>
+                </div>
+                <Switch
+                  checked={aiVoiceWelcome}
+                  onCheckedChange={handleVoiceToggle}
                   className="data-[state=checked]:bg-primary shrink-0"
                 />
               </div>
@@ -561,7 +677,31 @@ export function CustomerSettingsView() {
             </div>
           </div>
 
-          {/* SECTION 5: ACCOUNT ACTIONS (Danger Zone) */}
+          {/* SECTION: SAVE CHANGES ACTION BAR */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:px-6 sm:py-4.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+              <span>Changes are saved to your customer account</span>
+            </div>
+
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full sm:w-auto rounded-xl font-extrabold text-xs shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-9.5 px-6 gap-2 transition-all hover:scale-[1.01]"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4" /> Save Changes
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* SECTION: ACCOUNT ACTIONS (Danger Zone) */}
           <div className="bg-red-50/20 rounded-2xl border border-red-200/80 p-5 space-y-4 shadow-xs">
             <div className="flex items-center gap-2.5 border-b border-red-100 pb-3">
               <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
@@ -613,30 +753,6 @@ export function CustomerSettingsView() {
                 </Button>
               </div>
             </div>
-          </div>
-
-          {/* SECTION 6: STICKY/BOTTOM SAVE ACTION BAR */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-4 sm:px-6 sm:py-4.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>Changes are saved to your customer account</span>
-            </div>
-
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full sm:w-auto rounded-xl font-extrabold text-xs shadow-sm shadow-primary/20 bg-primary hover:bg-primary/90 text-white h-9.5 px-6 gap-2 transition-all hover:scale-[1.01]"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" /> Save Changes
-                </>
-              )}
-            </Button>
           </div>
         </div>
 

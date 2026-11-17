@@ -44,6 +44,8 @@ export interface SlotAvailabilityResult {
 export interface ConfirmedBookingRecord {
   order_id: string;
   order_number: string;
+  customer_id?: string | null;
+  customer_account_number?: string | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -383,6 +385,8 @@ export async function getSlotConfirmedBookings(
   return (data || []).map((b: any) => ({
     order_id: b.order_id,
     order_number: b.order_number,
+    customer_id: b.customer_id || null,
+    customer_account_number: b.customer_account_number || null,
     customer_name: b.customer_name || "Unknown Customer",
     customer_email: b.customer_email || "",
     customer_phone: b.customer_phone || "",

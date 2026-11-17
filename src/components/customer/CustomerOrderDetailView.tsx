@@ -26,6 +26,7 @@ import {
   Check,
   Star,
   PackageCheck,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,12 @@ import { gbp, useStore, getOrderPaymentMethod } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { cleanImageUrl, cn } from "@/lib/utils";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import {
+  downloadTaxInvoice,
+  printTaxInvoice,
+  prepareInvoiceData,
+  INVOICE_COMPANY_CONFIG,
+} from "@/lib/invoice-service";
 
 const TRACKING_STEPS = [
   { key: "Pending", label: "Order Placed", desc: "Order submitted via website" },
@@ -310,17 +317,9 @@ export function CustomerOrderDetailView() {
   };
 
   // Handle Download VAT Invoice
-  const handleDownloadVATInvoice = () => {
+  const handleDownloadVATInvoice = async () => {
     if (!order) return;
-
     try {
-      const orderDate = new Date(order.created_at).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-
-      const invoiceNo = `INV-${(order.order_number || order.id).replace("JSS-", "")}`;
       const addressObj =
         typeof order.delivery_address === "string"
           ? JSON.parse(order.delivery_address)
@@ -331,145 +330,33 @@ export function CustomerOrderDetailView() {
         addressObj.account_number ||
         user?.account_number ||
         user?.customer_code ||
-        "";
+        undefined;
 
-      const subtotal = Number(order.subtotal || 0);
-      const shippingFee = Number(order.shipping_fee || 0);
-      const vatAmount = subtotal * 0.2;
-      const grandTotal = Number(order.total || subtotal + vatAmount + shippingFee);
-
-      const itemsHtml = (order.order_items || [])
-        .map(
-          (item: any) => `
-        <tr>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight: 600;">${item.product_name}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${item.quantity}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">${gbp(item.unit_price)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right;">${gbp(item.unit_price * 0.2 * item.quantity)}</td>
-          <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700;">${gbp(item.total_price)}</td>
-        </tr>
-      `,
-        )
-        .join("");
-
-      const invoiceHtml = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>VAT Tax Invoice #${invoiceNo}</title>
-  <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px; color: #0f172a; }
-    .invoice-card { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
-    .header-flex { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e31b23; padding-bottom: 20px; margin-bottom: 30px; }
-    .company-title { font-size: 24px; font-weight: 900; color: #e31b23; margin: 0; }
-    .inv-title { font-size: 28px; font-weight: 900; text-align: right; color: #0f172a; margin: 0; }
-    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-    .section-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-    th { background: #f1f5f9; padding: 10px; text-align: left; font-size: 11px; font-weight: 800; color: #475569; text-transform: uppercase; }
-    .totals-table { width: 300px; margin-left: auto; border: none; }
-    .totals-table td { padding: 6px 10px; }
-    .grand-total { font-size: 18px; font-weight: 900; color: #e31b23; border-top: 2px solid #e2e8f0; }
-    .footer-note { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="invoice-card">
-    <div class="header-flex">
-      <div>
-        <h1 class="company-title">JOHN STAYTE SERVICES</h1>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569; font-weight: 600;">Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">VAT Reg No: <strong>GB 123 4567 89</strong> | Tel: +44 (0)1453 822859</p>
-      </div>
-      <div>
-        <h2 class="inv-title">VAT TAX INVOICE</h2>
-        <p style="margin: 4px 0 0 0; font-size: 13px; font-weight: 700; text-align: right; color: #475569;">${invoiceNo}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">${accountNumber ? `Account: <strong>${accountNumber}</strong> &bull; ` : ""}Order Ref: #${order.order_number}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; text-align: right; color: #64748b;">Date: ${orderDate}</p>
-      </div>
-    </div>
-
-    <div class="info-grid">
-      <div>
-        <div class="section-title">Billed & Delivered To</div>
-        <p style="margin: 0; font-weight: 800; font-size: 14px;">${order.customer_name || user?.name || "Valued Customer"}</p>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.street || "Delivery Address On File"}</p>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">${addressObj.postcode || ""}</p>
-        <p style="margin: 4px 0 0 0; font-size: 11px; color: #64748b;">Email: ${order.customer_email || user?.email || ""}</p>
-        ${
-          accountNumber
-            ? `
-        <div style="margin-top: 10px; display: inline-block; background-color: #e31b23; color: #000000; padding: 6px 12px; border-radius: 6px; font-weight: 800; font-family: monospace; font-size: 13px; letter-spacing: 0.5px; border: 1px solid #b91c1c;">
-          <div style="font-size: 8px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; color: #000000; opacity: 0.9; margin-bottom: 2px;">JOHN STAYTE ACCOUNT NUMBER</div>
-          <div style="font-size: 14px; font-weight: 900; color: #000000;">${accountNumber}</div>
-        </div>
-        `
-            : ""
-        }
-      </div>
-      <div style="text-align: right;">
-        <div class="section-title">Payment & Status</div>
-        <p style="margin: 0; font-weight: 800; font-size: 13px; color: #059669;">Status: Paid & Issued</p>
-        <p style="margin: 2px 0 0 0; font-size: 12px; color: #475569;">Fulfillment: ${order.status}</p>
-        <p style="margin: 2px 0 0 0; font-size: 11px; color: #64748b;">Currency: GBP (£)</p>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th style="text-align: center;">Qty</th>
-          <th style="text-align: right;">Unit Price (ex. VAT)</th>
-          <th style="text-align: right;">VAT (20%)</th>
-          <th style="text-align: right;">Total Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${itemsHtml}
-      </tbody>
-    </table>
-
-    <table class="totals-table">
-      <tr>
-        <td style="color: #64748b; font-size: 12px;">Subtotal (excl. VAT):</td>
-        <td style="text-align: right; font-weight: 700; font-size: 12px;">${gbp(subtotal)}</td>
-      </tr>
-      <tr>
-        <td style="color: #64748b; font-size: 12px;">VAT (Standard 20%):</td>
-        <td style="text-align: right; font-weight: 700; font-size: 12px;">${gbp(vatAmount)}</td>
-      </tr>
-      <tr>
-        <td style="color: #64748b; font-size: 12px;">Delivery Charge:</td>
-        <td style="text-align: right; font-weight: 700; font-size: 12px;">${shippingFee === 0 ? "FREE" : gbp(shippingFee)}</td>
-      </tr>
-      <tr class="grand-total">
-        <td>Total Paid:</td>
-        <td style="text-align: right;">${gbp(grandTotal)}</td>
-      </tr>
-    </table>
-
-    <div class="footer-note">
-      <p style="margin: 0;">John Stayte Services Ltd &bull; Registered in England & Wales &bull; Thank you for your business!</p>
-    </div>
-  </div>
-</body>
-</html>
-      `;
-
-      const blob = new Blob([invoiceHtml], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `VAT_Invoice_${invoiceNo}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast.success(`VAT Tax Invoice #${invoiceNo} downloaded!`);
+      await downloadTaxInvoice(order, { accountNumber });
+      toast.success(`Tax Invoice #${order.order_number} PDF downloaded!`);
     } catch (err: any) {
       toast.error("Failed to generate invoice: " + err.message);
+    }
+  };
+
+  const handlePrintVATInvoice = () => {
+    if (!order) return;
+    try {
+      const addressObj =
+        typeof order.delivery_address === "string"
+          ? JSON.parse(order.delivery_address)
+          : order.delivery_address || {};
+
+      const accountNumber =
+        order.customer_account_number ||
+        addressObj.account_number ||
+        user?.account_number ||
+        user?.customer_code ||
+        undefined;
+
+      printTaxInvoice(order, { accountNumber });
+    } catch (err: any) {
+      toast.error("Failed to print invoice: " + err.message);
     }
   };
 
@@ -700,10 +587,19 @@ export function CustomerOrderDetailView() {
             <Button
               variant="outline"
               size="sm"
+              onClick={handlePrintVATInvoice}
+              className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-9 px-3.5 gap-1.5"
+            >
+              <Printer className="h-3.5 w-3.5" /> Print Invoice
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleDownloadVATInvoice}
               className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-9 px-3.5 gap-1.5"
             >
-              <Download className="h-3.5 w-3.5" /> VAT Invoice
+              <Download className="h-3.5 w-3.5" /> Tax Invoice
             </Button>
 
             {/* Header VAT Invoice Button */}
@@ -1383,13 +1279,22 @@ export function CustomerOrderDetailView() {
                 </Button>
               )}
 
-              <Button
-                variant="outline"
-                onClick={handleDownloadVATInvoice}
-                className="w-full rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-9 gap-1.5"
-              >
-                <Download className="h-3.5 w-3.5" /> Download VAT Invoice
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handlePrintVATInvoice}
+                  className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-9 gap-1.5"
+                >
+                  <Printer className="h-3.5 w-3.5" /> Print
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadVATInvoice}
+                  className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:text-primary hover:border-primary/40 h-9 gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download
+                </Button>
+              </div>
 
               {/* Download Invoice & Cancel Order */}
 

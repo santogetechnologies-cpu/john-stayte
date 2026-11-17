@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Users, Search, UserPlus, Eye, ShoppingBag, RotateCcw, Calendar, Hash, Wand2 } from "lucide-react";
+import { Users, Search, UserPlus, Eye, ShoppingBag, RotateCcw, Calendar, Hash, Wand2, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 import {
   assignCustomerAccountNumber,
   generateCustomerAccountNumber,
@@ -45,6 +46,7 @@ export function ManagerCustomersView() {
 
   // Selection & Drawers
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
+  const [copiedId, setCopiedId] = useState(false);
 
   // Add Customer Modal
   const [addModal, setAddModal] = useState(false);
@@ -309,21 +311,12 @@ export function ManagerCustomersView() {
                 {filteredCustomers.map((c) => (
                   <TableRow key={c.id} className="hover:bg-slate-50/60 transition-colors">
                     <TableCell className="font-bold text-xs">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 border border-white/80 shadow-2xs">
-                          <AvatarFallback className="bg-red-50 text-red-700 font-black text-xs">
-                            {(c.full_name || "C").charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-bold text-slate-900">
-                            {c.full_name || "Customer"}
-                          </p>
-                          <p className="text-[11px] text-slate-400 font-medium">
-                            {c.id.slice(0, 8)}
-                          </p>
-                        </div>
-                      </div>
+                      <CustomerIdentityCell
+                        name={c.full_name || "Customer"}
+                        customerId={c.id}
+                        avatar
+                        layout="table"
+                      />
                     </TableCell>
                     <TableCell className="text-xs">
                       {c.customer_code ? (
@@ -364,21 +357,26 @@ export function ManagerCustomersView() {
 
       {/* 5. CUSTOMER DETAIL SHEET */}
       <Sheet open={Boolean(selectedCustomer)} onOpenChange={() => setSelectedCustomer(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-lg p-6 bg-white/95 backdrop-blur-2xl border-l border-white/80 overflow-y-auto text-slate-900">
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-lg md:max-w-xl p-6 bg-white/95 backdrop-blur-2xl border-l border-slate-200/80 overflow-y-auto text-slate-900 font-sans"
+        >
           {selectedCustomer && (
             <div className="space-y-6 text-xs">
-              <SheetHeader className="border-b border-slate-100 pb-4">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border border-white/80 shadow-2xs">
+              <SheetHeader className="border-b border-slate-100 pb-4 pr-10">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-12 w-12 border border-slate-200/80 shadow-2xs shrink-0">
                     <AvatarFallback className="bg-red-50 text-red-700 font-black text-sm">
-                      {(selectedCustomer.full_name || "C").charAt(0)}
+                      {(selectedCustomer.full_name || "C").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
-                    <SheetTitle className="font-black text-xl text-slate-900">
+                  <div className="min-w-0 flex-1">
+                    <SheetTitle className="font-black text-xl text-slate-900 truncate">
                       {selectedCustomer.full_name || "Customer Details"}
                     </SheetTitle>
-                    <p className="text-xs text-slate-500 font-medium">{selectedCustomer.email}</p>
+                    <p className="text-xs text-slate-500 font-medium truncate" title={selectedCustomer.email}>
+                      {selectedCustomer.email}
+                    </p>
                   </div>
                 </div>
               </SheetHeader>
@@ -399,43 +397,101 @@ export function ManagerCustomersView() {
                 </div>
               )}
 
-              <div className="p-4 rounded-2xl border border-white/80 bg-white/80 shadow-2xs space-y-2">
-                <p className="font-bold text-slate-900">Contact Information</p>
-                <p className="text-slate-600">Email: {selectedCustomer.email}</p>
-                <p className="text-slate-600">
-                  Phone: {selectedCustomer.phone || "Not specified"}
-                </p>
-                <p className="text-slate-500 font-medium">
-                  Registered: {new Date(selectedCustomer.created_at).toLocaleDateString("en-GB")}
-                </p>
+              <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-slate-50/60 shadow-2xs space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-slate-900 text-xs sm:text-sm tracking-tight">Customer Identification</p>
+                  <span className="text-[10px] font-mono text-slate-400 font-semibold uppercase tracking-wider">Profile Info</span>
+                </div>
+
+                {/* Customer ID with dedicated copyable field */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500 font-medium">Customer ID</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedCustomer.id);
+                        setCopiedId(true);
+                        toast.success("Customer ID copied to clipboard!");
+                        setTimeout(() => setCopiedId(false), 2000);
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-red-600 hover:text-red-700 transition-colors cursor-pointer"
+                      title="Copy Customer ID"
+                    >
+                      {copiedId ? (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-600 stroke-[2.5]" />
+                          <span className="text-emerald-600">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3" />
+                          <span>Copy ID</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 shadow-2xs font-mono text-[11px] text-slate-800 break-all select-all flex items-center justify-between gap-2">
+                    <span className="tracking-tight">{selectedCustomer.id}</span>
+                  </div>
+                </div>
+
+                {/* Key-Value Details */}
+                <div className="space-y-2 pt-1 border-t border-slate-200/60 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 gap-2">
+                    <span className="text-slate-500 font-medium text-[11px] shrink-0">Email</span>
+                    <span className="font-bold text-slate-800 text-[11px] sm:text-xs truncate select-all" title={selectedCustomer.email}>
+                      {selectedCustomer.email}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-slate-100 gap-2">
+                    <span className="text-slate-500 font-medium text-[11px] shrink-0">Phone</span>
+                    <span className="font-bold text-slate-800 text-[11px] sm:text-xs">
+                      {selectedCustomer.phone || "Not specified"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 gap-2">
+                    <span className="text-slate-500 font-medium text-[11px] shrink-0">Registered</span>
+                    <span className="font-bold text-slate-800 text-[11px] sm:text-xs font-mono">
+                      {new Date(selectedCustomer.created_at).toLocaleDateString("en-GB")}
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-3">
-                <h4 className="font-bold text-slate-900 text-sm">
-                  Order History ({selectedCustomerOrders.length})
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-900 text-sm">
+                    Order History ({selectedCustomerOrders.length})
+                  </h4>
+                  {selectedCustomerOrders.length > 0 && (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      Recent transactions
+                    </span>
+                  )}
+                </div>
                 {selectedCustomerOrders.length === 0 ? (
-                  <p className="text-xs text-slate-400 font-medium">
+                  <div className="p-4 rounded-2xl border border-dashed border-slate-200 text-center text-xs text-slate-400 font-medium">
                     No orders placed by this customer yet.
-                  </p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {selectedCustomerOrders.map((o) => (
                       <div
                         key={o.id}
-                        className="p-3.5 rounded-2xl border border-white/80 bg-white shadow-2xs flex justify-between items-center text-xs"
+                        className="p-3.5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs flex justify-between items-center text-xs hover:border-slate-300 transition-colors"
                       >
-                        <div>
-                          <p className="font-black text-slate-900">
+                        <div className="min-w-0 pr-2">
+                          <p className="font-black text-slate-900 truncate">
                             Order #{o.order_number || o.id.slice(0, 8)}
                           </p>
-                          <p className="text-[10px] text-slate-400 font-medium">
+                          <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                             {new Date(o.created_at).toLocaleDateString("en-GB")}
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <p className="font-black text-slate-900">{gbp(Number(o.total))}</p>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px] mt-0.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-extrabold text-[10px] mt-0.5 capitalize">
                             {o.status}
                           </span>
                         </div>

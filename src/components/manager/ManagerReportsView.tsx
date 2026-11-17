@@ -54,9 +54,9 @@ export function ManagerReportsView() {
       "\n\n";
 
     if (title.includes("Dispatch")) {
-      csvContent += "Order Number,Customer Name,Status,Total (£),Date\n";
+      csvContent += "Order Number,Customer Name,Customer ID,Account Number,Status,Total (£),Date\n";
       orders.forEach((o) => {
-        csvContent += `"${o.order_number || o.id}","${o.customer_name || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"\n`;
+        csvContent += `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_id || ""}","${o.customer_account_number || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"\n`;
       });
     } else if (title.includes("Inventory")) {
       csvContent += "Product Name,Current Stock,Reorder Threshold,Depot Location,Status\n";

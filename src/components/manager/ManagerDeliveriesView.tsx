@@ -56,6 +56,7 @@ import {
   rejectReturnRequest,
   getAllReturnRequests,
 } from "@/lib/cylinder-returns-service";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 
 export function ManagerDeliveriesView() {
   const navigate = useNavigate();
@@ -581,10 +582,15 @@ export function ManagerDeliveriesView() {
                               <Flame className="h-3 w-3 text-red-600 shrink-0" />
                               {meta?.quantity || 1}x {meta?.cylinder_name || "LPG Cylinder"}
                             </p>
-                            <p className="text-[11px] text-slate-500 font-medium">
-                              {meta?.customer_name || d.orders?.customer_name || "Customer"} &bull;{" "}
-                              {meta?.reason || "Empty Return"}
-                            </p>
+                            <div className="text-[11px] text-slate-500 font-medium my-0.5">
+                              <CustomerIdentityCell
+                                name={meta?.customer_name || d.orders?.customer_name || "Customer"}
+                                customerId={d.orders?.customer_id}
+                                accountNumber={d.orders?.customer_account_number}
+                                layout="inline"
+                              />{" "}
+                              &bull; {meta?.reason || "Empty Return"}
+                            </div>
                             {meta?.scheduled_date && (
                               <p className="text-[10px] text-sky-700 font-bold">
                                 Pickup: {meta.scheduled_date} ({meta.time_slot || "Morning"})
@@ -848,13 +854,18 @@ export function ManagerDeliveriesView() {
             <div className="space-y-4 pt-2 text-xs">
               {/* Return info box */}
               <div className="p-3.5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs text-slate-700 space-y-1.5">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center gap-2">
                   <span className="text-slate-500 font-medium">Customer:</span>
-                  <span className="font-black text-slate-900">
-                    {selectedReturnToReview.metadata?.customer_name ||
+                  <CustomerIdentityCell
+                    name={
+                      selectedReturnToReview.metadata?.customer_name ||
                       selectedReturnToReview.orders?.customer_name ||
-                      "Customer"}
-                  </span>
+                      "Customer"
+                    }
+                    customerId={selectedReturnToReview.orders?.customer_id}
+                    accountNumber={selectedReturnToReview.orders?.customer_account_number}
+                    layout="inline"
+                  />
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-medium">Cylinder:</span>

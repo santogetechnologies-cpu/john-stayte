@@ -6,6 +6,7 @@ import {
   Area,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -52,6 +53,7 @@ interface AdminOrder {
   order_number?: string;
   status: string;
   total: number | string;
+  customer_id?: string | null;
   customer_name?: string;
   customer_email?: string;
   created_at: string;
@@ -90,11 +92,61 @@ interface AdminAuditLog {
   actor_email?: string;
 }
 
+// Category color mapping with distinct, premium shades matching requested palette
+const CATEGORY_PALETTE: Record<string, { fill: string; hover: string; glow: string }> = {
+  "bottled-gas": { fill: "#EF4444", hover: "#DC2626", glow: "rgba(239, 68, 68, 0.45)" }, // Bottled Gas – Red (#EF4444)
+  "bottled gas": { fill: "#EF4444", hover: "#DC2626", glow: "rgba(239, 68, 68, 0.45)" },
+  "gas": { fill: "#F97316", hover: "#EA580C", glow: "rgba(249, 115, 22, 0.45)" }, // Gas – Orange (#F97316)
+  "dynamite-baits": { fill: "#3B82F6", hover: "#2563EB", glow: "rgba(59, 130, 246, 0.45)" }, // Dynamite Baits – Blue (#3B82F6)
+  "dynamite baits": { fill: "#3B82F6", hover: "#2563EB", glow: "rgba(59, 130, 246, 0.45)" },
+  "gas-appliances": { fill: "#8B5CF6", hover: "#7C3AED", glow: "rgba(139, 92, 246, 0.45)" }, // Gas Appliances – Purple (#8B5CF6)
+  "gas appliances": { fill: "#8B5CF6", hover: "#7C3AED", glow: "rgba(139, 92, 246, 0.45)" },
+  "sahara": { fill: "#10B981", hover: "#059669", glow: "rgba(16, 185, 129, 0.45)" }, // Sahara – Emerald (#10B981)
+  "garden": { fill: "#14B8A6", hover: "#0D9488", glow: "rgba(20, 184, 166, 0.45)" }, // Garden – Teal (#14B8A6)
+  "coal-fuels": { fill: "#F59E0B", hover: "#D97706", glow: "rgba(245, 158, 11, 0.45)" }, // Coal Fuels – Amber (#F59E0B)
+  "coal fuels": { fill: "#F59E0B", hover: "#D97706", glow: "rgba(245, 158, 11, 0.45)" },
+  "food": { fill: "#EC4899", hover: "#DB2777", glow: "rgba(236, 72, 153, 0.45)" }, // Food – Pink (#EC4899)
+  "animal-feed": { fill: "#06B6D4", hover: "#0891B2", glow: "rgba(6, 182, 212, 0.45)" },
+  "animal feed": { fill: "#06B6D4", hover: "#0891B2", glow: "rgba(6, 182, 212, 0.45)" },
+  "pub-gas": { fill: "#6366F1", hover: "#4F46E5", glow: "rgba(99, 102, 241, 0.45)" },
+  "pub gas": { fill: "#6366F1", hover: "#4F46E5", glow: "rgba(99, 102, 241, 0.45)" },
+  "bulk-gas": { fill: "#F43F5E", hover: "#E11D48", glow: "rgba(244, 63, 94, 0.45)" },
+  "bulk gas": { fill: "#F43F5E", hover: "#E11D48", glow: "rgba(244, 63, 94, 0.45)" },
+  "vehicle-lpg-autogas": { fill: "#EAB308", hover: "#CA8A04", glow: "rgba(234, 179, 8, 0.45)" },
+  "campingaz": { fill: "#0284C7", hover: "#0369A1", glow: "rgba(2, 132, 199, 0.45)" },
+};
+
+// Reusable rotating fallback palette for dynamically added categories
+const FALLBACK_CATEGORY_PALETTE = [
+  { fill: "#6366F1", hover: "#4F46E5", glow: "rgba(99, 102, 241, 0.45)" }, // Indigo
+  { fill: "#06B6D4", hover: "#0891B2", glow: "rgba(6, 182, 212, 0.45)" }, // Cyan
+  { fill: "#84CC16", hover: "#65A30D", glow: "rgba(132, 204, 22, 0.45)" }, // Lime
+  { fill: "#A855F7", hover: "#9333EA", glow: "rgba(168, 85, 247, 0.45)" }, // Violet
+  { fill: "#F43F5E", hover: "#E11D48", glow: "rgba(244, 63, 94, 0.45)" }, // Rose
+];
+
+const getCategoryColor = (nameOrSlug: string, index = 0) => {
+  const normalized = (nameOrSlug || "").toLowerCase().trim();
+  if (CATEGORY_PALETTE[normalized]) {
+    return CATEGORY_PALETTE[normalized];
+  }
+  const clean = normalized.replace(/[^a-z0-9]/g, "-");
+  if (CATEGORY_PALETTE[clean]) {
+    return CATEGORY_PALETTE[clean];
+  }
+  const spaced = normalized.replace(/[-_]/g, " ");
+  if (CATEGORY_PALETTE[spaced]) {
+    return CATEGORY_PALETTE[spaced];
+  }
+  return FALLBACK_CATEGORY_PALETTE[Math.abs(index) % FALLBACK_CATEGORY_PALETTE.length];
+};
+
 export function AdminDashboardView() {
   const { user } = useStore();
   const [dateRange, setDateRange] = useState("30d");
   const [analyticsMetric, setAnalyticsMetric] = useState<"revenue" | "orders" | "aov">("revenue");
   const [categoryMetric, setCategoryMetric] = useState<"revenue" | "orders" | "units">("revenue");
+  const [hoveredCategoryIndex, setHoveredCategoryIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Live Supabase DB state
@@ -322,23 +374,24 @@ export function AdminDashboardView() {
       ? Array.from(new Set(products.map((p) => p.category_slug || "General"))).map((cat) => {
           const catProds = products.filter((p) => (p.category_slug || "General") === cat);
           return {
-            name: cat.replace("-", " ").toUpperCase(),
+            name: cat.replace(/-/g, " ").toUpperCase(),
+            slug: cat,
             revenue: catProds.reduce((sum, p) => sum + Number(p.price || 0), 0),
             orders: catProds.length,
             units: catProds.reduce((sum, p) => sum + Number(p.stock || 0), 0),
           };
         })
-      : [{ name: "No Categories", revenue: 0, orders: 0, units: 0 }];
+      : [{ name: "No Categories", slug: "general", revenue: 0, orders: 0, units: 0 }];
 
   const handleExportReport = () => {
     if (orders.length === 0) {
       return toast.error("No order data available to export.");
     }
-    const headers = "Order Number,Customer Name,Customer Email,Status,Total,Date\n";
+    const headers = "Order Number,Customer Name,Customer ID,Customer Email,Status,Total,Date\n";
     const rows = orders
       .map(
         (o) =>
-          `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_email || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"`,
+          `"${o.order_number || o.id}","${o.customer_name || ""}","${o.customer_id || ""}","${o.customer_email || ""}","${o.status}",${o.total},"${new Date(o.created_at).toLocaleDateString("en-GB")}"`,
       )
       .join("\n");
     const blob = new Blob([headers + rows], { type: "text/csv" });
@@ -974,6 +1027,12 @@ export function AdminDashboardView() {
                   data={categoryData}
                   layout="vertical"
                   margin={{ top: 0, right: 10, left: 10, bottom: 0 }}
+                  onMouseMove={(state) => {
+                    if (state && typeof state.activeTooltipIndex === "number") {
+                      setHoveredCategoryIndex(state.activeTooltipIndex);
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredCategoryIndex(null)}
                 >
                   <XAxis type="number" hide />
                   <YAxis
@@ -985,12 +1044,50 @@ export function AdminDashboardView() {
                     width={80}
                   />
                   <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: "14px",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      boxShadow: "0 10px 25px -5px rgba(0,0,0,0.08)",
+                      padding: "8px 12px",
+                    }}
+                    cursor={{ fill: "rgba(241, 245, 249, 0.45)", radius: 6 }}
                     formatter={(val: number | string) => [
-                      categoryMetric === "revenue" ? gbp(Number(val || 0)) : val,
-                      categoryMetric.toUpperCase(),
+                      categoryMetric === "revenue"
+                        ? gbp(Number(val || 0))
+                        : `${Number(val || 0).toLocaleString()} Units`,
+                      categoryMetric === "revenue" ? "Price / Value" : "Stock / Units",
                     ]}
+                    labelStyle={{ fontWeight: 800, color: "#0f172a", marginBottom: "2px" }}
                   />
-                  <Bar dataKey={categoryMetric} fill="#dc2626" radius={[0, 8, 8, 0]} barSize={16} />
+                  <Bar
+                    dataKey={categoryMetric}
+                    radius={[0, 8, 8, 0]}
+                    barSize={16}
+                    isAnimationActive={true}
+                    animationDuration={500}
+                  >
+                    {categoryData.map((entry, index) => {
+                      const color = getCategoryColor(entry.slug || entry.name, index);
+                      const isHovered = hoveredCategoryIndex === index;
+                      const isOtherHovered = hoveredCategoryIndex !== null && !isHovered;
+
+                      return (
+                        <Cell
+                          key={`cell-${entry.slug || entry.name || index}`}
+                          fill={isHovered ? color.hover : color.fill}
+                          style={{
+                            filter: isHovered ? `drop-shadow(0 0 8px ${color.glow})` : "none",
+                            opacity: isOtherHovered ? 0.65 : 1,
+                            transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+                            cursor: "pointer",
+                          }}
+                        />
+                      );
+                    })}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}

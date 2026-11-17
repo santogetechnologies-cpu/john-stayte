@@ -68,6 +68,7 @@ import {
   requestAuthoritativeAccountNumber,
 } from "@/lib/account-number-service";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
 import {
   getAllGasCustomerApplications,
   approveGasCustomerApplication,
@@ -547,25 +548,16 @@ export function AdminApplicationsView() {
                     </TableCell>
 
                     <TableCell>
-                      <span className="font-black text-xs text-slate-900 block">
-                        {app.full_name}
-                      </span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {(app as any).customer_code || (app as any).account_number || app.previous_account_details ? (
-                          <CustomerAccountNumberBadge
-                            accountNumber={(app as any).customer_code || (app as any).account_number || app.previous_account_details}
-                            variant="table"
-                          />
-                        ) : app.has_previous_purchases ? (
-                          <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[9px] font-bold">
-                            Lookup Req.
-                          </Badge>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            UID: {app.customer_id.slice(0, 8)}...
-                          </span>
-                        )}
-                      </div>
+                      <CustomerIdentityCell
+                        name={app.full_name}
+                        customerId={app.customer_id}
+                        accountNumber={
+                          (app as any).customer_code ||
+                          (app as any).account_number ||
+                          app.previous_account_details
+                        }
+                        layout="table"
+                      />
                     </TableCell>
 
                     <TableCell className="text-xs">
@@ -694,6 +686,10 @@ export function AdminApplicationsView() {
                   <div>
                     <span className="text-slate-500 font-medium">Full Name:</span>
                     <p className="font-extrabold text-slate-900">{selectedApp.full_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">Customer ID:</span>
+                    <p className="font-mono font-bold text-slate-800 text-[11px] select-all break-all">{selectedApp.customer_id}</p>
                   </div>
                   <div>
                     <span className="text-slate-500 font-medium">Email Address:</span>

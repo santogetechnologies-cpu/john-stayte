@@ -43,6 +43,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { logAdminAuditAction } from "@/lib/audit";
 import { normalizeReviewRecord } from "@/lib/review-service";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
 
 interface ReviewRecord {
   id: string;
@@ -321,19 +322,12 @@ export function AdminReviewsView() {
               {filteredReviews.map((r) => (
                 <TableRow key={r.id} className="hover:bg-slate-50/60 transition-colors">
                   <TableCell className="font-bold text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 font-bold text-xs">
-                        {(r.user_name || "C").charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-foreground">
-                          {r.user_name || "Customer"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-normal">
-                          ID: {r.id.slice(0, 8)}
-                        </p>
-                      </div>
-                    </div>
+                    <CustomerIdentityCell
+                      name={r.user_name || "Customer"}
+                      customerId={r.user_id}
+                      avatar
+                      layout="table"
+                    />
                   </TableCell>
 
                   <TableCell className="text-xs font-semibold text-foreground">

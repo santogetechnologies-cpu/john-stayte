@@ -148,6 +148,8 @@ export function AdminReportsView() {
       "Order Number",
       "Date",
       "Customer Name",
+      "Customer ID",
+      "Account Number",
       "Email",
       "Status",
       "Subtotal (£)",
@@ -158,6 +160,8 @@ export function AdminReportsView() {
       o.order_number || o.id,
       new Date(o.created_at).toLocaleDateString("en-GB"),
       o.customer_name || "N/A",
+      o.customer_id || "N/A",
+      o.customer_account_number || "N/A",
       o.customer_email || "N/A",
       o.status || "Pending",
       o.subtotal || 0,
@@ -181,10 +185,18 @@ export function AdminReportsView() {
   };
 
   const handleExportCustomerReport = () => {
-    const headers = ["Customer ID", "Full Name", "Email", "Role", "Created At"];
+    const headers = [
+      "Customer ID",
+      "Full Name",
+      "Account Number",
+      "Email",
+      "Role",
+      "Created At",
+    ];
     const rows = customers.map((c) => [
       c.id,
       c.full_name || "N/A",
+      c.account_number || c.customer_code || "N/A",
       c.email,
       c.role,
       new Date(c.created_at).toLocaleDateString("en-GB"),

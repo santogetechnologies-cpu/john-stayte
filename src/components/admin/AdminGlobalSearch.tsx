@@ -52,7 +52,7 @@ export function AdminGlobalSearch({
               .limit(5),
             supabase
               .from("orders")
-              .select("id, order_number, customer_name, total, status")
+              .select("id, order_number, customer_id, customer_name, total, status")
               .ilike("order_number", `%${q}%`)
               .limit(5),
             supabase
@@ -160,8 +160,12 @@ export function AdminGlobalSearch({
                           <p className="text-xs font-black">
                             #{o.order_number || o.id.slice(0, 8)}
                           </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {o.customer_name} · £{Number(o.total).toFixed(2)}
+                          <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                            <span>{o.customer_name}</span>
+                            {o.customer_id && (
+                              <span className="font-mono text-[10px] text-slate-400">ID: {o.customer_id.slice(0, 8)}…</span>
+                            )}
+                            <span>· £{Number(o.total).toFixed(2)}</span>
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -213,7 +217,10 @@ export function AdminGlobalSearch({
                         className="w-full flex items-center justify-between p-2.5 rounded-xl border bg-card hover:bg-slate-50 text-left transition-all"
                       >
                         <div>
-                          <p className="text-xs font-bold">{c.full_name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-bold">{c.full_name}</p>
+                            <span className="font-mono text-[10px] text-muted-foreground">ID: {c.id.slice(0, 8)}…</span>
+                          </div>
                           <p className="text-[11px] text-muted-foreground">{c.email}</p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />

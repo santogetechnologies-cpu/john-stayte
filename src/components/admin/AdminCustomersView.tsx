@@ -49,6 +49,7 @@ import { supabase } from "@/lib/supabase";
 import { getEphemeralAuthClient } from "@/lib/ephemeral-auth";
 import { deleteCustomerAccount } from "@/lib/customer-service";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
+import { CustomerIdentityCell } from "@/components/admin/CustomerIdentityCell";
 import {
   assignCustomerAccountNumber,
   generateCustomerAccountNumber,
@@ -227,19 +228,12 @@ export function AdminCustomersView() {
               {filtered.map((c) => (
                 <TableRow key={c.id} className="hover:bg-slate-50/60">
                   <TableCell className="font-bold text-xs">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-xs shrink-0">
-                        {(c.full_name || "C").charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-extrabold text-foreground">
-                          {c.full_name || "Unnamed Customer"}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground font-mono font-normal">
-                          {c.id.slice(0, 8)}…
-                        </p>
-                      </div>
-                    </div>
+                    <CustomerIdentityCell
+                      name={c.full_name || "Unnamed Customer"}
+                      customerId={c.id}
+                      avatar
+                      layout="table"
+                    />
                   </TableCell>
                   <TableCell className="text-xs">
                     {c.customer_code ? (

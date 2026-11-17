@@ -97,7 +97,8 @@ export function SiteFooter({ className }: { className?: string } = {}) {
     companyAddress: "Puddlesworth Lane, Eastington, Stonehouse, Gloucestershire, GL10 3AH, United Kingdom",
     companyHours: "Mon–Fri 8:00–17:00 · Sat 8:30–12:30",
     copyrightText: "John Stayte Services. All rights reserved.",
-    vatNumber: "John Stayte Services (WSM) Limited · Registered in England & Wales No. 00303703 · VAT GB 207 610 984",
+    vatNumber: "Niza Forecourt Ltd · Registered in England & Wales No. 09859890 · VAT 232837507",
+    registeredOffice: "Registered Office: 15 The Gallop, Sutton, England, SM2 5RU",
     facebookUrl: "https://facebook.com",
     instagramUrl: "https://instagram.com",
     youtubeUrl: "https://youtube.com",
@@ -141,6 +142,7 @@ export function SiteFooter({ className }: { className?: string } = {}) {
                 companyAddress: parsed.companyAddress || prev.companyAddress,
                 copyrightText: parsed.copyrightText || prev.copyrightText,
                 vatNumber: parsed.vatNumber || prev.vatNumber,
+                registeredOffice: parsed.registeredOffice || prev.registeredOffice,
                 facebookUrl: parsed.facebookUrl || prev.facebookUrl,
                 instagramUrl: parsed.instagramUrl || prev.instagramUrl,
                 youtubeUrl: parsed.youtubeUrl || prev.youtubeUrl,
@@ -388,6 +390,9 @@ export function SiteFooter({ className }: { className?: string } = {}) {
             <div className="space-y-1 text-left">
               <p>© {new Date().getFullYear()} John Stayte Services. All rights reserved.</p>
               <p className="text-[11px] text-ink-foreground/50">{footerCms.vatNumber}</p>
+              {footerCms.registeredOffice && (
+                <p className="text-[11px] text-ink-foreground/50">{footerCms.registeredOffice}</p>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-ink-foreground/70">
               <Link to="/privacy-policy" className="hover:text-white transition-colors">

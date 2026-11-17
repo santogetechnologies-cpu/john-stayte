@@ -38,12 +38,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { gbp } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { triggerOrderStatusPush } from "@/lib/push-notifications";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 
 export function ManagerOrdersView() {
   const navigate = useNavigate();
   const routerLocation = useRouterState({ select: (s) => s.location });
 
   const [orders, setOrders] = useState<any[]>([]);
+  const [customerProfiles, setCustomerProfiles] = useState<Record<string, { account_number?: string }>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(() => {
@@ -78,13 +80,25 @@ export function ManagerOrdersView() {
   const loadOrders = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .order("created_at", { ascending: false });
+      const [ordersRes, profilesRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*, order_items(*)")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("profiles")
+          .select("id, account_number, customer_code"),
+      ]);
 
-      if (error) throw error;
-      setOrders(data || []);
+      if (ordersRes.error) throw ordersRes.error;
+
+      const profMap: Record<string, { account_number?: string }> = {};
+      (profilesRes.data || []).forEach((p: any) => {
+        const acc = p.account_number || p.customer_code;
+        if (acc) profMap[p.id] = { account_number: acc };
+      });
+      setCustomerProfiles(profMap);
+      setOrders(ordersRes.data || []);
     } catch (err: any) {
       toast.error("Failed to load manager orders: " + err.message);
     } finally {
@@ -114,9 +128,14 @@ export function ManagerOrdersView() {
   };
 
   const filteredOrders = orders.filter((o) => {
+    const custId = o.customer_id || "";
+    const acctNum =
+      o.customer_account_number || customerProfiles[o.customer_id]?.account_number || "";
     const matchesSearch =
       (o.order_number || o.id).toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (o.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase());
+      (o.customer_name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      custId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      acctNum.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
 
@@ -442,7 +461,19 @@ export function ManagerOrdersView() {
                     <TableCell className="font-mono font-black text-xs text-slate-900">
                       #{o.order_number || o.id.slice(0, 8)}
                     </TableCell>
-                    <TableCell className="text-xs font-semibold text-slate-700">{o.customer_name}</TableCell>
+                    <TableCell className="text-xs">
+                      <CustomerIdentityCell
+                        name={o.customer_name}
+                        customerId={o.customer_id}
+                        accountNumber={
+                          o.customer_account_number ||
+                          customerProfiles[o.customer_id]?.account_number
+                        }
+                        phone={o.customer_phone}
+                        avatar
+                        layout="table"
+                      />
+                    </TableCell>
                     <TableCell className="text-xs">
                       <div className="font-bold text-slate-900">{gbp(Number(o.total))}</div>
                       <div className="text-[10px] font-bold">
@@ -568,13 +599,21 @@ export function ManagerOrdersView() {
                 </div>
               </div>
 
+              <CustomerIdentityCell
+                name={selectedOrder.customer_name}
+                customerId={selectedOrder.customer_id}
+                accountNumber={
+                  selectedOrder.customer_account_number ||
+                  customerProfiles[selectedOrder.customer_id]?.account_number
+                }
+                email={selectedOrder.customer_email}
+                phone={selectedOrder.customer_phone}
+                layout="detail"
+              />
+
               <div className="p-4 rounded-2xl border border-white/80 bg-white/60 space-y-1">
-                <p className="font-bold text-slate-900">Customer Details</p>
-                <p className="text-slate-700 font-medium">{selectedOrder.customer_name || "Guest Customer"}</p>
-                {selectedOrder.customer_email && (
-                  <p className="text-slate-500">{selectedOrder.customer_email}</p>
-                )}
-                <p className="text-slate-500 mt-1">
+                <p className="font-bold text-slate-900">Delivery Address</p>
+                <p className="text-slate-600 mt-1">
                   {typeof selectedOrder.shipping_address === "string"
                     ? selectedOrder.shipping_address
                     : typeof selectedOrder.delivery_address === "string"

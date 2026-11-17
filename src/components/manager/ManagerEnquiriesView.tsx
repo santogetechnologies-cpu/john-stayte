@@ -38,6 +38,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import { logAdminAuditAction } from "@/lib/audit";
+import { CustomerIdentityCell } from "@/components/manager/CustomerIdentityCell";
 
 export function ManagerEnquiriesView() {
   const navigate = useNavigate();
@@ -464,12 +465,12 @@ export function ManagerEnquiriesView() {
                     #{t.ticket_number || t.id.slice(0, 8)}
                   </TableCell>
                   <TableCell className="text-xs">
-                    <p className="font-bold text-slate-900">
-                      {typeof t.customer_name === "string"
-                        ? t.customer_name
-                        : String(t.customer_name || "")}
-                    </p>
-                    <p className="text-[10px] text-slate-400 font-medium">
+                    <CustomerIdentityCell
+                      name={t.customer_name}
+                      customerId={t.customer_id}
+                      layout="table"
+                    />
+                    <p className="text-[10px] text-slate-400 font-medium mt-0.5">
                       {typeof t.customer_email === "string"
                         ? t.customer_email
                         : String(t.customer_email || "")}
@@ -530,19 +531,17 @@ export function ManagerEnquiriesView() {
                     ? selectedTicket.subject
                     : String(selectedTicket.subject || "")}
                 </p>
-                <p className="text-xs text-slate-500">
-                  Customer:{" "}
-                  <span className="font-bold text-slate-900">
-                    {typeof selectedTicket.customer_name === "string"
-                      ? selectedTicket.customer_name
-                      : String(selectedTicket.customer_name || "")}
-                  </span>{" "}
-                  (
-                  {typeof selectedTicket.customer_email === "string"
-                    ? selectedTicket.customer_email
-                    : String(selectedTicket.customer_email || "")}
-                  )
-                </p>
+                <div className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span className="font-medium text-slate-500">Customer:</span>
+                  <CustomerIdentityCell
+                    name={selectedTicket.customer_name}
+                    customerId={selectedTicket.customer_id}
+                    layout="inline"
+                  />
+                  {selectedTicket.customer_email && (
+                    <span className="text-slate-400">({selectedTicket.customer_email})</span>
+                  )}
+                </div>
               </SheetHeader>
 
               {/* TICKET ACTIONS TOOLBAR */}

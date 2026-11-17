@@ -29,6 +29,7 @@ import {
   AlertOctagon,
   FileText,
   Flame,
+  Fuel,
 } from "lucide-react";
 import logo from "@/assets/image-5.png";
 import { Button } from "@/components/ui/button";
@@ -124,6 +125,11 @@ const managerNavGroups: NavGroup[] = [
         href: "/manager/deliveries?status=delayed",
         icon: AlertTriangle,
         badgeKey: "delayedDeliveries",
+      },
+      {
+        title: "Drive-Offs",
+        href: "/manager/drive-offs",
+        icon: Fuel,
       },
     ],
   },

@@ -7,6 +7,7 @@ import {
   Layers,
   ShieldCheck,
   Building,
+  Building2,
   Truck,
   ShoppingBag,
   Bell,
@@ -51,6 +52,15 @@ export function AdminSettingsView() {
   const [supportEmail, setSupportEmail] = useState("info@johnstayteservices.co.uk");
   const [phone, setPhone] = useState("+44 (0)1453 822859");
   const [operatingHours, setOperatingHours] = useState("Mon–Sat 7:00–20:00 · Sun 8:00–18:00");
+
+  // 1b. Official Company Identity & Statutory Invoicing Details
+  const [legalName, setLegalName] = useState("Niza Forecourt Ltd");
+  const [tradingName, setTradingName] = useState("John Stayte Services");
+  const [vatNumber, setVatNumber] = useState("232 837 507");
+  const [companyNumber, setCompanyNumber] = useState("09859890");
+  const [registeredOffice, setRegisteredOffice] = useState(
+    "15 The Gallop, Sutton, England, SM2 5RU",
+  );
 
   // 2. Tax & VAT Settings (Initial configured rate: 0%)
   const [vatRate, setVatRate] = useState("0");
@@ -131,6 +141,19 @@ export function AdminSettingsView() {
   const loadSettings = async () => {
     setLoading(true);
     try {
+      // First attempt to load from local storage cache for immediate reactivity
+      try {
+        const cached = localStorage.getItem("jss.admin_settings");
+        if (cached) {
+          const parsedCached = JSON.parse(cached);
+          if (parsedCached.legalName) setLegalName(parsedCached.legalName);
+          if (parsedCached.tradingName) setTradingName(parsedCached.tradingName);
+          if (parsedCached.vatNumber) setVatNumber(parsedCached.vatNumber);
+          if (parsedCached.companyNumber) setCompanyNumber(parsedCached.companyNumber);
+          if (parsedCached.registeredOffice) setRegisteredOffice(parsedCached.registeredOffice);
+        }
+      } catch {}
+
       const [{ data: moduleBlock }, { data: settingsBlock }] = await Promise.all([
         supabase
           .from("cms_content_blocks")
@@ -156,6 +179,11 @@ export function AdminSettingsView() {
           const parsed = JSON.parse(settingsBlock.content);
           if (parsed.platformName) setPlatformName(parsed.platformName);
           if (parsed.businessName) setBusinessName(parsed.businessName);
+          if (parsed.legalName) setLegalName(parsed.legalName);
+          if (parsed.tradingName) setTradingName(parsed.tradingName);
+          if (parsed.vatNumber) setVatNumber(parsed.vatNumber);
+          if (parsed.companyNumber) setCompanyNumber(parsed.companyNumber);
+          if (parsed.registeredOffice) setRegisteredOffice(parsed.registeredOffice);
           if (parsed.supportEmail) setSupportEmail(parsed.supportEmail);
           if (parsed.phone) setPhone(parsed.phone);
           if (parsed.operatingHours) setOperatingHours(parsed.operatingHours);
@@ -165,6 +193,11 @@ export function AdminSettingsView() {
           setFuelVatRate(parsed.fuelVatRate !== undefined ? String(parsed.fuelVatRate) : "0");
           setTaxPricingMode(parsed.taxPricingMode === "inclusive" ? "inclusive" : "exclusive");
           setTaxEnabled(Boolean(parsed.taxEnabled ?? false));
+
+          // Also mirror to localStorage for synchronous invoice service usage
+          try {
+            localStorage.setItem("jss.admin_settings", settingsBlock.content);
+          } catch {}
 
           // Delivery Charges
           setDefaultShippingFee(
@@ -248,7 +281,12 @@ export function AdminSettingsView() {
         title: "Admin System Settings",
         content: JSON.stringify({
           platformName,
-          businessName,
+          businessName: tradingName || businessName,
+          legalName: legalName.trim(),
+          tradingName: tradingName.trim(),
+          vatNumber: vatNumber.trim(),
+          companyNumber: companyNumber.trim(),
+          registeredOffice: registeredOffice.trim(),
           supportEmail,
           phone,
           operatingHours,
@@ -281,9 +319,19 @@ export function AdminSettingsView() {
 
       if (err1 || err2) throw new Error((err1 || err2)?.message);
 
+      // Persist to local storage for instant sync across tabs and invoice generation
+      try {
+        localStorage.setItem("jss.admin_settings", settingsPayload.content);
+      } catch {}
+
       await logAdminAuditAction("UPDATE_SETTINGS", "settings", "admin_config", {
         platformName,
+        legalName: legalName.trim(),
+        tradingName: tradingName.trim(),
+        vatNumber: vatNumber.trim(),
+        companyNumber: companyNumber.trim(),
         vatRate: numVat,
+        fuelVatRate: numFuelVat,
         taxEnabled,
         defaultShippingFee: numShipping,
         freeDeliveryThreshold: numFreeThreshold,
@@ -394,13 +442,26 @@ export function AdminSettingsView() {
                 className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
               />
             </div>
-            <div>
-              <Label className="font-bold text-slate-700">Registered Business Name</Label>
-              <Input
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="font-bold text-slate-700">Trading Name</Label>
+                <Input
+                  value={tradingName}
+                  onChange={(e) => {
+                    setTradingName(e.target.value);
+                    setBusinessName(e.target.value);
+                  }}
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+              </div>
+              <div>
+                <Label className="font-bold text-slate-700">Legal Company Name</Label>
+                <Input
+                  value={legalName}
+                  onChange={(e) => setLegalName(e.target.value)}
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+              </div>
             </div>
             <div>
               <Label className="font-bold text-slate-700">Admin Support Email</Label>
@@ -432,138 +493,220 @@ export function AdminSettingsView() {
         {/* 2. Tax & VAT Settings */}
         <TabsContent
           value="vat"
-          className="surface-card p-6 rounded-3xl border bg-white space-y-5 max-w-2xl shadow-xs"
+          className="space-y-6 max-w-2xl"
         >
-          <div className="flex items-center justify-between border-b pb-2">
-            <div>
-              <h3 className="text-sm font-extrabold text-foreground">Tax & VAT Configuration</h3>
-              <p className="text-[11px] text-muted-foreground">
-                Configure VAT rates, pricing rules, and tax engine activation.
-              </p>
-            </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
-                taxEnabled && Number(vatRate) > 0
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-slate-100 text-slate-700 border-slate-200"
-              }`}
-            >
-              {taxEnabled && Number(vatRate) > 0 ? "Tax Engine Active" : "0% Initial Config"}
-            </span>
-          </div>
-
-          {/* Critical UK Tax Advisory Notice */}
-          <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-950 flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <span className="font-bold block">UK Tax Treatment Notice</span>
-              <p className="leading-relaxed text-blue-900 font-medium">
-                The initial configured VAT rate is <strong>0% (£0.00 cart VAT)</strong>. Treat 0% as the
-                initial application configuration, not as confirmation that every product is legally
-                zero-rated. The business must confirm the applicable UK tax treatment before production
-                tax rules are enabled.
-              </p>
-            </div>
-          </div>
-
-          {/* Enable Tax Engine Toggle */}
-          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
-            <div>
-              <Label className="font-bold text-slate-800 cursor-pointer text-xs">
-                Enable Tax / VAT Engine
-              </Label>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                When disabled, 0% VAT (£0.00) is charged on all customer orders.
-              </p>
-            </div>
-            <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
-          </div>
-
-          <div className="space-y-4 text-xs pt-1">
-            {/* Pricing Mode */}
-            <div>
-              <Label className="font-bold text-slate-700">Tax Pricing Model</Label>
-              <Select
-                value={taxPricingMode}
-                onValueChange={(val: "exclusive" | "inclusive") => setTaxPricingMode(val)}
-              >
-                <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200 bg-white">
-                  <SelectValue placeholder="Select pricing model" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="exclusive">
-                    Tax Exclusive (VAT added on top of subtotal at checkout)
-                  </SelectItem>
-                  <SelectItem value="inclusive">
-                    Tax Inclusive (Catalog prices include VAT; tax is extracted for invoicing)
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Standard UK e-commerce consumer prices typically display tax inclusive or exclusive depending on trade vs domestic customer segment.
-              </p>
-            </div>
-
-            {/* Standard VAT Rate */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Card 1: Official Invoicing & Company Identity */}
+          <div className="surface-card p-6 rounded-3xl border bg-white space-y-4 shadow-xs">
+            <div className="flex items-center justify-between border-b pb-2">
               <div>
-                <Label className="font-bold text-slate-700">Standard UK VAT Rate (%)</Label>
-                <div className="relative mt-1">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={vatRate}
-                    onChange={(e) => setVatRate(e.target.value)}
-                    className="rounded-xl text-xs font-extrabold h-10 border-slate-200 pr-8"
-                  />
-                  <Percent className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-3" />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">Initial configured value: 0%</p>
+                <h3 className="text-sm font-extrabold text-foreground flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4 text-primary" /> Official Company Identity & Invoicing Details
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Statutory trading entity, VAT registration, and company identity displayed on all tax invoices.
+                </p>
+              </div>
+              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border bg-slate-100 text-slate-700 border-slate-200">
+                UK Statutory
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <Label className="font-bold text-slate-700">Legal Company Name</Label>
+                <Input
+                  value={legalName}
+                  onChange={(e) => setLegalName(e.target.value)}
+                  placeholder="e.g. Niza Forecourt Ltd"
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Appears as &quot;[Legal Name] T/A&quot; on invoices</p>
               </div>
 
               <div>
-                <Label className="font-bold text-slate-700">
-                  Reduced Domestic Fuel VAT Rate (%)
-                </Label>
-                <div className="relative mt-1">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={fuelVatRate}
-                    onChange={(e) => setFuelVatRate(e.target.value)}
-                    className="rounded-xl text-xs font-extrabold h-10 border-slate-200 pr-8"
-                  />
-                  <Percent className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-3" />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  Applies to domestic heating and qualifying fuel
+                <Label className="font-bold text-slate-700">Trading Name</Label>
+                <Input
+                  value={tradingName}
+                  onChange={(e) => {
+                    setTradingName(e.target.value);
+                    setBusinessName(e.target.value);
+                  }}
+                  placeholder="e.g. John Stayte Services"
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Primary trading brand displayed prominently</p>
+              </div>
+
+              <div>
+                <Label className="font-bold text-slate-700">VAT Registration Number</Label>
+                <Input
+                  value={vatNumber}
+                  onChange={(e) => setVatNumber(e.target.value)}
+                  placeholder="e.g. 232 837 507"
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Client Reference PDF: 232 837 507</p>
+              </div>
+
+              <div>
+                <Label className="font-bold text-slate-700">Company Registration Number</Label>
+                <Input
+                  value={companyNumber}
+                  onChange={(e) => setCompanyNumber(e.target.value)}
+                  placeholder="e.g. 09859890"
+                  className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">Companies House registration No.</p>
+              </div>
+            </div>
+
+            <div className="text-xs">
+              <Label className="font-bold text-slate-700">Registered Office Address</Label>
+              <Input
+                value={registeredOffice}
+                onChange={(e) => setRegisteredOffice(e.target.value)}
+                placeholder="e.g. 15 The Gallop, Sutton, England, SM2 5RU"
+                className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200"
+              />
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Statutory registered office address displayed on official invoice footers
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Tax & VAT Configuration */}
+          <div className="surface-card p-6 rounded-3xl border bg-white space-y-5 shadow-xs">
+            <div className="flex items-center justify-between border-b pb-2">
+              <div>
+                <h3 className="text-sm font-extrabold text-foreground">Tax & VAT Configuration</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Configure VAT rates, pricing rules, and tax engine activation.
+                </p>
+              </div>
+              <span
+                className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                  taxEnabled && Number(vatRate) > 0
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    : "bg-slate-100 text-slate-700 border-slate-200"
+                }`}
+              >
+                {taxEnabled && Number(vatRate) > 0 ? "Tax Engine Active" : "0% Initial Config"}
+              </span>
+            </div>
+
+            {/* Critical UK Tax Advisory Notice */}
+            <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-950 flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-1">
+                <span className="font-bold block">UK Tax Treatment Notice</span>
+                <p className="leading-relaxed text-blue-900 font-medium">
+                  The initial configured VAT rate is <strong>0% (£0.00 cart VAT)</strong>. Treat 0% as the
+                  initial application configuration, not as confirmation that every product is legally
+                  zero-rated. The business must confirm the applicable UK tax treatment before production
+                  tax rules are enabled.
                 </p>
               </div>
             </div>
 
-            {/* Live Tax Simulation Card */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
-                Live Tax Calculation Preview (Sample Basket: £50.00)
-              </span>
-              <div className="grid grid-cols-3 gap-2 text-center pt-1">
-                <div className="bg-white p-2.5 rounded-xl border border-slate-100">
-                  <span className="text-[10px] text-slate-400 font-bold block">Taxable Subtotal</span>
-                  <span className="text-xs font-black text-slate-800">{gbp(simSubtotal)}</span>
+            {/* Enable Tax Engine Toggle */}
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+              <div>
+                <Label className="font-bold text-slate-800 cursor-pointer text-xs">
+                  Enable Tax / VAT Engine
+                </Label>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  When disabled, 0% VAT (£0.00) is charged on all customer orders.
+                </p>
+              </div>
+              <Switch checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+            </div>
+
+            <div className="space-y-4 text-xs pt-1">
+              {/* Pricing Mode */}
+              <div>
+                <Label className="font-bold text-slate-700">Tax Pricing Model</Label>
+                <Select
+                  value={taxPricingMode}
+                  onValueChange={(val: "exclusive" | "inclusive") => setTaxPricingMode(val)}
+                >
+                  <SelectTrigger className="mt-1 rounded-xl text-xs font-semibold h-10 border-slate-200 bg-white">
+                    <SelectValue placeholder="Select pricing model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="exclusive">
+                      Tax Exclusive (VAT added on top of subtotal at checkout)
+                    </SelectItem>
+                    <SelectItem value="inclusive">
+                      Tax Inclusive (Catalog prices include VAT; tax is extracted for invoicing)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Standard UK e-commerce consumer prices typically display tax inclusive or exclusive depending on trade vs domestic customer segment.
+                </p>
+              </div>
+
+              {/* Standard VAT Rate */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="font-bold text-slate-700">Standard UK VAT Rate (%)</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={vatRate}
+                      onChange={(e) => setVatRate(e.target.value)}
+                      className="rounded-xl text-xs font-extrabold h-10 border-slate-200 pr-8"
+                    />
+                    <Percent className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-3" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Initial configured value: 0%</p>
                 </div>
-                <div className="bg-white p-2.5 rounded-xl border border-slate-100">
-                  <span className="text-[10px] text-slate-400 font-bold block">
-                    Calculated VAT ({simTaxActive ? `${numVat}%` : "0%"})
-                  </span>
-                  <span className="text-xs font-black text-primary">{gbp(simVat)}</span>
+
+                <div>
+                  <Label className="font-bold text-slate-700">
+                    Reduced Domestic Fuel VAT Rate (%)
+                  </Label>
+                  <div className="relative mt-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={fuelVatRate}
+                      onChange={(e) => setFuelVatRate(e.target.value)}
+                      className="rounded-xl text-xs font-extrabold h-10 border-slate-200 pr-8"
+                    />
+                    <Percent className="h-3.5 w-3.5 text-slate-400 absolute right-3 top-3" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Applies to domestic heating and qualifying fuel
+                  </p>
                 </div>
-                <div className="bg-white p-2.5 rounded-xl border border-slate-100">
-                  <span className="text-[10px] text-slate-400 font-bold block">Basket Total</span>
-                  <span className="text-xs font-black text-slate-900">{gbp(simTotal)}</span>
+              </div>
+
+              {/* Live Tax Simulation Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 mt-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                  Live Tax Calculation Preview (Sample Basket: £50.00)
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold block">Taxable Subtotal</span>
+                    <span className="text-xs font-black text-slate-800">{gbp(simSubtotal)}</span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold block">
+                      Calculated VAT ({simTaxActive ? `${numVat}%` : "0%"})
+                    </span>
+                    <span className="text-xs font-black text-primary">{gbp(simVat)}</span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded-xl border border-slate-100">
+                    <span className="text-[10px] text-slate-400 font-bold block">Basket Total</span>
+                    <span className="text-xs font-black text-slate-900">{gbp(simTotal)}</span>
+                  </div>
                 </div>
               </div>
             </div>
