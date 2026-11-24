@@ -77,6 +77,7 @@ import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as AdminReviewsRouteImport } from './routes/admin.reviews'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminStationsRouteImport } from './routes/admin.stations'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BranchIndexRouteImport } from './routes/branch.index'
@@ -466,6 +467,11 @@ const AdminStationsRoute = AdminStationsRouteImport.update({
   path: '/stations',
   getParentRoute: () => AdminRoute,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -775,6 +781,7 @@ export interface FileRoutesByFullPath {
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stations': typeof AdminStationsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/branch/collection-history': typeof BranchCollectionHistoryRoute
   '/branch/daily-report': typeof BranchDailyReportRoute
@@ -886,6 +893,7 @@ export interface FileRoutesByTo {
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stations': typeof AdminStationsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/branch/collection-history': typeof BranchCollectionHistoryRoute
   '/branch/daily-report': typeof BranchDailyReportRoute
@@ -1005,6 +1013,7 @@ export interface FileRoutesById {
   '/admin/reviews': typeof AdminReviewsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/stations': typeof AdminStationsRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/branch/collection-history': typeof BranchCollectionHistoryRoute
   '/branch/daily-report': typeof BranchDailyReportRoute
@@ -1125,6 +1134,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/stations'
+    | '/auth/callback'
     | '/blog/$slug'
     | '/branch/collection-history'
     | '/branch/daily-report'
@@ -1236,6 +1246,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/stations'
+    | '/auth/callback'
     | '/blog/$slug'
     | '/branch/collection-history'
     | '/branch/daily-report'
@@ -1354,6 +1365,7 @@ export interface FileRouteTypes {
     | '/admin/reviews'
     | '/admin/settings'
     | '/admin/stations'
+    | '/auth/callback'
     | '/blog/$slug'
     | '/branch/collection-history'
     | '/branch/daily-report'
@@ -1430,6 +1442,7 @@ export interface RootRouteChildren {
   ServicesRoute: typeof ServicesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   CategoriesSlugRoute: typeof CategoriesSlugRoute
   ProductsSlugRoute: typeof ProductsSlugRoute
   BrandsIndexRoute: typeof BrandsIndexRoute
@@ -1913,6 +1926,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/stations'
       preLoaderRoute: typeof AdminStationsRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/': {
       id: '/blog/'
@@ -2518,6 +2538,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesRoute: ServicesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   CategoriesSlugRoute: CategoriesSlugRoute,
   ProductsSlugRoute: ProductsSlugRoute,
   BrandsIndexRoute: BrandsIndexRoute,

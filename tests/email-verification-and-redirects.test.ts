@@ -4,6 +4,8 @@ import {
   getAppOrigin,
   buildEmailConfirmationRedirectUrl,
   parseVerificationError,
+  isCrossDevicePkceError,
+  isCodeAlreadyExchangedError,
   AUTHORIZED_ORIGINS,
 } from "../src/lib/auth-origin-service";
 
@@ -59,10 +61,32 @@ describe("Email Verification & Authentication Redirection Suite", () => {
 
       assert.ok(parsed);
       assert.strictEqual(parsed.isExpired, true);
+      assert.strictEqual(parsed.isCrossDevice, false);
       assert.strictEqual(
         parsed.message,
         "Your verification link has expired or has already been used. Please request a new confirmation email below or sign in."
       );
+    });
+
+    test("should detect cross-device PKCE code verifier missing errors gracefully", () => {
+      const msg = "invalid request: both auth code and code verifier should be non-empty";
+      assert.strictEqual(isCrossDevicePkceError(msg), true);
+
+      const parsed = parseVerificationError(msg, "validation_failed");
+      assert.ok(parsed);
+      assert.strictEqual(parsed.isCrossDevice, true);
+      assert.strictEqual(parsed.isExpired, false);
+      assert.strictEqual(
+        parsed.message,
+        "Email verified successfully! Please sign in with your password to continue."
+      );
+    });
+
+    test("should detect code already exchanged errors", () => {
+      const msg1 = "AuthApiError: code has already been used";
+      const msg2 = "code already exchanged";
+      assert.strictEqual(isCodeAlreadyExchangedError(msg1), true);
+      assert.strictEqual(isCodeAlreadyExchangedError(msg2), true);
     });
 
     test("should extract token_hash and type for OTP verify links", () => {

@@ -43,14 +43,45 @@ export function buildEmailConfirmationRedirectUrl(customOrigin?: string): string
   return `${origin}/login?confirmed=true`;
 }
 
+export function isCrossDevicePkceError(errorMessage?: string | null): boolean {
+  if (!errorMessage) return false;
+  const lower = errorMessage.toLowerCase();
+  return (
+    lower.includes("code verifier") ||
+    lower.includes("code_verifier") ||
+    lower.includes("both auth code and code verifier should be non-empty") ||
+    lower.includes("pkce")
+  );
+}
+
+export function isCodeAlreadyExchangedError(errorMessage?: string | null): boolean {
+  if (!errorMessage) return false;
+  const lower = errorMessage.toLowerCase();
+  return (
+    lower.includes("already been used") ||
+    lower.includes("already used") ||
+    lower.includes("already exchanged")
+  );
+}
+
 export function parseVerificationError(
   errorDesc?: string | null,
   errorCode?: string | null
-): { isExpired: boolean; message: string } | null {
+): { isExpired: boolean; isCrossDevice: boolean; message: string } | null {
   if (!errorDesc && !errorCode) return null;
 
   const raw = errorDesc || "";
   const decoded = decodeURIComponent(raw.replace(/\+/g, " "));
+
+  if (isCrossDevicePkceError(decoded)) {
+    return {
+      isExpired: false,
+      isCrossDevice: true,
+      message:
+        "Email verified successfully! Please sign in with your password to continue.",
+    };
+  }
+
   const isExpired =
     decoded.toLowerCase().includes("expired") ||
     errorCode === "otp_expired" ||
@@ -60,6 +91,6 @@ export function parseVerificationError(
     ? "Your verification link has expired or has already been used. Please request a new confirmation email below or sign in."
     : decoded || "Verification link is invalid.";
 
-  return { isExpired, message };
+  return { isExpired, isCrossDevice: false, message };
 }
 

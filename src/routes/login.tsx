@@ -60,6 +60,11 @@ import {
   isValidAccountNumberFormat,
   verifyCustomerAccountNumber,
 } from "@/lib/account-number-service";
+import {
+  isCrossDevicePkceError,
+  isCodeAlreadyExchangedError,
+  parseVerificationError,
+} from "@/lib/auth-origin-service";
 import { CustomerAccountNumberBadge } from "@/components/customer/CustomerAccountNumberBadge";
 
 export const Route = createFileRoute("/login")({
@@ -214,30 +219,54 @@ function LoginPage() {
           setIsRecoveryMode(true);
         }
 
-        // 1. Check for error parameters (expired token, access denied, etc.)
+        // Check if an authenticated session already exists
+        const { data: existingSessionData } = await supabase.auth.getSession();
+        const activeUser = existingSessionData?.session?.user;
+
+        // If user is already authenticated and visits verification/callback link:
+        if (activeUser && isMounted) {
+          const hasVerifyParam =
+            searchParams.get("confirmed") === "true" ||
+            searchParams.get("code") ||
+            searchParams.get("token_hash") ||
+            hashParams.get("type") === "signup";
+
+          if (hasVerifyParam) {
+            toast.success("Your account is verified and ready.");
+            const role = (activeUser.user_metadata?.role as string) || "customer";
+            window.history.replaceState({}, document.title, window.location.pathname);
+            redirectByRole(role);
+            return;
+          }
+        }
+
+        // 1. Check for incoming error parameters (expired token, access denied, etc.)
         const errorDesc =
           searchParams.get("error_description") ||
           hashParams.get("error_description") ||
           (searchParams.get("error") ? "Email link is invalid or has expired." : null);
+        const errorCode = searchParams.get("error_code") || hashParams.get("error_code");
 
         if (errorDesc) {
-          const decoded = decodeURIComponent(errorDesc.replace(/\+/g, " "));
-          const isExpired =
-            decoded.toLowerCase().includes("expired") ||
-            searchParams.get("error_code") === "otp_expired" ||
-            hashParams.get("error_code") === "otp_expired";
-
-          const userFriendlyMessage = isExpired
-            ? "Your verification link has expired or has already been used. Please request a new confirmation email below or sign in."
-            : decoded;
+          const parsed = parseVerificationError(errorDesc, errorCode);
+          const emailInUrl = searchParams.get("email") || hashParams.get("email");
 
           if (isMounted) {
-            setFormError(userFriendlyMessage);
-            toast.error(userFriendlyMessage);
-
-            const emailInUrl = searchParams.get("email") || hashParams.get("email");
+            setTab("signin");
             if (emailInUrl) {
+              setSignInEmail(emailInUrl);
               setUnconfirmedLoginEmail(emailInUrl);
+            }
+
+            if (parsed?.isCrossDevice) {
+              setConfirmedSuccessBanner(true);
+              toast.success("Email verified successfully! Please sign in with your password.");
+            } else {
+              const friendlyMsg = parsed?.isExpired
+                ? "This verification link has expired or has already been used. If you have already confirmed your email, please sign in below."
+                : (parsed?.message || "Verification link is invalid or has expired.");
+              setFormError(friendlyMsg);
+              toast.error(friendlyMsg);
             }
           }
           window.history.replaceState({}, document.title, window.location.pathname);
@@ -248,26 +277,57 @@ function LoginPage() {
         const code = searchParams.get("code");
         if (code) {
           try {
+            // Check if detectSessionInUrl already completed authentication
+            const { data: earlySession } = await supabase.auth.getSession();
+            if (earlySession?.session && isMounted) {
+              setTab("signin");
+              setConfirmedSuccessBanner(true);
+              toast.success("Email verified successfully! You are now signed in.");
+              window.history.replaceState({}, document.title, window.location.pathname);
+              redirectByRole((earlySession.session.user?.user_metadata?.role as string) || "customer");
+              return;
+            }
+
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
             if (!isMounted) return;
 
             if (!error && data?.session) {
+              setTab("signin");
               setConfirmedSuccessBanner(true);
               toast.success("Email verified successfully! You are now signed in.");
+              window.history.replaceState({}, document.title, window.location.pathname);
+              redirectByRole((data.session.user?.user_metadata?.role as string) || "customer");
+              return;
             } else if (error) {
-              // Check if detectSessionInUrl already processed this session concurrently
+              // Check if session resolved during exchange attempt
               const { data: sessionData } = await supabase.auth.getSession();
               if (sessionData?.session) {
+                setTab("signin");
                 setConfirmedSuccessBanner(true);
                 toast.success("Email verified successfully!");
+                window.history.replaceState({}, document.title, window.location.pathname);
+                redirectByRole((sessionData.session.user?.user_metadata?.role as string) || "customer");
+                return;
+              }
+
+              const errorMsg = error.message || "";
+              if (isCrossDevicePkceError(errorMsg)) {
+                // Cross-device click: Server verified email, prompt signin
+                setTab("signin");
+                setConfirmedSuccessBanner(true);
+                toast.success("Email verified successfully! Please sign in with your password.");
+              } else if (isCodeAlreadyExchangedError(errorMsg)) {
+                setTab("signin");
+                setConfirmedSuccessBanner(true);
+                toast.info("Your email is already verified. Please sign in below.");
               } else {
                 const isExpired =
-                  error.message?.toLowerCase().includes("expired") ||
-                  (error as any)?.code === "otp_expired" ||
-                  error.message?.toLowerCase().includes("invalid");
+                  errorMsg.toLowerCase().includes("expired") ||
+                  (error as any)?.code === "otp_expired";
                 const msg = isExpired
-                  ? "This verification link has expired or has already been used. Please request a new confirmation email below."
+                  ? "This verification link has expired or has already been used. If your account is verified, please sign in below."
                   : (error.message || "Failed to verify email link.");
+                setTab("signin");
                 setFormError(msg);
                 toast.error(msg);
               }
@@ -291,13 +351,20 @@ function LoginPage() {
             if (!isMounted) return;
 
             if (!error && (data?.session || data?.user)) {
+              setTab("signin");
               setConfirmedSuccessBanner(true);
               toast.success("Email verified successfully! You can now sign in.");
+              if (data?.session?.user) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                redirectByRole((data.session.user.user_metadata?.role as string) || "customer");
+                return;
+              }
             } else if (error) {
               const isExpired = error.message?.toLowerCase().includes("expired");
               const msg = isExpired
-                ? "This verification link has expired or has already been used. Please request a new confirmation email below."
+                ? "This verification link has expired or has already been used. If your account is active, please sign in below."
                 : (error.message || "Failed to verify confirmation link.");
+              setTab("signin");
               setFormError(msg);
               toast.error(msg);
             }
@@ -313,9 +380,9 @@ function LoginPage() {
           searchParams.get("confirmed") === "true" || hashParams.get("type") === "signup";
 
         if (isConfirmed && isMounted) {
+          setTab("signin");
           setConfirmedSuccessBanner(true);
           toast.success("Email verified successfully! You can now sign in to your account.");
-          // Delay cleanup so Supabase's detectSessionInUrl has settled
           setTimeout(() => {
             if (typeof window !== "undefined") {
               window.history.replaceState({}, document.title, window.location.pathname);
@@ -332,7 +399,7 @@ function LoginPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [redirectByRole]);
 
   // Listen for Supabase password recovery event
   useEffect(() => {
