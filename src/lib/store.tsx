@@ -735,6 +735,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem("jss.wishlist");
       localStorage.removeItem("jss.auth_user");
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.removeItem("jss_is_existing_customer");
+        sessionStorage.removeItem("jss_customer_account_number");
+        sessionStorage.removeItem("jss_account_lookup_requested");
+      }
     } catch {
       /* ignore */
     }

@@ -233,16 +233,18 @@ export function GasCustomerApplicationForm({
   const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
   const hasRestoredDraftRef = useRef(false);
   const isRestoringRef = useRef(false);
+  const loadedCustomerIdRef = useRef<string | null>(null);
+  const baselineSnapshotRef = useRef<string | null>(null);
 
   // =========================================================================
-  // SECTION 1: CUSTOMER PERSONAL DETAILS
+  // SECTION 1: CUSTOMER PERSONAL DETAILS (Always start blank for new users)
   // =========================================================================
-  const [title, setTitle] = useState("Mr");
-  const [fullName, setFullName] = useState(user?.name || "");
+  const [title, setTitle] = useState("");
+  const [fullName, setFullName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [phone, setPhone] = useState("");
   const [altPhone, setAltPhone] = useState("");
-  const [email, setEmail] = useState(user?.email || "");
+  const [email, setEmail] = useState("");
   const [preferredContactMethod, setPreferredContactMethod] = useState("Phone");
 
   // =========================================================================
@@ -250,8 +252,8 @@ export function GasCustomerApplicationForm({
   // =========================================================================
   const [houseNumberOrName, setHouseNumberOrName] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
-  const [city, setCity] = useState("Gloucester");
-  const [county, setCounty] = useState("Gloucestershire");
+  const [city, setCity] = useState("");
+  const [county, setCounty] = useState("");
   const [postcode, setPostcode] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [hasDifferentDelivery, setHasDifferentDelivery] = useState(false);
@@ -265,25 +267,9 @@ export function GasCustomerApplicationForm({
   const [customerType, setCustomerType] = useState<"HOME" | "BUSINESS">(
     initialUsage === "COMMERCIAL" || initialUsage === "BULK" ? "BUSINESS" : "HOME",
   );
-  const [hasPreviousPurchases, setHasPreviousPurchases] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("jss_is_existing_customer") === "true";
-    }
-    return false;
-  });
-  const [previousAccountDetails, setPreviousAccountDetails] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("jss_customer_account_number") || "";
-    }
-    return "";
-  });
-  const [knowsAccountNumber, setKnowsAccountNumber] = useState<boolean | null>(() => {
-    if (typeof window !== "undefined") {
-      if (sessionStorage.getItem("jss_customer_account_number")) return true;
-      if (sessionStorage.getItem("jss_account_lookup_requested") === "true") return false;
-    }
-    return null;
-  });
+  const [hasPreviousPurchases, setHasPreviousPurchases] = useState(false);
+  const [previousAccountDetails, setPreviousAccountDetails] = useState("");
+  const [knowsAccountNumber, setKnowsAccountNumber] = useState<boolean | null>(null);
 
   const [selectedUsages, setSelectedUsages] = useState<Array<"DOMESTIC" | "COMMERCIAL" | "BULK" | "AUTOGAS">>([
     initialUsage || "DOMESTIC",
@@ -291,10 +277,7 @@ export function GasCustomerApplicationForm({
   const [estimatedConsumption, setEstimatedConsumption] = useState(
     "1 - 2 Cylinders / Month (Domestic Heating/Cooking)",
   );
-  const [primaryAppliances, setPrimaryAppliances] = useState<string[]>([
-    "Central Heating Boiler",
-    "Outdoor Patio Heater / BBQ",
-  ]);
+  const [primaryAppliances, setPrimaryAppliances] = useState<string[]>([]);
   // Commercial / Bulk specific fields
   const [businessName, setBusinessName] = useState("");
   const [tradingName, setTradingName] = useState("");
@@ -361,27 +344,88 @@ export function GasCustomerApplicationForm({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const drawnSignatureRef = useRef<string | null>(null);
 
-  // Sync user defaults once on initial load
-  const hasInitializedUserRef = useRef(false);
-  useEffect(() => {
-    if (!hasInitializedUserRef.current && user) {
-      if (user.name && !fullName) setFullName(user.name);
-      if (user.email && !email) setEmail(user.email);
-      hasInitializedUserRef.current = true;
-    }
-  }, [user]);
+  const resetFormToBlank = () => {
+    setTitle("");
+    setFullName("");
+    setDateOfBirth("");
+    setPhone("");
+    setAltPhone("");
+    setEmail("");
+    setPreferredContactMethod("Phone");
+    setHouseNumberOrName("");
+    setStreetAddress("");
+    setCity("");
+    setCounty("");
+    setPostcode("");
+    setDeliveryNotes("");
+    setHasDifferentDelivery(false);
+    setDeliveryAddress("");
+    setHasDifferentBilling(false);
+    setBillingAddress("");
+    setCustomerType(initialUsage === "COMMERCIAL" || initialUsage === "BULK" ? "BUSINESS" : "HOME");
+    setHasPreviousPurchases(false);
+    setPreviousAccountDetails("");
+    setKnowsAccountNumber(null);
+    setSelectedUsages([initialUsage || "DOMESTIC"]);
+    setEstimatedConsumption("1 - 2 Cylinders / Month (Domestic Heating/Cooking)");
+    setPrimaryAppliances([]);
+    setBusinessName("");
+    setTradingName("");
+    setCompanyRegOrVat("");
+    setBusinessType("Hospitality / Catering");
+    setBusinessAddress("");
+    setBusinessContact("");
+    setSelectedGasTypes([]);
+    setSelectedCylinderSizes([]);
+    setHasConfirmedCylinderSizes(false);
+    setExistingCylinderStatus("New Customer (No Existing Cylinders)");
+    setInitialQuantity("2 Cylinders (1 Active + 1 Reserve Bank)");
+    setStorageLocation("Outdoor Ventilated Hardstanding / Solid Plinth");
+    setRegulatorType("Automatic Changeover Valve (Dual Bottle 2-Pack)");
+    setDeclarationAccepted(false);
+    setStorageConfirmed(false);
+    setVerificationStep("ENTER_EMAIL");
+    setOtpSentTo("");
+    setOtpCode("");
+    setVerifiedEmail(null);
+    setOtpError(null);
+    setHasSigned(false);
+    setUploadedSignatureData(null);
+    setUploadedFileName(null);
+    setUploadedFileSize(null);
+    setDraftStatus("idle");
+    setLastSavedTime(null);
+  };
 
-  // Resolve active authenticated customer ID
+  const buildSnapshot = (draft: Omit<GasApplicationDraft, "updatedAt">) => JSON.stringify(draft);
+
+  // Resolve active authenticated customer ID & reset stale state on account switch/logout
   useEffect(() => {
     if (user?.id) {
+      if (loadedCustomerIdRef.current && loadedCustomerIdRef.current !== user.id) {
+        hasRestoredDraftRef.current = false;
+        baselineSnapshotRef.current = null;
+        resetFormToBlank();
+      }
       setActiveCustomerId(user.id);
       return;
     }
+
     let mounted = true;
     supabase.auth.getUser().then(({ data }) => {
-      if (mounted && data?.user?.id) {
-        setActiveCustomerId(data.user.id);
+      if (!mounted) return;
+      const uid = data?.user?.id || "";
+      if (!uid) {
+        hasRestoredDraftRef.current = false;
+        loadedCustomerIdRef.current = null;
+        baselineSnapshotRef.current = null;
+        resetFormToBlank();
+      } else if (loadedCustomerIdRef.current && loadedCustomerIdRef.current !== uid) {
+        hasRestoredDraftRef.current = false;
+        baselineSnapshotRef.current = null;
+        resetFormToBlank();
       }
+      setActiveCustomerId(uid);
     });
     return () => {
       mounted = false;
@@ -390,12 +434,15 @@ export function GasCustomerApplicationForm({
 
   // Restore latest application draft (or detect already-submitted application)
   useEffect(() => {
-    if (!activeCustomerId || hasRestoredDraftRef.current) return;
+    if (!activeCustomerId) return;
+    if (hasRestoredDraftRef.current && loadedCustomerIdRef.current === activeCustomerId) return;
 
     let isCancelled = false;
 
     async function restoreDraft() {
       isRestoringRef.current = true;
+      loadedCustomerIdRef.current = activeCustomerId;
+      resetFormToBlank();
       try {
         // If the customer already has an active, submitted application, do not show draft
         const existingApp = await getCustomerGasApplication(activeCustomerId).catch(() => null);
@@ -506,6 +553,111 @@ export function GasCustomerApplicationForm({
               setLastSavedTime(null);
             }
           }
+          const { updatedAt: _u, ...restoredWithoutTs } = draft;
+          baselineSnapshotRef.current = buildSnapshot({
+            customerId: activeCustomerId,
+            title: restoredWithoutTs.title ?? "",
+            fullName: restoredWithoutTs.fullName ?? "",
+            dateOfBirth: restoredWithoutTs.dateOfBirth ?? "",
+            phone: restoredWithoutTs.phone ?? "",
+            altPhone: restoredWithoutTs.altPhone ?? "",
+            email: restoredWithoutTs.email ?? "",
+            preferredContactMethod: restoredWithoutTs.preferredContactMethod ?? "Phone",
+            houseNumberOrName: restoredWithoutTs.houseNumberOrName ?? "",
+            streetAddress: restoredWithoutTs.streetAddress ?? "",
+            city: restoredWithoutTs.city ?? "",
+            county: restoredWithoutTs.county ?? "",
+            postcode: restoredWithoutTs.postcode ?? "",
+            deliveryNotes: restoredWithoutTs.deliveryNotes ?? "",
+            hasDifferentDelivery: restoredWithoutTs.hasDifferentDelivery ?? false,
+            deliveryAddress: restoredWithoutTs.deliveryAddress ?? "",
+            hasDifferentBilling: restoredWithoutTs.hasDifferentBilling ?? false,
+            billingAddress: restoredWithoutTs.billingAddress ?? "",
+            customerType:
+              restoredWithoutTs.customerType ??
+              (initialUsage === "COMMERCIAL" || initialUsage === "BULK" ? "BUSINESS" : "HOME"),
+            hasPreviousPurchases: restoredWithoutTs.hasPreviousPurchases ?? false,
+            previousAccountDetails: restoredWithoutTs.previousAccountDetails ?? "",
+            knowsAccountNumber: restoredWithoutTs.knowsAccountNumber ?? null,
+            selectedUsages: restoredWithoutTs.selectedUsages ?? [initialUsage || "DOMESTIC"],
+            estimatedConsumption:
+              restoredWithoutTs.estimatedConsumption ??
+              "1 - 2 Cylinders / Month (Domestic Heating/Cooking)",
+            primaryAppliances: restoredWithoutTs.primaryAppliances ?? [],
+            businessName: restoredWithoutTs.businessName ?? "",
+            tradingName: restoredWithoutTs.tradingName ?? "",
+            companyRegOrVat: restoredWithoutTs.companyRegOrVat ?? "",
+            businessType: restoredWithoutTs.businessType ?? "Hospitality / Catering",
+            businessAddress: restoredWithoutTs.businessAddress ?? "",
+            businessContact: restoredWithoutTs.businessContact ?? "",
+            selectedGasTypes: restoredWithoutTs.selectedGasTypes ?? [],
+            selectedCylinderSizes: restoredWithoutTs.selectedCylinderSizes ?? [],
+            hasConfirmedCylinderSizes: restoredWithoutTs.hasConfirmedCylinderSizes ?? false,
+            existingCylinderStatus:
+              restoredWithoutTs.existingCylinderStatus ?? "New Customer (No Existing Cylinders)",
+            initialQuantity:
+              restoredWithoutTs.initialQuantity ?? "2 Cylinders (1 Active + 1 Reserve Bank)",
+            storageLocation:
+              restoredWithoutTs.storageLocation ??
+              "Outdoor Ventilated Hardstanding / Solid Plinth",
+            regulatorType:
+              restoredWithoutTs.regulatorType ?? "Automatic Changeover Valve (Dual Bottle 2-Pack)",
+            declarationAccepted: restoredWithoutTs.declarationAccepted ?? false,
+            storageConfirmed: restoredWithoutTs.storageConfirmed ?? false,
+            verifiedEmail:
+              restoredWithoutTs.verifiedEmail &&
+              restoredWithoutTs.email &&
+              restoredWithoutTs.verifiedEmail.trim().toLowerCase() ===
+                restoredWithoutTs.email.trim().toLowerCase()
+                ? restoredWithoutTs.verifiedEmail
+                : null,
+          });
+        } else if (!isCancelled) {
+          // Brand new customer with no saved draft: record blank baseline so empty state is never auto-saved
+          baselineSnapshotRef.current = buildSnapshot({
+            customerId: activeCustomerId,
+            title: "",
+            fullName: "",
+            dateOfBirth: "",
+            phone: "",
+            altPhone: "",
+            email: "",
+            preferredContactMethod: "Phone",
+            houseNumberOrName: "",
+            streetAddress: "",
+            city: "",
+            county: "",
+            postcode: "",
+            deliveryNotes: "",
+            hasDifferentDelivery: false,
+            deliveryAddress: "",
+            hasDifferentBilling: false,
+            billingAddress: "",
+            customerType:
+              initialUsage === "COMMERCIAL" || initialUsage === "BULK" ? "BUSINESS" : "HOME",
+            hasPreviousPurchases: false,
+            previousAccountDetails: "",
+            knowsAccountNumber: null,
+            selectedUsages: [initialUsage || "DOMESTIC"],
+            estimatedConsumption: "1 - 2 Cylinders / Month (Domestic Heating/Cooking)",
+            primaryAppliances: [],
+            businessName: "",
+            tradingName: "",
+            companyRegOrVat: "",
+            businessType: "Hospitality / Catering",
+            businessAddress: "",
+            businessContact: "",
+            selectedGasTypes: [],
+            selectedCylinderSizes: [],
+            hasConfirmedCylinderSizes: false,
+            existingCylinderStatus: "New Customer (No Existing Cylinders)",
+            initialQuantity: "2 Cylinders (1 Active + 1 Reserve Bank)",
+            storageLocation: "Outdoor Ventilated Hardstanding / Solid Plinth",
+            regulatorType: "Automatic Changeover Valve (Dual Bottle 2-Pack)",
+            declarationAccepted: false,
+            storageConfirmed: false,
+            verifiedEmail: null,
+          });
         }
       } finally {
         if (!isCancelled) {
@@ -524,13 +676,17 @@ export function GasCustomerApplicationForm({
 
   // Automatic Draft Saving: Persists locally immediately & debounces backend sync
   useEffect(() => {
-    if (!activeCustomerId || !hasRestoredDraftRef.current || isRestoringRef.current) {
+    if (
+      !activeCustomerId ||
+      !hasRestoredDraftRef.current ||
+      isRestoringRef.current ||
+      loadedCustomerIdRef.current !== activeCustomerId
+    ) {
       return;
     }
 
-    const draftData: GasApplicationDraft = {
+    const draftCore: Omit<GasApplicationDraft, "updatedAt"> = {
       customerId: activeCustomerId,
-      updatedAt: new Date().toISOString(),
       // Section 1
       title,
       fullName,
@@ -580,6 +736,17 @@ export function GasCustomerApplicationForm({
         verifiedEmail && verifiedEmail.trim().toLowerCase() === email.trim().toLowerCase()
           ? verifiedEmail
           : null,
+    };
+
+    const currentSnapshot = buildSnapshot(draftCore);
+    if (baselineSnapshotRef.current !== null && currentSnapshot === baselineSnapshotRef.current) {
+      return;
+    }
+    baselineSnapshotRef.current = null;
+
+    const draftData: GasApplicationDraft = {
+      ...draftCore,
+      updatedAt: new Date().toISOString(),
     };
 
     // Save immediately to isolated local storage
@@ -1219,6 +1386,7 @@ export function GasCustomerApplicationForm({
   return (
     <form
       onSubmit={handleSubmit}
+      autoComplete="off"
       className={cn(
         "rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 space-y-9 text-left shadow-sm",
         embedded ? "border-0 p-0 shadow-none" : "",
@@ -1302,6 +1470,7 @@ export function GasCustomerApplicationForm({
               onChange={(e) => setTitle(e.target.value)}
               className="w-full h-11 rounded-xl border border-slate-300 px-3 bg-white text-xs font-bold text-slate-800"
             >
+              <option value="">Select...</option>
               <option value="Mr">Mr</option>
               <option value="Mrs">Mrs</option>
               <option value="Miss">Miss</option>
