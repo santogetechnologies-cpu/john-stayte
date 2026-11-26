@@ -47,8 +47,11 @@ export interface GasApplicationDraft {
   // Section 5: Safety Compliance & Agreement
   declarationAccepted?: boolean;
   storageConfirmed?: boolean;
-  // Section 6: Verification status (safe verified email, NEVER secret OTP codes)
+  // Section 6: Verification status (safe UI session state & cooldown timestamp, NEVER secret OTP codes)
   verifiedEmail?: string | null;
+  verificationStep?: "ENTER_EMAIL" | "ENTER_OTP" | "VERIFIED";
+  otpSentTo?: string;
+  otpCooldownEndsAt?: number | null;
 }
 
 const STORAGE_KEY_PREFIX = "jss_gas_app_draft_";

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   FileText,
@@ -38,47 +38,71 @@ export function CustomerApplicationView() {
   const [isEditing, setIsEditing] = useState(false);
   const [moreInfoResponseText, setMoreInfoResponseText] = useState("");
   const [submittingResponse, setSubmittingResponse] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
+  const lastUidRef = useRef<string | null>(null);
 
-  const loadApplication = useCallback(async () => {
-    setLoading(true);
+  const loadApplication = useCallback(async (backgroundRefresh = false) => {
+    const showSpinner = !backgroundRefresh && !hasLoadedOnceRef.current;
+    if (showSpinner) {
+      setLoading(true);
+    }
     try {
       const { data: authData } = await supabase.auth.getUser();
-      const activeUid = authData?.user?.id || user?.id;
+      const activeUid = authData?.user?.id || user?.id || null;
 
       if (!activeUid) {
+        lastUidRef.current = null;
         setApplication(null);
         return;
       }
 
+      lastUidRef.current = activeUid;
       const data = await getCustomerGasApplication(activeUid);
-      setApplication(data);
+      setApplication((prev) => {
+        // Avoid unmounting active in-progress form during background profile draft syncs
+        if (
+          backgroundRefresh &&
+          (!prev || prev.status === "NOT_COMPLETED") &&
+          (!data || data.status === "NOT_COMPLETED")
+        ) {
+          return prev;
+        }
+        return data;
+      });
+      hasLoadedOnceRef.current = true;
     } catch (err: unknown) {
       console.warn("Could not load application:", err);
     } finally {
-      setLoading(false);
+      if (showSpinner) {
+        setLoading(false);
+      }
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
-    loadApplication();
+    if (lastUidRef.current !== (user?.id || null)) {
+      hasLoadedOnceRef.current = false;
+    }
+    loadApplication(false);
 
     // Subscribe to realtime database changes so status updates instantly when approved/rejected
+    // Background refresh never unmounts an active in-progress form
     const channel = supabase
       .channel("customer_application_view_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () =>
-        loadApplication(),
+        loadApplication(true),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "gas_customer_applications" },
-        () => loadApplication(),
+        () => loadApplication(true),
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadApplication]);
+  }, [loadApplication, user?.id]);
 
   const handleSendMoreInfoResponse = async () => {
     if (!application || !moreInfoResponseText.trim()) {

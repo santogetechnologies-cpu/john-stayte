@@ -323,7 +323,11 @@ export function GasCustomerApplicationForm({
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
+  const [otpCooldownEndsAt, setOtpCooldownEndsAt] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+  const cooldown = otpCooldownEndsAt
+    ? Math.max(0, Math.ceil((otpCooldownEndsAt - nowTick) / 1000))
+    : 0;
 
   // =========================================================================
   // SECTION 7: CUSTOMER DIGITAL SIGNATURE
@@ -389,6 +393,7 @@ export function GasCustomerApplicationForm({
     setOtpCode("");
     setVerifiedEmail(null);
     setOtpError(null);
+    setOtpCooldownEndsAt(null);
     setHasSigned(false);
     setUploadedSignatureData(null);
     setUploadedFileName(null);
@@ -531,7 +536,7 @@ export function GasCustomerApplicationForm({
           if (draft.storageConfirmed !== undefined)
             setStorageConfirmed(draft.storageConfirmed);
 
-          // Section 6: Verified Email (Safely restore if verified email matches current email)
+          // Section 6: Verification session & cooldown timestamp (persists across refresh/app switch)
           if (
             draft.verifiedEmail &&
             draft.email &&
@@ -540,6 +545,14 @@ export function GasCustomerApplicationForm({
             setVerifiedEmail(draft.verifiedEmail);
             setVerificationStep("VERIFIED");
             setOtpSentTo(draft.verifiedEmail);
+          } else if (draft.verificationStep === "ENTER_OTP" && draft.otpSentTo) {
+            setVerificationStep("ENTER_OTP");
+            setOtpSentTo(draft.otpSentTo);
+          }
+
+          if (typeof draft.otpCooldownEndsAt === "number" && draft.otpCooldownEndsAt > Date.now()) {
+            setOtpCooldownEndsAt(draft.otpCooldownEndsAt);
+            setNowTick(Date.now());
           }
 
           setDraftStatus("saved");
@@ -611,6 +624,21 @@ export function GasCustomerApplicationForm({
                 restoredWithoutTs.email.trim().toLowerCase()
                 ? restoredWithoutTs.verifiedEmail
                 : null,
+            verificationStep:
+              restoredWithoutTs.verifiedEmail &&
+              restoredWithoutTs.email &&
+              restoredWithoutTs.verifiedEmail.trim().toLowerCase() ===
+                restoredWithoutTs.email.trim().toLowerCase()
+                ? "VERIFIED"
+                : restoredWithoutTs.verificationStep === "ENTER_OTP" && restoredWithoutTs.otpSentTo
+                  ? "ENTER_OTP"
+                  : "ENTER_EMAIL",
+            otpSentTo: restoredWithoutTs.otpSentTo ?? "",
+            otpCooldownEndsAt:
+              typeof restoredWithoutTs.otpCooldownEndsAt === "number" &&
+              restoredWithoutTs.otpCooldownEndsAt > Date.now()
+                ? restoredWithoutTs.otpCooldownEndsAt
+                : null,
           });
         } else if (!isCancelled) {
           // Brand new customer with no saved draft: record blank baseline so empty state is never auto-saved
@@ -657,6 +685,9 @@ export function GasCustomerApplicationForm({
             declarationAccepted: false,
             storageConfirmed: false,
             verifiedEmail: null,
+            verificationStep: "ENTER_EMAIL",
+            otpSentTo: "",
+            otpCooldownEndsAt: null,
           });
         }
       } finally {
@@ -736,6 +767,10 @@ export function GasCustomerApplicationForm({
         verifiedEmail && verifiedEmail.trim().toLowerCase() === email.trim().toLowerCase()
           ? verifiedEmail
           : null,
+      verificationStep,
+      otpSentTo,
+      otpCooldownEndsAt:
+        otpCooldownEndsAt && otpCooldownEndsAt > Date.now() ? otpCooldownEndsAt : null,
     };
 
     const currentSnapshot = buildSnapshot(draftCore);
@@ -813,16 +848,44 @@ export function GasCustomerApplicationForm({
     declarationAccepted,
     storageConfirmed,
     verifiedEmail,
+    verificationStep,
+    otpSentTo,
+    otpCooldownEndsAt,
   ]);
 
-  // Countdown timer for resending OTP
+  // Timestamp-based 60s countdown timer that stays accurate across mobile/desktop app switching
   useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setInterval(() => {
-      setCooldown((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldown]);
+    if (!otpCooldownEndsAt) return;
+
+    const syncNow = () => {
+      const now = Date.now();
+      setNowTick(now);
+      if (now >= otpCooldownEndsAt) {
+        setOtpCooldownEndsAt(null);
+      }
+    };
+
+    syncNow();
+    const timer = setInterval(syncNow, 1000);
+    const handleVisibilityOrFocus = () => {
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        syncNow();
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleVisibilityOrFocus);
+      document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    }
+
+    return () => {
+      clearInterval(timer);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleVisibilityOrFocus);
+        document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      }
+    };
+  }, [otpCooldownEndsAt]);
 
   const handleEmailChange = (newVal: string) => {
     setEmail(newVal);
@@ -842,20 +905,29 @@ export function GasCustomerApplicationForm({
       toast.error("Please enter a valid email address to receive your verification code.");
       return;
     }
+    if (cooldown > 0 || sendingOtp) return;
     setSendingOtp(true);
     setOtpError(null);
     try {
       const res = await sendApplicationEmailOtp(cleanEmail);
       setOtpSentTo(cleanEmail);
       setVerificationStep("ENTER_OTP");
-      setCooldown(60);
+      setOtpCooldownEndsAt(res.cooldownEndsAt ?? Date.now() + 60_000);
+      setNowTick(Date.now());
       setOtpCode("");
       toast.success(res.message || `Verification code sent to ${cleanEmail}`);
     } catch (err: any) {
       const msg = err.message || "Failed to send verification code. Please try again.";
       setOtpError(msg);
       toast.error(msg);
-      setVerificationStep("ENTER_EMAIL");
+      if (typeof err?.cooldownEndsAt === "number" && err.cooldownEndsAt > Date.now()) {
+        setOtpCooldownEndsAt(err.cooldownEndsAt);
+        setNowTick(Date.now());
+        setOtpSentTo(cleanEmail);
+        setVerificationStep("ENTER_OTP");
+      } else {
+        setVerificationStep("ENTER_EMAIL");
+      }
     } finally {
       setSendingOtp(false);
     }
@@ -895,13 +967,18 @@ export function GasCustomerApplicationForm({
     setOtpError(null);
     try {
       const res = await sendApplicationEmailOtp(targetEmail);
-      setCooldown(60);
+      setOtpCooldownEndsAt(res.cooldownEndsAt ?? Date.now() + 60_000);
+      setNowTick(Date.now());
       setOtpCode("");
       toast.success(`A fresh 6-digit code was sent to ${targetEmail}`);
     } catch (err: any) {
       const msg = err.message || "Failed to resend verification code. Please try again.";
       setOtpError(msg);
       toast.error(msg);
+      if (typeof err?.cooldownEndsAt === "number" && err.cooldownEndsAt > Date.now()) {
+        setOtpCooldownEndsAt(err.cooldownEndsAt);
+        setNowTick(Date.now());
+      }
     } finally {
       setSendingOtp(false);
     }

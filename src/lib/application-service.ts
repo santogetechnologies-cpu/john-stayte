@@ -1416,6 +1416,8 @@ export async function updateGasApplicationStatus(params: {
 export async function sendApplicationEmailOtp(email: string): Promise<{
   ok: boolean;
   message: string;
+  cooldownEndsAt?: number;
+  retryAfterSeconds?: number;
 }> {
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail || !cleanEmail.includes("@") || cleanEmail.length < 5) {
@@ -1435,14 +1437,19 @@ export async function sendApplicationEmailOtp(email: string): Promise<{
   });
 
   if (!res.ok) {
-    throw new Error(
+    const err: any = new Error(
       res.message || res.error || "Failed to send verification email. Please try again.",
     );
+    if (res.cooldownEndsAt) err.cooldownEndsAt = res.cooldownEndsAt;
+    if (res.retryAfterSeconds) err.retryAfterSeconds = res.retryAfterSeconds;
+    throw err;
   }
 
   return {
     ok: true,
     message: res.message,
+    cooldownEndsAt: res.cooldownEndsAt,
+    retryAfterSeconds: res.retryAfterSeconds,
   };
 }
 

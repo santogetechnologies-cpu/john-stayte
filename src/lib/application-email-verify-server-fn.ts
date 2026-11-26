@@ -11,6 +11,8 @@ export interface SendApplicationEmailVerifyResponse {
   ok: boolean;
   message: string;
   error?: string;
+  cooldownEndsAt?: number;
+  retryAfterSeconds?: number;
 }
 
 export interface VerifyApplicationEmailCodeInput {
@@ -27,7 +29,7 @@ export interface VerifyApplicationEmailCodeResponse {
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const VERIFIED_GRACE_MS = 2 * 60 * 60 * 1000; // 2 hours for application submission
-const SEND_COOLDOWN_MS = 30 * 1000; // 30 seconds rate-limit between requests
+const SEND_COOLDOWN_MS = 60 * 1000; // 60 seconds rate-limit between requests
 const HOURLY_WINDOW_MS = 60 * 60 * 1000; // 1 hour sliding window
 const MAX_SENDS_PER_HOUR = 8;
 const MAX_VERIFY_ATTEMPTS = 5;
@@ -348,6 +350,8 @@ export async function handleSendApplicationEmailVerify(
         ok: false,
         message: `Please wait ${waitSeconds} seconds before requesting another verification code.`,
         error: "Rate limit reached",
+        cooldownEndsAt: lastSentMs + SEND_COOLDOWN_MS,
+        retryAfterSeconds: waitSeconds,
       };
     }
 
@@ -452,10 +456,20 @@ export async function handleSendApplicationEmailVerify(
       };
     }
 
-    // Persist hashed OTP record in Supabase public.email_verifications
+    // Invalidate any prior unverified OTP records for this email before storing the new code
     const nowIso = new Date(now).toISOString();
     const expiresIso = new Date(now + OTP_EXPIRY_MS).toISOString();
 
+    await (supabase.from("email_verifications") as any)
+      .update({
+        verification_token: null,
+        expires_at: nowIso,
+        updated_at: nowIso,
+      })
+      .eq("email", cleanEmail)
+      .is("verified_at", null);
+
+    // Persist hashed OTP record in Supabase public.email_verifications
     const { error: insertErr } = await (supabase.from("email_verifications") as any).insert([
       {
         user_id: callerUserId,
@@ -487,6 +501,8 @@ export async function handleSendApplicationEmailVerify(
     return {
       ok: true,
       message: `A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox.`,
+      cooldownEndsAt: now + SEND_COOLDOWN_MS,
+      retryAfterSeconds: Math.ceil(SEND_COOLDOWN_MS / 1000),
     };
   } catch (err: any) {
     const isTimeout = err?.name === "AbortError";
