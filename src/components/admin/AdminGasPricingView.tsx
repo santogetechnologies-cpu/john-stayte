@@ -22,7 +22,9 @@ import {
   ChevronRight,
   Lock,
   ArrowUpRight,
+  Award,
 } from "lucide-react";
+import { LifetimeDiscountsPanel } from "@/components/pricing/LifetimeDiscountsPanel";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,7 +84,8 @@ type NavigationSection =
   | "special-customer"
   | "vat-information"
   | "delivery-rules"
-  | "pricing-history";
+  | "pricing-history"
+  | "lifetime-discounts";
 
 export function AdminGasPricingView() {
   const { user } = useStore();
@@ -445,6 +448,7 @@ export function AdminGasPricingView() {
           { id: "vat-information", label: "VAT Information", icon: Percent },
           { id: "delivery-rules", label: "Delivery Rules", icon: Truck },
           { id: "pricing-history", label: "Pricing History", icon: History },
+          { id: "lifetime-discounts", label: "Lifetime Discounts", icon: Award },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -466,6 +470,10 @@ export function AdminGasPricingView() {
       </div>
 
       {/* SECTION 1: PRICING OVERVIEW */}
+      {activeTab === "lifetime-discounts" && (
+        <LifetimeDiscountsPanel roleLabel="Admin" />
+      )}
+
       {activeTab === "overview" && (
         <div className="space-y-6">
           {/* Key Metric Cards - Fully Clickable & Interactive */}

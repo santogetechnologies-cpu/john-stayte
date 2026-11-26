@@ -128,36 +128,30 @@ async function verifyAdminCaller(
   supabaseAdmin: any,
   adminAuthToken?: string,
 ): Promise<{ authorized: boolean; error?: string; adminUserId?: string }> {
-  if (adminAuthToken) {
-    if (adminAuthToken.startsWith("mock-test-admin-token")) {
-      return { authorized: true, adminUserId: "mock-admin-id" };
-    }
-    try {
-      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(adminAuthToken);
-      if (userError || !user) {
-        return { authorized: false, error: "Authentication failed. Session expired or invalid." };
-      }
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (!profile || profile.role !== "admin") {
-        return { authorized: false, error: "Unauthorized. Administrator privileges required." };
-      }
-      return { authorized: true, adminUserId: user.id };
-    } catch (err: any) {
-      return { authorized: false, error: `Authentication verification error: ${err.message}` };
-    }
-  }
-
-  // If in production environment without token, deny access to prevent enumeration
-  if (process.env.NODE_ENV === "production" && !process.env.TEST_BYPASS_AUTH) {
+  if (!adminAuthToken || typeof adminAuthToken !== "string" || !adminAuthToken.trim()) {
     return { authorized: false, error: "Unauthorized. Administrator authentication required." };
   }
 
-  return { authorized: true, adminUserId: "mock-admin-id" };
+  try {
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
+      adminAuthToken.trim(),
+    );
+    if (userError || !user) {
+      return { authorized: false, error: "Authentication failed. Session expired or invalid." };
+    }
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (!profile || profile.role !== "admin") {
+      return { authorized: false, error: "Unauthorized. Administrator privileges required." };
+    }
+    return { authorized: true, adminUserId: user.id };
+  } catch (err: any) {
+    return { authorized: false, error: `Authentication verification error: ${err.message}` };
+  }
 }
 
 /**
@@ -620,6 +614,12 @@ export const updateBranchStaffServerFn = createServerFn({ method: "POST" })
   .validator((data: UpdateBranchStaffInput) => data)
   .handler(async ({ data }): Promise<ServerFnResponse> => {
     try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const authCheck = await verifyAdminCaller(supabaseAdmin, data?.adminAuthToken);
+      if (!authCheck.authorized) {
+        return { ok: false, error: authCheck.error || "Unauthorized access." };
+      }
+
       const staffId = (data?.staffId || "").trim();
       if (!staffId) {
         return { ok: false, error: "Staff ID is required." };
@@ -660,8 +660,6 @@ export const updateBranchStaffServerFn = createServerFn({ method: "POST" })
       if (data.phone !== undefined) {
         updates.phone = data.phone ? data.phone.trim() : null;
       }
-
-      const supabaseAdmin = getSupabaseAdmin();
 
       // Update public.profiles
       const { error: profileError } = await supabaseAdmin
@@ -715,6 +713,12 @@ export const resetBranchStaffPasswordServerFn = createServerFn({ method: "POST" 
   .validator((data: ResetBranchStaffPasswordInput) => data)
   .handler(async ({ data }): Promise<ServerFnResponse> => {
     try {
+      const supabaseAdmin = getSupabaseAdmin();
+      const authCheck = await verifyAdminCaller(supabaseAdmin, data?.adminAuthToken);
+      if (!authCheck.authorized) {
+        return { ok: false, error: authCheck.error || "Unauthorized access." };
+      }
+
       const staffId = (data?.staffId || "").trim();
       const email = (data?.email || "").trim().toLowerCase();
       const newPassword = data?.newPassword?.trim();
@@ -723,9 +727,10 @@ export const resetBranchStaffPasswordServerFn = createServerFn({ method: "POST" 
         return { ok: false, error: "Staff ID or email is required." };
       }
 
-      const supabaseAdmin = getSupabaseAdmin();
-
       if (newPassword) {
+        if (!staffId) {
+          return { ok: false, error: "Staff ID is required to update password." };
+        }
         if (newPassword.length < 8) {
           return { ok: false, error: "Password must be at least 8 characters long." };
         }
@@ -749,8 +754,9 @@ export const resetBranchStaffPasswordServerFn = createServerFn({ method: "POST" 
         }
         return {
           ok: true,
-          message: `Password recovery link generated: ${linkData.properties?.action_link ? "Sent to email" : "Success"}`,
-          data: { actionLink: linkData.properties?.action_link },
+          message: linkData.properties?.action_link
+            ? "Password recovery link generated successfully."
+            : "Password recovery processed.",
         };
       }
     } catch (err: any) {

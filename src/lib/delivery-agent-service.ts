@@ -1268,6 +1268,23 @@ export async function updateDeliveryWorkflowStep(params: UpdateWorkflowParams) {
   try {
     const nowIso = new Date().toISOString();
 
+    // Enforce mandatory OTP verification before marking delivery as Delivered
+    if (status === "Delivered") {
+      const { data: asgnCheck, error: asgnCheckErr } = await (supabase.from("delivery_assignments") as any)
+        .select("id, otp_verified")
+        .eq("id", assignmentId)
+        .maybeSingle();
+
+      if (asgnCheckErr) {
+        throw new Error(`Unable to verify delivery OTP status: ${asgnCheckErr.message}`);
+      }
+      if (!asgnCheck?.otp_verified) {
+        throw new Error(
+          "Customer OTP verification is required before completing delivery.",
+        );
+      }
+    }
+
     // 1. Build notes summary
     let combinedNotes = notes || "";
     if (emptyCylinderData) {

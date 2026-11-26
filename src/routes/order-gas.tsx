@@ -118,7 +118,7 @@ function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
 }
 
 function OrderGasPage() {
-  const { user, login, register } = useStore();
+  const { user, login, register, addToCart } = useStore();
   const navigate = useNavigate();
   const search = Route.useSearch();
 
@@ -274,42 +274,8 @@ function OrderGasPage() {
 
   // Step 4 & 5: Summary & Payment
   const [paymentMethod, setPaymentMethod] = useState<string>("Credit / Debit Card");
-  const [cardholderName, setCardholderName] = useState<string>("");
-  const [cardNumber, setCardNumber] = useState<string>("");
-  const [cardExpiry, setCardExpiry] = useState<string>("");
-  const [cardCvc, setCardCvc] = useState<string>("");
-  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [submittingOrder, setSubmittingOrder] = useState<boolean>(false);
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
-
-  // Sync cardholder name when customerName or user changes
-  useEffect(() => {
-    if (customerName && !cardholderName) {
-      setCardholderName(customerName);
-    } else if (user?.name && !cardholderName) {
-      setCardholderName(user.name);
-    }
-  }, [customerName, user]);
-
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 16);
-    const formatted = raw.replace(/(\d{4})(?=\d)/g, "$1 ");
-    setCardNumber(formatted);
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    if (raw.length >= 3) {
-      setCardExpiry(`${raw.slice(0, 2)}/${raw.slice(2)}`);
-    } else {
-      setCardExpiry(raw);
-    }
-  };
-
-  const handleCvcChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, "").slice(0, 4);
-    setCardCvc(raw);
-  };
 
   // Inline Auth Modal for unauthenticated guests
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
@@ -801,36 +767,26 @@ function OrderGasPage() {
     const isCard = paymentMethod.toLowerCase().includes("card");
     const isPayPal = paymentMethod.toLowerCase().includes("paypal");
 
+    if (isPayPal) {
+      toast.error(
+        "PayPal checkout is currently in onboarding and unavailable. Please select Credit / Debit Card or Pay on Delivery / Collection.",
+      );
+      return;
+    }
+
+    // Online card payments must go through real Elavon 3DS2 Hosted Checkout (/checkout)
+    // rather than creating an order directly without gateway capture/verification.
     if (isCard) {
-      if (!cardholderName.trim()) {
-        return toast.error("Please enter the cardholder name.");
-      }
-      const rawCard = cardNumber.replace(/\s+/g, "");
-      if (rawCard.length < 15) {
-        return toast.error("Please enter a valid 16-digit card number.");
-      }
-      const [expMonth, expYear] = cardExpiry.split("/");
-      if (!expMonth || !expYear || Number(expMonth) < 1 || Number(expMonth) > 12) {
-        return toast.error("Please enter a valid card expiry date (MM/YY).");
-      }
-      if (cardCvc.length < 3) {
-        return toast.error("Please enter a valid 3 or 4 digit security code (CVC).");
-      }
+      addToCart(selectedProduct.slug || selectedProduct.id, quantity);
+      toast.info("Redirecting to secure Elavon checkout to complete card payment...");
+      navigate({ to: "/checkout" });
+      return;
     }
 
     setSubmittingOrder(true);
-    if (isCard || isPayPal) {
-      setIsProcessingPayment(true);
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-      setIsProcessingPayment(false);
-    }
 
     try {
-      const normalizedMethod = isPayPal
-        ? "PayPal"
-        : isCard
-          ? "Credit / Debit Card"
-          : "Pay on Delivery / Collection";
+      const normalizedMethod = "Pay on Delivery / Collection";
 
       const res = await createGasOrder({
         userId: user.id,
@@ -861,7 +817,7 @@ function OrderGasPage() {
         deliveryDate,
         deliveryTimeSlot: selectedDeliverySlot,
         paymentMethod: normalizedMethod,
-        paymentStatus: isCard || isPayPal ? "Paid" : "Pending",
+        paymentStatus: "Pending",
       });
 
       setStep(5); // Step 5: Confirmation
@@ -871,7 +827,6 @@ function OrderGasPage() {
       toast.error(err.message || "Failed to place order.");
     } finally {
       setSubmittingOrder(false);
-      setIsProcessingPayment(false);
     }
   };
 
@@ -2038,20 +1993,23 @@ function OrderGasPage() {
                       {
                         id: "Credit / Debit Card",
                         label: "Credit / Debit Card",
-                        subtitle: "Visa, Mastercard, Amex",
+                        subtitle: "Elavon 3DS2 Gateway",
                         icon: CreditCard,
+                        disabled: false,
                       },
                       {
                         id: "PayPal",
                         label: "PayPal",
-                        subtitle: "Fast, secure checkout",
+                        subtitle: "Currently in onboarding",
                         icon: PayPalIcon,
+                        disabled: true,
                       },
                       {
                         id: "Pay on Delivery / Collection",
                         label: "Pay on Delivery / Collection",
                         subtitle: "Pay driver or at depot",
                         icon: Banknote,
+                        disabled: false,
                       },
                     ].map((method) => {
                       const isSelected = paymentMethod === method.id;
@@ -2060,47 +2018,51 @@ function OrderGasPage() {
                         <button
                           key={method.id}
                           type="button"
-                          onClick={() => setPaymentMethod(method.id)}
+                          disabled={method.disabled}
+                          aria-disabled={method.disabled}
+                          onClick={() => !method.disabled && setPaymentMethod(method.id)}
                           className={cn(
-                            "relative flex flex-col text-left p-4 rounded-2xl border transition-all cursor-pointer select-none",
-                            isSelected
-                              ? method.id === "PayPal"
-                                ? "border-[#0079C1] bg-sky-50/40 shadow-sm ring-2 ring-[#0079C1]/20"
-                                : method.id === "Credit / Debit Card"
-                                  ? "border-primary bg-red-50/30 shadow-sm ring-2 ring-primary/20"
-                                  : "border-amber-500 bg-amber-50/30 shadow-sm ring-2 ring-amber-500/20"
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700",
+                            "relative flex flex-col text-left p-4 rounded-2xl border transition-all select-none",
+                            method.disabled
+                              ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed text-slate-500"
+                              : isSelected
+                                ? method.id === "Credit / Debit Card"
+                                  ? "border-primary bg-red-50/30 shadow-sm ring-2 ring-primary/20 cursor-pointer"
+                                  : "border-amber-500 bg-amber-50/30 shadow-sm ring-2 ring-amber-500/20 cursor-pointer"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50 text-slate-700 cursor-pointer",
                           )}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <div
                               className={cn(
                                 "h-8 w-8 rounded-xl flex items-center justify-center",
-                                isSelected
-                                  ? method.id === "PayPal"
-                                    ? "bg-[#0079C1]/10 text-[#0079C1]"
-                                    : method.id === "Credit / Debit Card"
-                                      ? "bg-primary/10 text-primary"
-                                      : "bg-amber-500/10 text-amber-700"
+                                isSelected && !method.disabled
+                                  ? method.id === "Credit / Debit Card"
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-amber-500/10 text-amber-700"
                                   : "bg-slate-100 text-slate-500",
                               )}
                             >
                               <IconComp className="h-4 w-4" />
                             </div>
-                            <div
-                              className={cn(
-                                "h-4 w-4 rounded-full border flex items-center justify-center transition-all",
-                                isSelected
-                                  ? method.id === "PayPal"
-                                    ? "border-[#0079C1] bg-[#0079C1] text-white"
-                                    : method.id === "Credit / Debit Card"
+                            {method.disabled ? (
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                                Unavailable
+                              </span>
+                            ) : (
+                              <div
+                                className={cn(
+                                  "h-4 w-4 rounded-full border flex items-center justify-center transition-all",
+                                  isSelected
+                                    ? method.id === "Credit / Debit Card"
                                       ? "border-primary bg-primary text-white"
                                       : "border-amber-600 bg-amber-600 text-white"
-                                  : "border-slate-300 bg-white",
-                              )}
-                            >
-                              {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                            </div>
+                                    : "border-slate-300 bg-white",
+                                )}
+                              >
+                                {isSelected && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                              </div>
+                            )}
                           </div>
                           <span className="text-xs font-black text-slate-900">{method.label}</span>
                           <span className="text-[11px] text-slate-500 mt-0.5">
@@ -2112,14 +2074,14 @@ function OrderGasPage() {
                   </div>
                 </div>
 
-                {/* Card Inputs if Card Selected */}
+                {/* Elavon Hosted Checkout Notice if Card Selected */}
                 {paymentMethod === "Credit / Debit Card" && (
-                  <div className="p-5 sm:p-6 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-4 text-left shadow-inner/5">
+                  <div className="p-5 sm:p-6 rounded-2xl bg-slate-50/80 border border-slate-200/90 space-y-3 text-left">
                     <div className="flex items-center justify-between border-b border-slate-200/70 pb-3">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4 text-primary" />
                         <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                          Card Payment Details
+                          Elavon Hosted Card Checkout (3DS2)
                         </span>
                       </div>
                       <div className="flex items-center gap-1 text-[11px] font-extrabold text-slate-500">
@@ -2127,75 +2089,14 @@ function OrderGasPage() {
                         <span className="text-primary font-black">{gbp(totalAmount)}</span>
                       </div>
                     </div>
-
-                    <div>
-                      <Label htmlFor="gas-chn" className="text-xs font-bold text-slate-700">
-                        Cardholder Name
-                      </Label>
-                      <Input
-                        id="gas-chn"
-                        required
-                        maxLength={100}
-                        value={cardholderName}
-                        onChange={(e) => setCardholderName(e.target.value)}
-                        placeholder="Name as printed on card"
-                        className="mt-1.5 rounded-xl bg-white text-xs font-medium h-10 border-slate-200"
-                      />
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="sm:col-span-2">
-                        <Label htmlFor="gas-cn" className="text-xs font-bold text-slate-700">
-                          Card Number
-                        </Label>
-                        <div className="relative mt-1.5">
-                          <Input
-                            id="gas-cn"
-                            required
-                            placeholder="4242 4242 4242 4242"
-                            maxLength={19}
-                            value={cardNumber}
-                            onChange={handleCardNumberChange}
-                            className="rounded-xl bg-white pl-10 text-xs font-mono font-medium tracking-wider h-10 border-slate-200"
-                          />
-                          <CreditCard className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="gas-ex" className="text-xs font-bold text-slate-700">
-                          Expiry Date
-                        </Label>
-                        <Input
-                          id="gas-ex"
-                          required
-                          placeholder="MM/YY"
-                          maxLength={5}
-                          value={cardExpiry}
-                          onChange={handleExpiryChange}
-                          className="mt-1.5 rounded-xl bg-white text-xs font-mono font-medium text-center h-10 border-slate-200"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="gas-cv" className="text-xs font-bold text-slate-700">
-                          CVC / Security Code
-                        </Label>
-                        <Input
-                          id="gas-cv"
-                          required
-                          placeholder="123"
-                          maxLength={4}
-                          value={cardCvc}
-                          onChange={handleCvcChange}
-                          className="mt-1.5 rounded-xl bg-white text-xs font-mono font-medium text-center h-10 border-slate-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium border-t border-slate-200/50">
-                      <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
-                      <span>Card details are verified with 256-bit SSL encryption.</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Online card payments are processed strictly through Elavon&apos;s PCI-DSS
+                      Level 1 hosted checkout with 3D Secure 2 verification. Continuing will add
+                      your selected cylinder to the basket and open secure checkout.
+                    </p>
+                    <div className="flex items-center gap-2 pt-1 text-[11px] text-emerald-700 font-medium">
+                      <ShieldCheck className="h-4 w-4 shrink-0" />
+                      <span>EMV 3-D Secure 2 &amp; server-verified capture before confirmation.</span>
                     </div>
                   </div>
                 )}
@@ -2269,7 +2170,7 @@ function OrderGasPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={submittingOrder || isProcessingPayment}
+                  disabled={submittingOrder}
                   onClick={() => {
                     setStep(3);
                     scrollToStepSection(3);
@@ -2281,25 +2182,11 @@ function OrderGasPage() {
 
                 <Button
                   type="button"
-                  disabled={submittingOrder || isProcessingPayment}
+                  disabled={submittingOrder || paymentMethod === "PayPal"}
                   onClick={handlePlaceOrder}
-                  className={cn(
-                    "rounded-full px-8 py-3 text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12 transition-all",
-                    paymentMethod === "PayPal"
-                      ? "bg-[#0079C1] hover:bg-[#00457C]"
-                      : "bg-primary hover:bg-primary/90",
-                  )}
+                  className="rounded-full px-8 py-3 text-white font-extrabold text-sm shadow-md flex items-center gap-2 cursor-pointer h-12 transition-all bg-primary hover:bg-primary/90"
                 >
-                  {isProcessingPayment ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>
-                        {paymentMethod === "PayPal"
-                          ? "Connecting to PayPal..."
-                          : "Authorizing payment..."}
-                      </span>
-                    </>
-                  ) : submittingOrder ? (
+                  {submittingOrder ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       <span>Confirming your order...</span>
@@ -2309,24 +2196,15 @@ function OrderGasPage() {
                       <UserCheck className="h-4 w-4" />
                       <span>Sign In & Place Order</span>
                     </>
+                  ) : paymentMethod === "Credit / Debit Card" ? (
+                    <>
+                      <span>Continue to Elavon Checkout ({gbp(totalAmount)})</span>
+                      <ArrowRight className="h-4 w-4 stroke-[2.5]" />
+                    </>
                   ) : (
                     <>
-                      {paymentMethod === "PayPal" ? (
-                        <>
-                          <PayPalIcon className="h-4 w-4 fill-white" />
-                          <span>Pay {gbp(totalAmount)} with PayPal</span>
-                        </>
-                      ) : paymentMethod === "Credit / Debit Card" ? (
-                        <>
-                          <span>Pay {gbp(totalAmount)} & Place Order</span>
-                          <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
-                        </>
-                      ) : (
-                        <>
-                          <span>Confirm & Place Order</span>
-                          <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
-                        </>
-                      )}
+                      <span>Confirm & Place Order</span>
+                      <CheckCircle2 className="h-4 w-4 stroke-[2.5]" />
                     </>
                   )}
                 </Button>

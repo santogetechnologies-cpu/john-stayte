@@ -48,6 +48,9 @@ export interface CustomerPricingContext {
   accountApproved?: boolean;
   creditAccountApproved?: boolean;
   creditLimit?: number;
+  lifetimeDiscountPercentage?: number | null;
+  lifetimeTierName?: string | null;
+  lifetimeEligibleSpend?: number | null;
 }
 
 export interface ResolvedGasPrice {
@@ -68,6 +71,7 @@ export interface ResolvedGasPrice {
   isDiscounted: boolean;
   requiresClientClarification?: boolean;
   clarificationNote?: string | null;
+  pricingError?: string | null;
 }
 
 export interface CylinderExchangeBreakdown {
@@ -178,47 +182,80 @@ export function resolveCustomerGasPrice(
   const { gasType, cylinderSize } = parseGasTypeAndSize(product);
 
   const userRole = customer.userRole || (customer.userId ? "customer" : null);
-  const bandResolution =
-    customer.pricingBand || customer.customerCode
-      ? resolvePricingBandDiscountSync(customer.pricingBand, customer.customerCode)
-      : null;
+  const customerCode = customer.customerCode?.trim() || null;
+  const hasAssignedBand = Boolean(
+    (customer.pricingBand && customer.pricingBand.trim()) ||
+      (customer.pricingBandId && customer.pricingBandId.trim()) ||
+      customerCode,
+  );
+
+  const bandResolution = hasAssignedBand
+    ? resolvePricingBandDiscountSync(
+        customer.pricingBandId || customer.pricingBand,
+        customerCode,
+      )
+    : null;
+
   const assignedBandId =
-    customer.pricingBandId ||
-    (bandResolution?.ok ? bandResolution.pricingBandId : null) ||
-    (customer.pricingBand ? `band-${customer.pricingBand.toLowerCase()}` : null);
-  const customerCode = customer.customerCode || null;
+    (customer.pricingBandId && customer.pricingBandId.trim()) ||
+    (bandResolution?.ok ? bandResolution.pricingBandId : null);
 
   // 1. Authorized bands and prices
   const authorizedPrices = getAuthorizedBranchGasPrices(userRole, assignedBandId, customerCode);
 
   // 2. Check for exact cylinder match
-  let matchedPrice = findPriceByGasTypeAndSize(
-    assignedBandId || "band-weston-memo-20",
-    gasType,
-    cylinderSize,
-    customerCode
-  );
+  let matchedPrice = assignedBandId
+    ? findPriceByGasTypeAndSize(assignedBandId, gasType, cylinderSize, customerCode)
+    : null;
 
-  // If assigned band didn't match directly, try finding in authorized prices
-  if (!matchedPrice && authorizedPrices.length > 0) {
+  // If assigned band didn't match directly via findPriceByGasTypeAndSize, try finding in authorized prices for that band
+  if (!matchedPrice && assignedBandId && authorizedPrices.length > 0) {
     const normGas = gasType.toLowerCase();
     const normSize = cylinderSize.toLowerCase().replace(/\s+/g, "");
-    matchedPrice = authorizedPrices.find((p) => {
-      return (
-        p.gas_type.toLowerCase() === normGas &&
-        p.cylinder_size.toLowerCase().replace(/\s+/g, "") === normSize
-      );
-    }) || null;
+    matchedPrice =
+      authorizedPrices.find((p) => {
+        return (
+          p.pricing_band_id === assignedBandId &&
+          p.gas_type.toLowerCase() === normGas &&
+          p.cylinder_size.toLowerCase().replace(/\s+/g, "") === normSize
+        );
+      }) || null;
   }
 
-  // If still not found or user is unassigned, fallback to Retail Normal Band 20 (Weston Memo or Eastington)
-  if (!matchedPrice) {
+  // 3. Only unassigned customers fall back to Retail Normal Band 20.
+  //    Assigned customers with missing band price MUST NOT silently fall back to Retail Normal!
+  if (!matchedPrice && !hasAssignedBand) {
     const retailPrices = getAuthorizedBranchGasPrices("customer", "band-weston-memo-20", null);
     const normGas = gasType.toLowerCase();
     const normSize = cylinderSize.toLowerCase().replace(/\s+/g, "");
-    matchedPrice = retailPrices.find(
-      (p) => p.gas_type.toLowerCase() === normGas && p.cylinder_size.toLowerCase().replace(/\s+/g, "") === normSize
-    ) || null;
+    matchedPrice =
+      retailPrices.find(
+        (p) =>
+          p.gas_type.toLowerCase() === normGas &&
+          p.cylinder_size.toLowerCase().replace(/\s+/g, "") === normSize,
+      ) || null;
+  }
+
+  if (!matchedPrice && hasAssignedBand) {
+    const bandLabel = customer.pricingBand || assignedBandId || "Assigned Band";
+    return {
+      productName: product?.name || `${gasType} ${cylinderSize} Cylinder`,
+      gasType,
+      cylinderSize,
+      unitRefillPrice: 0,
+      depositPerUnit: Number(product?.deposit_price ?? defaultDepositAmount),
+      unitFullPrice: 0,
+      vatStatus: "EXCLUDING_VAT",
+      vatRate: 0.05,
+      priceExcVat: null,
+      priceIncVat: null,
+      isSpecialPrice: false,
+      specialCustomerCode: customerCode,
+      bandNumber: bandResolution?.matchedBand?.band_number || "",
+      pricingBandId: assignedBandId || "",
+      isDiscounted: false,
+      pricingError: `No configured price found for ${gasType} ${cylinderSize} in your assigned pricing band (${bandLabel}). Please contact support before placing this order.`,
+    };
   }
 
   // Determine base refill price
@@ -682,4 +719,249 @@ export function getOrderCylinderReminder(
   if (!hasEmptyExchange) return "";
   const isCol = fulfilmentMethod === "collection";
   return isCol ? REMINDER_CLICK_AND_COLLECT : REMINDER_DELIVERY;
+}
+
+// =============================================================================
+// 8. AUTHORITATIVE CHECKOUT ORDER TOTALS (SINGLE SOURCE OF TRUTH)
+// =============================================================================
+
+export interface AuthoritativeCheckoutLine {
+  productId: string | null;
+  productName: string;
+  slug: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  isCylinder: boolean;
+  resolvedGasPrice: ResolvedGasPrice | null;
+  exchangeBreakdown: CylinderExchangeBreakdown | null;
+}
+
+export interface AuthoritativeCheckoutTotalsResult {
+  lineBreakdowns: AuthoritativeCheckoutLine[];
+  subtotal: number;
+  offerDiscount: number;
+  lifetimeDiscountAmount: number;
+  lifetimeDiscountPercentageApplied: number;
+  lifetimeTierName: string | null;
+  lifetimeDiscountSkippedReason: string | null;
+  taxableSubtotal: number;
+  deliveryFeeWaivedByBand: boolean;
+  shipping: number;
+  vat: number;
+  total: number;
+  pricingErrors: string[];
+}
+
+/**
+ * Single authoritative pricing calculation used by BOTH Checkout Summary UI
+ * and Order/Payment persistence so displayed total === orders.total === Elavon amount.
+ */
+export function calculateCheckoutOrderTotals(params: {
+  lines: Array<{ product: any; qty: number }>;
+  customer: CustomerPricingContext;
+  cylinderExchangeType: "refill" | "new";
+  returnedCylinderType: string;
+  returnedEmptyCount: number;
+  fulfilmentMethod: "collection" | "delivery";
+  systemSettings: {
+    deliveryChargesEnabled: boolean;
+    defaultShippingFee: number;
+    freeDeliveryEnabled: boolean;
+    freeDeliveryThreshold: number;
+    taxEnabled: boolean;
+    vatRate: number;
+    taxPricingMode: "inclusive" | "exclusive";
+  };
+  offerDiscount?: number;
+}): AuthoritativeCheckoutTotalsResult {
+  const {
+    lines,
+    customer,
+    cylinderExchangeType,
+    returnedCylinderType,
+    returnedEmptyCount,
+    fulfilmentMethod,
+    systemSettings,
+    offerDiscount = 0,
+  } = params;
+
+  const isReturning = cylinderExchangeType === "refill";
+  let remainingEmpties = isReturning ? Math.max(0, Math.floor(returnedEmptyCount || 0)) : 0;
+  const pricingErrors: string[] = [];
+  const lineBreakdowns: AuthoritativeCheckoutLine[] = [];
+  let hasCylinder = false;
+
+  for (const l of lines) {
+    const prod = l.product;
+    const qty = Math.max(1, Number(l.qty || 1));
+    const isCylinder = isRefillableLpgCylinderProduct(prod);
+
+    if (!isCylinder) {
+      const unitPrice = Number(Number(prod?.price || 0).toFixed(2));
+      const totalPrice = Number((unitPrice * qty).toFixed(2));
+      lineBreakdowns.push({
+        productId: prod?.id || null,
+        productName: prod?.name || "Product",
+        slug: prod?.slug || "",
+        quantity: qty,
+        unitPrice,
+        totalPrice,
+        isCylinder: false,
+        resolvedGasPrice: null,
+        exchangeBreakdown: null,
+      });
+      continue;
+    }
+
+    hasCylinder = true;
+    const resolved = resolveCustomerGasPrice(prod, customer);
+    if (resolved.pricingError) {
+      pricingErrors.push(resolved.pricingError);
+    }
+
+    const allocatedEmpties = isReturning ? Math.min(qty, remainingEmpties) : 0;
+    remainingEmpties = Math.max(0, remainingEmpties - allocatedEmpties);
+
+    const exchange = calculateCylinderExchange({
+      orderedQuantity: qty,
+      returningEmpties: isReturning && allocatedEmpties > 0,
+      returnedCylinderType,
+      emptyCount: allocatedEmpties,
+      refillUnitPrice: resolved.unitRefillPrice,
+      depositPerUnit: resolved.depositPerUnit,
+      orderedGasType: resolved.gasType,
+      orderedSize: resolved.cylinderSize,
+    });
+
+    const totalPrice = Number(exchange.subtotal.toFixed(2));
+    const unitPrice = Number((totalPrice / qty).toFixed(2));
+
+    lineBreakdowns.push({
+      productId: prod?.id || null,
+      productName: prod?.name || resolved.productName,
+      slug: prod?.slug || "",
+      quantity: qty,
+      unitPrice,
+      totalPrice,
+      isCylinder: true,
+      resolvedGasPrice: resolved,
+      exchangeBreakdown: exchange,
+    });
+  }
+
+  const subtotal = Number(
+    lineBreakdowns.reduce((sum, item) => sum + item.totalPrice, 0).toFixed(2),
+  );
+  const clampedPromoOffer = Math.min(subtotal, Math.max(0, Number(offerDiscount || 0)));
+
+  // Delivery fee waiver strictly from authoritative DB band configuration
+  const hasAssignedBand = Boolean(
+    (customer.pricingBand && customer.pricingBand.trim()) ||
+      (customer.pricingBandId && customer.pricingBandId.trim()) ||
+      (customer.customerCode && customer.customerCode.trim()),
+  );
+  const bandRes = hasAssignedBand
+    ? resolvePricingBandDiscountSync(
+        customer.pricingBandId || customer.pricingBand,
+        customer.customerCode,
+      )
+    : null;
+  const deliveryFeeWaivedByBand = Boolean(
+    hasCylinder && bandRes?.ok && bandRes.deliveryFeeWaived === true,
+  );
+
+  // Automatic Lifetime Purchase Discount:
+  // Never overwrite or stack with Special Customer Pricing or explicit discounted/commercial bands.
+  const hasSpecialPrice = lineBreakdowns.some((item) =>
+    Boolean(item.resolvedGasPrice?.isSpecialPrice),
+  );
+  const bandCodeNorm = String(bandRes?.matchedBand?.band_number || "").trim();
+  const hasExplicitDiscountedBand = Boolean(
+    bandRes?.ok &&
+      (bandRes.discountPercentage > 0 ||
+        bandRes.deliveryFeeWaived ||
+        (bandCodeNorm !== "" && bandCodeNorm !== "10" && bandCodeNorm !== "20")),
+  );
+
+  const requestedLifetimePct = Math.max(0, Number(customer.lifetimeDiscountPercentage || 0));
+  let lifetimeDiscountAmount = 0;
+  let lifetimeDiscountPercentageApplied = 0;
+  let appliedOfferDiscount = clampedPromoOffer;
+  let lifetimeDiscountSkippedReason: string | null = null;
+
+  if (requestedLifetimePct > 0) {
+    if (hasSpecialPrice) {
+      lifetimeDiscountSkippedReason = "Special customer pricing active (not double-discounted)";
+    } else if (hasExplicitDiscountedBand) {
+      lifetimeDiscountSkippedReason = "Explicit commercial/discounted band active (not double-discounted)";
+    } else {
+      const candidateLifetimeDiscount = Number(
+        (subtotal * (requestedLifetimePct / 100)).toFixed(2),
+      );
+      if (candidateLifetimeDiscount >= clampedPromoOffer && candidateLifetimeDiscount > 0) {
+        lifetimeDiscountAmount = candidateLifetimeDiscount;
+        lifetimeDiscountPercentageApplied = requestedLifetimePct;
+        appliedOfferDiscount = 0;
+      } else if (clampedPromoOffer > candidateLifetimeDiscount) {
+        lifetimeDiscountSkippedReason = "Promotional offer provides a higher discount (non-stacking)";
+      }
+    }
+  }
+
+  const totalDiscount = Math.min(subtotal, appliedOfferDiscount + lifetimeDiscountAmount);
+  const taxableSubtotal = Number(Math.max(0, subtotal - totalDiscount).toFixed(2));
+
+  let shipping = 0;
+  if (fulfilmentMethod !== "collection" && subtotal > 0 && !deliveryFeeWaivedByBand) {
+    if (systemSettings.freeDeliveryEnabled) {
+      if (
+        systemSettings.freeDeliveryThreshold === 0 ||
+        subtotal >= systemSettings.freeDeliveryThreshold
+      ) {
+        shipping = 0;
+      } else {
+        shipping = systemSettings.deliveryChargesEnabled
+          ? Number(systemSettings.defaultShippingFee || 0)
+          : 0;
+      }
+    } else {
+      shipping = systemSettings.deliveryChargesEnabled
+        ? Number(systemSettings.defaultShippingFee || 0)
+        : 0;
+    }
+  }
+  shipping = Number(shipping.toFixed(2));
+
+  let vat = 0;
+  if (systemSettings.taxEnabled && systemSettings.vatRate > 0) {
+    if (systemSettings.taxPricingMode === "inclusive") {
+      vat = taxableSubtotal - taxableSubtotal / (1 + systemSettings.vatRate / 100);
+    } else {
+      vat = taxableSubtotal * (systemSettings.vatRate / 100);
+    }
+  }
+  vat = Number(vat.toFixed(2));
+
+  const rawTotal =
+    systemSettings.taxPricingMode === "inclusive"
+      ? taxableSubtotal + shipping
+      : taxableSubtotal + shipping + vat;
+  const total = Number(Math.max(0, rawTotal).toFixed(2));
+
+  return {
+    lineBreakdowns,
+    subtotal,
+    offerDiscount: appliedOfferDiscount,
+    lifetimeDiscountAmount,
+    lifetimeDiscountPercentageApplied,
+    lifetimeTierName: customer.lifetimeTierName ?? null,
+    lifetimeDiscountSkippedReason,
+    taxableSubtotal,
+    deliveryFeeWaivedByBand,
+    shipping,
+    vat,
+    total,
+    pricingErrors,
+  };
 }

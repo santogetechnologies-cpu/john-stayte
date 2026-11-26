@@ -109,7 +109,7 @@ export function resolveTwilioSender(
   }
 
   // 2. India (+91): TRAI DLT blocks un-registered foreign alphanumeric strings.
-  // Prioritize dedicated India sender/fromNumber; do NOT send un-registered alpha headers.
+  // Prioritize dedicated India sender/fromNumber or Messaging Service; do NOT fall back to UK alphaSenderId.
   if (normalizedTo.startsWith("+91")) {
     const effectiveIndiaSender = indiaSenderId || fromNumber;
     if (effectiveIndiaSender) {
@@ -118,9 +118,7 @@ export function resolveTwilioSender(
     if (messagingServiceSid) {
       return { senderType: "MessagingServiceSid", senderValue: messagingServiceSid };
     }
-    if (alphaSenderId) {
-      return { senderType: "From", senderValue: alphaSenderId };
-    }
+    return null;
   }
 
   // 3. USA & Canada (+1): US carriers strictly reject Alphanumeric Sender IDs; require numeric sender.
@@ -305,11 +303,12 @@ async function sendTwilioSms(params: SendSmsParams): Promise<SendSmsResult> {
 // Server-side Supabase client initialization
 function getServerSupabase(authToken?: string | null) {
   const url =
-    process.env.VITE_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
     "https://wttchknauwvbfjatdscc.supabase.co";
 
   const anonKey =
+    process.env.SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0dGNoa25hdXd2YmZqYXRkc2NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0Mjk1NTQsImV4cCI6MjEwMjAwNTU1NH0.z6nXs0zC8u7A_CUO8KDIoILSXS_OeMPrr5OdVYcmxQE";
@@ -318,17 +317,15 @@ function getServerSupabase(authToken?: string | null) {
   if (authToken) {
     return createClient<Database>(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: authToken.startsWith("mock-")
-        ? undefined
-        : {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          },
+      global: {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      },
     });
   }
 
-  // 2. For privileged server operations without user context, SUPABASE_SERVICE_ROLE_KEY is required
+  // 2. For privileged server operations after caller verification, SUPABASE_SERVICE_ROLE_KEY is required
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (serviceRoleKey) {
     return createClient<Database>(url, serviceRoleKey, {
@@ -339,6 +336,213 @@ function getServerSupabase(authToken?: string | null) {
   throw new Error(
     "[Supabase Security] Server operation requires either a valid user authToken or server-side SUPABASE_SERVICE_ROLE_KEY. Fallback to unauthenticated public client is blocked.",
   );
+}
+
+const ALLOWED_OTP_CALLER_ROLES = new Set([
+  "driver",
+  "delivery_agent",
+  "branch_staff",
+  "manager",
+  "admin",
+]);
+
+/**
+ * Authenticates caller JWT via supabase.auth.getUser() and verifies their role in public.profiles.
+ * Returns a privileged DB client (if SUPABASE_SERVICE_ROLE_KEY is configured) or the authenticated caller client.
+ */
+async function authenticateOtpCaller(authToken?: string | null): Promise<{
+  authorized: boolean;
+  error?: string;
+  userId?: string;
+  callerRole?: string;
+  callerEmail?: string | null;
+  supabase?: ReturnType<typeof getServerSupabase>;
+}> {
+  const cleanToken = typeof authToken === "string" ? authToken.trim() : "";
+  if (!cleanToken) {
+    return {
+      authorized: false,
+      error: "Authentication required. Please sign in to manage delivery OTPs.",
+    };
+  }
+
+  let authClient: ReturnType<typeof getServerSupabase>;
+  try {
+    authClient = getServerSupabase(cleanToken);
+  } catch (err: any) {
+    return {
+      authorized: false,
+      error: err?.message || "Failed to initialize authentication client.",
+    };
+  }
+
+  try {
+    const {
+      data: { user },
+      error: authErr,
+    } = await authClient.auth.getUser(cleanToken);
+    if (authErr || !user) {
+      return {
+        authorized: false,
+        error: "Authentication verification failed. Please sign in again.",
+      };
+    }
+
+    const dbClient = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? getServerSupabase(null)
+      : authClient;
+
+    const { data: profile, error: profileErr } = await dbClient
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileErr) {
+      return {
+        authorized: false,
+        error: "Unable to verify user authorization.",
+      };
+    }
+
+    const callerRole = (profile?.role || "").toString().trim().toLowerCase();
+    if (!ALLOWED_OTP_CALLER_ROLES.has(callerRole)) {
+      return {
+        authorized: false,
+        error: "Unauthorized. Driver, branch staff, manager, or administrator privileges required.",
+      };
+    }
+
+    return {
+      authorized: true,
+      userId: user.id,
+      callerRole,
+      callerEmail: user.email || null,
+      supabase: dbClient,
+    };
+  } catch (err: any) {
+    return {
+      authorized: false,
+      error: err?.message || "Authentication verification failed. Please sign in again.",
+    };
+  }
+}
+
+/**
+ * Enforces object-level authorization for delivery OTP operations:
+ * - admin / manager: permitted for all orders/assignments
+ * - driver / delivery_agent: must be assigned to the delivery assignment
+ * - branch_staff: order must be a Click & Collect order for their assigned branch
+ */
+async function verifyCallerAssignmentAccess(params: {
+  supabase: ReturnType<typeof getServerSupabase>;
+  callerUserId: string;
+  callerRole: string;
+  callerEmail?: string | null;
+  assignment?: { id?: string; order_id?: string | null; agent_id?: string | null; driver_id?: string | null } | null;
+  orderId?: string | null;
+}): Promise<{ authorized: boolean; error?: string }> {
+  const { supabase, callerUserId, callerRole, callerEmail, assignment, orderId } = params;
+
+  if (callerRole === "admin" || callerRole === "manager") {
+    return { authorized: true };
+  }
+
+  if (callerRole === "driver" || callerRole === "delivery_agent") {
+    if (!assignment) {
+      return { authorized: false, error: "Delivery assignment not found." };
+    }
+    if (assignment.agent_id === callerUserId || assignment.driver_id === callerUserId) {
+      return { authorized: true };
+    }
+    if (assignment.agent_id && callerEmail) {
+      const { data: agentRow } = await (supabase.from("delivery_agents") as any)
+        .select("id, email")
+        .eq("id", assignment.agent_id)
+        .maybeSingle();
+      if (agentRow?.email && agentRow.email.trim().toLowerCase() === callerEmail.trim().toLowerCase()) {
+        return { authorized: true };
+      }
+    }
+    return {
+      authorized: false,
+      error: "Unauthorized: you are not assigned to this delivery.",
+    };
+  }
+
+  if (callerRole === "branch_staff") {
+    const targetOrderId = assignment?.order_id || orderId;
+    if (!targetOrderId) {
+      return { authorized: false, error: "Order reference is required for branch verification." };
+    }
+
+    const { data: staffProfile } = await (supabase.from("profiles") as any)
+      .select("assigned_branch, assigned_branch_id")
+      .eq("id", callerUserId)
+      .maybeSingle();
+
+    const staffBranch = (staffProfile?.assigned_branch || "").trim();
+    const staffBranchId = staffProfile?.assigned_branch_id || null;
+    if (!staffBranch || ["Pending Confirmation", "Unassigned", "None"].includes(staffBranch)) {
+      return {
+        authorized: false,
+        error: "Unauthorized: your account is not assigned to an active forecourt branch.",
+      };
+    }
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetOrderId);
+    let ordQuery = (supabase.from("orders") as any)
+      .select("id, assigned_branch_id, assigned_depot, delivery_address");
+    ordQuery = isUuid ? ordQuery.eq("id", targetOrderId) : ordQuery.eq("order_number", targetOrderId);
+    const { data: order } = await ordQuery.maybeSingle();
+
+    if (!order) {
+      return { authorized: false, error: "Associated order not found." };
+    }
+
+    const addr = (order.delivery_address || {}) as Record<string, any>;
+    const isCollection = addr.fulfilment_method === "collection" || Boolean(addr.collection_branch);
+    if (!isCollection) {
+      return {
+        authorized: false,
+        error: "Unauthorized: branch staff may only manage OTPs for Click & Collect forecourt orders.",
+      };
+    }
+
+    const orderBranchId = order.assigned_branch_id || addr.collection_branch_id || null;
+    const orderBranchName = (order.assigned_depot || addr.collection_branch || "").toLowerCase();
+    const staffBranchLower = staffBranch.toLowerCase();
+
+    let matchesBranch =
+      (staffBranchId && orderBranchId && staffBranchId === orderBranchId) ||
+      (orderBranchName && (orderBranchName === staffBranchLower || orderBranchName.includes(staffBranchLower) || staffBranchLower.includes(orderBranchName)));
+
+    if (!matchesBranch && staffBranchId) {
+      const { data: station } = await (supabase.from("auto_gas_stations") as any)
+        .select("name, town")
+        .eq("id", staffBranchId)
+        .maybeSingle();
+      if (station) {
+        const sName = (station.name || "").toLowerCase();
+        const sTown = (station.town || "").toLowerCase();
+        matchesBranch = Boolean(
+          (sName && orderBranchName.includes(sName)) ||
+          (sTown && orderBranchName.includes(sTown)),
+        );
+      }
+    }
+
+    if (!matchesBranch) {
+      return {
+        authorized: false,
+        error: "Unauthorized: this order does not belong to your assigned forecourt branch.",
+      };
+    }
+
+    return { authorized: true };
+  }
+
+  return { authorized: false, error: "Unauthorized access." };
 }
 
 const OTP_EXPIRY_MS = 15 * 60 * 1000; // 15 Minutes
@@ -369,20 +573,18 @@ function timingSafeCompare(a: string, b: string): boolean {
 }
 
 /**
- * Resolves the authenticated customer's dynamic phone number from the database.
+ * Resolves the authenticated customer's dynamic phone number strictly from authoritative database records.
  * Priority:
  * 1. orders.customer_phone
  * 2. profiles.phone
  * 3. addresses.phone
  * 4. orders.delivery_address (JSON phone)
  * 5. orders.shipping_address (JSON phone)
- * 6. delivery_assignments.customer_phone
  */
 async function resolveCustomerPhone(
   supabase: ReturnType<typeof getServerSupabase>,
   orderId?: string | null,
   assignmentId?: string | null,
-  fallbackPhone?: string | null,
   fallbackName?: string | null,
 ): Promise<{
   phone: string | null;
@@ -457,18 +659,7 @@ async function resolveCustomerPhone(
     };
   }
 
-  // Priority 2: fallbackPhone passed from DeliveryWorkflowModal UI
-  if (fallbackPhone && typeof fallbackPhone === "string" && fallbackPhone.trim().length >= 7) {
-    return {
-      phone: fallbackPhone.trim(),
-      customerName,
-      orderNumber,
-      customerId,
-      source: "client.customer_phone",
-    };
-  }
-
-  // Priority 3: profiles.phone if customer_id exists
+  // Priority 2: profiles.phone if customer_id exists
   if (customerId) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -579,33 +770,26 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
       assignmentId,
       orderId,
       forceRegenerate = false,
-      customerPhone: fallbackPhone,
       customerName: fallbackName,
       authToken,
     } = data;
-    const supabase = getServerSupabase(authToken);
 
-    if (authToken && !authToken.startsWith("mock-")) {
-      try {
-        const { data: { user }, error: authErr } = await supabase.auth.getUser(authToken);
-        if (authErr || !user) {
-          return {
-            success: false,
-            message: "Authentication verification failed. Please sign in again.",
-            error: "Authentication verification failed. Please sign in again.",
-          };
-        }
-      } catch (e) {
-        console.warn("[Delivery OTP Server] Session check notice:", e);
-      }
+    const callerCheck = await authenticateOtpCaller(authToken);
+    if (!callerCheck.authorized || !callerCheck.supabase || !callerCheck.userId || !callerCheck.callerRole) {
+      return {
+        success: false,
+        message: callerCheck.error || "Unauthorized access.",
+        error: callerCheck.error || "Unauthorized access.",
+      };
     }
+    const supabase = callerCheck.supabase;
 
     // 1. Fetch current delivery assignment
     let assignment: any = null;
 
     if (assignmentId) {
       const { data: byId } = await (supabase.from("delivery_assignments") as any)
-        .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+        .select("id, order_id, agent_id, driver_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
         .eq("id", assignmentId)
         .maybeSingle();
       if (byId) assignment = byId;
@@ -614,7 +798,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
     if (!assignment && (orderId || assignmentId)) {
       const targetOrdId = orderId || assignmentId;
       const { data: byOrder } = await (supabase.from("delivery_assignments") as any)
-        .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+        .select("id, order_id, agent_id, driver_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
         .eq("order_id", targetOrdId)
         .maybeSingle();
       if (byOrder) assignment = byOrder;
@@ -622,8 +806,8 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
 
     const actualOrderId = orderId || assignment?.order_id || assignmentId;
 
-    // 1b. If assignment row doesn't exist yet for an active order (e.g. Click & Collect collection orders), initialize one
-    if (!assignment && actualOrderId) {
+    // 1b. If assignment row doesn't exist yet for an active Click & Collect order, initialize one (branch_staff / admin / manager only)
+    if (!assignment && actualOrderId && ["branch_staff", "admin", "manager"].includes(callerCheck.callerRole)) {
       try {
         let query = (supabase.from("orders") as any)
           .select("id, order_number, customer_id, customer_name, customer_phone, delivery_address, assigned_depot, assigned_branch_id, status");
@@ -642,6 +826,23 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         }
 
         if (ord) {
+          // Verify branch ownership BEFORE creating an assignment row
+          const preAccess = await verifyCallerAssignmentAccess({
+            supabase,
+            callerUserId: callerCheck.userId,
+            callerRole: callerCheck.callerRole,
+            callerEmail: callerCheck.callerEmail,
+            assignment: null,
+            orderId: ord.id,
+          });
+          if (!preAccess.authorized) {
+            return {
+              success: false,
+              message: preAccess.error || "Unauthorized access.",
+              error: preAccess.error || "Unauthorized access.",
+            };
+          }
+
           // Resolve branch or forecourt info from assigned_branch_id, assigned_depot, or delivery_address
           const deliveryAddr = ord.delivery_address || {};
           const branchName =
@@ -652,7 +853,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
 
           // Idempotency check: verify once more whether an assignment was just created
           const { data: existingDa } = await (supabase.from("delivery_assignments") as any)
-            .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+            .select("id, order_id, agent_id, driver_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
             .eq("order_id", ord.id)
             .maybeSingle();
 
@@ -673,7 +874,7 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
                   notes: `[Click & Collect Handover] | Branch: ${branchName}`,
                 },
               ])
-              .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+              .select("id, order_id, agent_id, driver_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
               .maybeSingle();
 
             if (createdAssignment) {
@@ -693,6 +894,23 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
         success: false,
         message: "Delivery assignment record not found.",
         error: "Assignment not found",
+      };
+    }
+
+    // 1c. Enforce object-level assignment/branch ownership check
+    const accessCheck = await verifyCallerAssignmentAccess({
+      supabase,
+      callerUserId: callerCheck.userId,
+      callerRole: callerCheck.callerRole,
+      callerEmail: callerCheck.callerEmail,
+      assignment,
+      orderId: actualOrderId,
+    });
+    if (!accessCheck.authorized) {
+      return {
+        success: false,
+        message: accessCheck.error || "Unauthorized access.",
+        error: accessCheck.error || "Unauthorized access.",
       };
     }
 
@@ -733,15 +951,14 @@ export const requestDeliveryOtpServerFn = createServerFn({ method: "POST" })
       }
     }
 
-    // 4. Resolve customer's dynamic phone number from database or fallback
+    // 4. Resolve customer's dynamic phone number strictly from authoritative database records
     const customerInfo = await resolveCustomerPhone(
       supabase,
       actualOrderId,
       assignment.id || assignmentId,
-      fallbackPhone,
       fallbackName,
     );
-    const targetPhone = customerInfo.phone || fallbackPhone || null;
+    const targetPhone = customerInfo.phone || null;
     const orderNum = customerInfo.orderNumber || (actualOrderId ? actualOrderId.slice(0, 8).toUpperCase() : "ORDER");
 
     if (!targetPhone) {
@@ -890,27 +1107,20 @@ export const verifyDeliveryOtpServerFn = createServerFn({ method: "POST" })
       };
     }
 
-    const supabase = getServerSupabase(authToken);
-
-    if (authToken && !authToken.startsWith("mock-")) {
-      try {
-        const { data: { user }, error: authErr } = await supabase.auth.getUser(authToken);
-        if (authErr || !user) {
-          return {
-            success: false,
-            error: "Authentication verification failed. Please sign in again.",
-          };
-        }
-      } catch (e) {
-        console.warn("[Delivery OTP Server] Session check notice:", e);
-      }
+    const callerCheck = await authenticateOtpCaller(authToken);
+    if (!callerCheck.authorized || !callerCheck.supabase || !callerCheck.userId || !callerCheck.callerRole) {
+      return {
+        success: false,
+        error: callerCheck.error || "Unauthorized access.",
+      };
     }
+    const supabase = callerCheck.supabase;
 
     let assignment: any = null;
 
     if (assignmentId) {
       const { data: byId } = await (supabase.from("delivery_assignments") as any)
-        .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+        .select("id, order_id, agent_id, driver_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
         .eq("id", assignmentId)
         .maybeSingle();
       if (byId) assignment = byId;
@@ -919,7 +1129,7 @@ export const verifyDeliveryOtpServerFn = createServerFn({ method: "POST" })
     if (!assignment && (orderId || assignmentId)) {
       const targetOrdId = orderId || assignmentId;
       const { data: byOrder } = await (supabase.from("delivery_assignments") as any)
-        .select("id, order_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
+        .select("id, order_id, agent_id, driver_id, notes, status, otp_code, otp_expires_at, otp_attempts, otp_max_attempts, otp_verified, otp_verified_at")
         .eq("order_id", targetOrdId)
         .maybeSingle();
       if (byOrder) assignment = byOrder;
@@ -929,6 +1139,22 @@ export const verifyDeliveryOtpServerFn = createServerFn({ method: "POST" })
       return {
         success: false,
         error: "Delivery assignment not found.",
+      };
+    }
+
+    // Enforce object-level assignment/branch ownership check
+    const accessCheck = await verifyCallerAssignmentAccess({
+      supabase,
+      callerUserId: callerCheck.userId,
+      callerRole: callerCheck.callerRole,
+      callerEmail: callerCheck.callerEmail,
+      assignment,
+      orderId: orderId || assignment.order_id,
+    });
+    if (!accessCheck.authorized) {
+      return {
+        success: false,
+        error: accessCheck.error || "Unauthorized access.",
       };
     }
 

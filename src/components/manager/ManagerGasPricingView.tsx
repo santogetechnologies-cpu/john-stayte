@@ -14,7 +14,9 @@ import {
   Lock,
   Eye,
   Info,
+  Award,
 } from "lucide-react";
+import { LifetimeDiscountsPanel } from "@/components/pricing/LifetimeDiscountsPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +63,8 @@ type ManagerTab =
   | "customer-categories"
   | "special-customer"
   | "vat-information"
-  | "delivery-rules";
+  | "delivery-rules"
+  | "lifetime-discounts";
 
 export function ManagerGasPricingView() {
   const { user } = useStore();
@@ -195,6 +198,7 @@ export function ManagerGasPricingView() {
           { id: "special-customer", label: "Special Customer Pricing", icon: ShieldCheck },
           { id: "vat-information", label: "VAT Information", icon: Percent },
           { id: "delivery-rules", label: "Delivery Rules", icon: Truck },
+          { id: "lifetime-discounts", label: "Lifetime Discounts", icon: Award },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -216,6 +220,10 @@ export function ManagerGasPricingView() {
       </div>
 
       {/* SECTION 1: DIRECTORY OVERVIEW */}
+      {activeTab === "lifetime-discounts" && (
+        <LifetimeDiscountsPanel roleLabel="Manager" />
+      )}
+
       {activeTab === "overview" && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">

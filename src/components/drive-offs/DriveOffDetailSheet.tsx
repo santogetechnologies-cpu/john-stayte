@@ -78,27 +78,29 @@ export function DriveOffDetailSheet({
   actorName,
   onIncidentUpdated,
 }: DriveOffDetailSheetProps) {
-  if (!incident) return null;
-
   const [paymentAmount, setPaymentAmount] = useState<string>(
-    incident.balance_remaining > 0 ? incident.balance_remaining.toFixed(2) : "0.00",
+    incident && incident.balance_remaining > 0 ? incident.balance_remaining.toFixed(2) : "0.00",
   );
   const [paymentMethod, setPaymentMethod] = useState("Card");
   const [receiptRef, setReceiptRef] = useState("");
   const [recordingPayment, setRecordingPayment] = useState(false);
 
-  const [status, setStatus] = useState<DriveOffStatus>(incident.status);
-  const [policeRef, setPoliceRef] = useState(incident.police_crime_reference || "");
+  const [status, setStatus] = useState<DriveOffStatus>(incident?.status ?? "unpaid");
+  const [policeRef, setPoliceRef] = useState(incident?.police_crime_reference || "");
   const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Synchronize local form state when incident updates via Realtime
   useEffect(() => {
     if (incident) {
-      setPaymentAmount(incident.balance_remaining > 0 ? incident.balance_remaining.toFixed(2) : "0.00");
+      setPaymentAmount(
+        incident.balance_remaining > 0 ? incident.balance_remaining.toFixed(2) : "0.00",
+      );
       setStatus(incident.status);
       setPoliceRef(incident.police_crime_reference || "");
     }
   }, [incident?.id, incident?.balance_remaining, incident?.status, incident?.police_crime_reference]);
+
+  if (!incident) return null;
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();

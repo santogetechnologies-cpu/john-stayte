@@ -1096,10 +1096,33 @@ export async function loadLivePricingFromDatabase(): Promise<{
     ]);
 
     if (bandsRes.data && bandsRes.data.length > 0) {
-      liveBands = bandsRes.data;
+      liveBands = bandsRes.data.map((b: any) => ({
+        ...b,
+        discount_percentage:
+          b.discount_percentage !== null && b.discount_percentage !== undefined
+            ? Number(b.discount_percentage)
+            : null,
+        delivery_fee_waived: Boolean(b.delivery_fee_waived),
+        is_active: b.is_active !== false,
+      }));
     }
     if (pricesRes.data && pricesRes.data.length > 0) {
-      livePrices = pricesRes.data;
+      livePrices = pricesRes.data.map((p: any) => ({
+        ...p,
+        price_exc_vat:
+          p.price_exc_vat !== null && p.price_exc_vat !== undefined
+            ? Number(p.price_exc_vat)
+            : null,
+        price_inc_vat:
+          p.price_inc_vat !== null && p.price_inc_vat !== undefined
+            ? Number(p.price_inc_vat)
+            : null,
+        vat_rate:
+          p.vat_rate !== null && p.vat_rate !== undefined ? Number(p.vat_rate) : null,
+        is_special_customer_price: Boolean(p.is_special_customer_price),
+        requires_client_clarification: Boolean(p.requires_client_clarification),
+        is_active: p.is_active !== false,
+      }));
     }
     if (auditRes.data && auditRes.data.length > 0) {
       liveAuditLogs = auditRes.data.map((row: any) => ({

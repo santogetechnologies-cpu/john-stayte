@@ -248,7 +248,7 @@ export function AdminApplicationsView() {
       try {
         const res = await resolvePricingBandDiscount(
           pricingBand,
-          selectedApp?.previous_account_details || null
+          assignAccountNumber.trim() || selectedApp?.previous_account_details || null
         );
         if (isMounted) {
           setDiscountResolution(res);
@@ -258,7 +258,7 @@ export function AdminApplicationsView() {
         if (isMounted) {
           const fallback = resolvePricingBandDiscountSync(
             pricingBand,
-            selectedApp?.previous_account_details || null
+            assignAccountNumber.trim() || selectedApp?.previous_account_details || null
           );
           setDiscountResolution(fallback);
           setDiscountPercentage(fallback.discountPercentage);
@@ -273,7 +273,7 @@ export function AdminApplicationsView() {
     return () => {
       isMounted = false;
     };
-  }, [pricingBand, selectedApp]);
+  }, [pricingBand, assignAccountNumber, selectedApp]);
 
   const handleConfirmApprove = async () => {
     if (!selectedApp) return;

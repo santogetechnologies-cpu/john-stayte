@@ -180,50 +180,35 @@ function extractBranchAssignment(
 function resolveUserRole(
   uid?: string,
   email?: string | null,
-  metadataRole?: string | null,
+  _metadataRole?: string | null,
   profileRole?: string | null,
-  notificationPrefs?: Record<string, unknown> | null,
-  staffRole?: string | null,
+  _notificationPrefs?: Record<string, unknown> | null,
+  _staffRole?: string | null,
 ): Role {
-  const normEmail = (email || "").trim().toLowerCase();
-
-  // 1. Direct match with canonical active delivery agents (Aswin & Astin)
-  const isDeliveryAgent = INITIAL_ACTIVE_AGENTS.some(
-    (ag) =>
-      (uid && ag.id === uid) ||
-      (ag.email && ag.email.toLowerCase() === normEmail) ||
-      (ag.full_name && ag.full_name.toLowerCase() === normEmail),
-  );
-  if (isDeliveryAgent) {
-    return "delivery_agent";
-  }
-
-  // 2. Explicit branch_staff in staffRole, metadataRole, profileRole, or notificationPrefs
-  if (
-    staffRole === "branch_staff" ||
-    metadataRole === "branch_staff" ||
-    profileRole === "branch_staff" ||
-    (notificationPrefs && notificationPrefs.role === "branch_staff")
-  ) {
+  // Strictly derive roles from the database profiles.role column.
+  // Never allow client-writable user_metadata.role, user_metadata.staff_role,
+  // or profiles.notification_prefs.role to elevate privileges.
+  if (profileRole === "branch_staff") {
     return "branch_staff";
   }
 
-  // 3. Explicit elevated role in Supabase Auth user_metadata
-  if (
-    metadataRole === "delivery_agent" ||
-    metadataRole === "manager" ||
-    metadataRole === "admin"
-  ) {
-    return metadataRole as Role;
+  if (profileRole === "driver" || profileRole === "delivery_agent") {
+    return "delivery_agent";
   }
 
-  // 4. Explicit elevated role in Supabase profiles table
-  if (
-    profileRole === "delivery_agent" ||
-    profileRole === "manager" ||
-    profileRole === "admin"
-  ) {
-    return profileRole as Role;
+  if (profileRole === "manager" || profileRole === "admin") {
+    return profileRole;
+  }
+
+  // Legacy compatibility for canonical delivery agent records stored without elevated profile role
+  const normEmail = (email || "").trim().toLowerCase();
+  const isDeliveryAgent = INITIAL_ACTIVE_AGENTS.some(
+    (ag) =>
+      (uid && ag.id === uid) ||
+      (ag.email && ag.email.toLowerCase() === normEmail),
+  );
+  if (isDeliveryAgent) {
+    return "delivery_agent";
   }
 
   return "customer";

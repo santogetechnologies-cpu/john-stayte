@@ -529,6 +529,27 @@ export async function updateBranchOrderStatus({
   notes,
 }: UpdateBranchOrderStatusParams): Promise<{ success: boolean; error?: string }> {
   try {
+    // Enforce mandatory OTP verification before marking Click & Collect order as Delivered
+    if (status === "Delivered") {
+      const { data: asgnCheck, error: asgnCheckErr } = await (supabase.from("delivery_assignments") as any)
+        .select("id, otp_verified")
+        .eq("order_id", orderId)
+        .maybeSingle();
+
+      if (asgnCheckErr) {
+        return {
+          success: false,
+          error: `Unable to verify customer OTP status: ${asgnCheckErr.message}`,
+        };
+      }
+      if (!asgnCheck?.otp_verified) {
+        return {
+          success: false,
+          error: "Customer OTP verification is mandatory before completing forecourt handover.",
+        };
+      }
+    }
+
     const payload: Record<string, any> = {
       status,
       updated_at: new Date().toISOString(),

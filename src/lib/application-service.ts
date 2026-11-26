@@ -692,6 +692,25 @@ export async function approveGasCustomerApplication(params: {
     let rpcErr: any = null;
 
     if (resolvedCustomerCode) {
+      const callWithCodeAndBandId = await (supabase.rpc as any)(
+        "approve_gas_customer_application",
+        {
+          p_application_id: applicationId,
+          p_pricing_band: effectivePricingBand,
+          p_discount_percentage: effectiveDiscountPercentage,
+          p_credit_account_approved: creditApproved,
+          p_credit_limit: creditLimit,
+          p_admin_notes: managerNotes,
+          p_reviewed_by: resolvedReviewerUuid,
+          p_customer_code: resolvedCustomerCode,
+          p_pricing_band_id: effectivePricingBandId,
+        },
+      );
+      rpcRes = callWithCodeAndBandId.data;
+      rpcErr = callWithCodeAndBandId.error;
+    }
+
+    if (!rpcRes && (!resolvedCustomerCode || (rpcErr && (rpcErr.code === "PGRST202" || rpcErr.message?.includes("function"))))) {
       const callWithCode = await (supabase.rpc as any)(
         "approve_gas_customer_application",
         {
@@ -737,6 +756,20 @@ export async function approveGasCustomerApplication(params: {
         } catch (e) {
           console.warn("Notice updating profile account number:", e);
         }
+      }
+    }
+
+    // Ensure pricing_band_id is persisted even if the deployed RPC signature lacks p_pricing_band_id
+    if (!rpcErr && rpcRes?.success && effectivePricingBandId && !rpcRes.pricing_band_id) {
+      try {
+        await (supabase.from("profiles") as any)
+          .update({ pricing_band_id: effectivePricingBandId })
+          .eq("id", customerId);
+        await (supabase.from("gas_customer_applications") as any)
+          .update({ pricing_band_id: effectivePricingBandId })
+          .eq("id", applicationId);
+      } catch (e) {
+        console.warn("Notice syncing pricing_band_id:", e);
       }
     }
 
@@ -1389,8 +1422,16 @@ export async function sendApplicationEmailOtp(email: string): Promise<{
     throw new Error("Please provide a valid email address to receive your verification code.");
   }
 
+  let authToken: string | null = null;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    authToken = sessionData?.session?.access_token || null;
+  } catch {
+    authToken = null;
+  }
+
   const res = await sendApplicationEmailVerifyServerFn({
-    data: { email: cleanEmail },
+    data: { email: cleanEmail, authToken },
   });
 
   if (!res.ok) {
@@ -1426,10 +1467,19 @@ export async function verifyApplicationEmailOtp(
     throw new Error("Please enter the complete 6-digit numerical code sent to your email.");
   }
 
+  let authToken: string | null = null;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    authToken = sessionData?.session?.access_token || null;
+  } catch {
+    authToken = null;
+  }
+
   const res = await verifyApplicationEmailCodeServerFn({
     data: {
       email: cleanEmail,
       code: cleanOtp,
+      authToken,
     },
   });
 
@@ -1437,28 +1487,6 @@ export async function verifyApplicationEmailOtp(
     throw new Error(
       res.error || "Invalid or expired verification code. Please check your inbox and try again.",
     );
-  }
-
-  // Record verified state in email_verifications table for audit/tracking if user is authenticated
-  try {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id;
-    if (userId) {
-      await (supabase.from("email_verifications") as any).insert([
-        {
-          user_id: userId,
-          email: cleanEmail,
-          verified_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          attempts: 1,
-          max_attempts: 5,
-          metadata: { provider: "resend", type: "gas_application" },
-        },
-      ]);
-    }
-  } catch (dbErr) {
-    // Non-blocking log
-    console.warn("email_verifications tracking notice:", dbErr);
   }
 
   return {

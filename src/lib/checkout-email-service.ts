@@ -41,27 +41,6 @@ export async function sendCheckoutEmailOtp(email: string): Promise<SendOtpResult
     throw new Error(error.message || "Failed to send verification code. Please try again.");
   }
 
-  // 2. Track verification request in public.email_verifications
-  try {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id;
-    if (userId) {
-      await (supabase.from("email_verifications") as any).insert([
-        {
-          user_id: userId,
-          email: cleanEmail,
-          expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
-          attempts: 0,
-          max_attempts: 5,
-          metadata: { type: "checkout_verification" },
-        },
-      ]);
-    }
-  } catch (e) {
-    // Non-blocking log
-    console.warn("email_verifications tracking notice:", e);
-  }
-
   return {
     ok: true,
     message: `A 6-digit verification code has been sent to ${cleanEmail}. Please check your inbox and spam folder.`,

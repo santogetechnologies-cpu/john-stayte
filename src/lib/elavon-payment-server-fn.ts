@@ -1,17 +1,55 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
+import { AUTHORIZED_ORIGINS } from "./auth-origin-service";
 import { triggerPaymentStatusPushInternal } from "./push-notification-server-fn";
 
 export interface CreateElavonSessionInput {
   orderId: string;
-  orderNumber: string;
-  amount: number;
+  orderNumber?: string;
+  amount?: number;
   currency?: string;
-  customerEmail: string;
-  customerName: string;
+  customerEmail?: string;
+  customerName?: string;
   returnUrl: string;
   cancelUrl: string;
+}
+
+function getAllowedRedirectOrigins(): Set<string> {
+  const allowed = new Set<string>(AUTHORIZED_ORIGINS);
+  const envUrls = [
+    process.env.APP_URL,
+    process.env.VITE_APP_URL,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ];
+  for (const raw of envUrls) {
+    if (!raw) continue;
+    try {
+      allowed.add(new URL(raw.trim()).origin);
+    } catch {
+      /* ignore invalid env URL */
+    }
+  }
+  return allowed;
+}
+
+function validateSafeRedirectUrl(rawUrl: string): string | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  try {
+    const parsed = new URL(rawUrl.trim());
+    const isLocalhost =
+      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && isLocalhost)) {
+      return null;
+    }
+    const allowedOrigins = getAllowedRedirectOrigins();
+    if (isLocalhost || allowedOrigins.has(parsed.origin)) {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export interface CreateElavonSessionResponse {
@@ -111,8 +149,6 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
 
       const {
         orderId,
-        orderNumber,
-        amount,
         currency = "GBP",
         customerEmail,
         customerName,
@@ -120,10 +156,19 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
         cancelUrl,
       } = payload;
 
-      if (!orderId || !amount || amount <= 0) {
+      if (!orderId || typeof orderId !== "string" || !orderId.trim()) {
         return {
           ok: false,
-          error: "Invalid order details or non-positive amount provided.",
+          error: "Invalid order details: orderId is required.",
+        };
+      }
+
+      const validatedReturnUrl = validateSafeRedirectUrl(returnUrl);
+      const validatedCancelUrl = validateSafeRedirectUrl(cancelUrl);
+      if (!validatedReturnUrl || !validatedCancelUrl) {
+        return {
+          ok: false,
+          error: "Invalid returnUrl or cancelUrl: origin is not authorized.",
         };
       }
 
@@ -138,16 +183,41 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
 
       const supabase = getServerSupabase();
 
-      // Check if order is already Paid
-      const { data: existingOrder } = await (supabase.from("orders") as any)
-        .select("id, payment_status")
+      // Fetch authoritative order record from Supabase (never trust client-supplied amount or orderNumber)
+      const { data: existingOrder, error: existingOrderErr } = await (supabase.from("orders") as any)
+        .select("id, order_number, total, subtotal, payment_status, customer_email, customer_name")
         .eq("id", orderId)
         .maybeSingle();
 
-      if (existingOrder?.payment_status === "Paid") {
+      if (existingOrderErr || !existingOrder) {
+        return {
+          ok: false,
+          error: "Order record could not be found.",
+        };
+      }
+
+      if (existingOrder.payment_status === "Paid") {
         return {
           ok: false,
           error: "This order has already been paid and verified. Duplicate payment prohibited.",
+        };
+      }
+
+      const authoritativeAmount = Number(
+        existingOrder.total ?? (existingOrder as any).total_amount ?? 0,
+      );
+      const authoritativeOrderNumber = String(existingOrder.order_number || "").trim();
+      const authoritativeCustomerEmail = String(
+        existingOrder.customer_email || customerEmail || "",
+      ).trim();
+      const authoritativeCustomerName = String(
+        existingOrder.customer_name || customerName || "",
+      ).trim();
+
+      if (!authoritativeOrderNumber || isNaN(authoritativeAmount) || authoritativeAmount <= 0) {
+        return {
+          ok: false,
+          error: "Order record has an invalid total amount or order number.",
         };
       }
 
@@ -206,13 +276,13 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
         }
       }
 
-      // 1. Create Order Resource in Elavon
+      // 1. Create Order Resource in Elavon using authoritative DB amount and order_number
       const orderPayload = {
         total: {
-          amount: amount.toFixed(2),
+          amount: authoritativeAmount.toFixed(2),
           currencyCode: currency.toUpperCase(),
         },
-        description: `John Stayte Services Order #${orderNumber}`,
+        description: `John Stayte Services Order #${authoritativeOrderNumber}`,
       };
 
       const orderRes = await fetch(`${config.baseUrl}/orders`, {
@@ -236,14 +306,14 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
       const orderData = (await orderRes.json()) as { id: string; href?: string };
       const orderHref = orderData.href || `${config.baseUrl}/orders/${orderData.id}`;
 
-      // 2. Create Payment Session Resource in Elavon
-      const cleanReturnUrl = returnUrl.includes("?")
-        ? `${returnUrl}&payment=verify&orderId=${encodeURIComponent(orderId)}`
-        : `${returnUrl}?payment=verify&orderId=${encodeURIComponent(orderId)}`;
+      // 2. Create Payment Session Resource in Elavon using validated return/cancel URLs
+      const cleanReturnUrl = validatedReturnUrl.includes("?")
+        ? `${validatedReturnUrl}&payment=verify&orderId=${encodeURIComponent(orderId)}`
+        : `${validatedReturnUrl}?payment=verify&orderId=${encodeURIComponent(orderId)}`;
 
-      const cleanCancelUrl = cancelUrl.includes("?")
-        ? `${cancelUrl}&payment=cancelled&orderId=${encodeURIComponent(orderId)}`
-        : `${cancelUrl}?payment=cancelled&orderId=${encodeURIComponent(orderId)}`;
+      const cleanCancelUrl = validatedCancelUrl.includes("?")
+        ? `${validatedCancelUrl}&payment=cancelled&orderId=${encodeURIComponent(orderId)}`
+        : `${validatedCancelUrl}?payment=cancelled&orderId=${encodeURIComponent(orderId)}`;
 
       // doCapture: true is the officially supported EPG field for auto-capture / Sale transactions
       const sessionPayload: Record<string, unknown> = {
@@ -254,13 +324,13 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
         doCreateTransaction: true,
         doThreeDSecure: true,
         doCapture: true,
-        shopperEmailAddress: customerEmail || undefined,
-        invoiceNumber: orderNumber || undefined,
+        shopperEmailAddress: authoritativeCustomerEmail || undefined,
+        invoiceNumber: authoritativeOrderNumber || undefined,
       };
 
-      if (customerName) {
+      if (authoritativeCustomerName) {
         sessionPayload.billTo = {
-          fullName: customerName,
+          fullName: authoritativeCustomerName,
         };
       }
 
@@ -302,11 +372,11 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
               payment_provider: "elavon",
               payment_intent_id: sessionId,
               payment_status: "pending",
-              amount: amount,
+              amount: authoritativeAmount,
               currency: currency.toUpperCase(),
-              receipt_email: customerEmail,
+              receipt_email: authoritativeCustomerEmail,
               metadata: {
-                orderNumber,
+                orderNumber: authoritativeOrderNumber,
                 orderHref,
                 environment: config.env,
                 sessionId,
@@ -321,11 +391,11 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
               payment_provider: "elavon",
               payment_intent_id: sessionId,
               payment_status: "pending",
-              amount: amount,
+              amount: authoritativeAmount,
               currency: currency.toUpperCase(),
-              receipt_email: customerEmail,
+              receipt_email: authoritativeCustomerEmail,
               metadata: {
-                orderNumber,
+                orderNumber: authoritativeOrderNumber,
                 orderHref,
                 environment: config.env,
                 sessionId,
@@ -572,9 +642,11 @@ export const verifyElavonPaymentServerFn = createServerFn({ method: "POST" })
         };
       }
 
-      // Transaction-to-Order Validation 2: Exact expected amount
+      // Transaction-to-Order Validation 2: Exact expected amount from DB order
       const txAmount = parseFloat(txData.total?.amount || txData.amount || "0");
-      const orderAmount = parseFloat(String(order.total || "0"));
+      const orderAmount = parseFloat(
+        String(order.total ?? (order as any).total_amount ?? "0"),
+      );
 
       if (isNaN(txAmount) || txAmount <= 0) {
         return {
@@ -891,7 +963,7 @@ export const verifyElavonPaymentServerFn = createServerFn({ method: "POST" })
       console.error("[Elavon] Payment verification unhandled error:", err);
       return {
         ok: false,
-        orderId: data.orderId,
+        orderId: data?.orderId || "",
         paymentStatus: "Failed",
         error: err.message || "An unexpected error occurred during payment verification.",
       };

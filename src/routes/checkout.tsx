@@ -18,9 +18,12 @@ import {
   MapPin,
 } from "lucide-react";
 import { KNOWN_BRANCHES, resolveCheckoutBranchAssignment } from "@/lib/branch-service";
+import { loadLivePricingFromDatabase } from "@/lib/branch-pricing-service";
+import { getCustomerLifetimeDiscountSummary } from "@/lib/lifetime-discount-service";
 import {
   resolveCustomerGasPrice,
   calculateCylinderExchange,
+  calculateCheckoutOrderTotals,
   validateDeliveryPostcode,
   evaluateCustomerDeliveryFee,
   validateCustomerCreditAccount,
@@ -394,26 +397,52 @@ function Checkout() {
     creditLimit: 0,
   });
 
+  const [livePricingVersion, setLivePricingVersion] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    loadLivePricingFromDatabase()
+      .then(() => {
+        if (isMounted) setLivePricingVersion((v) => v + 1);
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     async function loadCustomerPricing() {
       if (!user?.id) return;
       try {
-        const { data: prof } = await (supabase.from("profiles") as any)
-          .select("id, role, pricing_band, pricing_band_id, customer_code, account_approved, credit_account_approved, credit_limit, notification_prefs")
-          .eq("id", user.id)
-          .maybeSingle();
+        const [{ data: prof }, { data: appRow }, lifetimeSummary] = await Promise.all([
+          (supabase.from("profiles") as any)
+            .select("id, role, pricing_band, pricing_band_id, discount_percentage, customer_code, account_approved, credit_account_approved, credit_limit, notification_prefs")
+            .eq("id", user.id)
+            .maybeSingle(),
+          (supabase.from("gas_customer_applications") as any)
+            .select("pricing_band, pricing_band_id, customer_code, status, credit_account_approved, credit_limit")
+            .eq("customer_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          getCustomerLifetimeDiscountSummary(user.id).catch(() => null),
+        ]);
 
         const gasApp = (prof?.notification_prefs as any)?.gas_application;
 
         setCustomerPricing({
           userId: user.id,
           userRole: user.role,
-          pricingBand: prof?.pricing_band || gasApp?.pricing_band || null,
-          pricingBandId: prof?.pricing_band_id || gasApp?.pricing_band_id || null,
-          customerCode: prof?.customer_code || gasApp?.customer_code || null,
-          accountApproved: Boolean(prof?.account_approved || gasApp?.status === "APPROVED"),
-          creditAccountApproved: Boolean(prof?.credit_account_approved || gasApp?.credit_account_approved),
-          creditLimit: Number(prof?.credit_limit ?? gasApp?.credit_limit ?? 0),
+          pricingBand: prof?.pricing_band || appRow?.pricing_band || gasApp?.pricing_band || null,
+          pricingBandId: prof?.pricing_band_id || appRow?.pricing_band_id || gasApp?.pricing_band_id || null,
+          customerCode: prof?.customer_code || appRow?.customer_code || gasApp?.customer_code || null,
+          accountApproved: Boolean(prof?.account_approved || appRow?.status === "APPROVED" || gasApp?.status === "APPROVED"),
+          creditAccountApproved: Boolean(prof?.credit_account_approved || appRow?.credit_account_approved || gasApp?.credit_account_approved),
+          creditLimit: Number(prof?.credit_limit ?? appRow?.credit_limit ?? gasApp?.credit_limit ?? 0),
+          lifetimeDiscountPercentage: lifetimeSummary?.discountPercentage ?? 0,
+          lifetimeTierName: lifetimeSummary?.currentTierName ?? null,
+          lifetimeEligibleSpend: lifetimeSummary?.eligibleSpend ?? 0,
         });
       } catch (err) {
         console.warn("Could not load customer pricing profile:", err);
@@ -426,6 +455,33 @@ function Checkout() {
   const [cylinderExchangeType, setCylinderExchangeType] = useState<"refill" | "new">("refill");
   const [returnedCylinderType, setReturnedCylinderType] = useState<string>("Calor Propane Cylinder");
   const [returnedEmptyCount, setReturnedEmptyCount] = useState<number>(1);
+
+  // Authoritative Checkout Totals (single source of truth for UI summary, order_items, orders.total & Elavon)
+  const authoritativeTotals = useMemo(
+    () =>
+      calculateCheckoutOrderTotals({
+        lines,
+        customer: customerPricing,
+        cylinderExchangeType,
+        returnedCylinderType,
+        returnedEmptyCount,
+        fulfilmentMethod,
+        systemSettings: settings,
+        offerDiscount,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      lines,
+      customerPricing,
+      cylinderExchangeType,
+      returnedCylinderType,
+      returnedEmptyCount,
+      fulfilmentMethod,
+      settings,
+      offerDiscount,
+      livePricingVersion,
+    ],
+  );
 
   // Check if cart contains actual refillable/exchangeable gas cylinders
   const hasCylinderInCart = useMemo(() => {
@@ -602,7 +658,17 @@ function Checkout() {
       );
     }
 
-    if (subtotal <= 0) {
+    if (paymentMethod === "paypal") {
+      return toast.error(
+        "PayPal checkout is currently in onboarding and unavailable. Please select Credit / Debit Card, Cash, or Credit Account.",
+      );
+    }
+
+    if (authoritativeTotals.pricingErrors.length > 0) {
+      return toast.error(authoritativeTotals.pricingErrors[0]);
+    }
+
+    if (authoritativeTotals.subtotal <= 0) {
       return toast.error("Order total must be greater than £0.00 to place an order.");
     }
 
@@ -617,19 +683,16 @@ function Checkout() {
       const currentUserId = activeAuthUser.id;
       const currentEmail = activeAuthUser.email || email.trim();
 
+      // Ensure latest live pricing bands & prices are loaded from Supabase before order calculation
+      await loadLivePricingFromDatabase().catch(() => {});
+
       // 4. Strict Live Database Verification for every cart product & stock level
-      const verifiedItems: {
-        product_id: string | null;
-        product_name: string;
-        quantity: number;
-        unit_price: number;
-        total_price: number;
-      }[] = [];
+      const dbVerifiedCartLines: { product: any; qty: number }[] = [];
 
       for (const line of lines) {
         const { data: dbProduct, error: prodErr } = await supabase
           .from("products")
-          .select("id, name, price, stock, slug")
+          .select("id, name, price, stock, slug, category_slug, subcategory, specs")
           .eq("slug", line.slug)
           .single();
 
@@ -649,24 +712,56 @@ function Checkout() {
           );
         }
 
-        const unitPrice = Number(dbProduct.price);
-        verifiedItems.push({
-          product_id: dbProduct.id,
-          product_name: dbProduct.name,
-          quantity: line.qty,
-          unit_price: unitPrice,
-          total_price: unitPrice * line.qty,
+        dbVerifiedCartLines.push({
+          product: {
+            ...line.product,
+            id: dbProduct.id,
+            name: dbProduct.name,
+            slug: dbProduct.slug,
+            price: Number(dbProduct.price),
+            category: dbProduct.category_slug || line.product.category,
+            sub: dbProduct.subcategory || line.product.sub,
+            specs:
+              dbProduct.specs && typeof dbProduct.specs === "object" && !Array.isArray(dbProduct.specs)
+                ? dbProduct.specs
+                : line.product.specs,
+          },
+          qty: line.qty,
         });
       }
 
-      const finalSubtotal = verifiedItems.reduce((s, i) => s + i.total_price, 0);
+      const preOfferTotals = calculateCheckoutOrderTotals({
+        lines: dbVerifiedCartLines,
+        customer: customerPricing,
+        cylinderExchangeType,
+        returnedCylinderType,
+        returnedEmptyCount,
+        fulfilmentMethod,
+        systemSettings: settings,
+        offerDiscount: 0,
+      });
+
+      if (preOfferTotals.pricingErrors.length > 0) {
+        throw new Error(preOfferTotals.pricingErrors[0]);
+      }
+
+      const verifiedItems = preOfferTotals.lineBreakdowns.map((b) => ({
+        product_id: b.productId,
+        product_name: b.productName,
+        quantity: b.quantity,
+        unit_price: b.unitPrice,
+        total_price: b.totalPrice,
+      }));
+
+      const finalSubtotal = preOfferTotals.subtotal;
       if (finalSubtotal <= 0) {
         throw new Error("Order total must be greater than £0.00 to place an order.");
       }
-      const finalTotal = Math.max(0, finalSubtotal + shipping + vat);
+      const isCollection = fulfilmentMethod === "collection";
+      const effectiveShipping = preOfferTotals.shipping;
+      const finalTotal = preOfferTotals.total;
       const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
 
-      const isCollection = fulfilmentMethod === "collection";
       const branchAssignment = resolveCheckoutBranchAssignment(fulfilmentMethod, selectedBranch);
 
       // Validate delivery coverage if delivery selected
@@ -691,13 +786,11 @@ function Checkout() {
       const finalPaymentMethod =
         paymentMethod === "credit_account"
           ? "Credit Account (30-Day Invoice)"
-          : paymentMethod === "paypal"
-            ? "PayPal"
-            : paymentMethod === "card"
-              ? "Credit / Debit Card (Elavon)"
-              : isCollection
-                ? "Pay upon Collection"
-                : "Pay on Delivery";
+          : paymentMethod === "card"
+            ? "Credit / Debit Card (Elavon)"
+            : isCollection
+              ? "Pay upon Collection"
+              : "Pay on Delivery";
 
       const isEmptyRequired = hasCylinderInCart ? cylinderExchangeType === "refill" : false;
       const orderTypeTag = hasCylinderInCart
@@ -708,13 +801,8 @@ function Checkout() {
 
       const cylinderReminder = getOrderCylinderReminder(fulfilmentMethod, hasCylinderInCart && isEmptyRequired);
 
-      // 5. Create Initial Order Record in Supabase (with provisional values)
-      const provisionalTotal = Math.max(
-        0,
-        settings.taxPricingMode === "inclusive"
-          ? finalSubtotal + (isCollection ? 0 : shipping)
-          : finalSubtotal + (isCollection ? 0 : shipping) + vat,
-      );
+      // 5. Create Initial Order Record in Supabase (with authoritative values)
+      const provisionalTotal = preOfferTotals.total;
       const { data: newOrder, error: orderErr } = await (supabase.from("orders") as any)
         .insert([
           {
@@ -738,7 +826,7 @@ function Checkout() {
             assigned_branch_id: branchAssignment.assignedBranchId,
             customer_account_number: customerPricing.customerCode || undefined,
             subtotal: finalSubtotal,
-            shipping_fee: isCollection ? 0 : shipping,
+            shipping_fee: effectiveShipping,
             total: provisionalTotal,
             status: "Pending",
             fulfillment_status: "Pending",
@@ -811,47 +899,36 @@ function Checkout() {
         }
       }
 
-      // Recompute authoritative final total using active system settings
-      const taxableSubtotal = Math.max(0, finalSubtotal - verifiedDiscount);
+      // Recompute authoritative final total using the single shared pricing calculator
+      const finalTotals = calculateCheckoutOrderTotals({
+        lines: dbVerifiedCartLines,
+        customer: customerPricing,
+        cylinderExchangeType,
+        returnedCylinderType,
+        returnedEmptyCount,
+        fulfilmentMethod,
+        systemSettings: settings,
+        offerDiscount: verifiedDiscount,
+      });
 
-      let authoritativeShipping = 0;
-      if (settings.freeDeliveryEnabled) {
-        if (settings.freeDeliveryThreshold === 0 || finalSubtotal >= settings.freeDeliveryThreshold) {
-          authoritativeShipping = 0;
-        } else {
-          authoritativeShipping = settings.deliveryChargesEnabled ? settings.defaultShippingFee : 0;
-        }
-      } else {
-        authoritativeShipping = settings.deliveryChargesEnabled ? settings.defaultShippingFee : 0;
-      }
-
-      let authoritativeVat = 0;
-      if (settings.taxEnabled && settings.vatRate > 0) {
-        if (settings.taxPricingMode === "inclusive") {
-          authoritativeVat = taxableSubtotal - taxableSubtotal / (1 + settings.vatRate / 100);
-        } else {
-          authoritativeVat = taxableSubtotal * (settings.vatRate / 100);
-        }
-      }
-
-      const finalAuthoritativeTotal = Math.max(
-        0,
-        settings.taxPricingMode === "inclusive"
-          ? taxableSubtotal + authoritativeShipping
-          : taxableSubtotal + authoritativeShipping + authoritativeVat,
-      );
+      const authoritativeShipping = finalTotals.shipping;
+      const authoritativeVat = finalTotals.vat;
+      const finalAuthoritativeTotal = finalTotals.total;
 
       // Update order record with authoritative total, shipping, and offer linkage
       await (supabase.from("orders") as any)
         .update({
           shipping_fee: authoritativeShipping,
           total: finalAuthoritativeTotal,
-          offer_id: verifiedOfferId,
-          offer_code: verifiedOfferCode,
+          offer_id: finalTotals.offerDiscount > 0 ? verifiedOfferId : null,
+          offer_code: finalTotals.offerDiscount > 0 ? verifiedOfferCode : null,
           notes: [
             `[Payment: ${finalPaymentMethod}]`,
             isCollection ? `[Click & Collect: ${selectedBranch}]` : "[Standard Delivery]",
-            verifiedDiscount > 0 ? `[Offer Applied: -${gbp(verifiedDiscount)}]` : "",
+            finalTotals.offerDiscount > 0 ? `[Offer Applied: -${gbp(finalTotals.offerDiscount)}]` : "",
+            finalTotals.lifetimeDiscountAmount > 0
+              ? `[Lifetime Loyalty Discount (${finalTotals.lifetimeTierName || `${finalTotals.lifetimeDiscountPercentageApplied}%`}): -${gbp(finalTotals.lifetimeDiscountAmount)}]`
+              : "",
             hasCylinderInCart ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]` : "",
             hasCylinderInCart && isEmptyRequired ? `[Returned: ${returnedCylinderType} x ${returnedEmptyCount}]` : "",
             hasCylinderInCart ? `[${orderTypeTag}]` : "",
@@ -1644,39 +1721,22 @@ function Checkout() {
 
               <button
                 type="button"
-                onClick={() => setPaymentMethod("paypal")}
-                className={cn(
-                  "p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none",
-                  paymentMethod === "paypal"
-                    ? "border-[#0079C1] bg-sky-50/40 ring-2 ring-[#0079C1]/20 shadow-xs"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50",
-                )}
+                disabled
+                aria-disabled="true"
+                title="PayPal integration is currently in onboarding"
+                className="p-4 rounded-2xl border border-slate-200 bg-slate-50 text-left transition-all cursor-not-allowed opacity-60 flex flex-col justify-between select-none"
               >
                 <div className="flex items-center justify-between w-full mb-2">
-                  <div
-                    className={cn(
-                      "h-8 w-8 rounded-xl flex items-center justify-center",
-                      paymentMethod === "paypal"
-                        ? "bg-[#0079C1]/10 text-[#0079C1]"
-                        : "bg-slate-100 text-slate-600",
-                    )}
-                  >
+                  <div className="h-8 w-8 rounded-xl flex items-center justify-center bg-slate-100 text-slate-400">
                     <PayPalIcon className="h-4 w-4" />
                   </div>
-                  <div
-                    className={cn(
-                      "h-4 w-4 rounded-full border flex items-center justify-center",
-                      paymentMethod === "paypal"
-                        ? "border-[#0079C1] bg-[#0079C1] text-white"
-                        : "border-slate-300 bg-white",
-                    )}
-                  >
-                    {paymentMethod === "paypal" && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                    Onboarding
+                  </span>
                 </div>
                 <div>
-                  <span className="text-xs font-black text-slate-900 block">PayPal</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Fast, secure checkout</p>
+                  <span className="text-xs font-black text-slate-700 block">PayPal</span>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Currently unavailable</p>
                 </div>
               </button>
 
@@ -2018,32 +2078,45 @@ function Checkout() {
           <dl className="space-y-2 border-t border-slate-100 pt-4 text-xs font-medium">
             <div className="flex justify-between text-slate-600">
               <dt>Subtotal</dt>
-              <dd className="font-bold text-slate-900">{gbp(subtotal)}</dd>
+              <dd className="font-bold text-slate-900">{gbp(authoritativeTotals.subtotal)}</dd>
             </div>
-            {offerDiscount > 0 && (
+            {authoritativeTotals.offerDiscount > 0 && (
               <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50/80 p-1.5 rounded-md border border-emerald-200/60">
                 <dt className="flex items-center gap-1">
                   <span>Promo Offer Discount</span>
                 </dt>
-                <dd>− {gbp(offerDiscount)}</dd>
+                <dd>− {gbp(authoritativeTotals.offerDiscount)}</dd>
+              </div>
+            )}
+            {authoritativeTotals.lifetimeDiscountAmount > 0 && (
+              <div className="flex justify-between text-emerald-700 font-bold bg-emerald-50/80 p-1.5 rounded-md border border-emerald-200/60">
+                <dt className="flex flex-col">
+                  <span>Lifetime Loyalty Discount ({authoritativeTotals.lifetimeDiscountPercentageApplied}%)</span>
+                  {authoritativeTotals.lifetimeTierName && (
+                    <span className="text-[10px] font-medium text-emerald-600">
+                      {authoritativeTotals.lifetimeTierName}
+                    </span>
+                  )}
+                </dt>
+                <dd>− {gbp(authoritativeTotals.lifetimeDiscountAmount)}</dd>
               </div>
             )}
             <div className="flex justify-between text-slate-600">
               <dt>
                 {fulfilmentMethod === "collection" ? "Click & Collect Fee" : (settings?.deliveryTierName || "Delivery")}
-                {customerPricing.pricingBand && !["10", "20"].includes(customerPricing.pricingBand) && (
+                {authoritativeTotals.deliveryFeeWaivedByBand && (
                   <span className="text-[10px] text-emerald-700 block font-bold">
                     (Discounted Band — Fee Waived)
                   </span>
                 )}
               </dt>
               <dd className="font-bold text-slate-900">
-                {shipping === 0 ? (
+                {fulfilmentMethod === "collection" || authoritativeTotals.shipping === 0 ? (
                   <span className="text-emerald-700 font-bold">
-                    {settings?.freeDeliveryEnabled ? "Free" : "£0.00"}
+                    {fulfilmentMethod === "collection" || authoritativeTotals.deliveryFeeWaivedByBand || settings?.freeDeliveryEnabled ? "Free" : "£0.00"}
                   </span>
                 ) : (
-                  gbp(shipping)
+                  gbp(authoritativeTotals.shipping)
                 )}
               </dd>
             </div>
@@ -2056,13 +2129,21 @@ function Checkout() {
                 {settings?.taxPricingMode === "inclusive" ? " incl." : ""}
                 )
               </dt>
-              <dd className="font-bold text-slate-900">{gbp(vat)}</dd>
+              <dd className="font-bold text-slate-900">{gbp(authoritativeTotals.vat)}</dd>
             </div>
             <div className="flex justify-between border-t border-slate-200 pt-3 text-base font-black text-slate-900">
               <dt>Total</dt>
-              <dd className="text-primary">{gbp(total)}</dd>
+              <dd className="text-primary">
+                {gbp(authoritativeTotals.total)}
+              </dd>
             </div>
           </dl>
+
+          {authoritativeTotals.pricingErrors.length > 0 && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+              {authoritativeTotals.pricingErrors[0]}
+            </div>
+          )}
 
           <Button
             type="submit"
@@ -2073,7 +2154,9 @@ function Checkout() {
               isVerifyingPayment ||
               cartLoading ||
               lines.length === 0 ||
-              !isEmailVerified
+              !isEmailVerified ||
+              paymentMethod === "paypal" ||
+              authoritativeTotals.pricingErrors.length > 0
             }
             className={cn(
               "mt-4 w-full rounded-full gap-2 h-12 font-black text-sm transition-all cursor-pointer shadow-md",

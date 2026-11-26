@@ -327,11 +327,15 @@ export async function updateBranchStaffAssignment(
       (b) => b.id.toLowerCase() === newBranchId.toLowerCase(),
     );
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const adminAuthToken = sessionData?.session?.access_token || (await getAdminAuthToken());
+
     const res = await updateBranchStaffServerFn({
       data: {
         staffId,
         assignedBranchId: newBranchId,
         assignedBranch: branch?.name,
+        adminAuthToken,
       },
     });
 
@@ -363,10 +367,14 @@ export async function toggleBranchStaffStatus(
   try {
     const nextStatus = currentStatus === "active" ? "inactive" : "active";
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const adminAuthToken = sessionData?.session?.access_token || (await getAdminAuthToken());
+
     const res = await updateBranchStaffServerFn({
       data: {
         staffId,
         status: nextStatus,
+        adminAuthToken,
       },
     });
 
@@ -397,11 +405,15 @@ export async function resetBranchStaffPassword(
   newPassword?: string,
 ): Promise<{ ok: boolean; message?: string; error?: string }> {
   try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const adminAuthToken = sessionData?.session?.access_token || (await getAdminAuthToken());
+
     const res = await resetBranchStaffPasswordServerFn({
       data: {
         staffId,
         email,
         newPassword,
+        adminAuthToken,
       },
     });
 
