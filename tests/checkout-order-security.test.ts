@@ -356,4 +356,19 @@ describe("Checkout Order Total Security (Server-Side Calculation & Validation)",
     assert.equal(unauth.ok, false);
     assert.match(unauth.error || "", /authentication required/i);
   });
+
+  it("rejects Pay on Delivery / COD paymentMethod in checkout server function", async () => {
+    const db = createCheckoutMockDb({});
+    const res = await handleCreateCheckoutOrder(
+      {
+        ...baseCheckoutPayload,
+        paymentMethod: "cod" as any,
+      },
+      { supabaseClient: db, loadPricingFn: async () => {} },
+    );
+
+    assert.equal(res.ok, false);
+    assert.match(res.error || "", /pay on delivery is not available/i);
+    assert.equal(db._insertedOrders.length, 0);
+  });
 });

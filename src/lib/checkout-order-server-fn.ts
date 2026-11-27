@@ -34,7 +34,7 @@ export interface CreateCheckoutOrderInput {
   phone: string;
   address: string;
   postcode: string;
-  paymentMethod: "card" | "cod" | "credit_account";
+  paymentMethod: "card" | "credit_account";
   offerId?: string | null;
   offerCode?: string | null;
 }
@@ -115,6 +115,13 @@ export async function handleCreateCheckoutOrder(
 
     if (!Array.isArray(payload.items) || payload.items.length === 0) {
       return { ok: false, error: "Your basket is empty." };
+    }
+
+    if (payload.paymentMethod !== "card" && payload.paymentMethod !== "credit_account") {
+      return {
+        ok: false,
+        error: "Pay on Delivery is not available. Please pay by Credit / Debit Card or approved Credit Account.",
+      };
     }
 
     const supabase = deps?.supabaseClient || getServerSupabase();
@@ -446,11 +453,7 @@ export async function handleCreateCheckoutOrder(
     const finalPaymentMethod =
       payload.paymentMethod === "credit_account"
         ? "Credit Account (30-Day Invoice)"
-        : payload.paymentMethod === "card"
-          ? "Credit / Debit Card (Elavon)"
-          : isCollection
-            ? "Pay upon Collection"
-            : "Pay on Delivery";
+        : "Credit / Debit Card (Elavon)";
 
     const isEmptyRequired = hasCylinderInCart ? payload.cylinderExchangeType === "refill" : false;
     const orderTypeTag = hasCylinderInCart

@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   CreditCard,
-  Banknote,
   ShieldCheck,
   Lock,
   CheckCircle2,
@@ -502,8 +501,8 @@ function Checkout() {
     }
   }, [totalCylinderQty]);
 
-  // Payment Form Fields (Elavon Hosted Payments, Cash, or Credit Account)
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | "cod" | "credit_account">("card");
+  // Payment Form Fields (Elavon Hosted Payments, PayPal, or Credit Account)
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "paypal" | "credit_account">("card");
   const [cardholderName, setCardholderName] = useState(user?.name || "");
   const [creditFacilityStatus, setCreditFacilityStatus] = useState<{
     checked: boolean;
@@ -675,6 +674,10 @@ function Checkout() {
 
     if (!fullName || !email || !address || !postcode) {
       return toast.error("Please fill in all required delivery details.");
+    }
+
+    if (paymentMethod !== "card" && paymentMethod !== "credit_account") {
+      return toast.error("Please select Credit / Debit Card (Elavon) or Credit Account to complete your order.");
     }
 
     setSubmitting(true);
@@ -1360,8 +1363,8 @@ function Checkout() {
               </div>
             </div>
 
-            {/* Payment Method Selector (Card, PayPal, Cash, Credit Account) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Payment Method Selector (Card, PayPal, Credit Account) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setPaymentMethod("card")}
@@ -1420,44 +1423,6 @@ function Checkout() {
                 <div>
                   <span className="text-xs font-black text-slate-700 block">PayPal</span>
                   <p className="text-[11px] text-slate-500 mt-0.5">Currently unavailable</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("cod")}
-                className={cn(
-                  "p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between select-none",
-                  paymentMethod === "cod"
-                    ? "border-amber-500 bg-amber-50/30 ring-2 ring-amber-500/20 shadow-xs"
-                    : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50",
-                )}
-              >
-                <div className="flex items-center justify-between w-full mb-2">
-                  <div
-                    className={cn(
-                      "h-8 w-8 rounded-xl flex items-center justify-center",
-                      paymentMethod === "cod"
-                        ? "bg-amber-600 text-white"
-                        : "bg-slate-100 text-slate-600",
-                    )}
-                  >
-                    <Banknote className="h-4 w-4" />
-                  </div>
-                  <div
-                    className={cn(
-                      "h-4 w-4 rounded-full border flex items-center justify-center",
-                      paymentMethod === "cod"
-                        ? "border-amber-600 bg-amber-600 text-white"
-                        : "border-slate-300 bg-white",
-                    )}
-                  >
-                    {paymentMethod === "cod" && <Check className="h-2.5 w-2.5 stroke-[3]" />}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-xs font-black text-slate-900 block">Cash</span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">Pay on delivery/collection</p>
                 </div>
               </button>
 
@@ -1636,7 +1601,7 @@ function Checkout() {
                   <p>
                     Online PayPal gateway integration is currently in onboarding. To complete your
                     order immediately, please select <strong>Credit / Debit Card</strong> (processed
-                    securely via Elavon) or <strong>Pay on Delivery</strong>.
+                    securely via Elavon) or an approved <strong>Credit Account</strong>.
                   </p>
                   <div className="flex items-center gap-2 pt-1 text-[11px] text-sky-800 font-medium">
                     <ShieldCheck className="h-4 w-4 text-[#0079C1] shrink-0" />
@@ -1648,22 +1613,6 @@ function Checkout() {
                   <span className="text-slate-500 font-medium">Total Payable Amount:</span>
                   <span className="text-sm font-black text-slate-900">{gbp(total)}</span>
                 </div>
-              </div>
-            )}
-
-            {/* Pay on Delivery if COD Selected */}
-            {paymentMethod === "cod" && (
-              <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-xs text-amber-900 space-y-2 text-left">
-                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2.5">
-                  <p className="font-extrabold flex items-center gap-1.5 text-amber-950">
-                    <Banknote className="h-4 w-4 text-amber-700" /> Pay upon Delivery / Collection
-                  </p>
-                  <span className="font-black text-amber-950">{gbp(total)}</span>
-                </div>
-                <p className="text-amber-800 text-[11px] leading-relaxed">
-                  You will pay directly to our driver or at the Gloucestershire depot when your
-                  order is delivered or collected. No payment is charged right now.
-                </p>
               </div>
             )}
           </section>

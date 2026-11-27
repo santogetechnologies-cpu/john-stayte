@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
-import { ACTIVE_FORECOURT_BRANCHES, isValidForecourtBranchId } from "@/lib/branch-service";
+import {
+  ACTIVE_FORECOURT_BRANCHES,
+  isValidForecourtBranchId,
+  evaluateBranchOrderPaymentEligibility,
+} from "@/lib/branch-service";
 
 export interface CreateBranchStaffInput {
   fullName: string;
@@ -763,5 +767,347 @@ export const resetBranchStaffPasswordServerFn = createServerFn({ method: "POST" 
       console.error("[resetBranchStaffPasswordServerFn] Unexpected error:", err);
       return { ok: false, error: err.message || "An unexpected server error occurred." };
     }
+  });
+
+export interface CylinderReturnEntryInput {
+  productId?: string | null;
+  cylinderName: string;
+  expectedQuantity: number;
+  returnedQuantity: number;
+  notes?: string;
+}
+
+export interface CompleteBranchHandoverInput {
+  orderId: string;
+  authToken?: string;
+  fulfillmentStatus?: string;
+  notes?: string;
+  cylinderReturns?: CylinderReturnEntryInput[];
+}
+
+/**
+ * Pure/injectable handler for verifying branch handover authorization, OTP verification,
+ * and payment/approved-credit satisfaction before marking an order as Delivered.
+ */
+export async function handleVerifyAndCompleteBranchHandover(
+  supabaseAdmin: any,
+  data: CompleteBranchHandoverInput,
+): Promise<ServerFnResponse> {
+  try {
+    const orderId = (data?.orderId || "").trim();
+    const authToken = (data?.authToken || "").trim();
+
+    if (!orderId) {
+      return { ok: false, error: "Order ID is required." };
+    }
+    if (!authToken) {
+      return { ok: false, error: "Authentication token is required to complete handover." };
+    }
+
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(authToken);
+    if (userErr || !userData?.user) {
+      return { ok: false, error: "Invalid or expired user session." };
+    }
+
+    const { data: callerProfile, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, role, status, assigned_branch, assigned_branch_id")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+
+    if (profErr || !callerProfile) {
+      return { ok: false, error: "Unable to verify caller profile." };
+    }
+
+    const role = String(callerProfile.role || "").toLowerCase();
+    const isAllowedRole = role === "admin" || role === "manager" || role === "branch_staff";
+    if (!isAllowedRole) {
+      return { ok: false, error: "Forbidden: Branch Staff, Manager, or Admin access required." };
+    }
+    if (role === "branch_staff" && String(callerProfile.status || "").toLowerCase() === "inactive") {
+      return { ok: false, error: "Inactive branch staff accounts cannot complete handovers." };
+    }
+
+    const { data: orderRow, error: orderErr } = await supabaseAdmin
+      .from("orders")
+      .select("id, order_number, customer_id, assigned_branch_id, assigned_depot, payment_status, delivery_address, notes, status")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (orderErr || !orderRow) {
+      return { ok: false, error: orderErr?.message || "Order not found." };
+    }
+
+    // Verify branch staff belongs to the order's assigned branch
+    if (role === "branch_staff") {
+      const staffBranchId = String(callerProfile.assigned_branch_id || "").trim().toLowerCase();
+      const staffBranchName = String(callerProfile.assigned_branch || "").trim().toLowerCase();
+      const orderBranchId = String(orderRow.assigned_branch_id || "").trim().toLowerCase();
+      const orderDepot = String(orderRow.assigned_depot || "").trim().toLowerCase();
+      const orderColBranch = String(orderRow.delivery_address?.collection_branch || "").trim().toLowerCase();
+
+      const matchesBranchId = Boolean(staffBranchId && orderBranchId && staffBranchId === orderBranchId);
+      const matchesBranchName = Boolean(
+        staffBranchName &&
+          ((orderDepot && orderDepot.includes(staffBranchName)) ||
+            (orderColBranch && orderColBranch.includes(staffBranchName)))
+      );
+
+      if (!matchesBranchId && !matchesBranchName) {
+        return {
+          ok: false,
+          error: "Forbidden: This order is not assigned to your branch.",
+        };
+      }
+    }
+
+    // Enforce mandatory OTP verification
+    const { data: asgnRow, error: asgnErr } = await supabaseAdmin
+      .from("delivery_assignments")
+      .select("id, otp_verified")
+      .eq("order_id", orderId)
+      .maybeSingle();
+
+    if (asgnErr) {
+      return { ok: false, error: `Unable to verify customer OTP status: ${asgnErr.message}` };
+    }
+    if (!asgnRow?.otp_verified) {
+      return {
+        ok: false,
+        error: "Customer OTP verification is mandatory before completing forecourt handover.",
+      };
+    }
+
+    // Fetch customer credit approval if order has a customer_id
+    let creditApproved = false;
+    if (orderRow.customer_id) {
+      const { data: custProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("credit_account_approved, notification_prefs")
+        .eq("id", orderRow.customer_id)
+        .maybeSingle();
+
+      creditApproved = Boolean(
+        custProfile?.credit_account_approved ||
+          custProfile?.notification_prefs?.gas_application?.credit_account_approved
+      );
+    }
+
+    const eligibility = evaluateBranchOrderPaymentEligibility({
+      paymentStatus: orderRow.payment_status,
+      paymentMethod: orderRow.delivery_address?.payment_method,
+      notes: orderRow.notes,
+      creditAccountApproved: creditApproved,
+    });
+
+    if (!eligibility.paymentSatisfied) {
+      return {
+        ok: false,
+        error: eligibility.reason,
+      };
+    }
+
+    // Validate structured cylinder return records against trusted order_items and products
+    const rawReturns = Array.isArray(data.cylinderReturns) ? data.cylinderReturns : [];
+    const isExchangeOrder =
+      Boolean(orderRow.delivery_address?.empty_cylinder_required) ||
+      String(orderRow.notes || "").includes("Empty Cylinder Required: Yes") ||
+      String(orderRow.notes || "").includes("REFILL_EXCHANGE");
+
+    if (isExchangeOrder && rawReturns.length === 0) {
+      return {
+        ok: false,
+        error: "Cylinder return records are required for refill-exchange orders (record 0 if no empties were returned).",
+      };
+    }
+
+    const { data: orderItemsRows, error: orderItemsErr } = await supabaseAdmin
+      .from("order_items")
+      .select("product_id, product_name, quantity")
+      .eq("order_id", orderId);
+
+    if (orderItemsErr) {
+      return {
+        ok: false,
+        error: `Unable to verify order items: ${orderItemsErr.message}`,
+      };
+    }
+
+    const expectedByProductId = new Map<string, number>();
+    const orderItemsList = Array.isArray(orderItemsRows) ? orderItemsRows : [];
+    for (const item of orderItemsList) {
+      if (item?.product_id) {
+        const pid = String(item.product_id).trim();
+        const qty = Math.max(0, Number(item.quantity) || 0);
+        expectedByProductId.set(pid, (expectedByProductId.get(pid) || 0) + qty);
+      }
+    }
+
+    const seenProductIds = new Set<string>();
+    const seenFallbackNames = new Set<string>();
+    const validatedReturns: Array<{
+      product_id: string | null;
+      cylinder_name: string;
+      expected_quantity: number;
+      returned_quantity: number;
+      notes: string | null;
+    }> = [];
+
+    for (const entry of rawReturns) {
+      const cylinderName = String(entry?.cylinderName || "").trim();
+      if (!cylinderName) {
+        return { ok: false, error: "Cylinder name is required for each return record." };
+      }
+
+      const expectedQuantity = Number(entry?.expectedQuantity);
+      const returnedQuantity = Number(entry?.returnedQuantity);
+      if (
+        !Number.isInteger(expectedQuantity) ||
+        expectedQuantity < 0 ||
+        !Number.isInteger(returnedQuantity) ||
+        returnedQuantity < 0
+      ) {
+        return {
+          ok: false,
+          error: `Invalid quantity for "${cylinderName}": expected and returned quantities must be non-negative integers.`,
+        };
+      }
+
+      let productId: string | null = null;
+      let trustedName = cylinderName;
+
+      if (entry?.productId !== undefined && entry?.productId !== null && String(entry.productId).trim() !== "") {
+        productId = String(entry.productId).trim();
+
+        if (seenProductIds.has(productId)) {
+          return {
+            ok: false,
+            error: `Duplicate cylinder return entry for "${cylinderName}".`,
+          };
+        }
+        seenProductIds.add(productId);
+
+        const { data: prodRow, error: prodErr } = await supabaseAdmin
+          .from("products")
+          .select("id, name")
+          .eq("id", productId)
+          .maybeSingle();
+
+        if (prodErr || !prodRow) {
+          return {
+            ok: false,
+            error: `Invalid cylinder product ID for "${cylinderName}".`,
+          };
+        }
+
+        const actualProductName = String(prodRow.name || "").trim();
+        if (actualProductName.toLowerCase() !== cylinderName.toLowerCase()) {
+          return {
+            ok: false,
+            error: `Cylinder name "${cylinderName}" does not match product "${actualProductName}".`,
+          };
+        }
+        trustedName = actualProductName;
+
+        if (expectedByProductId.has(productId)) {
+          const trustedExpectedQty = isExchangeOrder ? expectedByProductId.get(productId)! : 0;
+          if (expectedQuantity !== trustedExpectedQty) {
+            return {
+              ok: false,
+              error: `Invalid expected quantity for "${actualProductName}": expected ${trustedExpectedQty}, received ${expectedQuantity}.`,
+            };
+          }
+        } else {
+          // Alternative returned cylinder type: must be expectedQuantity = 0 and returnedQuantity > 0
+          if (expectedQuantity !== 0 || returnedQuantity <= 0) {
+            return {
+              ok: false,
+              error: `Alternative returned cylinder "${actualProductName}" must have expected quantity 0 and returned quantity > 0.`,
+            };
+          }
+        }
+      } else {
+        const normalizedName = cylinderName.toLowerCase();
+        if (seenFallbackNames.has(normalizedName)) {
+          return {
+            ok: false,
+            error: `Duplicate cylinder return entry for "${cylinderName}".`,
+          };
+        }
+        seenFallbackNames.add(normalizedName);
+
+        // If order has product_id-backed items, an alternative return without a valid productId is not allowed
+        if (expectedByProductId.size > 0) {
+          return {
+            ok: false,
+            error: `A valid cylinder product ID is required for "${cylinderName}".`,
+          };
+        }
+      }
+
+      validatedReturns.push({
+        product_id: productId,
+        cylinder_name: trustedName,
+        expected_quantity: expectedQuantity,
+        returned_quantity: returnedQuantity,
+        notes: entry?.notes ? String(entry.notes).trim() : null,
+      });
+    }
+
+    // For exchange orders, require a return record for every expected cylinder product in order_items
+    if (isExchangeOrder) {
+      for (const expectedPid of expectedByProductId.keys()) {
+        if (!seenProductIds.has(expectedPid)) {
+          return {
+            ok: false,
+            error: "Missing cylinder return record for an expected exchange cylinder on this order.",
+          };
+        }
+      }
+    }
+
+    // Execute cylinder return insertion + order completion atomically via PostgreSQL RPC
+    const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc(
+      "complete_branch_handover_with_returns",
+      {
+        p_order_id: orderId,
+        p_staff_id: callerProfile.id,
+        p_fulfillment_status: data.fulfillmentStatus || "Completed",
+        p_notes: data.notes ?? null,
+        p_cylinder_returns: validatedReturns,
+      }
+    );
+
+    if (rpcErr) {
+      return { ok: false, error: rpcErr.message };
+    }
+
+    return {
+      ok: true,
+      message: rpcResult?.already_completed
+        ? `Order ${orderRow.order_number || orderId} handover already completed.`
+        : `Order ${orderRow.order_number || orderId} handover verified and completed.`,
+      data: {
+        orderId,
+        alreadyCompleted: Boolean(rpcResult?.already_completed),
+        paymentSatisfied: true,
+        paymentStatus: orderRow.payment_status || "Pending",
+        isApprovedCreditOrder: eligibility.isApprovedCreditOrder,
+        cylinderReturnsRecorded: Number(rpcResult?.cylinder_returns_recorded || 0),
+      },
+    };
+  } catch (err: any) {
+    console.error("[verifyAndCompleteBranchHandoverServerFn] Unexpected error:", err);
+    return { ok: false, error: err.message || "An unexpected server error occurred." };
+  }
+}
+
+/**
+ * Server function to verify OTP + payment/approved credit and complete branch cylinder handover.
+ */
+export const verifyAndCompleteBranchHandoverServerFn = createServerFn({ method: "POST" })
+  .validator((data: CompleteBranchHandoverInput) => data)
+  .handler(async ({ data }): Promise<ServerFnResponse> => {
+    return handleVerifyAndCompleteBranchHandover(getSupabaseAdmin(), data);
   });
 

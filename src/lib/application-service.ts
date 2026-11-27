@@ -1501,3 +1501,40 @@ export async function verifyApplicationEmailOtp(
     verifiedEmail: res.verifiedEmail,
   };
 }
+
+/**
+ * Counts newly received, unreviewed gas customer applications.
+ * Only applications with status PENDING or SUBMITTED that have not yet been reviewed
+ * (reviewed_at IS NULL and reviewed_by IS NULL) are counted, deduplicated by id.
+ */
+export function countNewUnreviewedApplications(
+  applications: Array<{
+    id?: string | null;
+    status?: string | null;
+    reviewed_by?: string | null;
+    reviewed_at?: string | null;
+  }>,
+): number {
+  if (!Array.isArray(applications) || applications.length === 0) return 0;
+  const seenIds = new Set<string>();
+  let count = 0;
+
+  for (const app of applications) {
+    if (!app) continue;
+    const id = typeof app.id === "string" ? app.id.trim() : "";
+    if (id) {
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+    }
+
+    const status = String(app.status || "").trim().toUpperCase();
+    const isAwaitingReview = status === "PENDING" || status === "SUBMITTED";
+    const isUnreviewed = !app.reviewed_at && !app.reviewed_by;
+
+    if (isAwaitingReview && isUnreviewed) {
+      count += 1;
+    }
+  }
+
+  return count;
+}

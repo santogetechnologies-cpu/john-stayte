@@ -20,6 +20,7 @@ import {
   Lock,
   Loader2,
   Phone,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,7 @@ import {
   reissueDeliveryOtp,
 } from "@/lib/delivery-agent-service";
 import { maskPhoneNumber } from "@/lib/delivery-otp-server-fn";
+import { verifyAndCompleteBranchHandoverServerFn } from "@/lib/branch-staff-server-fn";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -82,7 +84,21 @@ export function BranchOrdersView() {
   // Cylinder Exchange Handover Modal State
   const [handoverModalOpen, setHandoverModalOpen] = useState(false);
   const [selectedHandoverOrder, setSelectedHandoverOrder] = useState<BranchOrderRecord | null>(null);
-  const [returnedEmptiesCount, setReturnedEmptiesCount] = useState<number>(0);
+  const [cylinderReturnRows, setCylinderReturnRows] = useState<
+    Array<{
+      key: string;
+      productId: string | null;
+      cylinderName: string;
+      expectedQuantity: number;
+      returnedQuantity: number;
+      isAlternative?: boolean;
+    }>
+  >([]);
+  const [availableCylinderProducts, setAvailableCylinderProducts] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [altCylinderProductId, setAltCylinderProductId] = useState<string>("");
+  const [altCylinderCustomName, setAltCylinderCustomName] = useState<string>("");
   const [submittingHandover, setSubmittingHandover] = useState(false);
 
   // Customer OTP Verification State
@@ -271,7 +287,67 @@ export function BranchOrdersView() {
   const handleOpenHandover = (ord: BranchOrderRecord) => {
     const exchange = getCylinderExchangeDetails(ord);
     setSelectedHandoverOrder(ord);
-    setReturnedEmptiesCount(exchange.expectedEmptyQuantity);
+    setAltCylinderProductId("");
+    setAltCylinderCustomName("");
+
+    if (exchange.isExchange) {
+      const items = Array.isArray(ord.orderItems) ? ord.orderItems : [];
+      if (items.length > 0) {
+        setCylinderReturnRows(
+          items.map((item: any, idx: number) => {
+            const qty = Math.max(0, Number(item.quantity) || 1);
+            return {
+              key: `${item.product_id || "item"}-${idx}`,
+              productId: item.product_id || null,
+              cylinderName: item.product_name || "Gas Cylinder",
+              expectedQuantity: qty,
+              returnedQuantity: qty,
+            };
+          })
+        );
+      } else {
+        setCylinderReturnRows([
+          {
+            key: "default-0",
+            productId: null,
+            cylinderName: ord.itemsSummary || "Gas Cylinder",
+            expectedQuantity: exchange.expectedEmptyQuantity,
+            returnedQuantity: exchange.expectedEmptyQuantity,
+          },
+        ]);
+      }
+    } else {
+      setCylinderReturnRows([]);
+    }
+
+    if (availableCylinderProducts.length === 0) {
+      (supabase.from("products") as any)
+        .select("id, name, category_slug")
+        .eq("is_active", true)
+        .order("name")
+        .then(({ data: prods }: any) => {
+          if (Array.isArray(prods)) {
+            const gasProds = prods.filter((p: any) => {
+              const cat = String(p.category_slug || "").toLowerCase();
+              const nm = String(p.name || "").toLowerCase();
+              return (
+                cat.includes("gas") ||
+                cat.includes("cylinder") ||
+                cat.includes("campingaz") ||
+                nm.includes("propane") ||
+                nm.includes("butane") ||
+                nm.includes("patio") ||
+                nm.includes("cylinder")
+              );
+            });
+            setAvailableCylinderProducts(
+              gasProds.map((p: any) => ({ id: p.id, name: p.name }))
+            );
+          }
+        })
+        .catch(() => {});
+    }
+
     setOtpInput("");
     setOtpVerified(false);
     setOtpVerifiedAt(null);
@@ -349,6 +425,14 @@ export function BranchOrdersView() {
   const handleConfirmHandover = async () => {
     if (!selectedHandoverOrder) return;
 
+    if (!selectedHandoverOrder.paymentSatisfied) {
+      toast.error(
+        selectedHandoverOrder.paymentVerificationReason ||
+          "Payment or approved credit must be verified before releasing cylinders."
+      );
+      return;
+    }
+
     if (!otpVerified) {
       setOtpError("Customer OTP must be verified before completing handover.");
       toast.error("Customer OTP verification is required before completing handover.");
@@ -359,19 +443,35 @@ export function BranchOrdersView() {
 
     try {
       const exchange = getCylinderExchangeDetails(selectedHandoverOrder);
-      const isShort = returnedEmptiesCount < exchange.expectedEmptyQuantity;
+      const totalExpected = cylinderReturnRows.reduce((sum, r) => sum + r.expectedQuantity, 0);
+      const totalReturned = cylinderReturnRows.reduce((sum, r) => sum + r.returnedQuantity, 0);
+      const isShort = totalReturned < totalExpected;
+      const breakdown = cylinderReturnRows
+        .map((r) => `${r.cylinderName}: ${r.returnedQuantity}/${r.expectedQuantity}`)
+        .join("; ");
       const handoverNote = exchange.isExchange
-        ? `Collected at ${assignedBranch} on ${new Date().toLocaleDateString()}. [Exchange Verified: ${returnedEmptiesCount}/${exchange.expectedEmptyQuantity} Empties Returned${isShort ? " - SHORT RETURN" : " - FULL EXCHANGE"}] [Customer OTP Verified: Yes]`
+        ? `Collected at ${assignedBranch} on ${new Date().toLocaleDateString()}. [Exchange Verified: ${totalReturned}/${totalExpected} Empties Returned (${breakdown})${isShort ? " - SHORT RETURN" : " - FULL EXCHANGE"}] [Customer OTP Verified: Yes]`
         : `Collected at ${assignedBranch} on ${new Date().toLocaleDateString()}. [Customer OTP Verified: Yes]`;
 
-      const res = await updateBranchOrderStatus({
-        orderId: selectedHandoverOrder.id,
-        status: "Delivered",
-        fulfillmentStatus: "Completed",
-        notes: handoverNote,
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken = sessionData?.session?.access_token;
+
+      const res = await verifyAndCompleteBranchHandoverServerFn({
+        data: {
+          orderId: selectedHandoverOrder.id,
+          authToken,
+          fulfillmentStatus: "Completed",
+          notes: handoverNote,
+          cylinderReturns: cylinderReturnRows.map((r) => ({
+            productId: r.productId,
+            cylinderName: r.cylinderName,
+            expectedQuantity: r.expectedQuantity,
+            returnedQuantity: r.returnedQuantity,
+          })),
+        },
       });
 
-      if (res.success) {
+      if (res.ok) {
         toast.success(`Order ${selectedHandoverOrder.orderNumber} completed & handed over.`);
         setHandoverModalOpen(false);
         setSelectedHandoverOrder(null);
@@ -383,6 +483,41 @@ export function BranchOrdersView() {
       }
     } catch (err: any) {
       toast.error(err?.message || "Failed to complete handover");
+    } finally {
+      setSubmittingHandover(false);
+    }
+  };
+
+  const handleHoldHandover = async () => {
+    if (!selectedHandoverOrder) return;
+    setSubmittingHandover(true);
+    try {
+      const reason =
+        selectedHandoverOrder.paymentVerificationReason ||
+        "Payment or approved credit unresolved at forecourt handover.";
+      const existingNote = selectedHandoverOrder.notes ? `${selectedHandoverOrder.notes}\n` : "";
+      const holdNote = `${existingNote}[Handover Held at ${assignedBranch} on ${new Date().toLocaleDateString()}: ${reason}]`;
+
+      const res = await updateBranchOrderStatus({
+        orderId: selectedHandoverOrder.id,
+        status: "On Hold",
+        fulfillmentStatus: "On Hold",
+        notes: holdNote,
+      });
+
+      if (res.success) {
+        toast.warning(`Handover held for ${selectedHandoverOrder.orderNumber} until payment is resolved.`);
+        setHandoverModalOpen(false);
+        setSelectedHandoverOrder(null);
+        setOtpInput("");
+        setOtpVerified(false);
+        setOtpError(null);
+        loadOrders();
+      } else {
+        toast.error(res.error || `Could not place order ${selectedHandoverOrder.orderNumber} on hold.`);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to hold handover");
     } finally {
       setSubmittingHandover(false);
     }
@@ -715,7 +850,9 @@ export function BranchOrdersView() {
 
           {selectedHandoverOrder && (() => {
             const exchange = getCylinderExchangeDetails(selectedHandoverOrder);
-            const isShort = returnedEmptiesCount < exchange.expectedEmptyQuantity;
+            const totalExpected = cylinderReturnRows.reduce((sum, r) => sum + r.expectedQuantity, 0);
+            const totalReturned = cylinderReturnRows.reduce((sum, r) => sum + r.returnedQuantity, 0);
+            const isShort = totalReturned < totalExpected;
 
             return (
               <div className="space-y-4 py-2 text-xs">
@@ -740,51 +877,179 @@ export function BranchOrdersView() {
                 </div>
 
                 {/* CYLINDER EXCHANGE CHECKLIST */}
-                {exchange.isExchange ? (
+                {exchange.isExchange || cylinderReturnRows.length > 0 ? (
                   <div className="space-y-3 p-4 rounded-xl border border-amber-200 bg-amber-50/50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-black text-amber-950 uppercase tracking-wide text-[11px]">Empty Cylinders to Return</p>
-                        <p className="text-amber-800/80 text-[11px]">Expected empties based on refill items ordered</p>
+                        <p className="font-black text-amber-950 uppercase tracking-wide text-[11px]">
+                          Empty Cylinders to Return
+                        </p>
+                        <p className="text-amber-800/80 text-[11px]">
+                          Record actual returned quantity per cylinder type (zero returns allowed)
+                        </p>
                       </div>
                       <Badge variant="outline" className="font-mono font-black border-amber-300 bg-amber-100 text-amber-900">
-                        Expected: {exchange.expectedEmptyQuantity}
+                        Total: {totalReturned} / {totalExpected}
                       </Badge>
                     </div>
 
-                    {/* CONFIRM COUNTER */}
-                    <div className="pt-2">
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                        Actual Empty Cylinders Received:
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={returnedEmptiesCount <= 0}
-                          onClick={() => setReturnedEmptiesCount((c) => Math.max(0, c - 1))}
-                          className="h-8 w-8 p-0 rounded-full cursor-pointer"
-                        >
-                          <Minus className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className="font-mono text-base font-black text-slate-900 w-8 text-center">
-                          {returnedEmptiesCount}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={returnedEmptiesCount >= exchange.expectedEmptyQuantity}
-                          onClick={() => setReturnedEmptiesCount((c) => Math.min(exchange.expectedEmptyQuantity, c + 1))}
-                          className="h-8 w-8 p-0 rounded-full cursor-pointer"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </Button>
-                        <span className="text-[11px] text-slate-500 font-medium">
-                          of {exchange.expectedEmptyQuantity} expected
-                        </span>
+                    {/* PER-CYLINDER-TYPE ROWS */}
+                    <div className="rounded-lg border border-amber-200/80 bg-white overflow-hidden">
+                      <div className="grid grid-cols-12 gap-2 px-3 py-2 bg-amber-50/80 border-b border-amber-200/60 text-[10px] font-black uppercase tracking-wider text-amber-900">
+                        <span className="col-span-6">Cylinder Type</span>
+                        <span className="col-span-2 text-center">Expected</span>
+                        <span className="col-span-4 text-center">Returned</span>
                       </div>
+                      <div className="divide-y divide-slate-100">
+                        {cylinderReturnRows.map((row) => (
+                          <div key={row.key} className="grid grid-cols-12 gap-2 items-center px-3 py-2">
+                            <div className="col-span-6 min-w-0">
+                              <p className="font-bold text-slate-900 truncate text-[11px]">
+                                {row.cylinderName}
+                              </p>
+                              {row.isAlternative && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setCylinderReturnRows((prev) => prev.filter((r) => r.key !== row.key))
+                                  }
+                                  className="text-[10px] text-rose-600 hover:underline font-semibold cursor-pointer"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </div>
+                            <div className="col-span-2 text-center font-mono font-bold text-slate-700">
+                              {row.expectedQuantity}
+                            </div>
+                            <div className="col-span-4 flex items-center justify-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={row.returnedQuantity <= 0}
+                                onClick={() =>
+                                  setCylinderReturnRows((prev) =>
+                                    prev.map((r) =>
+                                      r.key === row.key
+                                        ? { ...r, returnedQuantity: Math.max(0, r.returnedQuantity - 1) }
+                                        : r
+                                    )
+                                  )
+                                }
+                                className="h-7 w-7 p-0 rounded-full cursor-pointer"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="font-mono text-sm font-black text-slate-900 w-6 text-center">
+                                {row.returnedQuantity}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setCylinderReturnRows((prev) =>
+                                    prev.map((r) =>
+                                      r.key === row.key
+                                        ? { ...r, returnedQuantity: r.returnedQuantity + 1 }
+                                        : r
+                                    )
+                                  )
+                                }
+                                className="h-7 w-7 p-0 rounded-full cursor-pointer"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-12 gap-2 items-center px-3 py-2 bg-slate-50 border-t border-slate-200/80 text-[11px] font-black text-slate-800">
+                        <span className="col-span-6">Total</span>
+                        <span className="col-span-2 text-center font-mono">{totalExpected}</span>
+                        <span className="col-span-4 text-center font-mono">{totalReturned}</span>
+                      </div>
+                    </div>
+
+                    {/* ADD DIFFERENT RETURNED CYLINDER TYPE */}
+                    <div className="pt-1 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                      {availableCylinderProducts.length > 0 ? (
+                        <select
+                          value={altCylinderProductId}
+                          onChange={(e) => {
+                            setAltCylinderProductId(e.target.value);
+                            if (e.target.value !== "__custom__") {
+                              setAltCylinderCustomName("");
+                            }
+                          }}
+                          className="h-8 flex-1 rounded-lg border border-amber-200 bg-white px-2.5 text-[11px] font-medium text-slate-800"
+                        >
+                          <option value="">+ Add different returned cylinder type...</option>
+                          {availableCylinderProducts.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                          <option value="__custom__">Other cylinder type (enter name)</option>
+                        </select>
+                      ) : (
+                        <Input
+                          value={altCylinderCustomName}
+                          onChange={(e) => setAltCylinderCustomName(e.target.value)}
+                          placeholder="Other returned cylinder type..."
+                          className="h-8 flex-1 text-[11px] bg-white"
+                        />
+                      )}
+                      {altCylinderProductId === "__custom__" && (
+                        <Input
+                          value={altCylinderCustomName}
+                          onChange={(e) => setAltCylinderCustomName(e.target.value)}
+                          placeholder="Enter cylinder type name..."
+                          className="h-8 flex-1 text-[11px] bg-white"
+                        />
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={
+                          availableCylinderProducts.length > 0
+                            ? !altCylinderProductId ||
+                              (altCylinderProductId === "__custom__" && !altCylinderCustomName.trim())
+                            : !altCylinderCustomName.trim()
+                        }
+                        onClick={() => {
+                          let productId: string | null = null;
+                          let cylinderName = altCylinderCustomName.trim();
+                          if (altCylinderProductId && altCylinderProductId !== "__custom__") {
+                            const found = availableCylinderProducts.find(
+                              (p) => p.id === altCylinderProductId
+                            );
+                            if (found) {
+                              productId = found.id;
+                              cylinderName = found.name;
+                            }
+                          }
+                          if (!cylinderName) return;
+                          setCylinderReturnRows((prev) => [
+                            ...prev,
+                            {
+                              key: `alt-${Date.now()}-${prev.length}`,
+                              productId,
+                              cylinderName,
+                              expectedQuantity: 0,
+                              returnedQuantity: 1,
+                              isAlternative: true,
+                            },
+                          ]);
+                          setAltCylinderProductId("");
+                          setAltCylinderCustomName("");
+                        }}
+                        className="h-8 px-3 rounded-lg text-[11px] font-bold border-amber-300 bg-white hover:bg-amber-100/60 cursor-pointer"
+                      >
+                        Add Return
+                      </Button>
                     </div>
 
                     {/* WARNING OR CONFIRMATION NOTICE */}
@@ -792,14 +1057,14 @@ export function BranchOrdersView() {
                       <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start gap-2 text-[11px] text-rose-800">
                         <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                         <div>
-                          <strong className="font-black">Short Return Warning:</strong> Customer returned {returnedEmptiesCount} of {exchange.expectedEmptyQuantity} expected cylinders. Standard non-return cylinder deposit charges (£39.99 each) will be logged on this order.
+                          <strong className="font-black">Short / Zero Return Recorded:</strong> Customer returned {totalReturned} of {totalExpected} expected cylinders.
                         </div>
                       </div>
                     ) : (
                       <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-start gap-2 text-[11px] text-emerald-800">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
                         <div>
-                          <strong className="font-black">Full Exchange Verified:</strong> All {exchange.expectedEmptyQuantity} empty cylinders received and inspected.
+                          <strong className="font-black">Full Exchange Verified:</strong> {totalReturned} empty cylinder(s) recorded across {cylinderReturnRows.length} type(s).
                         </div>
                       </div>
                     )}
@@ -935,13 +1200,83 @@ export function BranchOrdersView() {
                     </div>
                   )}
                 </div>
+
+                {/* Payment & Credit Verification Panel */}
+                <div
+                  className={cn(
+                    "p-3.5 rounded-xl border space-y-2",
+                    selectedHandoverOrder.paymentSatisfied
+                      ? "bg-emerald-50/70 border-emerald-200"
+                      : "bg-rose-50 border-rose-200"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <CreditCard
+                        className={cn(
+                          "w-4 h-4",
+                          selectedHandoverOrder.paymentSatisfied ? "text-emerald-700" : "text-rose-700"
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "text-xs font-bold uppercase tracking-wider",
+                          selectedHandoverOrder.paymentSatisfied ? "text-emerald-900" : "text-rose-900"
+                        )}
+                      >
+                        Payment & Credit Verification
+                      </span>
+                    </div>
+                    <Badge
+                      className={cn(
+                        "text-[10px] font-bold px-2 py-0.5 rounded-full border-none",
+                        selectedHandoverOrder.paymentSatisfied
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-rose-100 text-rose-800"
+                      )}
+                    >
+                      {selectedHandoverOrder.paymentSatisfied
+                        ? selectedHandoverOrder.paymentStatus?.toLowerCase() === "paid"
+                          ? "Paid ✓"
+                          : "Approved Credit ✓"
+                        : "Handover Blocked"}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-500">Payment Status: </span>
+                      <span className="font-bold text-slate-900">
+                        {selectedHandoverOrder.paymentStatus || "Pending"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Method: </span>
+                      <span className="font-bold text-slate-900">
+                        {selectedHandoverOrder.paymentMethodLabel || "Card / Online Payment"}
+                      </span>
+                    </div>
+                  </div>
+                  <p
+                    className={cn(
+                      "text-[11px] font-medium",
+                      selectedHandoverOrder.paymentSatisfied ? "text-emerald-800" : "text-rose-800"
+                    )}
+                  >
+                    {selectedHandoverOrder.paymentVerificationReason ||
+                      "Checking payment & credit eligibility..."}
+                  </p>
+                </div>
               </div>
             );
           })()}
 
           <DialogFooter className="flex flex-row justify-between items-center gap-2 pt-2 border-t border-slate-100">
             <span className="text-[11px] text-slate-500 font-medium">
-              {!otpVerified && "⚠️ Customer OTP verification required"}
+              {!selectedHandoverOrder?.paymentSatisfied
+                ? "⛔ Payment or approved credit required"
+                : !otpVerified
+                  ? "⚠️ Customer OTP verification required"
+                  : "✅ Ready for handover"}
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -959,14 +1294,25 @@ export function BranchOrdersView() {
               >
                 Cancel
               </Button>
+              {!selectedHandoverOrder?.paymentSatisfied && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={submittingHandover}
+                  onClick={handleHoldHandover}
+                  className="rounded-full text-xs font-bold px-4 bg-amber-600 hover:bg-amber-700 text-white shadow-sm cursor-pointer"
+                >
+                  {submittingHandover ? "Holding..." : "Hold Handover"}
+                </Button>
+              )}
               <Button
                 type="button"
                 size="sm"
-                disabled={submittingHandover || !otpVerified}
+                disabled={submittingHandover || !otpVerified || !selectedHandoverOrder?.paymentSatisfied}
                 onClick={handleConfirmHandover}
                 className={cn(
                   "rounded-full text-xs font-bold px-5 text-white transition-all",
-                  otpVerified
+                  otpVerified && selectedHandoverOrder?.paymentSatisfied
                     ? "bg-emerald-600 hover:bg-emerald-700 shadow-sm cursor-pointer"
                     : "bg-slate-300 text-slate-500 cursor-not-allowed hover:bg-slate-300"
                 )}

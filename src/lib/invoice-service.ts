@@ -13,6 +13,41 @@
 
 import { jsPDF } from "jspdf";
 
+const JSS_LOGO_PUBLIC_PATH = "/image-5.png";
+let cachedJssLogoDataUrl: string | null = null;
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+/**
+ * Loads the official John Stayte Services logo (/image-5.png) as a PNG Data URL
+ * for embedding inside generated jsPDF documents.
+ */
+export async function loadJssLogoDataUrl(): Promise<string | null> {
+  if (cachedJssLogoDataUrl) return cachedJssLogoDataUrl;
+  if (typeof window === "undefined" || typeof fetch === "undefined") return null;
+
+  try {
+    const logoUrl = window.location?.origin
+      ? `${window.location.origin}${JSS_LOGO_PUBLIC_PATH}`
+      : JSS_LOGO_PUBLIC_PATH;
+    const res = await fetch(logoUrl);
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    cachedJssLogoDataUrl = `data:image/png;base64,${arrayBufferToBase64(buf)}`;
+    return cachedJssLogoDataUrl;
+  } catch {
+    return null;
+  }
+}
+
 export interface InvoiceCompanyConfig {
   tradingAs: string;
   companyName: string;
@@ -536,8 +571,18 @@ export function generateTaxInvoiceHtml(order: any, options?: { accountNumber?: s
       background: #334155;
     }
     .header-center {
+      position: relative;
       text-align: center;
       margin-bottom: 18px;
+      min-height: 70px;
+    }
+    .header-logo {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 68px;
+      height: 68px;
+      object-fit: contain;
     }
     .trading-name {
       color: #dc2626;
@@ -733,6 +778,11 @@ export function generateTaxInvoiceHtml(order: any, options?: { accountNumber?: s
   <div class="invoice-sheet" id="invoice">
     <!-- Header -->
     <div class="header-center">
+      <img
+        src="${typeof window !== "undefined" && window.location?.origin ? `${window.location.origin}${JSS_LOGO_PUBLIC_PATH}` : JSS_LOGO_PUBLIC_PATH}"
+        alt="John Stayte Services Logo"
+        class="header-logo"
+      />
       <div class="trading-name">${cfg.tradingAs}</div>
       <div class="company-name">${cfg.companyName}</div>
       <div class="header-address">${cfg.addressLine1}, ${cfg.townCity}, ${cfg.postcode}</div>
@@ -878,7 +928,11 @@ export function generateTaxInvoiceHtml(order: any, options?: { accountNumber?: s
  */
 export function generateTaxInvoicePdfDoc(
   order: any,
-  options?: { accountNumber?: string | null; config?: Partial<InvoiceCompanyConfig> }
+  options?: {
+    accountNumber?: string | null;
+    config?: Partial<InvoiceCompanyConfig>;
+    logoDataUrl?: string | null;
+  }
 ): jsPDF {
   const snapshotConfig =
     order?.invoice_snapshot?.company ||
@@ -906,7 +960,14 @@ export function generateTaxInvoicePdfDoc(
   const marginX = 14;
   const contentWidth = pageWidth - marginX * 2; // 182mm
 
-  // 1. Header (Centered Red & Slate Official Branding)
+  // 1. Header (Official JSS Logo + Centered Red & Slate Official Branding)
+  if (options?.logoDataUrl) {
+    try {
+      doc.addImage(options.logoDataUrl, "PNG", marginX, 11, 20, 20);
+    } catch {
+      /* continue cleanly if image decode fails in non-browser environment */
+    }
+  }
   doc.setTextColor(220, 38, 38);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
@@ -1127,7 +1188,11 @@ export function generateTaxInvoicePdfBlob(
  */
 export async function downloadTaxInvoice(
   order: any,
-  options?: { accountNumber?: string | null; config?: Partial<InvoiceCompanyConfig> }
+  options?: {
+    accountNumber?: string | null;
+    config?: Partial<InvoiceCompanyConfig>;
+    logoDataUrl?: string | null;
+  }
 ): Promise<void> {
   let effectiveConfig = options?.config;
   if (!effectiveConfig) {
@@ -1138,8 +1203,15 @@ export async function downloadTaxInvoice(
     }
   }
 
+  const logoDataUrl =
+    options?.logoDataUrl !== undefined ? options.logoDataUrl : await loadJssLogoDataUrl();
+
   const inv = prepareInvoiceData(order, { accountNumber: options?.accountNumber });
-  const doc = generateTaxInvoicePdfDoc(order, { ...options, config: effectiveConfig });
+  const doc = generateTaxInvoicePdfDoc(order, {
+    ...options,
+    config: effectiveConfig,
+    logoDataUrl,
+  });
 
   if (typeof window !== "undefined") {
     // Generate true binary PDF blob and trigger browser download

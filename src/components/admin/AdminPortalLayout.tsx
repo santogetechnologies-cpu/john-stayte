@@ -53,6 +53,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { countNewUnreviewedApplications } from "@/lib/application-service";
 import { AdminGlobalSearch } from "./AdminGlobalSearch";
 import { AdminNotificationsPopover } from "./AdminNotificationsPopover";
 
@@ -63,7 +64,7 @@ type NavItem = {
   href: string;
   icon: LucideIcon | React.ElementType;
   moduleKey?: string;
-  badgeKey?: "ordersPending" | "inventoryLow" | "unreadNotifications";
+  badgeKey?: "ordersPending" | "inventoryLow" | "unreadNotifications" | "applicationsPending";
   badgeColor?: string;
 };
 
@@ -93,7 +94,13 @@ const adminNavGroups: NavGroup[] = [
       { title: "Drive-Offs", href: "/admin/drive-offs", icon: Fuel },
       { title: "Gas Pricing Management", href: "/admin/gas-pricing", icon: Flame },
       { title: "Delivery Slot Management", href: "/admin/delivery-slots", icon: CalendarClock },
-      { title: "Applications", href: "/admin/applications", icon: FileText },
+      {
+        title: "Applications",
+        href: "/admin/applications",
+        icon: FileText,
+        badgeKey: "applicationsPending",
+        badgeColor: "bg-red-100 text-red-700 font-extrabold",
+      },
       {
         title: "Inventory",
         href: "/admin/inventory",
@@ -194,6 +201,7 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
     ordersPending?: number;
     inventoryLow?: number;
     unreadNotifications?: number;
+    applicationsPending?: number;
   }>({});
 
   const loadModuleConfigAndBadges = async () => {
@@ -203,6 +211,7 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
         { data: pendingOrders },
         { data: lowStock },
         { data: unreadNotifs },
+        { data: applicationRows },
       ] = await Promise.all([
         supabase
           .from("cms_content_blocks")
@@ -212,6 +221,9 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
         supabase.from("orders").select("id").eq("status", "Pending"),
         supabase.from("products").select("id").lte("stock", 10),
         supabase.from("notifications").select("id").or("read.eq.false,is_read.eq.false"),
+        (supabase.from("gas_customer_applications") as any)
+          .select("id, status, reviewed_by, reviewed_at")
+          .in("status", ["PENDING", "SUBMITTED"]),
       ]);
 
       if (moduleBlock?.content) {
@@ -227,6 +239,7 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
         ordersPending: pendingOrders?.length || 0,
         inventoryLow: lowStock?.length || 0,
         unreadNotifications: unreadNotifs?.length || 0,
+        applicationsPending: countNewUnreviewedApplications(applicationRows || []),
       });
     } catch (err) {
       console.error("Error loading module config:", err);
@@ -248,12 +261,17 @@ export function AdminPortalLayout({ children }: { children: ReactNode }) {
       const handleUpdate = () => loadModuleConfigAndBadges();
       window.addEventListener("admin_modules_updated", handleUpdate);
 
-      // Subscribe to Realtime notifications so badge counts update without requiring page refresh
+      // Subscribe to Realtime notifications & applications so badge counts update without requiring page refresh
       const channel = supabase
         .channel("admin_portal_layout_notifications_realtime")
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "notifications" },
+          () => loadModuleConfigAndBadges(),
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "gas_customer_applications" },
           () => loadModuleConfigAndBadges(),
         )
         .subscribe();

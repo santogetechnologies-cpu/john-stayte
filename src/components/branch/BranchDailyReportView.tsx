@@ -10,6 +10,7 @@ import {
   type BranchOrderRecord,
 } from "@/lib/branch-service";
 import { toast } from "sonner";
+import jssLogo from "@/assets/image-5.png";
 
 export function BranchDailyReportView() {
   const { user } = useStore();
@@ -71,6 +72,21 @@ export function BranchDailyReportView() {
         </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="font-semibold text-slate-800">Daily Handover Report</span>
+      </div>
+
+      {/* PRINT-ONLY LETTERHEAD WITH OFFICIAL JSS LOGO */}
+      <div className="hidden print:flex items-center gap-3 border-b border-slate-200 pb-3 mb-4">
+        <img
+          src={jssLogo}
+          alt="John Stayte Services"
+          className="h-12 w-12 object-contain shrink-0"
+        />
+        <div>
+          <p className="text-sm font-black text-red-600">John Stayte Services</p>
+          <p className="text-xs text-slate-600">
+            Branch Daily Handover Report — {assignedBranch} ({todayFormatted})
+          </p>
+        </div>
       </div>
 
       {/* HEADER */}

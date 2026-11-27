@@ -215,9 +215,70 @@ export interface BranchKpiCounts {
   completedToday: number;
 }
 
+export interface BranchOrderPaymentEligibility {
+  paymentSatisfied: boolean;
+  isPaid: boolean;
+  isApprovedCreditOrder: boolean;
+  isCreditMethod: boolean;
+  paymentMethodLabel: string;
+  reason: string;
+}
+
+export function evaluateBranchOrderPaymentEligibility(params: {
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  notes?: string | null;
+  creditAccountApproved?: boolean | null;
+}): BranchOrderPaymentEligibility {
+  const normalizedStatus = String(params.paymentStatus || "Pending").trim() || "Pending";
+  const statusLower = normalizedStatus.toLowerCase();
+  const methodRaw = String(params.paymentMethod || "").trim();
+  const notesRaw = String(params.notes || "");
+
+  const isCreditMethod =
+    methodRaw.toLowerCase().includes("credit account") ||
+    notesRaw.toLowerCase().includes("credit account");
+  const isPaid = statusLower === "paid";
+  const isFailedOrCancelled = ["failed", "cancelled", "canceled"].includes(statusLower);
+  const isApprovedCreditOrder =
+    isCreditMethod && Boolean(params.creditAccountApproved) && !isFailedOrCancelled;
+  const paymentSatisfied = isPaid || isApprovedCreditOrder;
+
+  const paymentMethodLabel =
+    methodRaw ||
+    (isCreditMethod
+      ? "Credit Account (30-Day Invoice)"
+      : isPaid
+        ? "Paid Online"
+        : "Card / Online Payment");
+
+  let reason = "Payment confirmed (Paid).";
+  if (isPaid) {
+    reason = "Payment confirmed (Paid).";
+  } else if (isApprovedCreditOrder) {
+    reason = "Covered by approved Credit Account.";
+  } else if (isCreditMethod && !params.creditAccountApproved) {
+    reason = "Credit Account is not approved for this customer. Hold handover until resolved.";
+  } else if (isFailedOrCancelled) {
+    reason = `Payment status is ${normalizedStatus}. Hold handover until payment is resolved.`;
+  } else {
+    reason = `Payment status is ${normalizedStatus} — confirmed payment or approved credit is required before handover.`;
+  }
+
+  return {
+    paymentSatisfied,
+    isPaid,
+    isApprovedCreditOrder,
+    isCreditMethod,
+    paymentMethodLabel,
+    reason,
+  };
+}
+
 export interface BranchOrderRecord {
   id: string;
   orderNumber: string;
+  customerId?: string | null;
   assignedBranchId?: string | null;
   customerName: string;
   customerPhone: string;
@@ -225,6 +286,11 @@ export interface BranchOrderRecord {
   itemsSummary: string;
   total: number;
   status: string;
+  paymentStatus?: string;
+  paymentMethodLabel?: string;
+  creditAccountApproved?: boolean;
+  paymentSatisfied?: boolean;
+  paymentVerificationReason?: string;
   assignedDepot: string;
   notes?: string;
   createdAt: string;
@@ -421,12 +487,14 @@ export async function fetchRealBranchOrders(
         `
         id,
         order_number,
+        customer_id,
         assigned_branch_id,
         customer_name,
         customer_email,
         customer_phone,
         total,
         status,
+        payment_status,
         fulfillment_status,
         assigned_depot,
         delivery_address,
@@ -469,6 +537,33 @@ export async function fetchRealBranchOrders(
       return [];
     }
 
+    const customerIds = Array.from(
+      new Set(
+        rows
+          .map((o: any) => o.customer_id)
+          .filter((cid: unknown): cid is string => typeof cid === "string" && cid.trim().length > 0)
+      )
+    );
+
+    const creditByCustomerId = new Map<string, boolean>();
+    if (customerIds.length > 0) {
+      const { data: profilesData } = await (supabase.from("profiles") as any)
+        .select("id, credit_account_approved, notification_prefs")
+        .in("id", customerIds);
+
+      if (Array.isArray(profilesData)) {
+        for (const prof of profilesData) {
+          const approved = Boolean(
+            prof?.credit_account_approved ||
+              prof?.notification_prefs?.gas_application?.credit_account_approved
+          );
+          if (prof?.id) {
+            creditByCustomerId.set(prof.id, approved);
+          }
+        }
+      }
+    }
+
     return rows.map((o: any) => {
       const items = Array.isArray(o.order_items) ? o.order_items : [];
       let summary = "";
@@ -484,10 +579,18 @@ export async function fetchRealBranchOrders(
       const custName = o.customer_name || addr?.name || addr?.fullName || "Retail Customer";
       const custPhone = o.customer_phone || addr?.phone || "N/A";
       const custEmail = o.customer_email || addr?.email || "";
+      const creditApproved = o.customer_id ? creditByCustomerId.get(o.customer_id) ?? false : false;
+      const eligibility = evaluateBranchOrderPaymentEligibility({
+        paymentStatus: o.payment_status,
+        paymentMethod: addr?.payment_method,
+        notes: o.notes,
+        creditAccountApproved: creditApproved,
+      });
 
       return {
         id: o.id,
         orderNumber: o.order_number || `JSS-${o.id.slice(0, 8).toUpperCase()}`,
+        customerId: o.customer_id || null,
         assignedBranchId: o.assigned_branch_id || null,
         customerName: custName,
         customerPhone: custPhone,
@@ -495,6 +598,11 @@ export async function fetchRealBranchOrders(
         itemsSummary: summary,
         total: o.total ? Number(o.total) : 0,
         status: o.status || "Pending",
+        paymentStatus: o.payment_status || "Pending",
+        paymentMethodLabel: eligibility.paymentMethodLabel,
+        creditAccountApproved: creditApproved,
+        paymentSatisfied: eligibility.paymentSatisfied,
+        paymentVerificationReason: eligibility.reason,
         assignedDepot: o.assigned_depot || assignedBranch || "",
         notes: o.notes || undefined,
         createdAt: o.created_at,
@@ -511,7 +619,7 @@ export async function fetchRealBranchOrders(
 
 export interface UpdateBranchOrderStatusParams {
   orderId: string;
-  status: "Pending" | "Approved" | "Packed" | "Ready" | "Delivered" | "Cancelled";
+  status: "Pending" | "Approved" | "Packed" | "Ready" | "On Hold" | "Delivered" | "Cancelled";
   fulfillmentStatus?: string;
   notes?: string;
 }
@@ -546,6 +654,45 @@ export async function updateBranchOrderStatus({
         return {
           success: false,
           error: "Customer OTP verification is mandatory before completing forecourt handover.",
+        };
+      }
+
+      // Enforce payment or approved credit verification before releasing cylinders
+      const { data: orderRow, error: orderFetchErr } = await (supabase.from("orders") as any)
+        .select("id, payment_status, customer_id, delivery_address, notes")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (orderFetchErr || !orderRow) {
+        return {
+          success: false,
+          error: `Unable to verify order payment status: ${orderFetchErr?.message || "Order not found"}`,
+        };
+      }
+
+      let creditApproved = false;
+      if (orderRow.customer_id) {
+        const { data: profRow } = await (supabase.from("profiles") as any)
+          .select("credit_account_approved, notification_prefs")
+          .eq("id", orderRow.customer_id)
+          .maybeSingle();
+        creditApproved = Boolean(
+          profRow?.credit_account_approved ||
+            profRow?.notification_prefs?.gas_application?.credit_account_approved
+        );
+      }
+
+      const eligibility = evaluateBranchOrderPaymentEligibility({
+        paymentStatus: orderRow.payment_status,
+        paymentMethod: orderRow.delivery_address?.payment_method,
+        notes: orderRow.notes,
+        creditAccountApproved: creditApproved,
+      });
+
+      if (!eligibility.paymentSatisfied) {
+        return {
+          success: false,
+          error: eligibility.reason,
         };
       }
     }

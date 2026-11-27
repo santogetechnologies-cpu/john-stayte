@@ -35,7 +35,9 @@ import {
   PackageCheck,
   ArrowRight,
   ChevronRight,
+  FileText,
 } from "lucide-react";
+import { countNewUnreviewedApplications } from "@/lib/application-service";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -156,6 +158,7 @@ export function AdminDashboardView() {
   const [inventoryAlerts, setInventoryAlerts] = useState<AdminProduct[]>([]);
   const [deliveries, setDeliveries] = useState<AdminDelivery[]>([]);
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+  const [newApplicationsCount, setNewApplicationsCount] = useState<number>(0);
 
   useEffect(() => {
     async function loadDashboardData() {
@@ -168,6 +171,7 @@ export function AdminDashboardView() {
           { data: dbInventory },
           { data: dbDeliveries },
           { data: dbLogs },
+          { data: dbApplications },
         ] = await Promise.all([
           supabase.from("orders").select("*").order("created_at", { ascending: false }),
           supabase.from("products").select("*"),
@@ -179,6 +183,9 @@ export function AdminDashboardView() {
             .select("*")
             .order("created_at", { ascending: false })
             .limit(10),
+          (supabase.from("gas_customer_applications") as any)
+            .select("id, status, reviewed_by, reviewed_at")
+            .in("status", ["PENDING", "SUBMITTED"]),
         ]);
 
         setOrders(dbOrders || []);
@@ -189,6 +196,7 @@ export function AdminDashboardView() {
         );
         setDeliveries(dbDeliveries || []);
         setAuditLogs(dbLogs || []);
+        setNewApplicationsCount(countNewUnreviewedApplications(dbApplications || []));
       } catch (err) {
         console.error("Failed to load admin dashboard data:", err);
       } finally {
@@ -202,6 +210,11 @@ export function AdminDashboardView() {
       .channel("admin_dashboard_realtime_kpis")
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () =>
         loadDashboardData(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gas_customer_applications" },
+        () => loadDashboardData(),
       )
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () =>
         loadDashboardData(),
@@ -440,6 +453,13 @@ export function AdminDashboardView() {
       href: "/admin/customers",
       icon: Users,
       image3d: "/admin-3d/customers.png",
+    },
+    {
+      title: "Applications",
+      subtitle: "Gas Onboarding & Review",
+      href: "/admin/applications",
+      icon: FileText,
+      badge: newApplicationsCount > 0 ? newApplicationsCount : undefined,
     },
     {
       title: "Deliveries",
@@ -831,14 +851,22 @@ export function AdminDashboardView() {
                 </span>
               )}
 
-              {/* 3D Illustration - Prominent Centered Display (~50% of card height) */}
+              {/* 3D Illustration or Icon - Prominent Centered Display (~50% of card height) */}
               <div className="w-full flex-1 flex items-center justify-center py-1 sm:py-2">
-                <img
-                  src={module.image3d}
-                  alt={module.title}
-                  className="h-[135px] sm:h-[148px] xl:h-[158px] w-auto max-w-full object-contain pointer-events-none select-none transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 motion-reduce:transform-none"
-                  loading="lazy"
-                />
+                {module.image3d ? (
+                  <img
+                    src={module.image3d}
+                    alt={module.title}
+                    className="h-[135px] sm:h-[148px] xl:h-[158px] w-auto max-w-full object-contain pointer-events-none select-none transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1 motion-reduce:transform-none"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-[135px] sm:h-[148px] xl:h-[158px] flex items-center justify-center">
+                    <div className="h-24 w-24 rounded-3xl bg-red-50 border border-red-100 flex items-center justify-center shadow-sm transition-transform duration-300 ease-out group-hover:scale-105 group-hover:-translate-y-1">
+                      <module.icon className="h-12 w-12 text-red-600" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Card Footer: Title, Subtitle, and Circular Arrow Button */}

@@ -23,6 +23,7 @@ import {
   FileText,
   BadgeAlert,
 } from "lucide-react";
+import jssLogoUrl from "@/assets/image-5.png";
 import type { FuelDriveOffIncident, DriveOffStatus } from "@/types/drive-offs";
 import { recordDriveOffPayment, updateDriveOffStatus } from "@/lib/drive-off-service";
 import { toast } from "sonner";
@@ -156,6 +157,11 @@ export function DriveOffDetailSheet({
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
+    const logoSrc =
+      jssLogoUrl.startsWith("http") || jssLogoUrl.startsWith("data:")
+        ? jssLogoUrl
+        : `${window.location.origin}${jssLogoUrl.startsWith("/") ? jssLogoUrl : `/${jssLogoUrl}`}`;
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -163,8 +169,10 @@ export function DriveOffDetailSheet({
         <title>Police Incident Report - ${incident.incident_number}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #1e293b; max-width: 800px; margin: auto; }
-          h1 { color: #dc2626; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px; }
-          .sub { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+          .report-header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 12px; }
+          .report-logo { width: 56px; height: 56px; object-fit: contain; flex-shrink: 0; }
+          h1 { color: #dc2626; margin: 0 0 4px 0; font-size: 22px; }
+          .sub { color: #64748b; font-size: 14px; margin: 0; }
           .badge { display: inline-block; background: #fef08a; border: 2px solid #ca8a04; font-family: monospace; font-weight: bold; font-size: 20px; padding: 4px 12px; border-radius: 6px; letter-spacing: 2px; }
           .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
           .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
@@ -176,8 +184,13 @@ export function DriveOffDetailSheet({
         </style>
       </head>
       <body>
-        <h1>John Stayte Services – Fuel Drive-Off Incident Report</h1>
-        <div class="sub">Prepared for Gloucestershire Constabulary · Reference: ${incident.incident_number}</div>
+        <div class="report-header">
+          <img src="${logoSrc}" alt="John Stayte Services" class="report-logo" />
+          <div>
+            <h1>John Stayte Services – Fuel Drive-Off Incident Report</h1>
+            <div class="sub">Prepared for Gloucestershire Constabulary · Reference: ${incident.incident_number}</div>
+          </div>
+        </div>
         
         <div style="margin: 20px 0;">
           <div class="badge">${incident.vehicle_registration_number}</div>
