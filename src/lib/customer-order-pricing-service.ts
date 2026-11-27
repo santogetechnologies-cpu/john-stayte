@@ -512,6 +512,220 @@ export function calculateCylinderExchange(params: {
   };
 }
 
+export interface ShortReturnOrderItemInput {
+  productId: string | null;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  product?: {
+    id?: string;
+    name?: string;
+    subcategory?: string | null;
+    specs?: Record<string, any> | null;
+  } | null;
+}
+
+export interface ShortReturnCylinderEntryInput {
+  productId: string | null;
+  cylinderName: string;
+  expectedQuantity: number;
+  returnedQuantity: number;
+}
+
+export interface ShortReturnLineAssessment {
+  productId: string | null;
+  cylinderName: string;
+  orderedQuantity: number;
+  directReturnedQuantity: number;
+  compatibleAlternativeMatched: number;
+  unmatchedQuantity: number;
+  depositPerUnit: number;
+  historicalUnitPrice: number;
+  lineFee: number;
+}
+
+export interface ShortReturnAssessmentResult {
+  hasShortReturn: boolean;
+  expectedTotalQuantity: number;
+  returnedTotalQuantity: number;
+  unmatchedQuantity: number;
+  assessedFee: number;
+  status: "none" | "payment_required";
+  lineAssessments: ShortReturnLineAssessment[];
+  alternativeReturnsUsed: Array<{
+    productId: string | null;
+    cylinderName: string;
+    returnedQuantity: number;
+    matchedQuantity: number;
+  }>;
+}
+
+/**
+ * Server-safe short-return fee calculator.
+ * Reuses parseGasTypeAndSize(), validateCylinderExchangeCompatibility(), and calculateCylinderExchange()
+ * using historical order_items quantities/prices and products.specs.deposit_price (with 39.99 fallback).
+ * Does NOT add VAT or mutate original order prices.
+ */
+export function calculateShortReturnAssessment(params: {
+  isExchangeOrder: boolean;
+  orderItems: ShortReturnOrderItemInput[];
+  cylinderReturns: ShortReturnCylinderEntryInput[];
+}): ShortReturnAssessmentResult {
+  const { isExchangeOrder, orderItems, cylinderReturns } = params;
+
+  if (!isExchangeOrder || !Array.isArray(orderItems) || orderItems.length === 0) {
+    return {
+      hasShortReturn: false,
+      expectedTotalQuantity: 0,
+      returnedTotalQuantity: 0,
+      unmatchedQuantity: 0,
+      assessedFee: 0,
+      status: "none",
+      lineAssessments: [],
+      alternativeReturnsUsed: [],
+    };
+  }
+
+  const directReturnedByProductId = new Map<string, number>();
+  const directReturnedByName = new Map<string, number>();
+  const alternativePool: Array<{
+    productId: string | null;
+    cylinderName: string;
+    returnedQuantity: number;
+    remaining: number;
+    matchedQuantity: number;
+  }> = [];
+
+  let returnedTotalQuantity = 0;
+
+  for (const ret of cylinderReturns || []) {
+    const qty = Math.max(0, Math.floor(Number(ret.returnedQuantity) || 0));
+    const expected = Math.max(0, Math.floor(Number(ret.expectedQuantity) || 0));
+    returnedTotalQuantity += qty;
+
+    if (expected === 0 && qty > 0) {
+      alternativePool.push({
+        productId: ret.productId || null,
+        cylinderName: ret.cylinderName,
+        returnedQuantity: qty,
+        remaining: qty,
+        matchedQuantity: 0,
+      });
+    } else if (ret.productId) {
+      directReturnedByProductId.set(
+        ret.productId,
+        (directReturnedByProductId.get(ret.productId) || 0) + qty
+      );
+    } else {
+      const key = String(ret.cylinderName || "").trim().toLowerCase();
+      directReturnedByName.set(key, (directReturnedByName.get(key) || 0) + qty);
+    }
+  }
+
+  const lineAssessments: ShortReturnLineAssessment[] = [];
+  let expectedTotalQuantity = 0;
+  let unmatchedQuantity = 0;
+  let assessedFee = 0;
+
+  for (const item of orderItems) {
+    const orderedQty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+    if (orderedQty === 0) continue;
+
+    expectedTotalQuantity += orderedQty;
+
+    const productObj = item.product || { name: item.productName };
+    const { gasType, cylinderSize } = parseGasTypeAndSize(productObj);
+
+    const specDeposit = item.product?.specs?.deposit_price;
+    const depositPerUnit =
+      specDeposit !== null &&
+      specDeposit !== undefined &&
+      Number.isFinite(Number(specDeposit)) &&
+      Number(specDeposit) >= 0
+        ? Number(Number(specDeposit).toFixed(2))
+        : 39.99;
+
+    const directAvailable = item.productId
+      ? directReturnedByProductId.get(item.productId) || 0
+      : directReturnedByName.get(String(item.productName || "").trim().toLowerCase()) || 0;
+
+    const directReturned = Math.min(orderedQty, directAvailable);
+    if (item.productId) {
+      directReturnedByProductId.set(item.productId, Math.max(0, directAvailable - directReturned));
+    } else {
+      const key = String(item.productName || "").trim().toLowerCase();
+      directReturnedByName.set(key, Math.max(0, directAvailable - directReturned));
+    }
+
+    let remainingShortfall = Math.max(0, orderedQty - directReturned);
+    let compatibleAlternativeMatched = 0;
+
+    for (const alt of alternativePool) {
+      if (remainingShortfall <= 0) break;
+      if (alt.remaining <= 0) continue;
+
+      const compat = validateCylinderExchangeCompatibility(
+        gasType,
+        cylinderSize,
+        alt.cylinderName
+      );
+      if (compat.isCompatible) {
+        const take = Math.min(remainingShortfall, alt.remaining);
+        alt.remaining -= take;
+        alt.matchedQuantity += take;
+        compatibleAlternativeMatched += take;
+        remainingShortfall -= take;
+      }
+    }
+
+    const totalMatched = directReturned + compatibleAlternativeMatched;
+    const exchange = calculateCylinderExchange({
+      orderedQuantity: orderedQty,
+      returningEmpties: totalMatched > 0,
+      returnedCylinderType: item.productName,
+      emptyCount: totalMatched,
+      refillUnitPrice: Number(item.unitPrice) || 0,
+      depositPerUnit,
+      orderedGasType: gasType,
+      orderedSize: cylinderSize,
+    });
+
+    const lineUnmatched = exchange.additionalFullCount;
+    const lineFee = Number(exchange.depositTotal.toFixed(2));
+
+    unmatchedQuantity += lineUnmatched;
+    assessedFee = Number((assessedFee + lineFee).toFixed(2));
+
+    lineAssessments.push({
+      productId: item.productId,
+      cylinderName: item.productName,
+      orderedQuantity: orderedQty,
+      directReturnedQuantity: directReturned,
+      compatibleAlternativeMatched,
+      unmatchedQuantity: lineUnmatched,
+      depositPerUnit,
+      historicalUnitPrice: Number(item.unitPrice) || 0,
+      lineFee,
+    });
+  }
+
+  return {
+    hasShortReturn: unmatchedQuantity > 0,
+    expectedTotalQuantity,
+    returnedTotalQuantity,
+    unmatchedQuantity,
+    assessedFee,
+    status: assessedFee > 0 ? "payment_required" : "none",
+    lineAssessments,
+    alternativeReturnsUsed: alternativePool.map((a) => ({
+      productId: a.productId,
+      cylinderName: a.cylinderName,
+      returnedQuantity: a.returnedQuantity,
+      matchedQuantity: a.matchedQuantity,
+    })),
+  };
+}
+
 // =============================================================================
 // 5. FULFILMENT: CLICK & COLLECT & POSTCODE DELIVERY COVERAGE
 // =============================================================================

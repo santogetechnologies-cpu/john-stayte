@@ -5,6 +5,7 @@ import {
   isValidForecourtBranchId,
   evaluateBranchOrderPaymentEligibility,
 } from "@/lib/branch-service";
+import { calculateShortReturnAssessment } from "@/lib/customer-order-pricing-service";
 
 export interface CreateBranchStaffInput {
   fullName: string;
@@ -777,6 +778,140 @@ export interface CylinderReturnEntryInput {
   notes?: string;
 }
 
+async function syncShortReturnAssessmentRecord(
+  supabaseAdmin: any,
+  params: {
+    orderId: string;
+    orderRow: any;
+    callerProfile: any;
+    role: string;
+    assessment: ReturnType<typeof calculateShortReturnAssessment>;
+    existingAssessment: any | null;
+  },
+): Promise<{
+  ok: boolean;
+  error?: string;
+  alreadyAssessed?: boolean;
+  updated?: boolean;
+  immutable?: boolean;
+  assessment?: any;
+}> {
+  const { orderId, orderRow, callerProfile, role, assessment, existingAssessment } = params;
+
+  const resolvedBranchId =
+    orderRow.assigned_branch_id ||
+    (role === "branch_staff" ? callerProfile.assigned_branch_id : null) ||
+    null;
+  const resolvedBranchName = String(
+    orderRow.assigned_depot ||
+      orderRow.delivery_address?.collection_branch ||
+      (role === "branch_staff" ? callerProfile.assigned_branch : "") ||
+      ""
+  ).trim();
+
+  const nowIso = new Date().toISOString();
+  const nextStatus = assessment.assessedFee > 0 ? "payment_required" : "none";
+  const recordPayload = {
+    order_id: orderId,
+    branch_id: resolvedBranchId,
+    branch_name: resolvedBranchName,
+    expected_total_quantity: assessment.expectedTotalQuantity,
+    returned_total_quantity: assessment.returnedTotalQuantity,
+    unmatched_quantity: assessment.unmatchedQuantity,
+    assessed_fee: assessment.assessedFee,
+    currency: "GBP",
+    status: nextStatus,
+    calculation_details: {
+      lines: assessment.lineAssessments,
+      alternativeReturnsUsed: assessment.alternativeReturnsUsed,
+    },
+    assessed_by: callerProfile.id,
+    assessed_at: nowIso,
+    updated_at: nowIso,
+  };
+
+  if (existingAssessment) {
+    const existingStatus = String(existingAssessment.status || "").toLowerCase();
+    if (existingStatus === "paid" || existingStatus === "waived") {
+      const changed =
+        Number(existingAssessment.assessed_fee) !== Number(assessment.assessedFee) ||
+        Number(existingAssessment.unmatched_quantity) !== Number(assessment.unmatchedQuantity) ||
+        Number(existingAssessment.returned_total_quantity) !== Number(assessment.returnedTotalQuantity);
+
+      if (changed) {
+        return {
+          ok: false,
+          error:
+            "Cylinder return quantities cannot be changed after the short-return assessment has been paid or waived.",
+        };
+      }
+
+      return {
+        ok: true,
+        alreadyAssessed: true,
+        immutable: true,
+        assessment: existingAssessment,
+      };
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("order_short_return_assessments")
+      .update({
+        expected_total_quantity: recordPayload.expected_total_quantity,
+        returned_total_quantity: recordPayload.returned_total_quantity,
+        unmatched_quantity: recordPayload.unmatched_quantity,
+        assessed_fee: recordPayload.assessed_fee,
+        status: recordPayload.status,
+        calculation_details: recordPayload.calculation_details,
+        assessed_by: recordPayload.assessed_by,
+        assessed_at: recordPayload.assessed_at,
+        updated_at: recordPayload.updated_at,
+      })
+      .eq("id", existingAssessment.id)
+      .in("status", ["none", "assessed", "payment_required"]);
+
+    if (updateErr) {
+      return { ok: false, error: `Failed to update short-return assessment: ${updateErr.message}` };
+    }
+
+    return {
+      ok: true,
+      alreadyAssessed: false,
+      updated: true,
+      assessment: { ...existingAssessment, ...recordPayload },
+    };
+  }
+
+  const { error: insertErr } = await supabaseAdmin
+    .from("order_short_return_assessments")
+    .insert(recordPayload);
+
+  if (insertErr) {
+    if (insertErr.code === "23505") {
+      const { data: racedRow } = await supabaseAdmin
+        .from("order_short_return_assessments")
+        .select("*")
+        .eq("order_id", orderId)
+        .maybeSingle();
+
+      if (racedRow) {
+        return syncShortReturnAssessmentRecord(supabaseAdmin, {
+          ...params,
+          existingAssessment: racedRow,
+        });
+      }
+    }
+    return { ok: false, error: `Failed to save short-return assessment: ${insertErr.message}` };
+  }
+
+  return {
+    ok: true,
+    alreadyAssessed: false,
+    updated: false,
+    assessment: recordPayload,
+  };
+}
+
 export interface CompleteBranchHandoverInput {
   orderId: string;
   authToken?: string;
@@ -923,7 +1058,7 @@ export async function handleVerifyAndCompleteBranchHandover(
 
     const { data: orderItemsRows, error: orderItemsErr } = await supabaseAdmin
       .from("order_items")
-      .select("product_id, product_name, quantity")
+      .select("product_id, product_name, quantity, unit_price, total_price")
       .eq("order_id", orderId);
 
     if (orderItemsErr) {
@@ -934,6 +1069,7 @@ export async function handleVerifyAndCompleteBranchHandover(
     }
 
     const expectedByProductId = new Map<string, number>();
+    const productCache = new Map<string, { id: string; name: string; subcategory?: string | null; specs?: Record<string, any> | null }>();
     const orderItemsList = Array.isArray(orderItemsRows) ? orderItemsRows : [];
     for (const item of orderItemsList) {
       if (item?.product_id) {
@@ -989,7 +1125,7 @@ export async function handleVerifyAndCompleteBranchHandover(
 
         const { data: prodRow, error: prodErr } = await supabaseAdmin
           .from("products")
-          .select("id, name")
+          .select("id, name, subcategory, specs")
           .eq("id", productId)
           .maybeSingle();
 
@@ -1008,6 +1144,7 @@ export async function handleVerifyAndCompleteBranchHandover(
           };
         }
         trustedName = actualProductName;
+        productCache.set(productId, prodRow);
 
         if (expectedByProductId.has(productId)) {
           const trustedExpectedQty = isExchangeOrder ? expectedByProductId.get(productId)! : 0;
@@ -1066,6 +1203,88 @@ export async function handleVerifyAndCompleteBranchHandover(
       }
     }
 
+    // Phase 1: Server-side short-return price calculation & assessment
+    if (isExchangeOrder && String(orderRow.status || "").trim() !== "Delivered") {
+      // Ensure all order_items product details (including specs.deposit_price) are loaded
+      for (const item of orderItemsList) {
+        const pid = item?.product_id ? String(item.product_id).trim() : "";
+        if (pid && !productCache.has(pid)) {
+          const { data: prodRow } = await supabaseAdmin
+            .from("products")
+            .select("id, name, subcategory, specs")
+            .eq("id", pid)
+            .maybeSingle();
+          if (prodRow) {
+            productCache.set(pid, prodRow);
+          }
+        }
+      }
+
+      const assessment = calculateShortReturnAssessment({
+        isExchangeOrder,
+        orderItems: orderItemsList.map((item: any) => {
+          const pid = item?.product_id ? String(item.product_id).trim() : null;
+          return {
+            productId: pid,
+            productName: String(item?.product_name || "Gas Cylinder"),
+            quantity: Math.max(0, Number(item?.quantity) || 0),
+            unitPrice: Number(item?.unit_price) || 0,
+            product: pid ? productCache.get(pid) || null : null,
+          };
+        }),
+        cylinderReturns: validatedReturns.map((r) => ({
+          productId: r.product_id,
+          cylinderName: r.cylinder_name,
+          expectedQuantity: r.expected_quantity,
+          returnedQuantity: r.returned_quantity,
+        })),
+      });
+
+      const { data: existingAssessment, error: existErr } = await supabaseAdmin
+        .from("order_short_return_assessments")
+        .select("*")
+        .eq("order_id", orderId)
+        .maybeSingle();
+
+      if (existErr) {
+        return {
+          ok: false,
+          error: `Unable to verify short-return assessment: ${existErr.message}`,
+        };
+      }
+
+      if (assessment.assessedFee > 0 || existingAssessment) {
+        const syncRes = await syncShortReturnAssessmentRecord(supabaseAdmin, {
+          orderId,
+          orderRow,
+          callerProfile,
+          role,
+          assessment,
+          existingAssessment,
+        });
+
+        if (!syncRes.ok) {
+          return {
+            ok: false,
+            error: syncRes.error,
+          };
+        }
+
+        const effectiveStatus = String(syncRes.assessment?.status || "").toLowerCase();
+        if (assessment.assessedFee > 0 && effectiveStatus !== "paid" && effectiveStatus !== "waived") {
+          return {
+            ok: false,
+            error: `Short-return fee of £${assessment.assessedFee.toFixed(2)} assessed for ${assessment.unmatchedQuantity} unmatched cylinder(s). Handover cannot complete until additional payment is settled.`,
+            data: {
+              shortReturnAssessment: assessment,
+              assessmentRecord: syncRes.assessment,
+              paymentRequired: true,
+            },
+          };
+        }
+      }
+    }
+
     // Execute cylinder return insertion + order completion atomically via PostgreSQL RPC
     const { data: rpcResult, error: rpcErr } = await supabaseAdmin.rpc(
       "complete_branch_handover_with_returns",
@@ -1109,5 +1328,237 @@ export const verifyAndCompleteBranchHandoverServerFn = createServerFn({ method: 
   .validator((data: CompleteBranchHandoverInput) => data)
   .handler(async ({ data }): Promise<ServerFnResponse> => {
     return handleVerifyAndCompleteBranchHandover(getSupabaseAdmin(), data);
+  });
+
+export interface AssessShortReturnInput {
+  orderId: string;
+  authToken?: string;
+  cylinderReturns: CylinderReturnEntryInput[];
+}
+
+/**
+ * Pure/injectable handler to calculate and persist a server-side short-return fee assessment
+ * without modifying original order prices, VAT, payment status, or completing handover.
+ */
+export async function handleAssessBranchOrderShortReturn(
+  supabaseAdmin: any,
+  data: AssessShortReturnInput,
+): Promise<ServerFnResponse> {
+  try {
+    const orderId = (data?.orderId || "").trim();
+    const authToken = (data?.authToken || "").trim();
+
+    if (!orderId) {
+      return { ok: false, error: "Order ID is required." };
+    }
+    if (!authToken) {
+      return { ok: false, error: "Authentication token is required." };
+    }
+
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(authToken);
+    if (userErr || !userData?.user) {
+      return { ok: false, error: "Invalid or expired user session." };
+    }
+
+    const { data: callerProfile, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, role, status, assigned_branch, assigned_branch_id")
+      .eq("id", userData.user.id)
+      .maybeSingle();
+
+    if (profErr || !callerProfile) {
+      return { ok: false, error: "Unable to verify caller profile." };
+    }
+
+    const role = String(callerProfile.role || "").toLowerCase();
+    if (role !== "admin" && role !== "manager" && role !== "branch_staff") {
+      return { ok: false, error: "Forbidden: Branch Staff, Manager, or Admin access required." };
+    }
+    if (role === "branch_staff" && String(callerProfile.status || "").toLowerCase() === "inactive") {
+      return { ok: false, error: "Inactive branch staff accounts cannot assess orders." };
+    }
+
+    const { data: orderRow, error: orderErr } = await supabaseAdmin
+      .from("orders")
+      .select("id, order_number, assigned_branch_id, assigned_depot, delivery_address, notes, status")
+      .eq("id", orderId)
+      .maybeSingle();
+
+    if (orderErr || !orderRow) {
+      return { ok: false, error: orderErr?.message || "Order not found." };
+    }
+
+    if (role === "branch_staff") {
+      const staffBranchId = String(callerProfile.assigned_branch_id || "").trim().toLowerCase();
+      const staffBranchName = String(callerProfile.assigned_branch || "").trim().toLowerCase();
+      const orderBranchId = String(orderRow.assigned_branch_id || "").trim().toLowerCase();
+      const orderDepot = String(orderRow.assigned_depot || "").trim().toLowerCase();
+      const orderColBranch = String(orderRow.delivery_address?.collection_branch || "").trim().toLowerCase();
+
+      const matchesBranchId = Boolean(staffBranchId && orderBranchId && staffBranchId === orderBranchId);
+      const matchesBranchName = Boolean(
+        staffBranchName &&
+          ((orderDepot && orderDepot.includes(staffBranchName)) ||
+            (orderColBranch && orderColBranch.includes(staffBranchName)))
+      );
+
+      if (!matchesBranchId && !matchesBranchName) {
+        return { ok: false, error: "Forbidden: This order is not assigned to your branch." };
+      }
+    }
+
+    const { data: existingAssessment, error: existErr } = await supabaseAdmin
+      .from("order_short_return_assessments")
+      .select("*")
+      .eq("order_id", orderId)
+      .maybeSingle();
+
+    if (existErr) {
+      return { ok: false, error: `Unable to check existing assessment: ${existErr.message}` };
+    }
+
+    // Assessments on already-Delivered orders are immutable
+    if (String(orderRow.status || "").trim() === "Delivered") {
+      if (existingAssessment) {
+        return {
+          ok: true,
+          message: "Order is already Delivered; historical assessment is immutable.",
+          data: {
+            alreadyAssessed: true,
+            immutable: true,
+            assessment: existingAssessment,
+          },
+        };
+      }
+      return {
+        ok: false,
+        error: "Cannot create or modify a short-return assessment for an already Delivered order.",
+      };
+    }
+
+    const { data: orderItemsRows, error: itemsErr } = await supabaseAdmin
+      .from("order_items")
+      .select("product_id, product_name, quantity, unit_price, total_price")
+      .eq("order_id", orderId);
+
+    if (itemsErr) {
+      return { ok: false, error: `Unable to load order items: ${itemsErr.message}` };
+    }
+
+    const isExchangeOrder =
+      Boolean(orderRow.delivery_address?.empty_cylinder_required) ||
+      String(orderRow.notes || "").includes("Empty Cylinder Required: Yes") ||
+      String(orderRow.notes || "").includes("REFILL_EXCHANGE");
+
+    const orderItemsList = Array.isArray(orderItemsRows) ? orderItemsRows : [];
+    const productCache = new Map<string, any>();
+
+    for (const item of orderItemsList) {
+      const pid = item?.product_id ? String(item.product_id).trim() : "";
+      if (pid && !productCache.has(pid)) {
+        const { data: prodRow } = await supabaseAdmin
+          .from("products")
+          .select("id, name, subcategory, specs")
+          .eq("id", pid)
+          .maybeSingle();
+        if (prodRow) productCache.set(pid, prodRow);
+      }
+    }
+
+    const rawReturns = Array.isArray(data?.cylinderReturns) ? data.cylinderReturns : [];
+    for (const ret of rawReturns) {
+      const pid = ret?.productId ? String(ret.productId).trim() : "";
+      const qty = Number(ret?.returnedQuantity);
+      const exp = Number(ret?.expectedQuantity);
+      if (!Number.isInteger(qty) || qty < 0 || !Number.isInteger(exp) || exp < 0) {
+        return { ok: false, error: "Returned and expected quantities must be non-negative integers." };
+      }
+      if (pid && !productCache.has(pid)) {
+        const { data: prodRow } = await supabaseAdmin
+          .from("products")
+          .select("id, name, subcategory, specs")
+          .eq("id", pid)
+          .maybeSingle();
+        if (!prodRow) {
+          return { ok: false, error: `Invalid cylinder product ID for "${ret.cylinderName}".` };
+        }
+        productCache.set(pid, prodRow);
+      }
+    }
+
+    const assessment = calculateShortReturnAssessment({
+      isExchangeOrder,
+      orderItems: orderItemsList.map((item: any) => {
+        const pid = item?.product_id ? String(item.product_id).trim() : null;
+        return {
+          productId: pid,
+          productName: String(item?.product_name || "Gas Cylinder"),
+          quantity: Math.max(0, Number(item?.quantity) || 0),
+          unitPrice: Number(item?.unit_price) || 0,
+          product: pid ? productCache.get(pid) || null : null,
+        };
+      }),
+      cylinderReturns: rawReturns.map((r) => {
+        const pid = r.productId ? String(r.productId).trim() : null;
+        const prod = pid ? productCache.get(pid) : null;
+        return {
+          productId: pid,
+          cylinderName: prod?.name || String(r.cylinderName || "").trim(),
+          expectedQuantity: Number(r.expectedQuantity) || 0,
+          returnedQuantity: Number(r.returnedQuantity) || 0,
+        };
+      }),
+    });
+
+    const syncRes = await syncShortReturnAssessmentRecord(supabaseAdmin, {
+      orderId,
+      orderRow,
+      callerProfile,
+      role,
+      assessment,
+      existingAssessment,
+    });
+
+    if (!syncRes.ok) {
+      return { ok: false, error: syncRes.error };
+    }
+
+    if (syncRes.immutable) {
+      return {
+        ok: true,
+        message: "Short-return assessment is already paid or waived and remains immutable.",
+        data: {
+          alreadyAssessed: true,
+          immutable: true,
+          assessment: syncRes.assessment,
+        },
+      };
+    }
+
+    return {
+      ok: true,
+      message:
+        assessment.assessedFee > 0
+          ? `Short-return fee of £${assessment.assessedFee.toFixed(2)} assessed.`
+          : "Full cylinder exchange verified — no short-return fee.",
+      data: {
+        alreadyAssessed: false,
+        updated: Boolean(syncRes.updated),
+        assessment: syncRes.assessment,
+      },
+    };
+  } catch (err: any) {
+    console.error("[assessBranchOrderShortReturnServerFn] Unexpected error:", err);
+    return { ok: false, error: err?.message || "An unexpected server error occurred." };
+  }
+}
+
+/**
+ * Server function to calculate and persist short-return fee assessment for an order.
+ */
+export const assessBranchOrderShortReturnServerFn = createServerFn({ method: "POST" })
+  .validator((data: AssessShortReturnInput) => data)
+  .handler(async ({ data }): Promise<ServerFnResponse> => {
+    return handleAssessBranchOrderShortReturn(getSupabaseAdmin(), data);
   });
 

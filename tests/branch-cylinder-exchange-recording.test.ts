@@ -22,6 +22,7 @@ interface MockOpts {
 
 function createExchangeMockDb(opts: MockOpts = {}) {
   const insertedReturns: any[] = [...(opts.existingReturns || [])];
+  const assessments: any[] = [];
   let orderStatus = opts.orderStatus ?? "Ready";
   let updatedOrderPayload: any = null;
   let rpcLock = Promise.resolve();
@@ -99,14 +100,26 @@ function createExchangeMockDb(opts: MockOpts = {}) {
               }
               if (table === "products") {
                 return productsMap[val]
-                  ? { data: { id: val, name: productsMap[val] }, error: null }
+                  ? { data: { id: val, name: productsMap[val], specs: { deposit_price: 39.99 } }, error: null }
                   : { data: null, error: null };
+              }
+              if (table === "order_short_return_assessments") {
+                return {
+                  data: assessments.find((a) => a.order_id === val) || null,
+                  error: null,
+                };
               }
               return { data: null, error: null };
             },
           });
         },
       }),
+      insert: async (row: any) => {
+        if (table === "order_short_return_assessments") {
+          assessments.push(row);
+        }
+        return { error: null };
+      },
     }),
     rpc: async (fnName: string, params: any) => {
       if (fnName !== "complete_branch_handover_with_returns") {
@@ -186,7 +199,7 @@ function createExchangeMockDb(opts: MockOpts = {}) {
   };
 }
 
-test("records zero returns cleanly when customer returns 0 empties", async () => {
+test("records zero returns cleanly and blocks unpaid handover with persisted assessment", async () => {
   const db = createExchangeMockDb({
     orderItems: [{ product_id: "prod-13kg", product_name: "13kg Propane", quantity: 2 }],
   });
@@ -203,15 +216,13 @@ test("records zero returns cleanly when customer returns 0 empties", async () =>
     ],
   });
 
-  assert.equal(res.ok, true);
-  assert.equal(db.getInsertedReturns().length, 1);
-  assert.equal(db.getInsertedReturns()[0].returned_quantity, 0);
-  assert.equal(db.getInsertedReturns()[0].expected_quantity, 2);
-  assert.equal(db.getInsertedReturns()[0].recorded_by, "staff-1");
-  assert.equal(db.getUpdatedOrderPayload()?.status, "Delivered");
+  assert.equal(res.ok, false);
+  assert.equal(res.data?.paymentRequired, true);
+  assert.equal(res.data?.shortReturnAssessment?.assessedFee, 79.98);
+  assert.equal(db.getOrderStatus(), "Ready");
 });
 
-test("records multiple cylinder types and partial returns", async () => {
+test("records multiple cylinder types and assesses partial return without completing unpaid handover", async () => {
   const db = createExchangeMockDb();
   const res = await handleVerifyAndCompleteBranchHandover(db, {
     orderId: "order-1",
@@ -232,10 +243,10 @@ test("records multiple cylinder types and partial returns", async () => {
     ],
   });
 
-  assert.equal(res.ok, true);
-  assert.equal(db.getInsertedReturns().length, 2);
-  assert.equal(db.getInsertedReturns()[0].returned_quantity, 1);
-  assert.equal(db.getInsertedReturns()[1].returned_quantity, 0);
+  assert.equal(res.ok, false);
+  assert.equal(res.data?.paymentRequired, true);
+  assert.equal(res.data?.shortReturnAssessment?.assessedFee, 39.99);
+  assert.equal(db.getOrderStatus(), "Ready");
 });
 
 test("allows alternative returned cylinder type with expected quantity 0 and returned quantity > 0", async () => {
@@ -483,7 +494,7 @@ test("rejects empty cylinderReturns array or missing expected cylinder on exchan
   assert.equal(dbMissing.getInsertedReturns().length, 0);
 });
 
-test("accepts exchange order when all expected cylinder types are recorded with zero returns", async () => {
+test("blocks handover when exchange order has all zero returns and unpaid fee", async () => {
   const db = createExchangeMockDb({ isExchange: true });
   const res = await handleVerifyAndCompleteBranchHandover(db, {
     orderId: "order-1",
@@ -504,11 +515,11 @@ test("accepts exchange order when all expected cylinder types are recorded with 
     ],
   });
 
-  assert.equal(res.ok, true);
-  assert.equal(db.getInsertedReturns().length, 2);
-  assert.equal(db.getInsertedReturns()[0].returned_quantity, 0);
-  assert.equal(db.getInsertedReturns()[1].returned_quantity, 0);
-  assert.equal(db.getOrderStatus(), "Delivered");
+  assert.equal(res.ok, false);
+  assert.equal(res.data?.paymentRequired, true);
+  assert.equal(res.data?.shortReturnAssessment?.unmatchedQuantity, 2);
+  assert.equal(res.data?.shortReturnAssessment?.assessedFee, 79.98);
+  assert.equal(db.getOrderStatus(), "Ready");
 });
 
 test("accepts non-exchange order with empty cylinderReturns array", async () => {
