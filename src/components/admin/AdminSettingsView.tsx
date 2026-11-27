@@ -92,7 +92,8 @@ export function AdminSettingsView() {
   const runPushDiagnostic = async () => {
     setPushDiagLoading(true);
     try {
-      const res = await verifyFirebaseCredentialsServerFn({ data: {} });
+      const authToken = await getAuthToken();
+      const res = await verifyFirebaseCredentialsServerFn({ data: { authToken } });
       setPushDiagResult(res);
       if (res.credentialsLoaded && res.oauthTokenExchangeOk) {
         toast.success("Push Notification credentials verified successfully with Firebase!");

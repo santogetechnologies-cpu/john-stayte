@@ -6,6 +6,7 @@ import { triggerPaymentStatusPushInternal } from "./push-notification-server-fn"
 
 export interface CreateElavonSessionInput {
   orderId: string;
+  authToken?: string | null;
   orderNumber?: string;
   amount?: number;
   currency?: string;
@@ -135,9 +136,10 @@ function resolveElavonConfig() {
  * Server creates the order and payment-session resources in Elavon via Basic Auth
  * and returns the secure hosted payment page URL for customer redirection.
  */
-export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST" })
-  .validator((data: CreateElavonSessionInput) => data)
-  .handler(async ({ data }): Promise<CreateElavonSessionResponse> => {
+export async function handleCreateElavonPaymentSession(
+  data: CreateElavonSessionInput,
+  supabaseClient?: any,
+): Promise<CreateElavonSessionResponse> {
     try {
       const payload = ((data as any)?.data || data) as CreateElavonSessionInput | undefined;
       if (!payload || typeof payload !== "object") {
@@ -149,12 +151,21 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
 
       const {
         orderId,
+        authToken,
         currency = "GBP",
         customerEmail,
         customerName,
         returnUrl,
         cancelUrl,
       } = payload;
+
+      const cleanToken = typeof authToken === "string" ? authToken.trim() : "";
+      if (!cleanToken) {
+        return {
+          ok: false,
+          error: "Authentication required to initiate payment.",
+        };
+      }
 
       if (!orderId || typeof orderId !== "string" || !orderId.trim()) {
         return {
@@ -172,20 +183,28 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
         };
       }
 
-      const config = resolveElavonConfig();
-      if (!config.isConfigured || !config.merchantAlias || !config.secretKey) {
+      const supabase = supabaseClient || getServerSupabase();
+
+      // Authenticate caller via Supabase Auth (never trust client-supplied user ID or role)
+      const { data: authData, error: authErr } = await supabase.auth.getUser(cleanToken);
+      const callerUserId = authData?.user?.id;
+      if (authErr || !callerUserId) {
         return {
           ok: false,
-          error:
-            "Elavon gateway credentials are not configured on this server. Please set ELAVON_MERCHANT_ALIAS and ELAVON_SECRET_KEY.",
+          error: "Invalid or expired session. Please log in again.",
         };
       }
 
-      const supabase = getServerSupabase();
+      const { data: callerProfile } = await (supabase.from("profiles") as any)
+        .select("role")
+        .eq("id", callerUserId)
+        .maybeSingle();
+      const callerRole = String(callerProfile?.role || "customer").trim().toLowerCase();
+      const isAdminOrManager = callerRole === "admin" || callerRole === "manager";
 
       // Fetch authoritative order record from Supabase (never trust client-supplied amount or orderNumber)
       const { data: existingOrder, error: existingOrderErr } = await (supabase.from("orders") as any)
-        .select("id, order_number, total, subtotal, payment_status, customer_email, customer_name")
+        .select("id, order_number, total, subtotal, payment_status, customer_id, customer_email, customer_name")
         .eq("id", orderId)
         .maybeSingle();
 
@@ -193,6 +212,25 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
         return {
           ok: false,
           error: "Order record could not be found.",
+        };
+      }
+
+      const isOrderOwner = Boolean(
+        existingOrder.customer_id && existingOrder.customer_id === callerUserId,
+      );
+      if (!isOrderOwner && !isAdminOrManager) {
+        return {
+          ok: false,
+          error: "Unauthorized: you do not have permission to pay for this order.",
+        };
+      }
+
+      const config = resolveElavonConfig();
+      if (!config.isConfigured || !config.merchantAlias || !config.secretKey) {
+        return {
+          ok: false,
+          error:
+            "Elavon gateway credentials are not configured on this server. Please set ELAVON_MERCHANT_ALIAS and ELAVON_SECRET_KEY.",
         };
       }
 
@@ -420,6 +458,12 @@ export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST
         error: err.message || "An unexpected error occurred during payment initialization.",
       };
     }
+}
+
+export const createElavonPaymentSessionServerFn = createServerFn({ method: "POST" })
+  .validator((data: CreateElavonSessionInput) => data)
+  .handler(async ({ data }): Promise<CreateElavonSessionResponse> => {
+    return handleCreateElavonPaymentSession(data);
   });
 
 /**

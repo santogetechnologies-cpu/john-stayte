@@ -68,6 +68,7 @@ import {
   createElavonPaymentSessionServerFn,
   verifyElavonPaymentServerFn,
 } from "@/lib/elavon-payment-server-fn";
+import { createCheckoutOrderServerFn } from "@/lib/checkout-order-server-fn";
 import { triggerOrderPlacedPush } from "@/lib/push-notifications";
 
 interface CheckoutSearch {
@@ -687,367 +688,47 @@ function Checkout() {
       await loadLivePricingFromDatabase().catch(() => {});
 
       // 4. Strict Live Database Verification for every cart product & stock level
-      const dbVerifiedCartLines: { product: any; qty: number }[] = [];
-
-      for (const line of lines) {
-        const { data: dbProduct, error: prodErr } = await supabase
-          .from("products")
-          .select("id, name, price, stock, slug, category_slug, subcategory, specs")
-          .eq("slug", line.slug)
-          .single();
-
-        if (prodErr || !dbProduct) {
-          removeFromCart(line.slug);
-          throw new Error(
-            `Product '${line.product.name}' is no longer available in the catalog and has been removed from your basket.`,
-          );
-        }
-
-        const currentStock = Number(dbProduct.stock || 0);
-        if (currentStock < line.qty) {
-          throw new Error(
-            currentStock === 0
-              ? `'${dbProduct.name}' is currently out of stock. Please update your basket.`
-              : `Requested quantity for '${dbProduct.name}' exceeds available stock. Please reduce quantity in basket.`,
-          );
-        }
-
-        dbVerifiedCartLines.push({
-          product: {
-            ...line.product,
-            id: dbProduct.id,
-            name: dbProduct.name,
-            slug: dbProduct.slug,
-            price: Number(dbProduct.price),
-            category: dbProduct.category_slug || line.product.category,
-            sub: dbProduct.subcategory || line.product.sub,
-            specs:
-              dbProduct.specs && typeof dbProduct.specs === "object" && !Array.isArray(dbProduct.specs)
-                ? dbProduct.specs
-                : line.product.specs,
-          },
-          qty: line.qty,
-        });
-      }
-
-      const preOfferTotals = calculateCheckoutOrderTotals({
-        lines: dbVerifiedCartLines,
-        customer: customerPricing,
-        cylinderExchangeType,
-        returnedCylinderType,
-        returnedEmptyCount,
-        fulfilmentMethod,
-        systemSettings: settings,
-        offerDiscount: 0,
-      });
-
-      if (preOfferTotals.pricingErrors.length > 0) {
-        throw new Error(preOfferTotals.pricingErrors[0]);
-      }
-
-      const verifiedItems = preOfferTotals.lineBreakdowns.map((b) => ({
-        product_id: b.productId,
-        product_name: b.productName,
-        quantity: b.quantity,
-        unit_price: b.unitPrice,
-        total_price: b.totalPrice,
-      }));
-
-      const finalSubtotal = preOfferTotals.subtotal;
-      if (finalSubtotal <= 0) {
-        throw new Error("Order total must be greater than £0.00 to place an order.");
-      }
-      const isCollection = fulfilmentMethod === "collection";
-      const effectiveShipping = preOfferTotals.shipping;
-      const finalTotal = preOfferTotals.total;
-      const orderNumber = `JSS-${Date.now().toString().slice(-6)}`;
-
-      const branchAssignment = resolveCheckoutBranchAssignment(fulfilmentMethod, selectedBranch);
-
-      // Validate delivery coverage if delivery selected
-      if (!isCollection) {
-        const coverage = validateDeliveryPostcode(postcode);
-        if (!coverage.valid) {
-          throw new Error(coverage.message || "Entered postcode is outside our standard delivery fleet coverage.");
-        }
-      }
-
-      // Validate credit facility if Credit Account selected
-      if (paymentMethod === "credit_account") {
-        const creditVal = await validateCustomerCreditAccount(currentUserId, finalTotal);
-        if (!creditVal.withinTerms) {
-          throw new Error(creditVal.error || "Order total exceeds available commercial credit facility limit.");
-        }
-      }
-
-      type OrderPaymentStatus = "Pending" | "Paid" | "Failed" | "Cancelled";
-      const getInitialPaymentStatus = (): OrderPaymentStatus => "Pending";
-      const finalPaymentStatus: OrderPaymentStatus = getInitialPaymentStatus();
-      const finalPaymentMethod =
-        paymentMethod === "credit_account"
-          ? "Credit Account (30-Day Invoice)"
-          : paymentMethod === "card"
-            ? "Credit / Debit Card (Elavon)"
-            : isCollection
-              ? "Pay upon Collection"
-              : "Pay on Delivery";
-
-      const isEmptyRequired = hasCylinderInCart ? cylinderExchangeType === "refill" : false;
-      const orderTypeTag = hasCylinderInCart
-        ? cylinderExchangeType === "refill"
-          ? "REFILL_EXCHANGE"
-          : "NEW_CYLINDER"
-        : "STANDARD";
-
-      const cylinderReminder = getOrderCylinderReminder(fulfilmentMethod, hasCylinderInCart && isEmptyRequired);
-
-      // 5. Create Initial Order Record in Supabase (with authoritative values)
-      const provisionalTotal = preOfferTotals.total;
-      const { data: newOrder, error: orderErr } = await (supabase.from("orders") as any)
-        .insert([
-          {
-            order_number: orderNumber,
-            customer_id: currentUserId,
-            customer_name: fullName.trim(),
-            customer_email: currentEmail,
-            customer_phone: phone.trim(),
-            delivery_address: {
-              name: fullName.trim(),
-              street: isCollection ? `[Click & Collect: ${selectedBranch}]` : address.trim(),
-              postcode: isCollection ? "" : postcode.trim(),
-              phone: phone.trim(),
-              payment_method: finalPaymentMethod,
-              empty_cylinder_required: isEmptyRequired,
-              order_type: orderTypeTag,
-              fulfilment_method: fulfilmentMethod,
-              collection_branch: branchAssignment.collectionBranch,
-              collection_branch_id: branchAssignment.collectionBranchId,
-            },
-            assigned_branch_id: branchAssignment.assignedBranchId,
-            customer_account_number: customerPricing.customerCode || undefined,
-            subtotal: finalSubtotal,
-            shipping_fee: effectiveShipping,
-            total: provisionalTotal,
-            status: "Pending",
-            fulfillment_status: "Pending",
-            assigned_depot: branchAssignment.assignedDepot,
-            payment_status: finalPaymentStatus,
-            notes: [
-              `[Payment: ${finalPaymentMethod}]`,
-              isCollection ? `[Click & Collect: ${selectedBranch}]` : "[Standard Delivery]",
-              customerPricing.customerCode ? `[Account: ${customerPricing.customerCode}]` : "",
-              hasCylinderInCart
-                ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]`
-                : "",
-              hasCylinderInCart ? `[${orderTypeTag}]` : "",
-            ]
-              .filter(Boolean)
-              .join(" | "),
-          },
-        ])
-        .select()
-        .single();
-
-      if (orderErr || !newOrder) {
-        throw new Error(orderErr?.message || "Failed to process your order. Please try again.");
-      }
-
-      createdOrderId = newOrder.id;
-
-      // 6. Authoritative Atomic Server Offer Validation & Concurrency Lock
-      let verifiedDiscount = 0;
-      let verifiedOfferId: string | null = null;
-      let verifiedOfferCode: string | null = null;
-
-      if (appliedOffer) {
-        try {
-          const valRes = await validateAndRedeemOfferServer({
-            offerId: appliedOffer.id || null,
-            code: appliedOffer.code || null,
-            userId: currentUserId || null,
-            email: currentEmail,
-            cartItems: verifiedItems,
-            subtotal: finalSubtotal,
-            // Only execute database redemption lock for offline/COD orders.
-            // For card payments, pass null so offer rules/discounts are validated
-            // without consuming the customer's redemption until payment is captured.
-            orderId: paymentMethod === "card" ? null : newOrder.id,
-          });
-
-          if (valRes.isValid && valRes.discountAmount > 0) {
-            verifiedDiscount = valRes.discountAmount;
-            verifiedOfferId = valRes.offerId || appliedOffer.id;
-            verifiedOfferCode = valRes.offerCode || appliedOffer.code || null;
-          } else if (!valRes.isValid) {
-            // Non-blocking fallback: Order continues safely with standard £0.00 discount
-            toast.info(
-              valRes.message ||
-                "This offer is no longer available. Your order will continue without the discount.",
-            );
-            verifiedDiscount = 0;
-            verifiedOfferId = null;
-            verifiedOfferCode = null;
-          }
-        } catch (valErr) {
-          console.warn("Offer validation server notice:", valErr);
-          toast.info(
-            "This offer could not be applied. Your order will continue without the discount.",
-          );
-          verifiedDiscount = 0;
-          verifiedOfferId = null;
-          verifiedOfferCode = null;
-        }
-      }
-
-      // Recompute authoritative final total using the single shared pricing calculator
-      const finalTotals = calculateCheckoutOrderTotals({
-        lines: dbVerifiedCartLines,
-        customer: customerPricing,
-        cylinderExchangeType,
-        returnedCylinderType,
-        returnedEmptyCount,
-        fulfilmentMethod,
-        systemSettings: settings,
-        offerDiscount: verifiedDiscount,
-      });
-
-      const authoritativeShipping = finalTotals.shipping;
-      const authoritativeVat = finalTotals.vat;
-      const finalAuthoritativeTotal = finalTotals.total;
-
-      // Update order record with authoritative total, shipping, and offer linkage
-      await (supabase.from("orders") as any)
-        .update({
-          shipping_fee: authoritativeShipping,
-          total: finalAuthoritativeTotal,
-          offer_id: finalTotals.offerDiscount > 0 ? verifiedOfferId : null,
-          offer_code: finalTotals.offerDiscount > 0 ? verifiedOfferCode : null,
-          notes: [
-            `[Payment: ${finalPaymentMethod}]`,
-            isCollection ? `[Click & Collect: ${selectedBranch}]` : "[Standard Delivery]",
-            finalTotals.offerDiscount > 0 ? `[Offer Applied: -${gbp(finalTotals.offerDiscount)}]` : "",
-            finalTotals.lifetimeDiscountAmount > 0
-              ? `[Lifetime Loyalty Discount (${finalTotals.lifetimeTierName || `${finalTotals.lifetimeDiscountPercentageApplied}%`}): -${gbp(finalTotals.lifetimeDiscountAmount)}]`
-              : "",
-            hasCylinderInCart ? `[Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}]` : "",
-            hasCylinderInCart && isEmptyRequired ? `[Returned: ${returnedCylinderType} x ${returnedEmptyCount}]` : "",
-            hasCylinderInCart ? `[${orderTypeTag}]` : "",
-            cylinderReminder ? `[Reminder: ${cylinderReminder}]` : "",
-          ]
-            .filter(Boolean)
-            .join(" | "),
-        })
-        .eq("id", newOrder.id);
-
-      // Also create initial delivery assignment awaiting Admin/Manager assignment
-      try {
-        await (supabase.from("delivery_assignments") as any).insert([
-          {
-            order_id: newOrder.id,
-            order_ref: orderNumber,
-            customer_name: fullName.trim(),
-            address: `${address.trim()}, ${postcode.trim()}`,
-            area: "Gloucestershire",
-            driver_name: "Unassigned",
-            agent_id: null,
-            driver_id: null,
-            vehicle_plate: null,
-            time_slot: "Morning (08:00 - 12:00)",
-            status: "Pending",
-            notes: `[Standard Checkout] | Empty Cylinder Required: ${isEmptyRequired ? "Yes" : "No"}${isEmptyRequired ? " | Expected: 1" : ""}`,
-          },
-        ]);
-      } catch (delErr) {
-        console.warn("Delivery assignment creation notice:", delErr);
-      }
-
-      // 7. Create Order Items Records (with strict transaction rollback on failure)
-      const itemInserts = verifiedItems.map((item) => ({
-        order_id: newOrder.id,
-        product_id: item.product_id,
-        product_name: item.product_name,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total_price: item.total_price,
-      }));
-
-      const { error: itemsErr } = await supabase.from("order_items").insert(itemInserts);
-      if (itemsErr) {
-        // Roll back parent order record to avoid orphan orders (and trigger auto usage rollback)
-        await supabase.from("orders").delete().eq("id", newOrder.id);
-        throw new Error(`Failed to save items for order: ${itemsErr.message}`);
-      }
-
-      // 8. Create Order Status History Record
-      await supabase.from("order_status_history").insert([
-        {
-          order_id: newOrder.id,
-          status: "Pending",
-          actor_id: currentUserId,
-          actor_name: fullName.trim(),
-          notes: `Order placed via online checkout (${finalPaymentMethod} • ${finalPaymentStatus}${verifiedDiscount > 0 ? ` • Discount: -${gbp(verifiedDiscount)}` : ""}).`,
+      // 5. Create authoritative order + items + invoice on server (never trust browser prices/totals)
+      const { data: authSessionData } = await supabase.auth.getSession();
+      const orderCreationRes = await createCheckoutOrderServerFn({
+        data: {
+          authToken: authSessionData?.session?.access_token || null,
+          items: lines.map((l) => ({
+            productId: l.product.id,
+            slug: l.slug,
+            quantity: l.qty,
+          })),
+          cylinderExchangeType,
+          returnedCylinderType,
+          returnedEmptyCount,
+          fulfilmentMethod,
+          selectedBranch,
+          fullName: fullName.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          postcode: postcode.trim(),
+          paymentMethod,
+          offerId: appliedOffer?.id || null,
+          offerCode: appliedOffer?.code || null,
         },
-      ]);
+      });
 
-      // 9. Update Database Inventory for Ordered Products
-      // IMPORTANT: For Card payments, inventory is decremented strictly upon authoritative
-      // payment capture in verifyElavonPaymentServerFn. This prevents abandoned/cancelled
-      // checkouts from consuming stock. For COD, decrement stock immediately.
-      if (paymentMethod !== "card") {
-        for (const item of verifiedItems) {
-          if (item.product_id) {
-            try {
-              const { data: currentInv } = await supabase
-                .from("inventory")
-                .select("current_stock")
-                .eq("product_id", item.product_id)
-                .single();
-
-              if (currentInv) {
-                const newStock = Math.max(0, currentInv.current_stock - item.quantity);
-                await supabase
-                  .from("inventory")
-                  .update({ current_stock: newStock, updated_at: new Date().toISOString() })
-                  .eq("product_id", item.product_id);
-              }
-
-              const { data: currentProd } = await supabase
-                .from("products")
-                .select("stock")
-                .eq("id", item.product_id)
-                .single();
-
-              if (currentProd) {
-                const newStock = Math.max(0, currentProd.stock - item.quantity);
-                await supabase
-                  .from("products")
-                  .update({ stock: newStock, updated_at: new Date().toISOString() })
-                  .eq("id", item.product_id);
-              }
-            } catch (invErr) {
-              console.warn("Inventory update notice:", invErr);
-            }
-          }
-        }
+      if (!orderCreationRes.ok || !orderCreationRes.order || !orderCreationRes.authoritativeTotals) {
+        throw new Error(
+          orderCreationRes.error || "Failed to process your order. Please try again.",
+        );
       }
 
-      // 10. Create Invoice Record in Supabase
-      try {
-        await (supabase.from("invoices") as any).insert([
-          {
-            invoice_number: `INV-${orderNumber.replace("JSS-", "")}`,
-            order_id: newOrder.id,
-            customer_id: currentUserId,
-            customer_name: fullName.trim(),
-            customer_email: currentEmail,
-            subtotal: finalSubtotal,
-            total_amount: finalAuthoritativeTotal,
-            status: finalPaymentStatus === "Paid" ? "Paid" : "Issued",
-          },
-        ]);
-      } catch (invErr) {
-        console.warn("Invoice record notice:", invErr);
-      }
+      const newOrder = orderCreationRes.order;
+      createdOrderId = newOrder.id;
+      const orderNumber = orderCreationRes.orderNumber || newOrder.order_number;
+      const verifiedItems = orderCreationRes.verifiedItems || [];
+      const finalTotals = orderCreationRes.authoritativeTotals;
+      const finalSubtotal = finalTotals.subtotal;
+      const finalTotal = finalTotals.total;
+      const finalAuthoritativeTotal = finalTotals.total;
+      const finalPaymentMethod = orderCreationRes.finalPaymentMethod || paymentMethod;
+      const cylinderReminder = orderCreationRes.cylinderReminder || null;
 
       // 11. Clear Session Applied Offer (for COD; card payments clear after payment verification)
       if (paymentMethod !== "card") {
@@ -1118,9 +799,11 @@ function Checkout() {
       // 12. If Card payment: Initiate secure Elavon payment session and redirect customer
       if (paymentMethod === "card") {
         setIsProcessingPayment(true);
+        const { data: authSessionData } = await supabase.auth.getSession();
         const sessionRes = await createElavonPaymentSessionServerFn({
           data: {
             orderId: newOrder.id,
+            authToken: authSessionData?.session?.access_token || null,
             orderNumber,
             amount: finalAuthoritativeTotal,
             currency: "GBP",

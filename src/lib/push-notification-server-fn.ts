@@ -39,10 +39,7 @@ export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
 
   if (jsonRaw) {
     const whichVar = envNames.find((n) => !!process.env[n]) || "unknown";
-    const preview = jsonRaw.trim().substring(0, 12);
-    console.log(
-      `[Push Service] Credential env var found: ${whichVar}, length=${jsonRaw.length}, preview="${preview}..."`
-    );
+    console.log(`[Push Service] Credential env var found: ${whichVar}`);
 
     try {
       let rawString = jsonRaw.trim();
@@ -69,16 +66,16 @@ export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
           } else {
             console.warn("[Push Service] Base64 decoded but result does not start with '{'. Trying raw parse.");
           }
-        } catch (b64Err) {
-          console.warn("[Push Service] Base64 decode failed, attempting raw JSON parse:", b64Err);
+        } catch {
+          console.warn("[Push Service] Base64 decode failed, attempting raw JSON parse.");
         }
       }
 
       let parsed: any = null;
       try {
         parsed = JSON.parse(rawString);
-      } catch (jsonErr) {
-        console.warn("[Push Service] JSON.parse failed, attempting resilient regex field extraction fallback...", jsonErr);
+      } catch {
+        console.warn("[Push Service] JSON.parse failed, attempting resilient regex field extraction fallback.");
         // Resilient regex fallback: handles literal unescaped newlines in private key pasted into Vercel
         const projMatch = rawString.match(/"project_id"\s*:\s*"([^"]+)"/);
         const emailMatch = rawString.match(/"client_email"\s*:\s*"([^"]+)"/);
@@ -114,11 +111,10 @@ export function getFirebaseServiceAccount(): FirebaseServiceAccount | null {
           );
         }
       }
-    } catch (err) {
+    } catch {
       console.error(
         "[Push Service] Fatal: Could not parse FIREBASE_SERVICE_ACCOUNT_KEY.",
-        "Ensure the value in Vercel is either (a) base64-encoded JSON or (b) discrete env vars.",
-        "Error:", err
+        "Ensure the value in Vercel is either (a) base64-encoded JSON or (b) discrete env vars."
       );
     }
   } else {
@@ -2274,88 +2270,121 @@ export const dispatchPushNotificationServerFn = createServerFn({ method: "POST" 
  * Returns only safe metadata — never exposes key values.
  * Call from admin UI or curl to diagnose Vercel credential configuration.
  */
-export const verifyFirebaseCredentialsServerFn = createServerFn({ method: "POST" })
-  .validator((d: unknown) => d)
-  .handler(async () => {
-    const creds = getFirebaseServiceAccount();
-    const supabase = getSupabaseServerClient();
-
-    // Query active device tokens count
-    let androidCount = 0;
-    let iosCount = 0;
-    try {
-      const { data: tokens } = await supabase
-        .from("user_device_tokens")
-        .select("platform")
-        .eq("is_active", true);
-
-      if (tokens) {
-        androidCount = tokens.filter((t) => t.platform === "android").length;
-        iosCount = tokens.filter((t) => t.platform === "ios").length;
-      }
-    } catch {}
-
-    // Query recent logs
-    let recentLogs: any[] = [];
-    try {
-      const { data: logs } = await supabase
-        .from("notification_dispatch_logs")
-        .select("id, event_type, status, error_message, created_at, tokens_attempted, tokens_succeeded, tokens_failed")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (logs) recentLogs = logs;
-    } catch {}
-
-    if (!creds) {
-      const envKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-      const envProj = process.env.FIREBASE_PROJECT_ID;
-      const envEmail = process.env.FIREBASE_CLIENT_EMAIL;
-      const envKey2 = process.env.FIREBASE_PRIVATE_KEY;
-      return {
-        credentialsLoaded: false,
-        activeTokens: {
-          android: androidCount,
-          ios: iosCount,
-          total: androidCount + iosCount,
-        },
-        recentLogs,
-        details: {
-          FIREBASE_SERVICE_ACCOUNT_KEY: envKey
-            ? `present (length=${envKey.length}, preview="${envKey.substring(0, 8)}...")`
-            : "MISSING",
-          FIREBASE_PROJECT_ID: envProj ? "present" : "MISSING",
-          FIREBASE_CLIENT_EMAIL: envEmail ? "present" : "MISSING",
-          FIREBASE_PRIVATE_KEY: envKey2 ? "present" : "MISSING",
-        },
-        error:
-          "Firebase credentials not configured. Configure FIREBASE_SERVICE_ACCOUNT_KEY (Base64) in Vercel Production environment variables.",
-      };
-    }
-
-    // Test the OAuth2 token exchange to confirm credentials work
-    let oauthOk = false;
-    let oauthError: string | null = null;
-    try {
-      await getGoogleOAuth2Token(creds);
-      oauthOk = true;
-    } catch (err: any) {
-      oauthError = err?.message || String(err);
-    }
-
+export async function handleVerifyFirebaseCredentials(
+  data?: { authToken?: string | null },
+  supabaseClient?: any,
+) {
+  const cleanToken = typeof data?.authToken === "string" ? data.authToken.trim() : "";
+  if (!cleanToken) {
     return {
-      credentialsLoaded: true,
-      projectId: creds.project_id,
-      clientEmail: creds.client_email,
-      privateKeyLength: creds.private_key.length,
-      oauthTokenExchangeOk: oauthOk,
-      oauthError,
+      credentialsLoaded: false,
+      error: "Unauthorized: authentication required.",
+    };
+  }
+
+  const supabase = supabaseClient || getSupabaseServerClient();
+  const { data: authData, error: authErr } = await supabase.auth.getUser(cleanToken);
+  const callerUserId = authData?.user?.id;
+  if (authErr || !callerUserId) {
+    return {
+      credentialsLoaded: false,
+      error: "Unauthorized: invalid or expired session.",
+    };
+  }
+
+  const { data: callerProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", callerUserId)
+    .maybeSingle();
+  const callerRole = String(callerProfile?.role || "").trim().toLowerCase();
+  if (callerRole !== "admin") {
+    return {
+      credentialsLoaded: false,
+      error: "Unauthorized: Administrator privileges required.",
+    };
+  }
+
+  const creds = getFirebaseServiceAccount();
+
+  // Query active device tokens count (only after Admin verification)
+  let androidCount = 0;
+  let iosCount = 0;
+  try {
+    const { data: tokens } = await supabase
+      .from("user_device_tokens")
+      .select("platform")
+      .eq("is_active", true);
+
+    if (tokens) {
+      androidCount = tokens.filter((t: any) => t.platform === "android").length;
+      iosCount = tokens.filter((t: any) => t.platform === "ios").length;
+    }
+  } catch {}
+
+  // Query recent logs (only after Admin verification)
+  let recentLogs: any[] = [];
+  try {
+    const { data: logs } = await supabase
+      .from("notification_dispatch_logs")
+      .select("id, event_type, status, error_message, created_at, tokens_attempted, tokens_succeeded, tokens_failed")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (logs) recentLogs = logs;
+  } catch {}
+
+  if (!creds) {
+    const envKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const envProj = process.env.FIREBASE_PROJECT_ID;
+    const envEmail = process.env.FIREBASE_CLIENT_EMAIL;
+    const envKey2 = process.env.FIREBASE_PRIVATE_KEY;
+    return {
+      credentialsLoaded: false,
       activeTokens: {
         android: androidCount,
         ios: iosCount,
         total: androidCount + iosCount,
       },
       recentLogs,
+      details: {
+        FIREBASE_SERVICE_ACCOUNT_KEY: envKey ? "present" : "MISSING",
+        FIREBASE_PROJECT_ID: envProj ? "present" : "MISSING",
+        FIREBASE_CLIENT_EMAIL: envEmail ? "present" : "MISSING",
+        FIREBASE_PRIVATE_KEY: envKey2 ? "present" : "MISSING",
+      },
+      error:
+        "Firebase credentials not configured. Configure FIREBASE_SERVICE_ACCOUNT_KEY (Base64) in Vercel Production environment variables.",
     };
+  }
+
+  // Test the OAuth2 token exchange to confirm credentials work
+  let oauthOk = false;
+  let oauthError: string | null = null;
+  try {
+    await getGoogleOAuth2Token(creds);
+    oauthOk = true;
+  } catch (err: any) {
+    oauthError = err?.message || String(err);
+  }
+
+  return {
+    credentialsLoaded: true,
+    projectId: creds.project_id,
+    oauthTokenExchangeOk: oauthOk,
+    oauthError,
+    activeTokens: {
+      android: androidCount,
+      ios: iosCount,
+      total: androidCount + iosCount,
+    },
+    recentLogs,
+  };
+}
+
+export const verifyFirebaseCredentialsServerFn = createServerFn({ method: "POST" })
+  .validator((d: unknown) => (d && typeof d === "object" ? d : {}) as { authToken?: string | null })
+  .handler(async ({ data }) => {
+    return handleVerifyFirebaseCredentials(data);
   });
 
 /**

@@ -2067,198 +2067,41 @@ export async function createGasOrder(params: {
     }
   }
 
-  // 3. Recalculate price on the backend
-  const calculated = await validateAndCalculateOrderTotal({
-    productId,
-    quantity,
-    orderType,
+  // 3. Delegate order and order_items creation to authoritative server function
+  const { createLegacyGasOrderServerFn } = await import("./checkout-order-server-fn");
+  const { data: sessionData } = await supabase.auth.getSession();
+  const authToken = sessionData?.session?.access_token || null;
+
+  const res = await createLegacyGasOrderServerFn({
+    data: {
+      authToken,
+      customerName,
+      customerEmail,
+      customerPhone,
+      deliveryAddress,
+      usageType,
+      orderType,
+      productId,
+      quantity,
+      deliveryDate,
+      deliveryTimeSlot,
+      returnMethod,
+      pickupDate,
+      pickupTimeSlot,
+      cylinderTag,
+      notes,
+      paymentMethod,
+    },
   });
 
-  const isNew = orderType === "NEW_CYLINDER";
-  const timestamp = Date.now().toString().slice(-6);
-  const prefixMap: Record<UsageType, string> = {
-    DOMESTIC: "CYL-DOM",
-    COMMERCIAL: "CYL-COM",
-    BULK: "CYL-BLK",
-    AUTOGAS: "AUT-LPG",
-  };
-  const orderNumber = `${prefixMap[usageType]}-${timestamp}`;
-
-  const initialStatus = "Pending";
-
-  // 2. Insert main order into existing Supabase orders table
-  const isPaidOnline =
-    paymentMethod.toLowerCase().includes("card") || paymentMethod.toLowerCase().includes("paypal");
-  const normalizedMethod = paymentMethod.toLowerCase().includes("paypal")
-    ? "PayPal"
-    : paymentMethod.toLowerCase().includes("card")
-      ? "Credit / Debit Card"
-      : "Pay on Delivery / Collection";
-
-  const { data: orderData, error: orderErr } = await (supabase.from("orders") as any)
-    .insert([
-      {
-        order_number: orderNumber,
-        customer_id: userId,
-        customer_name: customerName,
-        customer_email: customerEmail || "",
-        customer_phone: customerPhone || null,
-        delivery_address: {
-          name: customerName,
-          address: deliveryAddress,
-          street: deliveryAddress,
-          phone: customerPhone || "",
-          delivery_date: deliveryDate || null,
-          delivery_slot: deliveryTimeSlot || null,
-          payment_method: normalizedMethod,
-          empty_cylinder_required: !isNew,
-          order_type: orderType,
-        },
-        subtotal: calculated.subtotal,
-        shipping_fee: calculated.deliveryFee,
-        total: calculated.total,
-        status: initialStatus,
-        fulfillment_status: "Pending",
-        assigned_depot: "Whitminster",
-        payment_status: isPaidOnline ? "Paid" : "Pending",
-        notes: [
-          `[${usageType} LPG]`,
-          `[${orderType.replace(/_/g, " ")}]`,
-          `[Empty Cylinder Required: ${isNew ? "No" : "Yes"}]`,
-          `[Expected: ${isNew ? 0 : quantity}]`,
-          `[Payment: ${normalizedMethod}]`,
-          deliveryDate ? `Delivery: ${deliveryDate} (${deliveryTimeSlot || "Standard"})` : "",
-          isNew
-            ? `Deposit: £${calculated.depositTotal.toFixed(2)}`
-            : `Return Method: ${returnMethod.replace(/_/g, " ")}`,
-          pickupDate ? `Pickup: ${pickupDate} (${pickupTimeSlot || "Anytime"})` : "",
-          cylinderTag ? `Tag: ${cylinderTag}` : "",
-          notes,
-        ]
-          .filter(Boolean)
-          .join(" | "),
-      },
-    ])
-    .select()
-    .single();
-
-  if (orderErr) {
-    throw new Error(`Order placement error: ${orderErr.message}`);
-  }
-
-  const orderId = orderData.id;
-
-  // 3. Insert order items
-  const itemInserts: any[] = [
-    {
-      order_id: orderId,
-      product_id: productId,
-      product_name: `${calculated.product.name} (${isNew ? "New Cylinder + Gas" : "Refill Exchange"})`,
-      unit_price: calculated.gasPriceUnit,
-      quantity,
-      total_price: calculated.gasPriceTotal,
-    },
-  ];
-
-  if (isNew && calculated.depositTotal > 0) {
-    itemInserts.push({
-      order_id: orderId,
-      product_id: productId,
-      product_name: `Cylinder Security Deposit (${calculated.product.name})`,
-      unit_price: calculated.depositUnit,
-      quantity,
-      total_price: calculated.depositTotal,
-    });
-  }
-
-  try {
-    await (supabase.from("order_items") as any).insert(itemInserts);
-  } catch (itemErr) {
-    console.warn("Order items insertion notice:", itemErr);
-  }
-
-  // 4. Record initial Order Status History
-  try {
-    await supabase.from("order_status_history").insert([
-      {
-        order_id: orderId,
-        status: initialStatus,
-        notes: isNew
-          ? "New cylinder purchase — no empty cylinder collection required."
-          : `Refill exchange placed — empty cylinder collection required (${quantity} bottle(s)).`,
-      },
-    ]);
-  } catch (histErr) {
-    console.warn("Status history notice:", histErr);
-  }
-
-  // 5. Create Delivery Assignment / Route Entry awaiting Admin/Manager assignment
-  try {
-    await (supabase.from("delivery_assignments") as any).insert([
-      {
-        order_id: orderId,
-        order_ref: orderNumber,
-        customer_name: customerName,
-        address: deliveryAddress,
-        area: "Gloucestershire",
-        driver_name: "Unassigned",
-        agent_id: null,
-        driver_id: null,
-        vehicle_plate: null,
-        time_slot: deliveryTimeSlot || pickupTimeSlot || "Morning (08:00 - 12:00)",
-        status: "Pending",
-        notes: `[${usageType}] ${orderType} | Empty Cylinder Required: ${isNew ? "No" : "Yes"} | Expected: ${isNew ? 0 : quantity}`,
-      },
-    ]);
-  } catch (delErr) {
-    console.warn("Delivery assignment notice:", delErr);
-  }
-
-  // 6. Generate Customer & Staff Notifications
-  try {
-    await (supabase.from("notifications") as any).insert([
-      {
-        user_id: userId,
-        title: `Order #${orderNumber} Confirmed`,
-        message: `Your ${usageType.toLowerCase()} LPG order for ${quantity}x ${calculated.product.name} has been placed.`,
-        category: "Orders",
-        link: `/account/orders`,
-        read: false,
-        is_read: false,
-      },
-      {
-        user_id: null,
-        title: `New ${usageType} LPG Order: ${orderNumber}`,
-        message: `${customerName} ordered ${quantity}x ${calculated.product.name} (${orderType.replace(/_/g, " ")}).`,
-        category: "Orders",
-        link: `/admin/orders`,
-        read: false,
-        is_read: false,
-      },
-    ]);
-  } catch (notifErr) {
-    console.warn("Notification insert notice:", notifErr);
-  }
-
-  // 7. Create Invoice record
-  try {
-    await supabase.from("invoices").insert([
-      {
-        invoice_number: `INV-${orderNumber}`,
-        order_id: orderId,
-        customer_id: userId,
-        total_amount: calculated.total,
-        status: isPaidOnline ? "Paid" : "Issued",
-      },
-    ]);
-  } catch (invErr) {
-    console.warn("Invoice creation notice:", invErr);
+  if (!res.ok || !res.orderId || !res.orderNumber || !res.calculated) {
+    throw new Error(res.error || "Failed to place gas order.");
   }
 
   return {
-    orderId,
-    orderNumber,
-    calculated,
+    orderId: res.orderId,
+    orderNumber: res.orderNumber,
+    calculated: res.calculated,
   };
 }
 
