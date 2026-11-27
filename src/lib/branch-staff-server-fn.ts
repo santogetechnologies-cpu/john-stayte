@@ -6,6 +6,7 @@ import {
   evaluateBranchOrderPaymentEligibility,
 } from "@/lib/branch-service";
 import { calculateShortReturnAssessment } from "@/lib/customer-order-pricing-service";
+import { dispatchCollectionReceiptEmail } from "@/lib/collection-receipt-server-fn";
 
 export interface CreateBranchStaffInput {
   fullName: string;
@@ -1301,6 +1302,19 @@ export async function handleVerifyAndCompleteBranchHandover(
       return { ok: false, error: rpcErr.message };
     }
 
+    let receiptEmailSent = false;
+    if (!rpcResult?.already_completed) {
+      try {
+        const receiptRes = await dispatchCollectionReceiptEmail(supabaseAdmin, {
+          orderId,
+          staffId: callerProfile.id,
+        });
+        receiptEmailSent = Boolean(receiptRes?.ok && !receiptRes?.skipped);
+      } catch {
+        // Non-blocking: receipt email failure must never roll back or fail handover
+      }
+    }
+
     return {
       ok: true,
       message: rpcResult?.already_completed
@@ -1313,6 +1327,7 @@ export async function handleVerifyAndCompleteBranchHandover(
         paymentStatus: orderRow.payment_status || "Pending",
         isApprovedCreditOrder: eligibility.isApprovedCreditOrder,
         cylinderReturnsRecorded: Number(rpcResult?.cylinder_returns_recorded || 0),
+        receiptEmailSent,
       },
     };
   } catch (err: any) {
